@@ -1,20 +1,30 @@
 import { auth, signOut } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 export default async function DashboardPage() {
   const session = await auth();
-  
+
   if (!session?.user) {
     redirect("/auth/signin");
   }
 
   const userInitials = session.user.name
-    ? session.user.name.split(" ").map(n => n[0]).join("").toUpperCase()
+    ? session.user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
     : session.user.email?.[0].toUpperCase() || "U";
 
   return (
@@ -24,14 +34,15 @@ export default async function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold">
-                M3W Dashboard
-              </h1>
+              <h1 className="text-xl font-bold">M3W Dashboard</h1>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={session.user.image || undefined} alt={session.user.name || "User"} />
+                  <AvatarImage
+                    src={session.user.image || undefined}
+                    alt={session.user.name || "User"}
+                  />
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
                 <div className="hidden sm:block">
@@ -67,10 +78,12 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-2xl">
-                  Welcome back, {session.user.name?.split(" ")[0] || "there"}! 👋
+                  Welcome back, {session.user.name?.split(" ")[0] || "there"}!
+                  👋
                 </CardTitle>
                 <CardDescription className="mt-2">
-                  Your Next.js full-stack application is ready. Start building amazing features!
+                  Your Next.js full-stack application is ready. Start building
+                  amazing features!
                 </CardDescription>
               </div>
               <Badge variant="secondary" className="hidden sm:block">
@@ -94,7 +107,8 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Server-side rendering, static generation, and the latest React features.
+                Server-side rendering, static generation, and the latest React
+                features.
               </p>
               <div className="mt-4 flex gap-2">
                 <Badge>SSR</Badge>
@@ -131,9 +145,7 @@ export default async function DashboardPage() {
                 <span className="text-2xl">🗄️</span>
                 Prisma ORM
               </CardTitle>
-              <CardDescription>
-                Type-safe database access
-              </CardDescription>
+              <CardDescription>Type-safe database access</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
@@ -158,7 +170,8 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Radix UI primitives styled with Tailwind CSS. Fully customizable.
+                Radix UI primitives styled with Tailwind CSS. Fully
+                customizable.
               </p>
               <div className="mt-4 flex gap-2">
                 <Badge variant="secondary">Tailwind v4</Badge>
@@ -173,9 +186,7 @@ export default async function DashboardPage() {
                 <span className="text-2xl">🐳</span>
                 Container Ready
               </CardTitle>
-              <CardDescription>
-                Podman & Docker support
-              </CardDescription>
+              <CardDescription>Podman & Docker support</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
@@ -194,9 +205,7 @@ export default async function DashboardPage() {
                 <span className="text-2xl">🚀</span>
                 Production Grade
               </CardTitle>
-              <CardDescription>
-                Enterprise-ready architecture
-              </CardDescription>
+              <CardDescription>Enterprise-ready architecture</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">

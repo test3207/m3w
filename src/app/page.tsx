@@ -1,11 +1,17 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+    <div className="min-h-screen bg-linear-to-br from-background to-muted">
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-16 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto">
@@ -19,19 +25,15 @@ export default function HomePage() {
             Production-Grade Full-Stack Web Application
           </p>
           <p className="text-base text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Built with Next.js 15, NextAuth.js, Prisma, and shadcn/ui. 
+            Built with Next.js 15, NextAuth.js, Prisma, and shadcn/ui.
             Self-hosted ready with Podman/Docker and Kubernetes support.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg">
-              <Link href="/api/auth/signin">
-                Sign In with GitHub
-              </Link>
+              <Link href="/api/auth/signin">Sign In with GitHub</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/dashboard">
-                View Dashboard
-              </Link>
+              <Link href="/dashboard">View Dashboard</Link>
             </Button>
           </div>
         </div>
@@ -47,7 +49,8 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Next.js 15 with App Router, React Server Components, and TypeScript strict mode.
+                Next.js 15 with App Router, React Server Components, and
+                TypeScript strict mode.
               </CardDescription>
             </CardContent>
           </Card>
@@ -61,7 +64,8 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                NextAuth.js v5 with GitHub OAuth, database sessions, and CSRF protection.
+                NextAuth.js v5 with GitHub OAuth, database sessions, and CSRF
+                protection.
               </CardDescription>
             </CardContent>
           </Card>
@@ -75,7 +79,8 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Prisma ORM with PostgreSQL 16, auto-generated types, and migrations.
+                Prisma ORM with PostgreSQL 16, auto-generated types, and
+                migrations.
               </CardDescription>
             </CardContent>
           </Card>
@@ -89,7 +94,8 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                shadcn/ui components with Radix UI primitives and Tailwind CSS v4.
+                shadcn/ui components with Radix UI primitives and Tailwind CSS
+                v4.
               </CardDescription>
             </CardContent>
           </Card>
@@ -103,7 +109,8 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Podman/Docker support with GHCR images. Kubernetes deployment configs included.
+                Podman/Docker support with GHCR images. Kubernetes deployment
+                configs included.
               </CardDescription>
             </CardContent>
           </Card>
@@ -117,7 +124,8 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                GHCR default images, proxy configuration guides, and cross-platform setup scripts.
+                GHCR default images, proxy configuration guides, and
+                cross-platform setup scripts.
               </CardDescription>
             </CardContent>
           </Card>
