@@ -1,0 +1,33 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@apply",
+      "description": "Tailwind CSS directive to apply utility classes"
+    },
+    {
+      "name": "@layer",
+      "description": "Tailwind CSS directive to define custom styles in layers"
+    },
+    {
+      "name": "@theme",
+      "description": "Tailwind CSS v4 directive to define theme variables"
+    },
+    {
+      "name": "@plugin",
+      "description": "Tailwind CSS v4 directive to load plugins"
+    },
+    {
+      "name": "@custom-variant",
+      "description": "Tailwind CSS v4 directive to define custom variants"
+    },
+    {
+      "name": "@custom-selector",
+      "description": "Tailwind CSS v4 directive to define custom selectors"
+    },
+    {
+      "name": "@custom-utility",
+      "description": "Tailwind CSS v4 directive to define custom utilities"
+    }
+  ]
+}

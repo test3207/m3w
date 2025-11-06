@@ -1,0 +1,20 @@
+# podman-env.ps1.example
+# Example proxy configuration for Podman
+# Copy this file to podman-env.ps1 and adjust settings
+
+# Configure your proxy port here
+$PROXY_PORT = "7890"  # Common ports: Clash(7890), V2Ray(10809), SS(1080)
+$PROXY_HOST = "127.0.0.1"
+
+# Set environment variables
+$env:HTTP_PROXY = "http://${PROXY_HOST}:${PROXY_PORT}"
+$env:HTTPS_PROXY = "http://${PROXY_HOST}:${PROXY_PORT}"
+$env:NO_PROXY = "localhost,127.0.0.1"
+
+Write-Host "✓ Proxy environment variables configured:" -ForegroundColor Green
+Write-Host "  HTTP_PROXY: $env:HTTP_PROXY" -ForegroundColor Cyan
+Write-Host "  HTTPS_PROXY: $env:HTTPS_PROXY" -ForegroundColor Cyan
+Write-Host "  NO_PROXY: $env:NO_PROXY" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "You can now run Podman commands with proxy enabled." -ForegroundColor Yellow
+Write-Host "Example: podman pull postgres:16-alpine" -ForegroundColor Gray

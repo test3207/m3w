@@ -1,0 +1,11 @@
+{
+  "css.lint.validProperties": [
+    "composes"
+  ],
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore",
+  "css.customData": [
+    ".vscode/css-custom-data.json"
+  ]
+}
