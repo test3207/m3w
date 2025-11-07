@@ -140,13 +140,13 @@ echo ""
 # Setup environment variables
 if [ "$SKIP_ENV" = false ]; then
     echo -e "${CYAN}🔐 Setting up environment variables...${NC}"
-    if [ ! -f ".env.local" ]; then
-        cp ".env.example" ".env.local"
-        echo -e "  ${GREEN}✓ Created .env.local from template${NC}"
-        echo -e "  ${YELLOW}⚠️  Please edit .env.local and add your GitHub OAuth credentials${NC}"
+    if [ ! -f ".env" ]; then
+        cp ".env.example" ".env"
+        echo -e "  ${GREEN}✓ Created .env from template${NC}"
+        echo -e "  ${YELLOW}⚠️  Please edit .env and add your GitHub OAuth credentials${NC}"
         echo -e "     ${GRAY}Visit: https://github.com/settings/developers${NC}"
     else
-        echo -e "  ${BLUE}ℹ️  .env.local already exists${NC}"
+        echo -e "  ${BLUE}ℹ️  .env already exists${NC}"
     fi
     echo ""
 fi

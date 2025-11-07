@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
+import { MiniPlayer } from "@/components/features/mini-player";
 
 export default async function DashboardLayout({
   children,
@@ -12,5 +13,10 @@ export default async function DashboardLayout({
     redirect("/signin");
   }
 
-  return <>{children}</>;
+  return (
+    <div className="pb-24">
+      {children}
+      <MiniPlayer />
+    </div>
+  );
 }

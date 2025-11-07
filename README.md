@@ -58,7 +58,7 @@ chmod +x setup.sh
 The setup script will:
 
 - Install npm dependencies
-- Create `.env.local` from template
+- Create `.env` from template
 - Start PostgreSQL and Redis containers (using GHCR images)
 - Run database migrations
 - Provide next steps
@@ -75,20 +75,27 @@ cd m3w
 npm install
 ```
 
-### 2. Configure Environment Variables
+**For users in China**: Edit `.npmrc` and uncomment the Taobao mirror line:
 
-Copy `.env.example` to `.env.local`:
-
-```bash
-cp .env.example .env.local
+```ini
+# Uncomment this line
+registry=https://registry.npmmirror.com/
 ```
 
-Then edit `.env.local` and add your GitHub OAuth credentials:
+### 2. Configure Environment Variables
+
+Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and add your GitHub OAuth credentials:
 
 1. Go to <https://github.com/settings/developers>
 2. Create a new OAuth App
 3. Set Authorization callback URL to: `http://localhost:3000/api/auth/callback/github`
-4. Copy Client ID and Client Secret to `.env.local`
+4. Copy Client ID and Client Secret to `.env`
 
 ### 3. Start Database Services
 
@@ -175,6 +182,14 @@ m3w/
 - `npm run build` - Build for production
 - `npm start` - Start production server
 - `npm run lint` - Run ESLint
+
+## Testing & Code Quality
+
+- Run unit tests with Vitest: `npm run test`
+- Prefer factory helpers or type aliases for Prisma and metadata fixtures instead of chaining `as unknown as`
+- When a mock cannot fully satisfy an interface, document the gap and keep its shape aligned with the contract
+- Extract shared fixtures once the same test data appears twice to avoid missing fields
+- Reusable factories live in `src/test/fixtures/metadata.ts` and `src/test/fixtures/prisma.ts`
 
 ## Database Management
 

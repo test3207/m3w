@@ -20,6 +20,8 @@ model User {
   
   accounts      Account[]
   sessions      Session[]
+  libraries     Library[]
+  playlists     Playlist[]
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -64,4 +66,144 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// ============================================
+// M3W Music Player Models
+// ============================================
+
+// Physical file storage (deduplicated by hash)
+model File {
+  id          String   @id @default(cuid())
+  hash        String   @unique  // SHA256 hash of file content
+  path        String   // MinIO path: /files/{hash}.mp3
+  size        Int      // File size in bytes
+  mimeType    String   // audio/mpeg, audio/flac, etc.
+  
+  // Audio physical properties (extracted once)
+  duration    Int?     // Duration in seconds
+  bitrate     Int?     // Bitrate in kbps
+  sampleRate  Int?     // Sample rate in Hz
+  channels    Int?     // Number of audio channels
+  
+  // Reference counting for garbage collection
+  refCount    Int      @default(0)
+  
+  songs       Song[]
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([hash])
+  @@map("files")
+}
+
+// Music Library (user's collection)
+model Library {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  songs       Song[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@map("libraries")
+}
+
+// Song (user-specific metadata + file reference)
+model Song {
+  id          String   @id @default(cuid())
+  
+  // User-editable metadata
+  title       String
+  artist      String?
+  album       String?
+  albumArtist String?
+  year        Int?
+  genre       String?
+  trackNumber Int?
+  discNumber  Int?
+  composer    String?
+  
+  // File reference (deduplication)
+  fileId      String
+  file        File     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  
+  // Cover art (may differ per user)
+  coverUrl    String?
+  
+  // Library ownership
+  libraryId   String
+  library     Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  
+  // Raw metadata from file (JSON blob for flexibility)
+  rawMetadata Json?
+  
+  lyrics      Lyrics[]
+  playlistSongs PlaylistSong[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([libraryId])
+  @@index([fileId])
+  @@map("songs")
+}
+
+// Lyrics (multiple sources per song)
+model Lyrics {
+  id       String @id @default(cuid())
+  
+  songId   String
+  song     Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
+  
+  content  String @db.Text
+  source   String // "netease" | "qq" | "spotify" | "manual" | "lrc_file"
+  language String @default("zh-CN")
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([songId, source])
+  @@index([songId])
+  @@map("lyrics")
+}
+
+// Playlist (combines songs from multiple libraries)
+model Playlist {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  coverUrl    String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  songs       PlaylistSong[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@map("playlists")
+}
+
+// Playlist-Song relationship (with ordering)
+model PlaylistSong {
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  
+  songId     String
+  song       Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  
+  order      Int      @default(0)
+  addedAt    DateTime @default(now())
+  
+  @@id([playlistId, songId])
+  @@index([playlistId, order])
+  @@map("playlist_songs")
 }

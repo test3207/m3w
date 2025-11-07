@@ -128,13 +128,13 @@ Write-Host ""
 # Setup environment variables
 if (-not $SkipEnv) {
     Write-Host "🔐 Setting up environment variables..." -ForegroundColor Cyan
-    if (-not (Test-Path ".env.local")) {
-        Copy-Item ".env.example" ".env.local"
-        Write-Host "  ✓ Created .env.local from template" -ForegroundColor Green
-        Write-Host "  ⚠️  Please edit .env.local and add your GitHub OAuth credentials" -ForegroundColor Yellow
+    if (-not (Test-Path ".env")) {
+        Copy-Item ".env.example" ".env"
+        Write-Host "  ✓ Created .env from template" -ForegroundColor Green
+        Write-Host "  ⚠️  Please edit .env and add your GitHub OAuth credentials" -ForegroundColor Yellow
         Write-Host "     Visit: https://github.com/settings/developers" -ForegroundColor Gray
     } else {
-        Write-Host "  ℹ️  .env.local already exists" -ForegroundColor Blue
+        Write-Host "  ℹ️  .env already exists" -ForegroundColor Blue
     }
     Write-Host ""
 }

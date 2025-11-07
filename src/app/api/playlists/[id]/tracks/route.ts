@@ -1,0 +1,81 @@
+import { auth } from "@/lib/auth/config";
+import { prisma } from "@/lib/db/prisma";
+import { logger } from "@/lib/logger";
+import { NextResponse } from "next/server";
+
+interface PlaylistTrackResponse {
+  id: string;
+  title: string;
+  artist: string | null;
+  album: string | null;
+  coverUrl: string | null;
+  duration: number | null;
+}
+
+export async function GET(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: playlistId } = params;
+
+    const playlist = await prisma.playlist.findFirst({
+      where: {
+        id: playlistId,
+        userId: session.user.id,
+      },
+      include: {
+        songs: {
+          include: {
+            song: {
+              include: {
+                file: true,
+              },
+            },
+          },
+          orderBy: { order: "asc" },
+        },
+      },
+    });
+
+    if (!playlist) {
+      return NextResponse.json({ error: "Playlist not found" }, { status: 404 });
+    }
+
+    const tracks: PlaylistTrackResponse[] = playlist.songs.map(({ song }) => ({
+      id: song.id,
+      title: song.title,
+      artist: song.artist ?? null,
+      album: song.album ?? null,
+      coverUrl: song.coverUrl ?? null,
+      duration: song.file?.duration ?? null,
+    }));
+
+    logger.info({
+      msg: "Playlist tracks fetched",
+      playlistId,
+      userId: session.user.id,
+      trackCount: tracks.length,
+    });
+
+    return NextResponse.json({
+      playlist: {
+        id: playlist.id,
+        name: playlist.name,
+      },
+      tracks,
+    });
+  } catch (error) {
+    logger.error({ msg: "Failed to fetch playlist tracks", error });
+    return NextResponse.json(
+      { error: "Failed to fetch playlist tracks" },
+      { status: 500 }
+    );
+  }
+}
