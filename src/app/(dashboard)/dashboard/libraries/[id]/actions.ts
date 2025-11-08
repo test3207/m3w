@@ -5,15 +5,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth/config";
 import { addSongToPlaylist } from "@/lib/services/playlist.service";
-
-export type AddSongToPlaylistState =
-  | { status: "idle" }
-  | { status: "success"; playlistId: string; songId: string }
-  | { status: "error"; message: "invalid-input" | "unauthorized-or-missing" | "unknown" };
-
-export const ADD_SONG_TO_PLAYLIST_INITIAL_STATE: AddSongToPlaylistState = {
-  status: "idle",
-};
+import type { AddSongToPlaylistState } from "./constants";
 
 export async function addSongToPlaylistAction(
   _prevState: AddSongToPlaylistState,
