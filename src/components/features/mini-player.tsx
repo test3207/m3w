@@ -10,6 +10,8 @@ import { useAudioPlayer } from '@/lib/audio/useAudioPlayer';
 import { Button } from '@/components/ui/button';
 import { HStack, VStack } from '@/components/ui/stack';
 import Image from 'next/image';
+import { Repeat, Repeat1, Shuffle } from 'lucide-react';
+import type { RepeatMode } from '@/lib/audio/queue';
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -32,13 +34,38 @@ export function MiniPlayer() {
     seek,
     setVolume,
     toggleMute,
+    queueState,
+    cycleRepeat,
+    toggleShuffle,
   } = useAudioPlayer();
+  const { shuffleEnabled, repeatMode } = queueState;
 
   if (!currentTrack) {
     return null; // Hide player when no track
   }
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  const repeatLabels: Record<RepeatMode, string> = {
+    off: 'Repeat off',
+    all: 'Repeat all',
+    one: 'Repeat one',
+  };
+  const repeatLabel = repeatLabels[repeatMode];
+  const shuffleLabel = shuffleEnabled ? 'Disable shuffle' : 'Enable shuffle';
+  const repeatStateText: Record<RepeatMode, string> = {
+    off: 'Repeat: Off',
+    all: 'Repeat: Queue',
+    one: 'Repeat: Track',
+  };
+  const shuffleStateText = shuffleEnabled ? 'Shuffle: On' : 'Shuffle: Off';
+
+  const renderRepeatIcon = () => {
+    if (repeatMode === 'one') {
+      return <Repeat1 className="w-5 h-5" />;
+    }
+    return <Repeat className="w-5 h-5" />;
+  };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -183,7 +210,32 @@ export function MiniPlayer() {
                 />
               </svg>
             </Button>
+
+            <Button
+              variant={shuffleEnabled ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={toggleShuffle}
+              aria-label={shuffleLabel}
+              aria-pressed={shuffleEnabled}
+            >
+              <Shuffle className="w-5 h-5" />
+            </Button>
+
+            <Button
+              variant={repeatMode === 'off' ? 'ghost' : 'secondary'}
+              size="icon"
+              onClick={cycleRepeat}
+              aria-label={repeatLabel}
+              aria-pressed={repeatMode !== 'off'}
+            >
+              {renderRepeatIcon()}
+            </Button>
           </HStack>
+
+          <VStack gap="none" className="items-end text-[11px] text-muted-foreground leading-tight">
+            <span>{shuffleStateText}</span>
+            <span>{repeatStateText[repeatMode]}</span>
+          </VStack>
 
           {/* Time & Volume */}
           <HStack gap="sm" align="center" className="shrink-0">

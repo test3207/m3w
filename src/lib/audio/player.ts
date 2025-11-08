@@ -6,6 +6,7 @@
  */
 
 import { Howl, Howler } from 'howler';
+import { logger } from '@/lib/logger';
 
 export interface Track {
   id: string;
@@ -44,6 +45,7 @@ class AudioPlayer {
   private listeners: Map<PlayerEventType, Set<PlayerEventListener>> = new Map();
   private updateInterval: NodeJS.Timeout | null = null;
   private isMuted: boolean = false;
+  private isRecovering: boolean = false;
 
   constructor() {
     // Initialize event listener sets
@@ -55,52 +57,41 @@ class AudioPlayer {
    * Load and play a track
    */
   async play(track: Track): Promise<void> {
-    // If same track, just resume
     if (this.currentTrack?.id === track.id && this.howl) {
+      this.howl.stop();
+      this.howl.seek(0);
       this.howl.play();
       this.startProgressUpdate();
       this.emit('play');
       return;
     }
 
-    // Stop current track
-    this.stop();
-
-    // Create new Howl instance
+    this.unloadHowl();
     this.currentTrack = track;
-    this.howl = new Howl({
-      src: [track.audioUrl],
-      html5: true, // Use HTML5 Audio for streaming
-      preload: true,
-      onload: () => {
-        this.emit('load');
-      },
-      onplay: () => {
-        this.startProgressUpdate();
-        this.emit('play');
-      },
-      onpause: () => {
-        this.stopProgressUpdate();
-        this.emit('pause');
-      },
-      onend: () => {
-        this.stopProgressUpdate();
-        this.emit('end');
-      },
-      onseek: () => {
-        this.emit('seek');
-      },
-      onloaderror: (_id, error) => {
-        console.error('Audio load error:', error);
-        this.emit('error');
-      },
-      onplayerror: (_id, error) => {
-        console.error('Audio play error:', error);
-        this.emit('error');
-      },
-    });
-
+    this.howl = this.createHowl(track);
     this.howl.play();
+  }
+
+  /**
+   * Prime player with a track without auto-playing
+   */
+  prime(track: Track): void {
+    if (this.currentTrack?.id === track.id && this.howl) {
+      this.emit('load');
+      return;
+    }
+
+    if (!this.canInitializeAudio()) {
+      this.currentTrack = track;
+      this.emit('load');
+      return;
+    }
+
+    this.unloadHowl();
+    this.currentTrack = track;
+    this.howl = this.createHowl(track);
+    this.howl.load();
+    this.emit('load');
   }
 
   /**
@@ -116,8 +107,15 @@ class AudioPlayer {
    * Resume playback
    */
   resume(): void {
-    if (this.howl && !this.howl.playing()) {
-      this.howl.play();
+    if (this.howl) {
+      if (!this.howl.playing()) {
+        this.howl.play();
+      }
+      return;
+    }
+
+    if (this.currentTrack) {
+      void this.play(this.currentTrack);
     }
   }
 
@@ -125,12 +123,7 @@ class AudioPlayer {
    * Stop playback and unload
    */
   stop(): void {
-    if (this.howl) {
-      this.howl.stop();
-      this.howl.unload();
-      this.howl = null;
-    }
-    this.stopProgressUpdate();
+    this.unloadHowl();
     this.currentTrack = null;
   }
 
@@ -168,7 +161,7 @@ class AudioPlayer {
     return {
       currentTrack: this.currentTrack,
       isPlaying: this.howl?.playing() ?? false,
-      currentTime: this.howl?.seek() as number ?? 0,
+      currentTime: this.howl?.seek() ?? 0,
       duration: this.howl?.duration() ?? this.currentTrack?.duration ?? 0,
       volume: Howler.volume(),
       isMuted: this.isMuted,
@@ -228,6 +221,92 @@ class AudioPlayer {
   destroy(): void {
     this.stop();
     this.listeners.clear();
+  }
+
+  /**
+   * Create configured Howl instance for track
+   */
+  private createHowl(track: Track): Howl {
+    return new Howl({
+      src: [track.audioUrl],
+      html5: true,
+      preload: true,
+      onload: () => {
+        this.emit('load');
+      },
+      onplay: () => {
+        this.isRecovering = false;
+        this.startProgressUpdate();
+        this.emit('play');
+      },
+      onpause: () => {
+        this.stopProgressUpdate();
+        this.emit('pause');
+      },
+      onend: () => {
+        this.stopProgressUpdate();
+        this.emit('end');
+      },
+      onseek: () => {
+        this.emit('seek');
+      },
+      onloaderror: (_id, error) => {
+        logger.error({ err: error }, 'Audio load error');
+        this.emit('error');
+      },
+      onplayerror: (_id, error) => {
+        logger.error({ err: error }, 'Audio play error');
+        const audioCtx = Howler.ctx;
+        if (audioCtx?.state === 'suspended') {
+          void audioCtx.resume().catch((resumeError: unknown) => {
+            logger.error({ err: resumeError }, 'Audio context resume failed');
+          });
+        }
+        const trackToRetry = this.currentTrack;
+        this.unloadHowl();
+
+        if (trackToRetry && !this.isRecovering) {
+          this.isRecovering = true;
+          void this.play(trackToRetry).catch((retryError: unknown) => {
+            logger.error({ err: retryError }, 'Audio auto-retry failed');
+            this.isRecovering = false;
+          });
+        } else {
+          this.isRecovering = false;
+        }
+        this.emit('error');
+      },
+    });
+  }
+
+  /**
+   * Tear down existing Howl instance and progress updates
+   */
+  private unloadHowl(): void {
+    if (this.howl) {
+      this.howl.stop();
+      this.howl.unload();
+      this.howl = null;
+    }
+    this.stopProgressUpdate();
+  }
+
+  private canInitializeAudio(): boolean {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+
+    const userActivation = navigator.userActivation;
+    if (userActivation && !userActivation.hasBeenActive) {
+      return false;
+    }
+
+    const audioCtx = Howler.ctx;
+    if (audioCtx?.state !== 'running') {
+      return false;
+    }
+
+    return true;
   }
 }
 

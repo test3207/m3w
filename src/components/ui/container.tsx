@@ -21,19 +21,19 @@ interface ContainerProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 const maxWidthMap = {
-  sm: "max-w-2xl",
-  md: "max-w-4xl",
-  lg: "max-w-6xl",
-  xl: "max-w-7xl",
+  sm: "max-w-screen-sm",
+  md: "max-w-screen-md",
+  lg: "max-w-screen-lg",
+  xl: "max-w-screen-xl",
   "2xl": "max-w-screen-2xl",
-  full: "max-w-full",
+  full: "max-w-none",
 };
 
 const paddingMap = {
   none: "",
-  sm: "px-4 py-4",
-  md: "px-4 py-8 sm:px-6",
-  lg: "px-4 py-12 sm:px-6 lg:px-8",
+  sm: "px-4 py-4 xs:px-5",
+  md: "px-4 py-6 xs:px-6 md:px-8",
+  lg: "px-4 py-10 xs:px-6 md:px-10 lg:px-12",
 };
 
 /**
@@ -58,6 +58,7 @@ export const Container = React.forwardRef<HTMLElement, ContainerProps>(
         // @ts-expect-error - ref type varies based on `as` prop
         ref={ref}
         className={cn(
+          "w-full",
           maxWidthMap[maxWidth],
           centered && "mx-auto",
           paddingMap[padding],

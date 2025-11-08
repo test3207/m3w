@@ -1,63 +1,52 @@
-import { signOut } from "@/lib/auth/config";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { HStack, VStack } from "@/components/ui/stack";
+import Link from "next/link";
 import { UI_TEXT } from "@/locales/messages";
 import type { Session } from "next-auth";
+import { Sparkles } from "lucide-react";
+import { DashboardUserMenu } from "./dashboard-user-menu";
 
 interface DashboardNavbarProps {
   session: Session;
 }
 
 export function DashboardNavbar({ session }: DashboardNavbarProps) {
-  const userInitials = session.user.name
-    ? session.user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-    : session.user.email?.[0].toUpperCase() || "U";
-
   return (
-    <nav className="border-b bg-card" role="navigation" aria-label="Main navigation">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <HStack justify="between" className="h-16">
-          <h1 className="text-xl font-bold">{UI_TEXT.dashboard.navbar.title}</h1>
-
-          <HStack gap="md">
-            <HStack gap="sm">
-              <Avatar>
-                <AvatarImage
-                  src={session.user.image || undefined}
-                  alt={session.user.name || "User"}
-                />
-                <AvatarFallback>{userInitials}</AvatarFallback>
-              </Avatar>
-
-              <VStack gap="none" className="hidden sm:block">
-                <p className="text-sm font-medium">
-                  {session.user.name || session.user.email}
-                </p>
-                <p className="text-xs text-muted-foreground">{session.user.email}</p>
-              </VStack>
-            </HStack>
-
-            <Separator orientation="vertical" className="h-8" />
-
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/" });
-              }}
+    <header
+      className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/65"
+      role="banner"
+    >
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8">
+        <div className="flex h-14 items-center justify-between gap-3 md:h-16">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="group inline-flex items-center gap-2 rounded-full px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:bg-primary/10"
+              aria-label={UI_TEXT.dashboard.navbar.goToDashboard}
             >
-              <Button type="submit" variant="outline" size="sm">
-                {UI_TEXT.dashboard.navbar.signOut}
-              </Button>
-            </form>
-          </HStack>
-        </HStack>
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
+                M3W
+              </span>
+              <div className="hidden xs:flex flex-col leading-tight">
+                <span className="text-sm font-semibold tracking-tight text-foreground group-hover:text-primary">
+                  {UI_TEXT.dashboard.navbar.title}
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {UI_TEXT.dashboard.badgeProductionReady}
+                </span>
+              </div>
+            </Link>
+            <div className="hidden md:flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>{UI_TEXT.dashboard.badgeProductionReady}</span>
+            </div>
+          </div>
+
+          <DashboardUserMenu
+            name={session.user.name}
+            email={session.user.email || ""}
+            image={session.user.image}
+          />
+        </div>
       </div>
-    </nav>
+    </header>
   );
 }

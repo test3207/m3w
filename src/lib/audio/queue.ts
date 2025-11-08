@@ -176,17 +176,32 @@ export class PlayQueue {
    * Toggle shuffle mode
    */
   toggleShuffle(): boolean {
-    this.shuffleEnabled = !this.shuffleEnabled;
+    return this.setShuffle(!this.shuffleEnabled);
+  }
+
+  setShuffle(enabled: boolean): boolean {
+    if (this.shuffleEnabled === enabled) {
+      return this.shuffleEnabled;
+    }
+
+    const currentTrack = this.getCurrentTrack();
+    this.shuffleEnabled = enabled;
 
     if (this.shuffleEnabled) {
       this.generateShuffleOrder();
       this.applyShuffle();
     } else {
       this.tracks = [...this.originalOrder];
-      // Find current track in original order
-      const currentTrack = this.getCurrentTrack();
+
       if (currentTrack) {
         this.currentIndex = this.tracks.findIndex(t => t.id === currentTrack.id);
+      } else if (this.tracks.length === 0) {
+        this.currentIndex = -1;
+      } else {
+        this.currentIndex = Math.min(
+          Math.max(this.currentIndex, 0),
+          this.tracks.length - 1
+        );
       }
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { UI_TEXT } from "@/locales/messages";
@@ -37,7 +37,10 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 }
 
 function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddSongToPlaylistFormProps) {
-  const [state, formAction] = useFormState(addSongToPlaylistAction, ADD_SONG_TO_PLAYLIST_INITIAL_STATE);
+  const [state, formAction] = React.useActionState<AddSongToPlaylistState, FormData>(
+    addSongToPlaylistAction,
+    ADD_SONG_TO_PLAYLIST_INITIAL_STATE
+  );
   const [selectedPlaylistId, setSelectedPlaylistId] = React.useState<string>("");
   const formRef = React.useRef<HTMLFormElement>(null);
   const previousStatus = React.useRef<AddSongToPlaylistState["status"]>("idle");

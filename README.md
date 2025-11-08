@@ -157,24 +157,39 @@ Visit <http://localhost:3000>
 
 ```text
 m3w/
+├── .github/                      # Workflows, shared instructions, automation
+├── assets/                       # Source design artifacts (not imported at runtime)
+│   ├── fonts/                    # Custom typefaces and licensing docs
+│   ├── image/                    # High-res logos, favicons, marketing art
+│   └── raw/                      # Working files (PSD, SVG, AI) grouped by feature
+├── docker/                       # Container definitions and helper scripts
+├── docs/                         # Developer documentation and regional guides
+├── prisma/                       # Database schema and migrations
+├── public/                       # Optimized static assets served verbatim by Next.js
 ├── src/
-│   ├── app/              # Next.js App Router
-│   │   ├── (auth)/      # Auth pages
-│   │   ├── (dashboard)/ # Protected pages
-│   │   └── api/         # API routes
-│   ├── components/      # React components
-│   │   ├── ui/         # Base UI components
-│   │   ├── features/   # Feature components
-│   │   └── layouts/    # Layout components
-│   ├── lib/            # Shared libraries
-│   │   ├── auth/       # Authentication
-│   │   ├── db/         # Database client
-│   │   ├── services/   # Business logic
-│   │   └── utils/      # Utilities
-│   └── types/          # TypeScript types
-├── prisma/             # Database schema
-└── docker/             # Docker configs
+│   ├── app/                      # App Router entry points, route groups, static icons
+│   │   ├── (auth)/               # Authentication routes
+│   │   ├── (dashboard)/          # Authenticated dashboard routes
+│   │   ├── api/                  # Route handlers (REST endpoints)
+│   │   └── icon.png              # App Router favicon source
+│   ├── components/               # UI building blocks (features, layouts, primitives)
+│   ├── lib/                      # Business logic, adapters, utilities
+│   ├── locales/                  # i18n message catalogs
+│   ├── test/                     # Unit and integration test helpers
+│   └── types/                    # Shared TypeScript declarations
+├── package.json                  # Project manifest and npm scripts
+├── tailwind.config.ts            # Tailwind CSS configuration
+├── tsconfig.json                 # TypeScript compiler options
+└── vitest.config.ts              # Vitest test runner configuration
 ```
+
+### Asset Workflow
+
+- Keep original artwork under `assets/` and avoid importing from this directory in application code.
+- Export web-ready derivatives to `public/` (for static assets) or `src/app/*.png` for App Router icons such as favicons and touch-icons.
+- Mirror the folder layout between `assets/` and `public/` when practical so provenance is obvious (for example `assets/image/library/hero.png` → `public/images/library/hero.png`).
+- Document optimization commands (for example Squoosh CLI, ImageMagick) in `assets/README.md` whenever introducing a new asset family or pipeline.
+- Prune intermediate files in `assets/raw/` once their optimized counterparts are committed to keep the repository lean.
 
 ## Available Scripts
 

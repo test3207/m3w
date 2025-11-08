@@ -298,25 +298,28 @@ describe('Upload Service', () => {
   });
 
   describe('decrementFileRef', () => {
-    it('deletes file from DB when refCount reaches zero', async () => {
+    it('deletes file from storage and DB when refCount reaches zero', async () => {
       prismaFileMock.findUnique.mockResolvedValueOnce({
         id: 'file-1',
         path: 'files/test.mp3',
+        hash: 'hash-1',
         refCount: 1,
       });
       prismaFileMock.delete.mockResolvedValueOnce({});
+      deleteFileMock.mockResolvedValueOnce(undefined);
 
       await decrementFileRef('file-1');
 
       expect(prisma.file.update).not.toHaveBeenCalled();
+      expect(deleteFile).toHaveBeenCalledWith('m3w-music', 'files/test.mp3');
       expect(prisma.file.delete).toHaveBeenCalledWith({ where: { id: 'file-1' } });
-      expect(deleteFile).not.toHaveBeenCalled();
     });
 
     it('only decrements refCount when still referenced elsewhere', async () => {
       prismaFileMock.findUnique.mockResolvedValueOnce({
         id: 'file-2',
         path: 'files/test.mp3',
+        hash: 'hash-2',
         refCount: 3,
       });
       prismaFileMock.update.mockResolvedValueOnce({
@@ -335,6 +338,36 @@ describe('Upload Service', () => {
       prismaFileMock.findUnique.mockResolvedValueOnce(null);
 
       await expect(decrementFileRef('missing')).resolves.toBeUndefined();
+    });
+
+    it('continues cleanup when MinIO object is already missing', async () => {
+      prismaFileMock.findUnique.mockResolvedValueOnce({
+        id: 'file-3',
+        path: 'files/missing.mp3',
+        hash: 'hash-3',
+        refCount: 1,
+      });
+      deleteFileMock.mockRejectedValueOnce({ code: 'NoSuchKey' });
+      prismaFileMock.delete.mockResolvedValueOnce({});
+
+      await expect(decrementFileRef('file-3')).resolves.toBeUndefined();
+
+      expect(deleteFile).toHaveBeenCalledWith('m3w-music', 'files/missing.mp3');
+      expect(prisma.file.delete).toHaveBeenCalledWith({ where: { id: 'file-3' } });
+    });
+
+    it('propagates unexpected MinIO deletion errors', async () => {
+      const error = new Error('MinIO unavailable');
+      prismaFileMock.findUnique.mockResolvedValueOnce({
+        id: 'file-4',
+        path: 'files/error.mp3',
+        hash: 'hash-4',
+        refCount: 1,
+      });
+      deleteFileMock.mockRejectedValueOnce(error);
+
+      await expect(decrementFileRef('file-4')).rejects.toThrow(error);
+      expect(prisma.file.delete).not.toHaveBeenCalled();
     });
   });
 });

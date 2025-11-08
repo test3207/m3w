@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import { MiniPlayer } from "@/components/features/mini-player";
+import { PlaybackInitializer } from "@/components/features/playback-initializer";
 
 export default async function DashboardLayout({
   children,
@@ -15,6 +16,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="pb-24">
+      <PlaybackInitializer />
       {children}
       <MiniPlayer />
     </div>

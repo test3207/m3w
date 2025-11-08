@@ -1,5 +1,5 @@
 import { prisma } from '../db/prisma';
-import { uploadFile } from '../storage/minio-client';
+import { deleteFile, uploadFile } from '../storage/minio-client';
 import { calculateBufferHash } from '../utils/hash';
 import {
   extractMetadataFromBuffer,
@@ -198,14 +198,42 @@ export async function decrementFileRef(fileId: string): Promise<void> {
     const newRefCount = file.refCount - 1;
 
     if (newRefCount <= 0) {
-      // TODO: Delete from MinIO in background job
-      // For now, just mark for deletion
+      try {
+        await deleteFile(BUCKET_NAME, file.path);
+
+        logger.info({
+          msg: 'File deleted from object storage',
+          fileId,
+          hash: file.hash,
+          objectPath: file.path,
+        });
+      } catch (deleteError) {
+        if (isObjectNotFoundError(deleteError)) {
+          logger.warn({
+            msg: 'File missing in object storage during deletion',
+            fileId,
+            hash: file.hash,
+            objectPath: file.path,
+          });
+        } else {
+          logger.error({
+            msg: 'Failed to delete file from object storage',
+            fileId,
+            hash: file.hash,
+            objectPath: file.path,
+            error: deleteError,
+          });
+
+          throw deleteError;
+        }
+      }
+
       await prisma.file.delete({
         where: { id: fileId },
       });
 
       logger.info({
-        msg: 'File marked for deletion',
+        msg: 'File metadata deleted',
         fileId,
         hash: file.hash,
       });
@@ -225,4 +253,18 @@ export async function decrementFileRef(fileId: string): Promise<void> {
     logger.error({ msg: 'Error decrementing file reference', fileId, error });
     throw error;
   }
+}
+
+function isObjectNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as { code?: string; statusCode?: number };
+
+  return (
+    candidate.code === 'NoSuchKey' ||
+    candidate.code === 'NotFound' ||
+    candidate.statusCode === 404
+  );
 }

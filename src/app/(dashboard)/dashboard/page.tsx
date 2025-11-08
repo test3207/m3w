@@ -7,13 +7,10 @@ import { getUserPlaylists } from "@/lib/services/playlist.service";
 import { UI_TEXT } from "@/locales/messages";
 import { DashboardNavbar } from "@/components/layouts/dashboard-navbar";
 import { Container } from "@/components/ui/container";
-import { VStack, HStack } from "@/components/ui/stack";
 import {
   LibrariesCard,
   PlaylistsCard,
-  GettingStartedCard,
   StorageCard,
-  QuickActionsCard,
 } from "@/components/features/dashboard-cards";
 
 export default async function DashboardPage() {
@@ -28,54 +25,48 @@ export default async function DashboardPage() {
     getUserPlaylists(session.user.id),
   ]);
 
+  const greetingName =
+    session.user.name?.split(" ")[0] || UI_TEXT.dashboard.welcomeFallback;
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardNavbar session={session} />
 
       <main>
-        <Container className="py-8">
-          <VStack gap="lg">
-            {/* Welcome Card */}
-            <Card>
-              <CardHeader>
-                <HStack align="center" justify="between" className="flex-wrap gap-4">
-                  <div>
-                    <CardTitle className="text-2xl">
+        <Container maxWidth="2xl" padding="lg" className="space-y-8 pb-28 pt-6 md:pb-32">
+          <section>
+            <Card className="relative overflow-hidden border-none bg-linear-to-br from-primary/10 via-primary/5 to-transparent">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-16 right-8 h-40 w-40 rounded-full bg-primary/20 blur-3xl"
+              />
+              <CardHeader className="relative z-10 space-y-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="space-y-2">
+                    <CardTitle className="text-2xl font-semibold sm:text-3xl">
                       {UI_TEXT.dashboard.welcomePrefix}
-                      {session.user.name?.split(" ")[0] || UI_TEXT.dashboard.welcomeFallback}
+                      {greetingName}
                       {UI_TEXT.dashboard.welcomeSuffix}
                     </CardTitle>
-                    <CardDescription className="mt-2">
+                    <CardDescription className="max-w-prose text-sm sm:text-base">
                       {UI_TEXT.dashboard.welcomeDescription}
                     </CardDescription>
                   </div>
-                  <Badge variant="secondary" className="hidden sm:block">
+                  <Badge variant="secondary" className="self-start rounded-full px-3 py-1 text-xs sm:self-center">
                     {UI_TEXT.dashboard.badgeProductionReady}
                   </Badge>
-                </HStack>
+                </div>
               </CardHeader>
             </Card>
+          </section>
 
-            {/* Quick Stats Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {/* Libraries Overview */}
+          <section className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
               <LibrariesCard libraries={libraries} />
-
-              {/* Playlists Overview */}
               <PlaylistsCard playlists={playlists} />
-
-              {/* Getting Started */}
-              <GettingStartedCard />
-
-              {/* Storage */}
-              <StorageCard />
-
-              {/* Quick Actions */}
-              <div className="md:col-span-2 lg:col-span-1">
-                <QuickActionsCard />
-              </div>
             </div>
-          </VStack>
+            <StorageCard />
+          </section>
         </Container>
       </main>
     </div>
