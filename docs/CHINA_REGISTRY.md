@@ -2,101 +2,36 @@
 
 Due to Docker Hub access restrictions in China, this guide provides solutions for pulling container images.
 
+The project’s default `docker-compose.yml` references official Docker Hub images because some dependencies are not mirrored elsewhere. We currently do **not** publish or maintain GHCR mirrors, so the guidance below focuses entirely on keeping Docker Hub reachable or preparing images offline.
+
 ## TL;DR - Quick Recommendations
 
 ### Access Status in China (2025)
 
 | Registry | Status | Speed | Recommendation |
 |----------|--------|-------|----------------|
-| **Docker Hub** (`docker.io`) | ❌ Blocked | N/A | Use mirrors or proxy |
-| **GHCR** (`ghcr.io`) | ✅ Accessible | 🟡 Moderate | **Recommended** |
+| **Docker Hub** (`docker.io`) | ❌ Blocked | N/A | Configure proxy or mirrors *(default compose relies on this)* |
 | **Quay.io** | ⚠️ Unstable | 🔴 Slow | Not recommended |
 | **Aliyun/Tencent** | ✅ Fast | 🟢 Fast | Good for mirrors |
 
 ### Best Strategy
 
-1. **Use GHCR images when available** (no proxy needed)
-2. **Configure proxy for Docker Hub images**
-3. **Add mirror registries as fallback**
+1. **Ensure access to Docker Hub** via proxy or China-based mirrors (official images, default compose)
+2. **Combine proxies and mirrors** for the most reliable pulls
+3. **Keep offline tarballs available** if network outages are common
 
 ---
 
 ## Quick Start
 
-Choose one of the following methods:
+Before making manual changes, try the bundled scripts: `./setup.ps1` (PowerShell) or `./setup.sh` (bash). They always use `docker-compose.yml` and print helpful links to this document.
 
-1. **GHCR Images** - Use GitHub Container Registry (best for China)
-2. **Proxy** - Use your proxy for Docker Hub (recommended if available)
-3. **Mirror Registries** - Use China-based mirrors (may be unstable)
-4. **Hybrid** - Combine all for best reliability
+If connectivity issues persist, apply one or more of the following strategies:
 
----
-
-## Using GitHub Container Registry (Recommended)
-
-### Why GHCR?
-
-✅ **Directly accessible in China** (no proxy needed in most cases)  
-✅ **Free for public images**  
-✅ **Better reliability than Docker Hub**  
-✅ **Integrated with GitHub Actions**
-
-### Popular GHCR Images
-
-Many official images are mirrored to GHCR:
-
-```yaml
-# Example: docker-compose.yml using GHCR
-services:
-  postgres:
-    # Option 1: Official PostgreSQL on GHCR (if available)
-    image: ghcr.io/cloudnative-pg/postgresql:16
-    
-    # Option 2: Use Docker Hub with proxy/mirrors
-    # image: postgres:16-alpine
-    
-  redis:
-    # Redis on GHCR
-    image: ghcr.io/redis/redis-stack:latest
-    
-    # Or official Docker Hub image
-    # image: redis:7-alpine
-```
-
-### Finding GHCR Images
-
-1. **Search on GitHub**: `https://github.com/orgs/[org]/packages`
-2. **Common organizations**:
-   - `ghcr.io/linuxserver/` - LinuxServer.io images
-   - `ghcr.io/home-assistant/` - Home Assistant
-   - `ghcr.io/cloudnative-pg/` - PostgreSQL
-
-3. **Check if your image is on GHCR**:
-
-   ```bash
-   # Try pulling from GHCR
-   podman pull ghcr.io/library/postgres:16
-   ```
-
-### Using GHCR in Our Project
-
-You can modify `docker-compose.yml` to use GHCR images:
-
-```yaml
-services:
-  postgres:
-    # Using CloudNativePG PostgreSQL image from GHCR
-    image: ghcr.io/cloudnative-pg/postgresql:16
-    # Rest of config remains the same
-    
-  redis:
-    # Redis stack from GHCR (includes Redis + modules)
-    image: ghcr.io/redis/redis-stack-server:latest
-    # Or stick with official if accessible
-    # image: redis:7-alpine
-```
-
-**Note**: GHCR images might have different tags/features. Test before using in production.
+1. **Proxy** - Route Docker Hub traffic through a proxy (most reliable for default compose)
+2. **Mirror Registries** - Add China-based mirrors that cache Docker Hub images
+3. **Offline Cache** - Pre-download images on another host and import them locally
+4. **Hybrid** - Combine the above for best reliability
 
 ---
 
@@ -127,7 +62,6 @@ unqualified-search-registries = ["docker.io"]
 
 # Docker Hub mirrors
 [[registry]]
-prefix = "docker.io"
 location = "docker.io"
 
 # China-based mirrors (add multiple for redundancy)
@@ -145,15 +79,9 @@ location = "docker.rainbond.cc"
 
 [[registry.mirror]]
 location = "docker.fxxk.dedyn.io"
-
-# GitHub Container Registry (GHCR)
-[[registry]]
-prefix = "ghcr.io"
-location = "ghcr.io"
-
-[[registry.mirror]]
-location = "ghcr.dockerproxy.cn"
 ```
+
+The list above covers popular Docker Hub mirrors. Remove or reorder entries if a mirror proves unreliable.
 
 ### Step 4: Restart Podman
 
@@ -165,6 +93,26 @@ exit
 podman machine stop
 podman machine start
 ```
+
+### Docker Desktop Mirror Example
+
+Docker Desktop users can add mirrors via `daemon.json`:
+
+```json
+{
+  "registry-mirrors": [
+    "https://dockerpull.com",
+    "https://dockerproxy.cn",
+    "https://docker.1panel.live"
+  ]
+}
+```
+
+Steps:
+
+1. Edit `%ProgramData%/Docker/config/daemon.json` (Windows) or `/etc/docker/daemon.json` (Linux/macOS).
+2. Restart Docker Desktop / Docker Engine.
+3. Re-run `docker-compose up -d`.
 
 ---
 
@@ -193,6 +141,30 @@ $env:NO_PROXY="localhost,127.0.0.1"
 
 # Then start Podman commands
 podman pull postgres:16-alpine
+```
+
+#### Docker Desktop
+
+Set proxy variables for Docker CLI sessions:
+
+```powershell
+$env:HTTP_PROXY="http://127.0.0.1:7890"
+$env:HTTPS_PROXY="http://127.0.0.1:7890"
+docker compose up -d
+```
+
+For long-term configuration, create or edit `%UserProfile%/.docker/config.json`:
+
+```json
+{
+  "proxies": {
+    "default": {
+      "httpProxy": "http://127.0.0.1:7890",
+      "httpsProxy": "http://127.0.0.1:7890",
+      "noProxy": "localhost,127.0.0.1"
+    }
+  }
+}
 ```
 
 #### Configure in Podman Machine
@@ -257,8 +229,6 @@ podman pull postgres:16-alpine
 # Test Redis image
 podman pull redis:7-alpine
 
-# Test from GHCR
-podman pull ghcr.io/home-assistant/home-assistant:latest
 ```
 
 ### Verify Configuration
@@ -352,9 +322,10 @@ exit
 **Best configuration for reliability**:
 
 1. ✅ Use a reliable proxy (Clash/V2Ray recommended)
-2. ✅ Configure proxy in Podman Desktop GUI
+2. ✅ Configure proxy in Podman Desktop GUI or Docker settings
 3. ✅ Add mirror registries as backup
-4. ✅ Test with multiple images
+4. ✅ Run `./setup.ps1` or `./setup.sh` for initial provisioning
+5. ✅ Test with multiple images
 
 **Environment Variables for Scripts**:
 

@@ -109,8 +109,8 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Podman/Docker support with GHCR images. Kubernetes deployment
-                configs included.
+                Podman/Docker support with official Docker Hub images.
+                Kubernetes deployment configs included.
               </CardDescription>
             </CardContent>
           </Card>
@@ -124,7 +124,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                GHCR default images, proxy configuration guides, and
+                Docker Hub defaults, proxy configuration guides, and
                 cross-platform setup scripts.
               </CardDescription>
             </CardContent>

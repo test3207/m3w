@@ -20,11 +20,9 @@
     "podman:up": "podman-compose up -d",
     "podman:down": "podman-compose down",
     "podman:logs": "podman-compose logs -f",
-    "podman:up:dockerhub": "podman-compose -f docker-compose.dockerhub.yml up -d",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f",
-    "docker:up:dockerhub": "docker-compose -f docker-compose.dockerhub.yml up -d"
+    "docker:logs": "docker-compose logs -f"
   },
   "repository": {
     "type": "git",

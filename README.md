@@ -21,7 +21,7 @@ Production-grade web application built with Next.js, PostgreSQL, and Redis.
 - **Container Runtime** (choose one):
   - **Docker**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (easier for beginners)
   - **Podman**: [Podman Desktop](https://podman-desktop.io/) (daemonless, rootless, open source)
-- **For China users**: GHCR images are used by default (no proxy needed in most cases)
+- **For China users**: Configure Docker Hub proxy/mirrors as needed (see [docs/CHINA_REGISTRY.md](./docs/CHINA_REGISTRY.md))
 
 #### Container Runtime Setup
 
@@ -80,7 +80,7 @@ The setup script will:
 
 - Install npm dependencies
 - Create `.env` from template
-- Start PostgreSQL and Redis containers (using GHCR images)
+- Start PostgreSQL and Redis containers (using Docker Hub images)
 - Run database migrations
 - Provide next steps
 
@@ -125,27 +125,19 @@ Choose your container runtime and start the services:
 **With Docker:**
 
 ```bash
-# Using GHCR images (recommended for China users)
-docker-compose -f docker-compose.ghcr.yml up -d
-
-# Or using Docker Hub images
 docker-compose up -d
 ```
 
 **With Podman:**
 
 ```bash
-# Using GHCR images (recommended for China users)
-podman-compose -f docker-compose.ghcr.yml up -d
-
-# Or using Docker Hub images
 podman-compose up -d
 ```
 
-**Note for China users**:
+**Network notes (especially for China users)**:
 
-- **Option 1** (Recommended): Use GHCR images with the `-f docker-compose.ghcr.yml` flag (better accessibility, no proxy needed)
-- **Option 2**: Configure proxy for Docker Hub images (see [docs/CHINA_REGISTRY.md](./docs/CHINA_REGISTRY.md))
+- The default `docker-compose.yml` relies on official Docker Hub images.
+- If Docker Hub access is restricted, configure a proxy or registry mirror as described in [docs/CHINA_REGISTRY.md](./docs/CHINA_REGISTRY.md).
 
 This will start:
 

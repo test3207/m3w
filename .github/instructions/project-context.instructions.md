@@ -10,9 +10,9 @@
 - TypeScript configuration
 - Prisma setup
 - NextAuth.js integration (GitHub OAuth)
-- Docker Compose local environment (GHCR and Docker Hub)
+- Docker Compose local environment (Docker Hub baseline with China proxy guidance)
 - Cross-platform setup scripts (PowerShell and Bash)
-- China network configuration (GHCR default and proxy documentation)
+- China network configuration (Docker Hub proxy/mirror documentation)
 - Basic authentication flow (sign-in and dashboard)
 - Project structure validation
 - UI component library integration (shadcn/ui)
@@ -219,7 +219,7 @@ Production:
 - Stateful services for PostgreSQL, Redis, MinIO
 - Persistent volumes
 - CI/CD via GitHub Actions
-- Container registry: GitHub Container Registry (GHCR)
+- Container registry: Docker Hub (official images)
 
 ### Database Design
 
@@ -247,7 +247,7 @@ Local Development:
 - Apply database migrations with `npx prisma migrate dev`
 
 Production Pipeline:
-- GitHub Actions builds Docker images and pushes to GHCR
+- GitHub Actions builds Docker images and pushes to Docker Hub
 - Kubernetes performs rolling updates with health checks
 - An init container runs `prisma migrate deploy`
 

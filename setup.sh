@@ -4,16 +4,11 @@
 
 set -e
 
-USE_DOCKERHUB=false
 SKIP_ENV=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --use-dockerhub)
-            USE_DOCKERHUB=true
-            shift
-            ;;
         --skip-env)
             SKIP_ENV=true
             shift
@@ -26,14 +21,12 @@ M3W Project Setup Script
 Usage: ./setup.sh [options]
 
 Options:
-  --use-dockerhub    Use Docker Hub images instead of GHCR (requires proxy in China)
   --skip-env         Skip environment variable setup
   --help             Show this help message
 
 Examples:
-  ./setup.sh                    # Default: Use GHCR images
-  ./setup.sh --use-dockerhub    # Use Docker Hub images
-  ./setup.sh --skip-env         # Skip .env.local setup
+        ./setup.sh                    # Default setup
+        ./setup.sh --skip-env         # Skip .env.local setup
 
 EOF
             exit 0
@@ -153,12 +146,8 @@ fi
 
 # Select compose file
 COMPOSE_FILE="docker-compose.yml"
-if [ "$USE_DOCKERHUB" = true ]; then
-    COMPOSE_FILE="docker-compose.dockerhub.yml"
-    echo -e "  ${YELLOW}Using Docker Hub images${NC}"
-else
-    echo -e "  ${GREEN}Using GHCR images (better for China)${NC}"
-fi
+echo -e "  ${GREEN}Using docker-compose.yml (official images)${NC}"
+echo -e "  ${YELLOW}China network tips: see docs/CHINA_REGISTRY.md for proxy/mirror guidance${NC}"
 echo ""
 
 # Start containers

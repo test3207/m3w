@@ -3,7 +3,6 @@
 # Works on Windows (PowerShell), Linux, and macOS
 
 param(
-    [switch]$UseDockerHub,
     [switch]$SkipEnv,
     [switch]$Help
 )
@@ -16,13 +15,11 @@ M3W Project Setup Script
 Usage: ./setup.ps1 [options]
 
 Options:
-  -UseDockerHub    Use Docker Hub images instead of GHCR (requires proxy in China)
   -SkipEnv        Skip environment variable setup
   -Help           Show this help message
 
 Examples:
-  ./setup.ps1                    # Default: Use GHCR images
-  ./setup.ps1 -UseDockerHub      # Use Docker Hub images
+    ./setup.ps1                    # Default setup
   ./setup.ps1 -SkipEnv           # Skip .env.local setup
 
 "@ -ForegroundColor Cyan
@@ -141,12 +138,8 @@ if (-not $SkipEnv) {
 
 # Select compose file
 $composeFile = "docker-compose.yml"
-if ($UseDockerHub) {
-    $composeFile = "docker-compose.dockerhub.yml"
-    Write-Host "  Using Docker Hub images" -ForegroundColor Yellow
-} else {
-    Write-Host "  Using GHCR images (better for China)" -ForegroundColor Green
-}
+Write-Host "  Using docker-compose.yml (official images)" -ForegroundColor Green
+Write-Host "  China network tips: see docs/CHINA_REGISTRY.md for proxy/mirror guidance" -ForegroundColor Yellow
 Write-Host ""
 
 # Start containers
