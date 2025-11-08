@@ -18,6 +18,7 @@ interface PlaylistTrackResponse {
   album: string | null;
   coverUrl: string | null;
   duration: number | null;
+  mimeType: string | null;
 }
 
 export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayButtonProps) {
@@ -48,17 +49,6 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
       const tracksWithAudio: Track[] = [];
 
       for (const track of tracks) {
-        const streamResponse = await fetch(`/api/songs/${track.id}/stream`, {
-          cache: 'no-store',
-        });
-
-        if (!streamResponse.ok) {
-          console.error('Failed to generate stream URL for track', track.id);
-          continue;
-        }
-
-        const streamData = await streamResponse.json();
-
         tracksWithAudio.push({
           id: track.id,
           title: track.title,
@@ -66,7 +56,8 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
           album: track.album ?? undefined,
           coverUrl: track.coverUrl ?? undefined,
           duration: track.duration ?? undefined,
-          audioUrl: streamData.url,
+          audioUrl: `/api/songs/${track.id}/stream`,
+          mimeType: track.mimeType ?? undefined,
         });
       }
 

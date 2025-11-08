@@ -10,6 +10,7 @@ interface PlaylistTrackResponse {
   album: string | null;
   coverUrl: string | null;
   duration: number | null;
+  mimeType: string | null;
 }
 
 export async function GET(
@@ -55,6 +56,7 @@ export async function GET(
       album: song.album ?? null,
       coverUrl: song.coverUrl ?? null,
       duration: song.file?.duration ?? null,
+      mimeType: song.file?.mimeType ?? null,
     }));
 
     logger.info({

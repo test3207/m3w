@@ -17,6 +17,7 @@ type SeedTrack = {
   coverUrl: string | null;
   duration?: number | null;
   audioUrl: string;
+  mimeType?: string | null;
 };
 
 interface SeedResponse {
@@ -60,6 +61,7 @@ export function PlaybackInitializer() {
           coverUrl: track.coverUrl ?? undefined,
           duration: track.duration ?? undefined,
           audioUrl: track.audioUrl,
+          mimeType: track.mimeType ?? undefined,
         };
 
         primeFromSeed({ track: normalizedTrack, context });

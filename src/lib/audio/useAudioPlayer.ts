@@ -78,7 +78,20 @@ export function useAudioPlayer() {
         }
 
         const queue = getPlayQueue();
-        queue.setQueue([progress.track], 0);
+        const player = getAudioPlayer();
+        player.setPendingSeek(progress.position);
+        const track: Track = {
+          id: progress.track.id,
+          title: progress.track.title,
+          artist: progress.track.artist ?? undefined,
+          album: progress.track.album ?? undefined,
+          coverUrl: progress.track.coverUrl ?? undefined,
+          duration: progress.track.duration ?? undefined,
+          audioUrl: progress.track.audioUrl,
+          mimeType: progress.track.mimeType ?? undefined,
+        };
+
+        queue.setQueue([track], 0);
         if (progress.context) {
           getPlayContext().setContext({
             ...progress.context,
@@ -87,20 +100,20 @@ export function useAudioPlayer() {
         }
 
         resumeProgressRef.current = {
-          trackId: progress.track.id,
+          trackId: track.id,
           position: progress.position,
         };
 
-        getAudioPlayer().prime(progress.track);
+        player.prime(track);
 
         if (isMounted) {
-          const snapshot = getAudioPlayer().getState();
+          const snapshot = player.getState();
           setQueueState(queue.getState());
           setPlayerState({
             ...snapshot,
-            currentTrack: progress.track,
+            currentTrack: track,
             currentTime: progress.position,
-            duration: progress.track.duration ?? snapshot.duration,
+            duration: track.duration ?? snapshot.duration,
             isPlaying: false,
           });
         }
@@ -173,7 +186,12 @@ export function useAudioPlayer() {
       }
 
       resumeProgressRef.current = null;
-      getAudioPlayer().seek(pending.position);
+      const player = getAudioPlayer();
+      player.setPendingSeek(pending.position);
+      const state = player.getState();
+      if (state.isPlaying) {
+        player.seek(pending.position);
+      }
       setPlayerState((prev) => ({
         ...prev,
         currentTime: pending.position,

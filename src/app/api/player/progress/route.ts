@@ -44,6 +44,7 @@ export async function GET() {
           coverUrl: progress.track.coverUrl,
           duration: progress.track.file.duration ?? undefined,
           audioUrl,
+          mimeType: progress.track.file.mimeType ?? undefined,
         },
         position: progress.position,
         context: progress.context,

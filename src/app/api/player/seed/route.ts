@@ -38,6 +38,7 @@ export async function GET() {
           coverUrl: seed.track.coverUrl,
           duration: seed.track.file.duration ?? undefined,
           audioUrl,
+          mimeType: seed.track.file.mimeType ?? undefined,
         },
         context: seed.context,
       },
