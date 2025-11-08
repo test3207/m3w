@@ -7,6 +7,7 @@ import {
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { ERROR_MESSAGES } from '@/locales/messages';
+import { HttpStatusCode } from '@/lib/constants/http-status';
 
 const createLibrarySchema = z.object({
   name: z.string().min(1).max(100),
@@ -21,7 +22,7 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: 401 });
+      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const libraries = await getUserLibraries(session.user.id);
@@ -34,7 +35,7 @@ export async function GET() {
     logger.error({ msg: 'Failed to get libraries', error });
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToRetrieveLibraries },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: 401 });
+      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const body = await request.json();
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.invalidInput, details: validation.error.issues },
-        { status: 400 }
+        { status: HttpStatusCode.BAD_REQUEST }
       );
     }
 
@@ -68,13 +69,13 @@ export async function POST(request: NextRequest) {
         success: true,
         data: library,
       },
-      { status: 201 }
+      { status: HttpStatusCode.CREATED }
     );
   } catch (error) {
     logger.error({ msg: 'Failed to create library', error });
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToCreateLibrary },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }

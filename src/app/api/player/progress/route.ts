@@ -9,6 +9,7 @@ import {
   playbackProgressUpdateSchema,
 } from '@/lib/services/player.service';
 import { ERROR_MESSAGES } from '@/locales/messages';
+import { HttpStatusCode } from '@/lib/constants/http-status';
 
 export async function GET() {
   try {
@@ -17,7 +18,7 @@ export async function GET() {
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.unauthorized },
-        { status: 401 }
+        { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
 
@@ -59,7 +60,7 @@ export async function GET() {
 
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToGetPlaybackProgress },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }
@@ -71,7 +72,7 @@ export async function PUT(request: Request) {
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.unauthorized },
-        { status: 401 }
+        { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
 
@@ -85,7 +86,7 @@ export async function PUT(request: Request) {
     if (error instanceof SyntaxError || error instanceof ZodError) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.invalidInput },
-        { status: 400 }
+        { status: HttpStatusCode.BAD_REQUEST }
       );
     }
 
@@ -96,7 +97,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToUpdatePlaybackProgress },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }

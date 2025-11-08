@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getMinioClient } from "@/lib/storage/minio-client";
 import { logger } from "@/lib/logger";
+import { HttpStatusCode } from "@/lib/constants/http-status";
 import { Readable } from "stream";
 
 /**
@@ -20,7 +21,7 @@ export async function GET(
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Unauthorized" },
-        { status: 401 }
+        { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
 
@@ -42,7 +43,7 @@ export async function GET(
     if (!song) {
       return NextResponse.json(
         { error: "Song not found" },
-        { status: 404 }
+        { status: HttpStatusCode.NOT_FOUND }
       );
     }
 
@@ -157,7 +158,7 @@ export async function GET(
     });
     return NextResponse.json(
       { error: "Failed to stream audio" },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }

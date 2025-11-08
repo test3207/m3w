@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth/config';
 import { logger } from '@/lib/logger';
 import { getDefaultPlaybackSeed } from '@/lib/services/player.service';
 import { ERROR_MESSAGES } from '@/locales/messages';
+import { HttpStatusCode } from '@/lib/constants/http-status';
 
 export async function GET() {
   try {
@@ -11,7 +12,7 @@ export async function GET() {
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.unauthorized },
-        { status: 401 }
+        { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
 
@@ -51,7 +52,7 @@ export async function GET() {
 
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToSeedPlayback },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }

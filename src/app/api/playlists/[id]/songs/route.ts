@@ -4,6 +4,7 @@ import { addSongToPlaylist } from '@/lib/services/playlist.service';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { ERROR_MESSAGES } from '@/locales/messages';
+import { HttpStatusCode } from '@/lib/constants/http-status';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: 401 });
+      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id } = await context.params;
@@ -31,14 +32,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!validation.success) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.invalidInput, details: validation.error.issues },
-        { status: 400 }
+        { status: HttpStatusCode.BAD_REQUEST }
       );
     }
 
     const relation = await addSongToPlaylist(id, validation.data.songId, session.user.id);
 
     if (!relation) {
-      return NextResponse.json({ error: ERROR_MESSAGES.playlistNotFound }, { status: 404 });
+      return NextResponse.json({ error: ERROR_MESSAGES.playlistNotFound }, { status: HttpStatusCode.NOT_FOUND });
     }
 
     return NextResponse.json({
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     logger.error({ msg: 'Failed to add song to playlist', error });
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToAddSongToPlaylist },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }

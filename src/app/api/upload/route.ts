@@ -4,6 +4,10 @@ import { uploadAudioFile, decrementFileRef } from '@/lib/services/upload.service
 import { createSong } from '@/lib/services/song.service';
 import { ERROR_MESSAGES } from '@/locales/messages';
 import { logger } from '@/lib/logger';
+import { HttpStatusCode } from '@/lib/constants/http-status';
+
+const MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
+const MULTIPART_OVERHEAD_MARGIN = 512 * 1024; // allow ~512KB overhead for multipart boundaries
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds max
@@ -19,8 +23,27 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.unauthorized },
-        { status: 401 }
+        { status: HttpStatusCode.UNAUTHORIZED }
       );
+    }
+
+    // Reject requests that exceed the limit before buffering the body
+    const contentLengthHeader = request.headers.get('content-length');
+    if (contentLengthHeader) {
+      const declaredSize = Number(contentLengthHeader);
+      if (!Number.isNaN(declaredSize) && declaredSize > MAX_UPLOAD_SIZE_BYTES + MULTIPART_OVERHEAD_MARGIN) {
+        logger.warn({
+          msg: 'Upload request exceeds declared size limit',
+          userId: session.user.id,
+          declaredSize,
+          maxAllowed: MAX_UPLOAD_SIZE_BYTES,
+        });
+
+        return NextResponse.json(
+          { error: ERROR_MESSAGES.fileTooLarge },
+          { status: HttpStatusCode.PAYLOAD_TOO_LARGE }
+        );
+      }
     }
 
     // Parse multipart form data
@@ -31,14 +54,14 @@ export async function POST(request: NextRequest) {
     if (!file) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.noFileProvided },
-        { status: 400 }
+        { status: HttpStatusCode.BAD_REQUEST }
       );
     }
 
     if (typeof libraryId !== 'string' || libraryId.trim().length === 0) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.libraryIdRequired },
-        { status: 400 }
+        { status: HttpStatusCode.BAD_REQUEST }
       );
     }
 
@@ -56,16 +79,15 @@ export async function POST(request: NextRequest) {
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.invalidFileType },
-        { status: 400 }
+        { status: HttpStatusCode.BAD_REQUEST }
       );
     }
 
     // Validate file size (max 100MB)
-    const maxSize = 100 * 1024 * 1024; // 100MB
-    if (file.size > maxSize) {
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.fileTooLarge },
-        { status: 400 }
+        { status: HttpStatusCode.PAYLOAD_TOO_LARGE }
       );
     }
 
@@ -156,7 +178,7 @@ export async function POST(request: NextRequest) {
       await decrementFileRef(result.fileId);
       return NextResponse.json(
         { error: ERROR_MESSAGES.libraryUnavailable },
-        { status: 404 }
+        { status: HttpStatusCode.NOT_FOUND }
       );
     }
 
@@ -179,7 +201,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { error: ERROR_MESSAGES.fileUploadFailed },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }

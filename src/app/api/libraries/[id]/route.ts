@@ -8,6 +8,7 @@ import {
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { ERROR_MESSAGES } from '@/locales/messages';
+import { HttpStatusCode } from '@/lib/constants/http-status';
 
 const updateLibrarySchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -29,7 +30,7 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: 401 });
+      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id } = await context.params;
@@ -38,7 +39,7 @@ export async function GET(
     if (!library) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.libraryNotFound },
-        { status: 404 }
+        { status: HttpStatusCode.NOT_FOUND }
       );
     }
 
@@ -50,7 +51,7 @@ export async function GET(
     logger.error({ msg: 'Failed to get library', error });
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToRetrieveLibrary },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }
@@ -66,7 +67,7 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: 401 });
+      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id } = await context.params;
@@ -76,7 +77,7 @@ export async function PATCH(
     if (!validation.success) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.invalidInput, details: validation.error.issues },
-        { status: 400 }
+        { status: HttpStatusCode.BAD_REQUEST }
       );
     }
 
@@ -85,7 +86,7 @@ export async function PATCH(
     if (!library) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.libraryNotFound },
-        { status: 404 }
+        { status: HttpStatusCode.NOT_FOUND }
       );
     }
 
@@ -97,7 +98,7 @@ export async function PATCH(
     logger.error({ msg: 'Failed to update library', error });
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToUpdateLibrary },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }
@@ -113,7 +114,7 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: 401 });
+      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id } = await context.params;
@@ -122,7 +123,7 @@ export async function DELETE(
     if (!result) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.libraryNotFound },
-        { status: 404 }
+        { status: HttpStatusCode.NOT_FOUND }
       );
     }
 
@@ -134,7 +135,7 @@ export async function DELETE(
     logger.error({ msg: 'Failed to delete library', error });
     return NextResponse.json(
       { error: ERROR_MESSAGES.failedToDeleteLibrary },
-      { status: 500 }
+      { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
 }
