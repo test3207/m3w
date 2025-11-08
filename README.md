@@ -279,6 +279,68 @@ Both are excellent choices for running M3W. Choose based on your needs:
 
 ## Production Deployment
 
+### Local Production Build Testing
+
+Test the production build locally before deployment:
+
+#### 1. Configure Docker Environment
+
+```bash
+# Copy and configure environment for containers
+cp .env.docker.example .env.docker
+# Edit .env.docker with your settings
+```
+
+#### 2. Build Production Image
+
+```bash
+# With Podman
+podman build -t m3w:local -f docker/Dockerfile .
+
+# With Docker
+docker build -t m3w:local -f docker/Dockerfile .
+```
+
+#### 3. Run Production Container
+
+**Important**: The container must join the `m3w_default` network created by docker-compose to access PostgreSQL, Redis, and MinIO.
+
+```bash
+# With Podman
+podman run -d --name m3w-prod --network m3w_default -p 3000:3000 --env-file .env.docker m3w:local
+
+# With Docker
+docker run -d --name m3w-prod --network m3w_default -p 3000:3000 --env-file .env.docker m3w:local
+```
+
+#### 4. View Logs
+
+```bash
+# With Podman
+podman logs -f m3w-prod
+
+# With Docker
+docker logs -f m3w-prod
+```
+
+#### 5. Stop and Clean Up
+
+```bash
+# With Podman
+podman stop m3w-prod
+podman rm m3w-prod
+
+# With Docker
+docker stop m3w-prod
+docker rm m3w-prod
+```
+
+**Key Differences in `.env.docker`:**
+
+- Use container service names (`m3w-postgres`, `m3w-redis`, `m3w-minio`) instead of `localhost` when the container joins the compose network
+- Set `NODE_ENV=production`
+- Configure proxy with `host.containers.internal` if needed for external API access (e.g., GitHub OAuth)
+
 See `.github/copilot-instructions.md` for architecture details and deployment strategy.
 
 ## Additional Documentation

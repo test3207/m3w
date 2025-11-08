@@ -43,7 +43,7 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000"  # API port
+      - "9000:9000"  # API port (for local dev and backend access)
       - "9001:9001"  # Console UI port
     volumes:
       - minio_data:/data

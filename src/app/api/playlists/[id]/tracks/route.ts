@@ -14,7 +14,7 @@ interface PlaylistTrackResponse {
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -23,7 +23,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id: playlistId } = params;
+    const { id: playlistId } = await params;
 
     const playlist = await prisma.playlist.findFirst({
       where: {

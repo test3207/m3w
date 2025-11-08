@@ -8,11 +8,7 @@ import {
   updatePlaybackProgress,
   playbackProgressUpdateSchema,
 } from '@/lib/services/player.service';
-import { getPresignedUrl } from '@/lib/storage/minio-client';
 import { ERROR_MESSAGES } from '@/locales/messages';
-
-const DEFAULT_BUCKET = process.env.MINIO_BUCKET_NAME || 'm3w-music';
-const STREAM_EXPIRY_SECONDS = 60 * 60; // 1 hour
 
 export async function GET() {
   try {
@@ -34,11 +30,8 @@ export async function GET() {
       });
     }
 
-    const audioUrl = await getPresignedUrl(
-      DEFAULT_BUCKET,
-      progress.track.file.path,
-      STREAM_EXPIRY_SECONDS
-    );
+    // Use streaming API endpoint instead of presigned URL
+    const audioUrl = `/api/songs/${progress.track.id}/stream`;
 
     return NextResponse.json({
       success: true,

@@ -21,6 +21,7 @@
 - Playlist services, ordering, API routes, and dashboard management UI
 - Upload and metadata services covered by Vitest unit tests
 - Toast feedback system unified via `use-toast` store and wired into playlist and library dashboard actions
+- Audio streaming via API proxy with Range request support (MinIO access internalized)
 
 ### Active Initiatives (In Progress)
 - **Demo & Evaluation**

@@ -17,8 +17,11 @@
 
 ## Key Technical Decisions
 - File storage uses hash-based deduplication with reference counting; metadata remains user-specific.
+- Audio streaming uses API proxy pattern (`/api/songs/[songId]/stream`) with Range request support; MinIO is never exposed to clients and remains internal to the backend network.
 - Metadata extraction prioritizes user edits over backend extraction, and backend extraction over frontend extraction.
 - Environment configuration requires central `.env` usage with dependencies recorded in `package.json`.
+- Container environments use `.env.docker` with `host.containers.internal` to access host services; local development uses `.env` with `localhost`.
+- When the production container joins the docker-compose network (`m3w_default`), use container service names (`m3w-postgres`, `m3w-redis`, `m3w-minio`) instead of `host.containers.internal`.
 - Authentication relies on NextAuth.js v5 with GitHub OAuth and database-backed sessions.
 - Offline-first architecture depends on Serwist service workers, IndexedDB via Dexie, and dual extraction for metadata.
 - User feedback flows through the toast store defined in `src/components/ui/use-toast.ts` with a single `<Toaster />` in `src/app/layout.tsx`.
@@ -52,3 +55,12 @@
 - Branch strategy: `main` for production, `develop` for integration, `feature/*` for new work.
 - Follow Conventional Commits (for example `feat:`, `fix:`, `docs:`, `refactor:`, `test:`).
 - Only commit or push when explicitly requested; keep the working state ready for commits at all times.
+
+## Local Production Testing
+- Build production images with `podman build -t m3w:local -f docker/Dockerfile .` or equivalent Docker command.
+- Use `.env.docker` (created from `.env.docker.example`) for container environments.
+- When using docker-compose services, the container must join the `m3w_default` network to access PostgreSQL, Redis, and MinIO via their container names (`m3w-postgres`, `m3w-redis`, `m3w-minio`).
+- Run containers with `podman run -d --name m3w-prod --network m3w_default -p 3000:3000 --env-file .env.docker m3w:local`.
+- For standalone containers without compose, use `host.containers.internal` in `.env.docker` to access host services.
+- Verify builds pass type checking, linting, and produce functional containers before deployment.
+- Test authentication flows and database connectivity in the containerized environment.

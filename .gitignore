@@ -31,6 +31,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.docker
 
 # Podman/Docker proxy config (user-specific)
 podman-env.ps1

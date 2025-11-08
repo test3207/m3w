@@ -3,11 +3,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
 import { logger } from '@/lib/logger';
 import { getDefaultPlaybackSeed } from '@/lib/services/player.service';
-import { getPresignedUrl } from '@/lib/storage/minio-client';
 import { ERROR_MESSAGES } from '@/locales/messages';
-
-const DEFAULT_BUCKET = process.env.MINIO_BUCKET_NAME || 'm3w-audio';
-const STREAM_EXPIRY_SECONDS = 60 * 60; // 1 hour
 
 export async function GET() {
   try {
@@ -28,11 +24,8 @@ export async function GET() {
       });
     }
 
-    const audioUrl = await getPresignedUrl(
-      DEFAULT_BUCKET,
-      seed.track.file.path,
-      STREAM_EXPIRY_SECONDS
-    );
+    // Use streaming API endpoint instead of presigned URL
+    const audioUrl = `/api/songs/${seed.track.id}/stream`;
 
     return NextResponse.json({
       success: true,
