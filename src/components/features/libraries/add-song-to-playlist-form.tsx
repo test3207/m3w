@@ -6,11 +6,11 @@ import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { UI_TEXT } from "@/locales/messages";
 import { toast } from "@/components/ui/use-toast";
+import { addSongToPlaylistAction } from "@/app/(dashboard)/dashboard/libraries/[id]/actions";
 import {
   ADD_SONG_TO_PLAYLIST_INITIAL_STATE,
-  addSongToPlaylistAction,
   type AddSongToPlaylistState,
-} from "@/app/(dashboard)/dashboard/libraries/[id]/actions";
+} from "@/app/(dashboard)/dashboard/libraries/[id]/constants";
 
 interface PlaylistOption {
   id: string;
