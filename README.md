@@ -11,34 +11,49 @@ Production-grade web application built with Next.js, PostgreSQL, and Redis.
 - **Authentication**: NextAuth.js v5 (GitHub OAuth)
 - **Styling**: Tailwind CSS v4
 - **Logging**: Pino
-- **Container Runtime**: Podman (or Docker)
+- **Container Runtime**: Docker or Podman (your choice)
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
-- Python 3.x + pip (for podman-compose)
-- Podman Desktop (or Docker Desktop)
+- **Container Runtime** (choose one):
+  - **Docker**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (easier for beginners)
+  - **Podman**: [Podman Desktop](https://podman-desktop.io/) (daemonless, rootless, open source)
 - **For China users**: GHCR images are used by default (no proxy needed in most cases)
 
-**Installation Steps**:
+#### Container Runtime Setup
+
+**Option A: Docker** (Recommended for most users)
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+2. Start Docker Desktop
+3. Verify installation:
+   ```bash
+   docker --version
+   docker-compose --version
+   ```
+
+**Option B: Podman** (Alternative for advanced users)
 
 1. Install [Podman Desktop](https://podman-desktop.io/)
 2. **Restart your computer** after installation
 3. Install podman-compose:
-
    ```bash
    pip install podman-compose
    ```
-
 4. Start Podman Machine (Windows/macOS):
-
    ```bash
    podman machine start
    ```
+5. Verify installation:
+   ```bash
+   podman --version
+   podman-compose --version
+   ```
 
-See [docs/PODMAN.md](./docs/PODMAN.md) for detailed installation instructions.
+See [docs/PODMAN.md](./docs/PODMAN.md) for detailed Podman setup instructions.
 
 ### Quick Start (Automated)
 
@@ -99,40 +114,32 @@ Then edit `.env` and add your GitHub OAuth credentials:
 
 ### 3. Start Database Services
 
-**Note for China users**:
-
-- **Option 1** (Recommended): Use GHCR images (better accessibility):
-
-  ```bash
-  podman-compose -f docker-compose.ghcr.yml up -d
-  ```
-
-- **Option 2**: Configure proxy for Docker Hub images:
-
-  ```powershell
-  # Copy and edit proxy configuration
-  cp podman-env.ps1.example podman-env.ps1
-  # Edit podman-env.ps1 to set your proxy port
-
-  # Load proxy settings
-  . .\podman-env.ps1
-  ```
-
-**With Podman:**
-
-```bash
-# Using GHCR images (recommended for China)
-podman-compose -f docker-compose.ghcr.yml up -d
-
-# Or using Docker Hub images (requires proxy/mirrors)
-podman-compose up -d
-```
+Choose your container runtime and start the services:
 
 **With Docker:**
 
 ```bash
+# Using GHCR images (recommended for China users)
+docker-compose -f docker-compose.ghcr.yml up -d
+
+# Or using Docker Hub images
 docker-compose up -d
 ```
+
+**With Podman:**
+
+```bash
+# Using GHCR images (recommended for China users)
+podman-compose -f docker-compose.ghcr.yml up -d
+
+# Or using Docker Hub images
+podman-compose up -d
+```
+
+**Note for China users**:
+
+- **Option 1** (Recommended): Use GHCR images with the `-f docker-compose.ghcr.yml` flag (better accessibility, no proxy needed)
+- **Option 2**: Configure proxy for Docker Hub images (see [docs/CHINA_REGISTRY.md](./docs/CHINA_REGISTRY.md))
 
 This will start:
 
@@ -221,23 +228,9 @@ npx prisma studio
 
 ## Container Management
 
-**Podman Commands:**
+Use the commands for your chosen container runtime:
 
-```bash
-# Start services
-podman-compose up -d
-
-# Stop services
-podman-compose down
-
-# View logs
-podman-compose logs -f
-
-# Clean volumes
-podman-compose down -v
-```
-
-**Docker Commands:**
+**Docker:**
 
 ```bash
 # Start services
@@ -249,27 +242,42 @@ docker-compose down
 # View logs
 docker-compose logs -f
 
-# Clean volumes
+# Clean volumes (removes all data)
 docker-compose down -v
 ```
 
-## Installing Podman Desktop
+**Podman:**
 
-Download from: <https://podman-desktop.io/>
+```bash
+# Start services
+podman-compose up -d
 
-**Features:**
+# Stop services
+podman-compose down
 
-- Compatible with Docker Compose files
-- Lightweight and rootless
-- Native Kubernetes support
-- Free and open source
+# View logs
+podman-compose logs -f
 
-**Podman vs Docker:**
+# Clean volumes (removes all data)
+podman-compose down -v
+```
 
-- Podman is daemonless (more secure)
-- Drop-in replacement for Docker CLI
-- Better for development and K8s workflows
-- No subscription required
+## Docker vs Podman
+
+Both are excellent choices for running M3W. Choose based on your needs:
+
+| Feature | Docker | Podman |
+|---------|--------|--------|
+| **Ease of Use** | ✅ More intuitive for beginners | Requires Python and podman-compose |
+| **Installation** | Single installer | Desktop + podman-compose |
+| **Performance** | Excellent | Excellent |
+| **Security** | Daemon-based | Daemonless, rootless (more secure) |
+| **Compose Support** | Native `docker-compose` | Requires `podman-compose` |
+| **Kubernetes** | Basic support | Native Kubernetes support |
+| **License** | Free for personal use | Fully open source (Apache 2.0) |
+| **Recommendation** | Best for most users | Best for security-conscious users |
+
+**Our recommendation**: Start with **Docker** if you're new to containers. Try **Podman** if you prefer open source tools or need rootless containers.
 
 ## Production Deployment
 
