@@ -22,15 +22,30 @@
 - Upload and metadata services covered by Vitest unit tests
 - Toast feedback system unified via `use-toast` store and wired into playlist and library dashboard actions
 
-### In Progress
-- User testing and first deployment
-
-### Upcoming
-- Enhanced user profile management
-- Redis integration for caching
-- Testing expansion (Playwright end-to-end, coverage targets)
-- CI/CD pipeline
-- Kubernetes deployment configurations
+### Active Initiatives (In Progress)
+- **Demo & Evaluation**
+  - User testing and first deployment
+  - Read-only demo environment so stakeholders can trial the app without data liability
+- **Deployment Pathfinding**
+  - Lightweight deployment path (GitHub Actions → Aliyun/Azure) mirroring the local setup
+- **Delivery & Infrastructure**
+  - CI/CD pipeline
+    - Build & release automation (lint/test/build/versioning/artifact)
+    - Deployment automation (staging/prod rollouts & promotion gates)
+  - Deployment strategy
+    - Example/demo deployment flow (read-only environment)
+    - Production deployment with observability & platform integrations
+      - Kubernetes deployment configurations
+      - Alignment of infrastructure tooling (Kubernetes, PostgreSQL, ELK, etc.) with the observability stack for production readiness
+### Planned Initiatives (Upcoming)
+- **Core Product Enhancements**
+  - Enhanced user profile management
+  - Redis integration for caching
+  - Testing expansion (Playwright end-to-end, coverage targets)
+- **Offline & Client Experience**
+  - Full PWA integration with offline-first playback and caching flows
+- **Observability & Operations**
+  - Observability stack with Elasticsearch, Logstash, and Kibana for future production monitoring
 
 ## Project Overview
 
