@@ -13,7 +13,7 @@ type RouteContext = {
  * GET /api/playlists/[id]
  * Get a single playlist with songs
  */
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
  * DELETE /api/playlists/[id]
  * Delete a playlist owned by the current user
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {

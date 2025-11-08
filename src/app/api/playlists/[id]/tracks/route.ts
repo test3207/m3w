@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
+import { ERROR_MESSAGES } from "@/locales/messages";
 import { HttpStatusCode } from "@/lib/constants/http-status";
 
 interface PlaylistTrackResponse {
@@ -22,7 +23,7 @@ export async function GET(
     const session = await auth();
 
     if (!session?.user?.id) {
-  return NextResponse.json({ error: "Unauthorized" }, { status: HttpStatusCode.UNAUTHORIZED });
+  return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id: playlistId } = await params;
@@ -47,7 +48,7 @@ export async function GET(
     });
 
     if (!playlist) {
-  return NextResponse.json({ error: "Playlist not found" }, { status: HttpStatusCode.NOT_FOUND });
+  return NextResponse.json({ error: ERROR_MESSAGES.playlistNotFound }, { status: HttpStatusCode.NOT_FOUND });
     }
 
     const tracks: PlaylistTrackResponse[] = playlist.songs.map(({ song }) => ({
@@ -77,7 +78,7 @@ export async function GET(
   } catch (error) {
     logger.error({ msg: "Failed to fetch playlist tracks", error });
     return NextResponse.json(
-      { error: "Failed to fetch playlist tracks" },
+      { error: ERROR_MESSAGES.failedToFetchPlaylistTracks },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

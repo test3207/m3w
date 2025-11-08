@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { HStack, VStack } from '@/components/ui/stack';
 import Image from 'next/image';
 import { Repeat, Repeat1, Shuffle } from 'lucide-react';
-import type { RepeatMode } from '@/lib/audio/queue';
+import { RepeatMode } from '@/lib/audio/queue';
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -87,21 +87,21 @@ export function MiniPlayer() {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const repeatLabels: Record<RepeatMode, string> = {
-    off: 'Repeat off',
-    all: 'Repeat all',
-    one: 'Repeat one',
+    [RepeatMode.OFF]: 'Repeat off',
+    [RepeatMode.ALL]: 'Repeat all',
+    [RepeatMode.ONE]: 'Repeat one',
   };
   const repeatLabel = repeatLabels[repeatMode];
   const shuffleLabel = shuffleEnabled ? 'Disable shuffle' : 'Enable shuffle';
   const repeatStateText: Record<RepeatMode, string> = {
-    off: 'Repeat: Off',
-    all: 'Repeat: Queue',
-    one: 'Repeat: Track',
+    [RepeatMode.OFF]: 'Repeat: Off',
+    [RepeatMode.ALL]: 'Repeat: Queue',
+    [RepeatMode.ONE]: 'Repeat: Track',
   };
   const shuffleStateText = shuffleEnabled ? 'Shuffle: On' : 'Shuffle: Off';
 
   const renderRepeatIcon = () => {
-    if (repeatMode === 'one') {
+    if (repeatMode === RepeatMode.ONE) {
       return <Repeat1 className="w-5 h-5" />;
     }
     return <Repeat className="w-5 h-5" />;
@@ -263,11 +263,11 @@ export function MiniPlayer() {
             </Button>
 
             <Button
-              variant={repeatMode === 'off' ? 'ghost' : 'secondary'}
+              variant={repeatMode === RepeatMode.OFF ? 'ghost' : 'secondary'}
               size="icon"
               onClick={cycleRepeat}
               aria-label={repeatLabel}
-              aria-pressed={repeatMode !== 'off'}
+              aria-pressed={repeatMode !== RepeatMode.OFF}
             >
               {renderRepeatIcon()}
             </Button>

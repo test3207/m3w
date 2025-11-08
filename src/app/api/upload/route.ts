@@ -9,9 +9,6 @@ import { HttpStatusCode } from '@/lib/constants/http-status';
 const MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
 const MULTIPART_OVERHEAD_MARGIN = 512 * 1024; // allow ~512KB overhead for multipart boundaries
 
-export const runtime = 'nodejs';
-export const maxDuration = 60; // 60 seconds max
-
 /**
  * POST /api/upload
  * Upload audio file

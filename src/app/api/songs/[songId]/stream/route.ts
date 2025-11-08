@@ -5,6 +5,7 @@ import { getMinioClient } from "@/lib/storage/minio-client";
 import { logger } from "@/lib/logger";
 import { HttpStatusCode } from "@/lib/constants/http-status";
 import { Readable } from "stream";
+import { ERROR_MESSAGES } from "@/locales/messages";
 
 /**
  * GET /api/songs/[songId]/stream
@@ -20,7 +21,7 @@ export async function GET(
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: ERROR_MESSAGES.unauthorized },
         { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
@@ -42,7 +43,7 @@ export async function GET(
 
     if (!song) {
       return NextResponse.json(
-        { error: "Song not found" },
+        { error: ERROR_MESSAGES.songNotFound },
         { status: HttpStatusCode.NOT_FOUND }
       );
     }
@@ -157,7 +158,7 @@ export async function GET(
       error,
     });
     return NextResponse.json(
-      { error: "Failed to stream audio" },
+      { error: ERROR_MESSAGES.failedToStreamAudio },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

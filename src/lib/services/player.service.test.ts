@@ -9,6 +9,7 @@ import {
   updatePlaybackPreferences,
   updatePlaybackProgress,
 } from './player.service';
+import { RepeatMode } from '@/lib/audio/queue';
 
 const {
   prismaPlaylistMock,
@@ -205,14 +206,14 @@ describe('player.service', () => {
       prismaPlaybackPreferenceMock.findUnique.mockResolvedValueOnce({
         userId,
         shuffleEnabled: true,
-        repeatMode: 'all',
+        repeatMode: RepeatMode.ALL,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
       const preferences = await getPlaybackPreferences(userId);
 
-      expect(preferences).toEqual({ shuffleEnabled: true, repeatMode: 'all' });
+  expect(preferences).toEqual({ shuffleEnabled: true, repeatMode: RepeatMode.ALL });
     });
 
     it('falls back to default repeat mode when stored value is invalid', async () => {
@@ -226,14 +227,14 @@ describe('player.service', () => {
 
       const preferences = await getPlaybackPreferences(userId);
 
-      expect(preferences.repeatMode).toBe('off');
+  expect(preferences.repeatMode).toBe(RepeatMode.OFF);
     });
 
     it('creates playback preferences when none exist on update', async () => {
       prismaPlaybackPreferenceMock.upsert.mockResolvedValueOnce({
         userId,
         shuffleEnabled: true,
-        repeatMode: 'off',
+        repeatMode: RepeatMode.OFF,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -245,38 +246,38 @@ describe('player.service', () => {
         create: {
           userId,
           shuffleEnabled: true,
-          repeatMode: 'off',
+          repeatMode: RepeatMode.OFF,
         },
         update: {
           shuffleEnabled: true,
         },
       });
-      expect(result).toEqual({ shuffleEnabled: true, repeatMode: 'off' });
+  expect(result).toEqual({ shuffleEnabled: true, repeatMode: RepeatMode.OFF });
     });
 
     it('updates only provided fields and preserves others', async () => {
       prismaPlaybackPreferenceMock.upsert.mockResolvedValueOnce({
         userId,
         shuffleEnabled: true,
-        repeatMode: 'one',
+        repeatMode: RepeatMode.ONE,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
-      const result = await updatePlaybackPreferences(userId, { repeatMode: 'one' });
+  const result = await updatePlaybackPreferences(userId, { repeatMode: RepeatMode.ONE });
 
       expect(prismaPlaybackPreferenceMock.upsert).toHaveBeenCalledWith({
         where: { userId },
         create: {
           userId,
           shuffleEnabled: false,
-          repeatMode: 'one',
+          repeatMode: RepeatMode.ONE,
         },
         update: {
-          repeatMode: 'one',
+          repeatMode: RepeatMode.ONE,
         },
       });
-      expect(result).toEqual({ shuffleEnabled: true, repeatMode: 'one' });
+  expect(result).toEqual({ shuffleEnabled: true, repeatMode: RepeatMode.ONE });
     });
 
     it('throws when update payload is empty', async () => {

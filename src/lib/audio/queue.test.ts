@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { PlayQueue } from './queue';
+import { PlayQueue, RepeatMode } from './queue';
 import type { Track } from './player';
 
 const createTrack = (id: string, overrides: Partial<Track> = {}): Track => ({
@@ -54,18 +54,18 @@ describe('PlayQueue', () => {
   });
 
   it('loops to the beginning when repeat all is enabled', () => {
-    queue.setQueue(tracks, 0);
-    queue.jumpTo(tracks[2].id);
-    queue.setRepeatMode('all');
+  queue.setQueue(tracks, 0);
+  queue.jumpTo(tracks[2].id);
+  queue.setRepeatMode(RepeatMode.ALL);
 
     expect(queue.next()).toEqual(tracks[0]);
     expect(queue.getState().currentIndex).toBe(0);
   });
 
   it('keeps the same track when repeat one is enabled', () => {
-    queue.setQueue(tracks, 0);
-    queue.jumpTo(tracks[1].id);
-    queue.setRepeatMode('one');
+  queue.setQueue(tracks, 0);
+  queue.jumpTo(tracks[1].id);
+  queue.setRepeatMode(RepeatMode.ONE);
 
     expect(queue.next()).toEqual(tracks[1]);
     expect(queue.getState().currentIndex).toBe(1);

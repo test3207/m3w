@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/logger';
-import type { RepeatMode } from '@/lib/audio/queue';
+import { RepeatMode } from '@/lib/audio/queue';
 
 export type PlaybackSeedContextType = 'playlist' | 'library';
 
@@ -40,10 +40,10 @@ export interface PlaybackProgressRecord {
 
 export const DEFAULT_PLAYBACK_PREFERENCES: PlaybackPreferences = {
   shuffleEnabled: false,
-  repeatMode: 'off',
+  repeatMode: RepeatMode.OFF,
 };
 
-const repeatModeValues = ['off', 'all', 'one'] as const satisfies readonly RepeatMode[];
+const repeatModeValues = [RepeatMode.OFF, RepeatMode.ALL, RepeatMode.ONE] as const;
 const playbackContextValues = [
   'library',
   'playlist',
@@ -294,8 +294,9 @@ function normalizeRepeatMode(value: string | null | undefined): RepeatMode {
     return DEFAULT_PLAYBACK_PREFERENCES.repeatMode;
   }
 
-  return repeatModeValues.includes(value as RepeatMode)
-    ? (value as RepeatMode)
+  const candidate = value as RepeatMode;
+  return repeatModeValues.includes(candidate)
+    ? candidate
     : DEFAULT_PLAYBACK_PREFERENCES.repeatMode;
 }
 

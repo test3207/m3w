@@ -6,7 +6,11 @@
 
 import { Track } from './player';
 
-export type RepeatMode = 'off' | 'all' | 'one';
+export enum RepeatMode {
+  OFF = 'off',
+  ALL = 'all',
+  ONE = 'one',
+}
 
 export interface QueueState {
   tracks: Track[];
@@ -20,7 +24,7 @@ export class PlayQueue {
   private tracks: Track[] = [];
   private currentIndex: number = -1;
   private shuffleEnabled: boolean = false;
-  private repeatMode: RepeatMode = 'off';
+  private repeatMode: RepeatMode = RepeatMode.OFF;
   private originalOrder: Track[] = [];
   private shuffleOrder: number[] = [];
 
@@ -93,7 +97,7 @@ export class PlayQueue {
     if (this.tracks.length === 0) return null;
 
     // Repeat one - return same track
-    if (this.repeatMode === 'one') {
+    if (this.repeatMode === RepeatMode.ONE) {
       return this.getCurrentTrack();
     }
 
@@ -102,7 +106,7 @@ export class PlayQueue {
     // If at end of queue
     if (nextIndex >= this.tracks.length) {
       // Repeat all - go back to start
-      if (this.repeatMode === 'all') {
+      if (this.repeatMode === RepeatMode.ALL) {
         nextIndex = 0;
       } else {
         // No repeat - no next track
@@ -124,7 +128,7 @@ export class PlayQueue {
     // If at start of queue
     if (prevIndex < 0) {
       // Wrap to end if repeat is enabled
-      if (this.repeatMode === 'all') {
+      if (this.repeatMode === RepeatMode.ALL) {
         prevIndex = this.tracks.length - 1;
       } else {
         // No repeat - restart current track
@@ -141,7 +145,7 @@ export class PlayQueue {
   next(): Track | null {
     const nextTrack = this.getNextTrack();
     if (nextTrack) {
-      if (this.repeatMode === 'one') {
+      if (this.repeatMode === RepeatMode.ONE) {
         // Don't change index for repeat one
         return nextTrack;
       }
@@ -219,7 +223,7 @@ export class PlayQueue {
    * Cycle through repeat modes
    */
   cycleRepeatMode(): RepeatMode {
-    const modes: RepeatMode[] = ['off', 'all', 'one'];
+    const modes: RepeatMode[] = [RepeatMode.OFF, RepeatMode.ALL, RepeatMode.ONE];
     const currentIndex = modes.indexOf(this.repeatMode);
     this.repeatMode = modes[(currentIndex + 1) % modes.length];
     return this.repeatMode;

@@ -8,9 +8,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getAudioPlayer, type PlayerState, type Track } from '@/lib/audio/player';
-import { getPlayQueue } from '@/lib/audio/queue';
+import { getPlayQueue, type RepeatMode } from '@/lib/audio/queue';
 import { getPlayContext, type PlayContext } from '@/lib/audio/context';
-import type { RepeatMode } from '@/lib/audio/queue';
 
 interface PlaybackPreferencesResponse {
   success: boolean;

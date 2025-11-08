@@ -13,7 +13,7 @@ type RouteContext = {
  * DELETE /api/playlists/[id]/songs/[songId]
  * Remove a song from a playlist
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {

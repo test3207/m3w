@@ -24,7 +24,7 @@ type RouteContext = {
  * Get a single library
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext
 ) {
   try {
@@ -108,7 +108,7 @@ export async function PATCH(
  * Delete a library
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext
 ) {
   try {
