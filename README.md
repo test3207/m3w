@@ -30,6 +30,7 @@ Production-grade web application built with Next.js, PostgreSQL, and Redis.
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 2. Start Docker Desktop
 3. Verify installation:
+
    ```bash
    docker --version
    docker-compose --version
@@ -40,14 +41,19 @@ Production-grade web application built with Next.js, PostgreSQL, and Redis.
 1. Install [Podman Desktop](https://podman-desktop.io/)
 2. **Restart your computer** after installation
 3. Install podman-compose:
+
    ```bash
    pip install podman-compose
    ```
+
 4. Start Podman Machine (Windows/macOS):
+
    ```bash
    podman machine start
    ```
+
 5. Verify installation:
+
    ```bash
    podman --version
    podman-compose --version

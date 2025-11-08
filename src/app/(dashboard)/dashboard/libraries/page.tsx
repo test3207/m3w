@@ -11,9 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Container } from "@/components/ui/container";
+import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { PageHeader } from "@/components/ui/page-header";
-import { HStack, VStack } from "@/components/ui/stack";
+import { HStack } from "@/components/ui/stack";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import Link from "next/link";
@@ -68,56 +68,64 @@ export default async function LibrariesPageRefactored() {
   const libraries = await getUserLibraries(session.user.id);
 
   return (
-  <Container as="main">
-      <VStack gap="lg">
-        <PageHeader
-          title="Library Manager"
-          description="Create, review, and remove music libraries. Each library keeps its own metadata and songs."
-        />
+    <AdaptiveLayout
+      gap={16}
+      className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8"
+    >
+      <AdaptiveSection
+        id="libraries-header"
+        baseSize={180}
+        minSize={130}
+        className="pt-4"
+      >
+        <div className="flex h-full flex-col justify-end">
+          <PageHeader
+            title="Library Manager"
+            description="Create, review, and remove music libraries. Each library keeps its own metadata and songs."
+          />
+        </div>
+      </AdaptiveSection>
 
-        <div className="grid gap-6 md:grid-cols-[1fr_minmax(0,2fr)]">
-          {/* Create Form */}
-          <Card>
+      <AdaptiveSection
+        id="libraries-content"
+        baseSize={540}
+        minSize={320}
+        className="pb-4"
+      >
+        <div className="grid h-full gap-6 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
               <CardTitle>Create a new library</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form action={createLibraryAction}>
-                <VStack gap="md">
-                  <VStack gap="sm">
-                    <Label htmlFor="name">Library name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      placeholder="Jazz Collection"
-                      required
-                    />
-                  </VStack>
+            <CardContent className="flex-1 overflow-auto">
+              <form action={createLibraryAction} className="flex flex-col gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Library name</Label>
+                  <Input id="name" name="name" placeholder="Jazz Collection" required />
+                </div>
 
-                  <VStack gap="sm">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      placeholder="Optional notes about this library"
-                      rows={3}
-                    />
-                  </VStack>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    placeholder="Optional notes about this library"
+                    rows={3}
+                  />
+                </div>
 
-                  <Button type="submit" className="w-full">
-                    Create library
-                  </Button>
-                </VStack>
+                <Button type="submit" className="w-full">
+                  Create library
+                </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* Libraries List */}
-          <Card>
+          <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
               <CardTitle>Your libraries</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-auto">
               {libraries.length === 0 ? (
                 <EmptyState
                   icon="📚"
@@ -181,7 +189,7 @@ export default async function LibrariesPageRefactored() {
             </CardContent>
           </Card>
         </div>
-      </VStack>
-    </Container>
+      </AdaptiveSection>
+    </AdaptiveLayout>
   );
 }

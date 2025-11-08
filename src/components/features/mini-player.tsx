@@ -46,17 +46,27 @@ export function MiniPlayer() {
     const root = document.documentElement;
     const element = containerRef.current;
 
+    const dispatchHeight = (height: number) => {
+      root.style.setProperty('--mini-player-height', `${height}px`);
+      window.dispatchEvent(
+        new CustomEvent('dashboard:mini-player-height', {
+          detail: { height },
+        })
+      );
+    };
+
     if (!currentTrack) {
-      root.style.setProperty('--mini-player-height', '0px');
+      dispatchHeight(0);
       return;
     }
 
     if (!element) {
+      dispatchHeight(0);
       return;
     }
 
     const updateHeight = () => {
-      root.style.setProperty('--mini-player-height', `${element.offsetHeight}px`);
+      dispatchHeight(element.offsetHeight);
     };
 
     updateHeight();
@@ -66,7 +76,7 @@ export function MiniPlayer() {
 
     return () => {
       resizeObserver.disconnect();
-      root.style.setProperty('--mini-player-height', '0px');
+      dispatchHeight(0);
     };
   }, [currentTrack]);
 

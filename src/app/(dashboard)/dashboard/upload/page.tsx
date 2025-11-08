@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
 import { getUserLibraries } from "@/lib/services/library.service";
+import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { UploadSongForm } from "@/components/features/upload-song-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Section } from "@/components/ui/container";
+import { PageHeader } from "@/components/ui/page-header";
 import { UI_TEXT } from "@/locales/messages";
 
 export default async function UploadPageRefactored() {
@@ -23,24 +24,45 @@ export default async function UploadPageRefactored() {
   }));
 
   return (
-    <Section
-      title={UI_TEXT.uploadPage.title}
-      description={UI_TEXT.uploadPage.description}
+    <AdaptiveLayout
+      gap={16}
+      className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8"
     >
-      <Card>
-        <CardHeader>
-          <CardTitle>{UI_TEXT.uploadPage.cardTitle}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {libraryOptions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {UI_TEXT.uploadPage.emptyState}
-            </p>
-          ) : (
-            <UploadSongForm libraries={libraryOptions} />
-          )}
-        </CardContent>
-      </Card>
-    </Section>
+      <AdaptiveSection
+        id="upload-header"
+        baseSize={200}
+        minSize={150}
+        className="pt-4"
+      >
+        <div className="flex h-full flex-col justify-end">
+          <PageHeader
+            title={UI_TEXT.uploadPage.title}
+            description={UI_TEXT.uploadPage.description}
+          />
+        </div>
+      </AdaptiveSection>
+
+      <AdaptiveSection
+        id="upload-content"
+        baseSize={480}
+        minSize={320}
+        className="pb-4"
+      >
+        <Card className="flex h-full flex-col overflow-hidden">
+          <CardHeader>
+            <CardTitle>{UI_TEXT.uploadPage.cardTitle}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto">
+            {libraryOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {UI_TEXT.uploadPage.emptyState}
+              </p>
+            ) : (
+              <UploadSongForm libraries={libraryOptions} />
+            )}
+          </CardContent>
+        </Card>
+      </AdaptiveSection>
+    </AdaptiveLayout>
   );
 }

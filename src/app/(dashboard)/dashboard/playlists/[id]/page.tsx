@@ -4,13 +4,13 @@ import { auth } from "@/lib/auth/config";
 import {
   getPlaylistById,
 } from "@/lib/services/playlist.service";
-import { Container } from "@/components/ui/container";
+import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { HStack, VStack } from "@/components/ui/stack";
+import { HStack } from "@/components/ui/stack";
 import { UI_TEXT } from "@/locales/messages";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { PlaylistSongControls } from "@/components/features/playlists/playlist-song-controls";
@@ -38,18 +38,35 @@ export default async function PlaylistDetailPage({ params }: PlaylistDetailPageP
   const totalDuration = songs.reduce((sum, item) => sum + (item.song.file?.duration ?? 0), 0);
 
   return (
-  <Container as="main" className="py-8">
-      <VStack gap="lg">
-        <Button variant="ghost" size="sm" className="w-fit" asChild>
-          <Link href="/dashboard/playlists">{UI_TEXT.playlistBuilder.backToPlaylists}</Link>
-        </Button>
+    <AdaptiveLayout
+      gap={16}
+      className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8"
+    >
+      <AdaptiveSection
+        id="playlist-detail-header"
+        baseSize={200}
+        minSize={150}
+        className="pt-4"
+      >
+        <div className="flex h-full flex-col justify-end gap-3">
+          <Button variant="ghost" size="sm" className="w-fit" asChild>
+            <Link href="/dashboard/playlists">{UI_TEXT.playlistBuilder.backToPlaylists}</Link>
+          </Button>
 
-        <PageHeader
-          title={`${UI_TEXT.playlistBuilder.detailTitlePrefix}${playlist.name}`}
-          description={UI_TEXT.playlistBuilder.detailDescription}
-        />
+          <PageHeader
+            title={`${UI_TEXT.playlistBuilder.detailTitlePrefix}${playlist.name}`}
+            description={UI_TEXT.playlistBuilder.detailDescription}
+          />
+        </div>
+      </AdaptiveSection>
 
-        <Card>
+      <AdaptiveSection
+        id="playlist-detail-content"
+        baseSize={560}
+        minSize={340}
+        className="pb-4"
+      >
+        <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader>
             <HStack justify="between" align="center">
               <div className="flex flex-col gap-1">
@@ -66,7 +83,7 @@ export default async function PlaylistDetailPage({ params }: PlaylistDetailPageP
               />
             </HStack>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto">
             {songs.length === 0 ? (
               <EmptyState
                 icon="📻"
@@ -119,7 +136,7 @@ export default async function PlaylistDetailPage({ params }: PlaylistDetailPageP
             )}
           </CardContent>
         </Card>
-      </VStack>
-    </Container>
+      </AdaptiveSection>
+    </AdaptiveLayout>
   );
 }

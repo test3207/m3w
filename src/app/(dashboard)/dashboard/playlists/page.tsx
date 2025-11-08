@@ -6,14 +6,14 @@ import {
 } from "@/lib/services/playlist.service";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Container, Section } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
-import { HStack, VStack } from "@/components/ui/stack";
+import { HStack } from "@/components/ui/stack";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { UI_TEXT } from "@/locales/messages";
@@ -79,67 +79,80 @@ export default async function PlaylistsPage() {
   const playlists = await getUserPlaylists(session.user.id);
 
   return (
-    <Container className="py-8">
-      <VStack gap="lg">
-        <PageHeader
-          title={UI_TEXT.playlistBuilder.pageTitle}
-          description={UI_TEXT.playlistBuilder.pageDescription}
-        />
+    <AdaptiveLayout
+      gap={16}
+      className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8"
+    >
+      <AdaptiveSection
+        id="playlists-header"
+        baseSize={200}
+        minSize={150}
+        className="pt-4"
+      >
+        <div className="flex h-full flex-col justify-end">
+          <PageHeader
+            title={UI_TEXT.playlistBuilder.pageTitle}
+            description={UI_TEXT.playlistBuilder.pageDescription}
+          />
+        </div>
+      </AdaptiveSection>
 
-        <Section className="grid gap-6 md:grid-cols-[1fr_minmax(0,2fr)]">
-          {/* Create Form */}
-          <Card>
+      <AdaptiveSection
+        id="playlists-content"
+        baseSize={560}
+        minSize={340}
+        className="pb-4"
+      >
+        <div className="grid h-full gap-6 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
               <CardTitle>{UI_TEXT.playlistBuilder.createCardTitle}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form action={createPlaylistAction}>
-                <VStack gap="md">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">{UI_TEXT.playlistBuilder.nameLabel}</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      required
-                      maxLength={100}
-                      placeholder={UI_TEXT.playlistBuilder.namePlaceholder}
-                    />
-                  </div>
+            <CardContent className="flex-1 overflow-auto">
+              <form action={createPlaylistAction} className="flex flex-col gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">{UI_TEXT.playlistBuilder.nameLabel}</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    required
+                    maxLength={100}
+                    placeholder={UI_TEXT.playlistBuilder.namePlaceholder}
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">{UI_TEXT.playlistBuilder.descriptionLabel}</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      maxLength={500}
-                      placeholder={UI_TEXT.playlistBuilder.descriptionPlaceholder}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">{UI_TEXT.playlistBuilder.descriptionLabel}</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    maxLength={500}
+                    placeholder={UI_TEXT.playlistBuilder.descriptionPlaceholder}
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="coverUrl">{UI_TEXT.playlistBuilder.coverLabel}</Label>
-                    <Input
-                      id="coverUrl"
-                      name="coverUrl"
-                      type="url"
-                      placeholder={UI_TEXT.playlistBuilder.coverPlaceholder}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="coverUrl">{UI_TEXT.playlistBuilder.coverLabel}</Label>
+                  <Input
+                    id="coverUrl"
+                    name="coverUrl"
+                    type="url"
+                    placeholder={UI_TEXT.playlistBuilder.coverPlaceholder}
+                  />
+                </div>
 
-                  <Button type="submit" className="w-full">
-                    {UI_TEXT.playlistBuilder.createButton}
-                  </Button>
-                </VStack>
+                <Button type="submit" className="w-full">
+                  {UI_TEXT.playlistBuilder.createButton}
+                </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* Playlists List */}
-          <Card>
+          <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
               <CardTitle>{UI_TEXT.playlistBuilder.listTitle}</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-auto">
               {playlists.length === 0 ? (
                 <EmptyState
                   icon="📻"
@@ -226,8 +239,8 @@ export default async function PlaylistsPage() {
               )}
             </CardContent>
           </Card>
-        </Section>
-      </VStack>
-    </Container>
+        </div>
+      </AdaptiveSection>
+    </AdaptiveLayout>
   );
 }

@@ -34,6 +34,7 @@
 - Mark client components with `'use client'`.
 - Keep business logic in `src/lib/services`.
 - Keep API routes thin and delegate to services.
+- Dashboard routes render inside `DashboardLayoutShell`; compose page sections with `AdaptiveLayout` and `AdaptiveSection` so base and minimum heights stay consistent across breakpoints.
 
 ## Server Action Patterns
 - Treat server actions as thin async wrappers around services that return `{ status, message, data? }` payloads for toast handling.

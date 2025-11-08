@@ -4,9 +4,9 @@ import { auth } from "@/lib/auth/config";
 import { getLibraryById } from "@/lib/services/library.service";
 import { getSongsByLibrary } from "@/lib/services/song.service";
 import { getUserPlaylists } from "@/lib/services/playlist.service";
-import { Container } from "@/components/ui/container";
+import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { PageHeader } from "@/components/ui/page-header";
-import { HStack, VStack } from "@/components/ui/stack";
+import { HStack } from "@/components/ui/stack";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -42,18 +42,35 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
   const playlistOptions = playlists.map((playlist) => ({ id: playlist.id, name: playlist.name }));
 
   return (
-  <Container as="main" className="py-8">
-      <VStack gap="lg">
-        <Button variant="ghost" size="sm" className="w-fit" asChild>
-          <Link href="/dashboard/libraries">{UI_TEXT.libraryManager.backToLibraries}</Link>
-        </Button>
+    <AdaptiveLayout
+      gap={16}
+      className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8"
+    >
+      <AdaptiveSection
+        id="library-detail-header"
+        baseSize={200}
+        minSize={150}
+        className="pt-4"
+      >
+        <div className="flex h-full flex-col justify-end gap-3">
+          <Button variant="ghost" size="sm" className="w-fit" asChild>
+            <Link href="/dashboard/libraries">{UI_TEXT.libraryManager.backToLibraries}</Link>
+          </Button>
 
-        <PageHeader
-          title={`${UI_TEXT.libraryManager.detailTitlePrefix}${library.name}`}
-          description={UI_TEXT.libraryManager.detailDescription}
-        />
+          <PageHeader
+            title={`${UI_TEXT.libraryManager.detailTitlePrefix}${library.name}`}
+            description={UI_TEXT.libraryManager.detailDescription}
+          />
+        </div>
+      </AdaptiveSection>
 
-        <Card>
+      <AdaptiveSection
+        id="library-detail-content"
+        baseSize={560}
+        minSize={340}
+        className="pb-4"
+      >
+        <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader>
             <HStack justify="between" align="center">
               <CardTitle>{UI_TEXT.libraryManager.songListTitle}</CardTitle>
@@ -64,7 +81,7 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
               />
             </HStack>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto">
             {librarySongs.length === 0 ? (
               <EmptyState
                 icon="🎵"
@@ -126,7 +143,7 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
             ) : null}
           </CardContent>
         </Card>
-      </VStack>
-    </Container>
+      </AdaptiveSection>
+    </AdaptiveLayout>
   );
 }
