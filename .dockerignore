@@ -1,0 +1,90 @@
+# Paths ignored by Docker builds
+
+# Dependencies
+node_modules
+**/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# Testing
+coverage
+.nyc_output
+*.lcov
+
+# Next.js
+.next
+**/.next
+out
+
+# Production
+build
+
+# Misc
+.DS_Store
+*.pem
+
+# Local env files
+.env
+.env.*
+.env.development.local
+.env.test.local
+.env.production.local
+.env.docker
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Prisma
+prisma/dev.db
+prisma/dev.db-journal
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+docker
+
+# Documentation
+README.md
+docs
+*.md
+
+# CI/CD
+.github
+
+# Assets (source files not needed in container)
+assets
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+src/test
+vitest.config.ts
+vitest.setup.ts
+
+# Scripts
+setup.sh
+setup.ps1
+podman-env.ps1.example
+
