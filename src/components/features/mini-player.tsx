@@ -6,6 +6,7 @@
  * Fixed bottom player bar with playback controls
  */
 
+import { useEffect, useRef } from 'react';
 import { useAudioPlayer } from '@/lib/audio/useAudioPlayer';
 import { Button } from '@/components/ui/button';
 import { HStack, VStack } from '@/components/ui/stack';
@@ -39,6 +40,35 @@ export function MiniPlayer() {
     toggleShuffle,
   } = useAudioPlayer();
   const { shuffleEnabled, repeatMode } = queueState;
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const element = containerRef.current;
+
+    if (!currentTrack) {
+      root.style.setProperty('--mini-player-height', '0px');
+      return;
+    }
+
+    if (!element) {
+      return;
+    }
+
+    const updateHeight = () => {
+      root.style.setProperty('--mini-player-height', `${element.offsetHeight}px`);
+    };
+
+    updateHeight();
+
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+      root.style.setProperty('--mini-player-height', '0px');
+    };
+  }, [currentTrack]);
 
   if (!currentTrack) {
     return null; // Hide player when no track
@@ -77,6 +107,7 @@ export function MiniPlayer() {
 
   return (
     <div
+      ref={containerRef}
       className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50"
       role="region"
       aria-label="Audio player controls"

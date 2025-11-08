@@ -38,7 +38,7 @@ export default async function PlaylistDetailPage({ params }: PlaylistDetailPageP
   const totalDuration = songs.reduce((sum, item) => sum + (item.song.file?.duration ?? 0), 0);
 
   return (
-    <Container as="main" maxWidth="lg" className="py-8">
+  <Container as="main" className="py-8">
       <VStack gap="lg">
         <Button variant="ghost" size="sm" className="w-fit" asChild>
           <Link href="/dashboard/playlists">{UI_TEXT.playlistBuilder.backToPlaylists}</Link>

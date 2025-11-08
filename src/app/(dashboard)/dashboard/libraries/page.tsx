@@ -68,7 +68,7 @@ export default async function LibrariesPageRefactored() {
   const libraries = await getUserLibraries(session.user.id);
 
   return (
-    <Container maxWidth="lg" as="main">
+  <Container as="main">
       <VStack gap="lg">
         <PageHeader
           title="Library Manager"

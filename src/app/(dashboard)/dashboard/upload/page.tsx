@@ -24,7 +24,6 @@ export default async function UploadPageRefactored() {
 
   return (
     <Section
-      maxWidth="md"
       title={UI_TEXT.uploadPage.title}
       description={UI_TEXT.uploadPage.description}
     >

@@ -5,7 +5,7 @@ interface ContainerProps extends React.HTMLAttributes<HTMLElement> {
   /**
    * Maximum width constraint
    */
-  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "full";
+  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "full" | "responsive";
   /**
    * Whether to center the container
    */
@@ -27,13 +27,15 @@ const maxWidthMap = {
   xl: "max-w-screen-xl",
   "2xl": "max-w-screen-2xl",
   full: "max-w-none",
+  responsive:
+    "max-w-screen-sm sm:max-w-screen-md md:max-w-screen-lg lg:max-w-screen-xl xl:max-w-screen-2xl",
 };
 
 const paddingMap = {
   none: "",
-  sm: "px-4 py-4 xs:px-5",
-  md: "px-4 py-6 xs:px-6 md:px-8",
-  lg: "px-4 py-10 xs:px-6 md:px-10 lg:px-12",
+  sm: "px-[clamp(4px,1.5vw,12px)] py-[clamp(4px,2vh,14px)]",
+  md: "px-[clamp(6px,2vw,16px)] py-[clamp(6px,2.5vh,18px)]",
+  lg: "px-[clamp(8px,2.5vw,20px)] py-[clamp(8px,3vh,22px)]",
 };
 
 /**
@@ -43,7 +45,7 @@ const paddingMap = {
 export const Container = React.forwardRef<HTMLElement, ContainerProps>(
   (
     {
-      maxWidth = "xl",
+  maxWidth = "responsive",
       centered = true,
       padding = "md",
       as: Component = "div",

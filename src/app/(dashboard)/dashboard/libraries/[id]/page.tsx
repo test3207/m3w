@@ -42,7 +42,7 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
   const playlistOptions = playlists.map((playlist) => ({ id: playlist.id, name: playlist.name }));
 
   return (
-    <Container as="main" maxWidth="lg" className="py-8">
+  <Container as="main" className="py-8">
       <VStack gap="lg">
         <Button variant="ghost" size="sm" className="w-fit" asChild>
           <Link href="/dashboard/libraries">{UI_TEXT.libraryManager.backToLibraries}</Link>
