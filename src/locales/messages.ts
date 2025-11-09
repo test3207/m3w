@@ -12,6 +12,7 @@ export const ERROR_MESSAGES = {
   libraryNotFound: "Library not found",
   failedToUpdateLibrary: "Failed to update library",
   failedToDeleteLibrary: "Failed to delete library",
+  failedToRetrieveSongs: "Failed to retrieve songs",
   failedToGetPlaylist: "Failed to retrieve playlist",
   failedToGetPlaylists: "Failed to retrieve playlists",
   failedToCreatePlaylist: "Failed to create playlist",

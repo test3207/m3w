@@ -16,10 +16,13 @@ import Link from "next/link";
 import { DeleteLibraryButton } from "@/components/features/libraries/delete-library-button";
 import { LIBRARY_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
 import { logger } from "@/lib/logger-client";
+import { useToast } from "@/components/ui/use-toast";
+import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Library } from "@/types/models";
 
 export default function LibrariesPageRefactored() {
   const router = useRouter();
+  const { toast } = useToast();
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -28,24 +31,38 @@ export default function LibrariesPageRefactored() {
     async function fetchLibraries() {
       try {
         const res = await fetch('/api/libraries');
-        if (!res.ok) {
-          if (res.status === 401) {
-            router.push('/signin');
-            return;
-          }
-          throw new Error('Failed to fetch libraries');
+        
+        if (res.status === HttpStatusCode.UNAUTHORIZED) {
+          router.push('/signin');
+          return;
         }
+        
+        logger.info('Fetch libraries response', { status: res.status });
+        
+        if (!res.ok) {
+          logger.error('Failed to fetch libraries', { status: res.status });
+          toast({
+            variant: "destructive",
+            title: ERROR_MESSAGES.failedToRetrieveLibraries,
+          });
+          return;
+        }
+        
         const data = await res.json();
         setLibraries(data.data || []);
       } catch (error) {
         logger.error('Failed to fetch libraries', error);
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.genericTryAgain,
+        });
       } finally {
         setLoading(false);
       }
     }
 
     fetchLibraries();
-  }, [router]);
+  }, [router, toast]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -66,7 +83,12 @@ export default function LibrariesPageRefactored() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to create library');
+        logger.error('Failed to create library', { status: res.status });
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.failedToCreateLibrary,
+        });
+        return;
       }
 
       const data = await res.json();
@@ -77,7 +99,10 @@ export default function LibrariesPageRefactored() {
       event.currentTarget.reset();
     } catch (error) {
       logger.error('Failed to create library', error);
-      alert(ERROR_MESSAGES.failedToCreateLibrary);
+      toast({
+        variant: "destructive",
+        title: ERROR_MESSAGES.failedToCreateLibrary,
+      });
     } finally {
       setSubmitting(false);
     }

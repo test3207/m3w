@@ -10,16 +10,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { HStack } from "@/components/ui/stack";
-import { PLAYLIST_TEXT, COMMON_TEXT } from "@/locales/messages";
+import { PLAYLIST_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { PlaylistSongControls } from "@/components/features/playlists/playlist-song-controls";
 import { logger } from "@/lib/logger-client";
+import { useToast } from "@/components/ui/use-toast";
+import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Playlist } from "@/types/models";
 
 export default function PlaylistDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+  const { toast } = useToast();
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,22 +33,44 @@ export default function PlaylistDetailPage() {
     try {
       const res = await fetch(`/api/playlists/${id}`);
 
+      // Check authentication first
+      if (res.status === HttpStatusCode.UNAUTHORIZED) {
+        router.push('/signin');
+        return;
+      }
+
+      // Check if playlist exists
+      if (res.status === HttpStatusCode.NOT_FOUND) {
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.playlistNotFoundOrUnauthorized,
+        });
+        router.push('/dashboard/playlists');
+        return;
+      }
+
+      // Log status code for debugging
+      logger.info('Fetch response', { status: res.status });
+
+      // Check for other errors
       if (!res.ok) {
-        if (res.status === 401) {
-          router.push('/signin');
-          return;
-        }
-        if (res.status === 404) {
-          router.push('/dashboard/playlists');
-          return;
-        }
-        throw new Error('Failed to fetch playlist');
+        logger.error('Failed to fetch playlist', { status: res.status });
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.failedToGetPlaylists,
+          description: `Status: ${res.status}`,
+        });
+        return;
       }
 
       const data = await res.json();
       setPlaylist(data.data);
     } catch (error) {
       logger.error('Failed to fetch playlist', error);
+      toast({
+        variant: "destructive",
+        title: ERROR_MESSAGES.genericTryAgain,
+      });
     } finally {
       setLoading(false);
     }
@@ -54,7 +79,7 @@ export default function PlaylistDetailPage() {
   useEffect(() => {
     fetchPlaylist();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, router]);
+  }, [id, router, toast]);
 
   if (loading) {
     return (

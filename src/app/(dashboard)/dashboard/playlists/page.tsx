@@ -16,10 +16,13 @@ import { COMMON_TEXT, PLAYLIST_TEXT, ERROR_MESSAGES } from "@/locales/messages";
 import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import Link from "next/link";
 import { logger } from "@/lib/logger-client";
+import { useToast } from "@/components/ui/use-toast";
+import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Playlist } from "@/types/models";
 
 export default function PlaylistsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -29,24 +32,38 @@ export default function PlaylistsPage() {
     async function fetchPlaylists() {
       try {
         const res = await fetch('/api/playlists');
-        if (!res.ok) {
-          if (res.status === 401) {
-            router.push('/signin');
-            return;
-          }
-          throw new Error('Failed to fetch playlists');
+        
+        if (res.status === HttpStatusCode.UNAUTHORIZED) {
+          router.push('/signin');
+          return;
         }
+        
+        logger.info('Fetch playlists response', { status: res.status });
+        
+        if (!res.ok) {
+          logger.error('Failed to fetch playlists', { status: res.status });
+          toast({
+            variant: "destructive",
+            title: ERROR_MESSAGES.failedToGetPlaylists,
+          });
+          return;
+        }
+        
         const data = await res.json();
         setPlaylists(data.data || []);
       } catch (error) {
         logger.error('Failed to fetch playlists', error);
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.genericTryAgain,
+        });
       } finally {
         setLoading(false);
       }
     }
 
     fetchPlaylists();
-  }, [router]);
+  }, [router, toast]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -69,7 +86,12 @@ export default function PlaylistsPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to create playlist');
+        logger.error('Failed to create playlist', { status: res.status });
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.failedToCreatePlaylist,
+        });
+        return;
       }
 
       const data = await res.json();
@@ -80,7 +102,10 @@ export default function PlaylistsPage() {
       event.currentTarget.reset();
     } catch (error) {
       logger.error('Failed to create playlist', error);
-      alert(ERROR_MESSAGES.failedToCreatePlaylist);
+      toast({
+        variant: "destructive",
+        title: ERROR_MESSAGES.failedToCreatePlaylist,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -98,13 +123,21 @@ export default function PlaylistsPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to delete playlist');
+        logger.error('Failed to delete playlist', { status: res.status });
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.failedToDeletePlaylist,
+        });
+        return;
       }
 
       setPlaylists(prev => prev.filter(p => p.id !== playlistId));
     } catch (error) {
       logger.error('Failed to delete playlist', error);
-      alert(ERROR_MESSAGES.failedToDeletePlaylist);
+      toast({
+        variant: "destructive",
+        title: ERROR_MESSAGES.failedToDeletePlaylist,
+      });
     } finally {
       setDeletingId(null);
     }

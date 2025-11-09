@@ -6,12 +6,15 @@ import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-l
 import { UploadSongForm } from "@/components/features/upload-song-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { UPLOAD_TEXT, COMMON_TEXT } from "@/locales/messages";
+import { UPLOAD_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
 import { logger } from "@/lib/logger-client";
+import { useToast } from "@/components/ui/use-toast";
+import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Library, LibraryOption } from "@/types/models";
 
 export default function UploadPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [libraries, setLibraries] = useState<LibraryOption[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,13 +22,23 @@ export default function UploadPage() {
     async function fetchLibraries() {
       try {
         const res = await fetch('/api/libraries');
-        if (!res.ok) {
-          if (res.status === 401) {
-            router.push('/signin');
-            return;
-          }
-          throw new Error('Failed to fetch libraries');
+        
+        if (res.status === HttpStatusCode.UNAUTHORIZED) {
+          router.push('/signin');
+          return;
         }
+        
+        logger.info('Fetch libraries response', { status: res.status });
+        
+        if (!res.ok) {
+          logger.error('Failed to fetch libraries', { status: res.status });
+          toast({
+            variant: "destructive",
+            title: ERROR_MESSAGES.failedToRetrieveLibraries,
+          });
+          return;
+        }
+        
         const data = await res.json();
         const libs: Library[] = data.data || [];
         
@@ -39,13 +52,17 @@ export default function UploadPage() {
         setLibraries(libraryOptions);
       } catch (error) {
         logger.error('Failed to fetch libraries', error);
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.genericTryAgain,
+        });
       } finally {
         setLoading(false);
       }
     }
 
     fetchLibraries();
-  }, [router]);
+  }, [router, toast]);
 
   if (loading) {
     return (

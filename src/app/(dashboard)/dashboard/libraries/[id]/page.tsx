@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { LIBRARY_TEXT, COMMON_TEXT } from "@/locales/messages";
+import { LIBRARY_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { AddSongToPlaylistForm } from "@/components/features/libraries/add-song-to-playlist-form";
 import { logger } from "@/lib/logger-client";
+import { useToast } from "@/components/ui/use-toast";
+import { HttpStatusCode } from "@/lib/constants/http-status";
 
 interface Song {
   id: string;
@@ -40,6 +42,7 @@ export default function LibraryDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+  const { toast } = useToast();
 
   const [library, setLibrary] = useState<Library | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -57,16 +60,43 @@ export default function LibraryDetailPage() {
           fetch('/api/playlists'),
         ]);
 
+        // Check authentication first
+        if (libraryRes.status === HttpStatusCode.UNAUTHORIZED || songsRes.status === HttpStatusCode.UNAUTHORIZED || playlistsRes.status === HttpStatusCode.UNAUTHORIZED) {
+          router.push('/signin');
+          return;
+        }
+
+        // Check if library exists
+        if (libraryRes.status === HttpStatusCode.NOT_FOUND) {
+          toast({
+            variant: "destructive",
+            title: ERROR_MESSAGES.libraryNotFound,
+          });
+          router.push('/dashboard/libraries');
+          return;
+        }
+
+        // Log status codes for debugging
+        logger.info('Fetch responses', {
+          libraryStatus: libraryRes.status,
+          songsStatus: songsRes.status,
+          playlistsStatus: playlistsRes.status,
+        });
+
+        // Check for other errors
         if (!libraryRes.ok || !songsRes.ok || !playlistsRes.ok) {
-          if (libraryRes.status === 401 || songsRes.status === 401 || playlistsRes.status === 401) {
-            router.push('/signin');
-            return;
-          }
-          if (libraryRes.status === 404) {
-            router.push('/dashboard/libraries');
-            return;
-          }
-          throw new Error('Failed to fetch data');
+          const errors = [];
+          if (!libraryRes.ok) errors.push(`Library: ${libraryRes.status}`);
+          if (!songsRes.ok) errors.push(`Songs: ${songsRes.status}`);
+          if (!playlistsRes.ok) errors.push(`Playlists: ${playlistsRes.status}`);
+          
+          logger.error('Failed to fetch data', { errors });
+          toast({
+            variant: "destructive",
+            title: ERROR_MESSAGES.failedToRetrieveLibraries,
+            description: errors.join(', '),
+          });
+          return;
         }
 
         const libraryData = await libraryRes.json();
@@ -78,13 +108,17 @@ export default function LibraryDetailPage() {
         setPlaylists(playlistsData.data || []);
       } catch (error) {
         logger.error('Failed to fetch library details', error);
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.genericTryAgain,
+        });
       } finally {
         setLoading(false);
       }
     }
 
     fetchData();
-  }, [id, router]);
+  }, [id, router, toast]);
 
   if (loading) {
     return (

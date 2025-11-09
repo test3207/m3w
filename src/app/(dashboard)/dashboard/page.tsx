@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DASHBOARD_TEXT, COMMON_TEXT } from "@/locales/messages";
+import { DASHBOARD_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import {
   LibrariesCard,
@@ -11,10 +11,13 @@ import {
   StorageCard,
 } from "@/components/features/dashboard-cards";
 import { logger } from "@/lib/logger-client";
+import { useToast } from "@/components/ui/use-toast";
+import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Library, Playlist } from "@/types/models";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,12 +30,31 @@ export default function DashboardPage() {
           fetch('/api/playlists'),
         ]);
 
+        // Check authentication first
+        if (librariesRes.status === HttpStatusCode.UNAUTHORIZED || playlistsRes.status === HttpStatusCode.UNAUTHORIZED) {
+          router.push('/signin');
+          return;
+        }
+
+        // Log status codes for debugging
+        logger.info('Fetch responses', {
+          librariesStatus: librariesRes.status,
+          playlistsStatus: playlistsRes.status,
+        });
+
+        // Check for other errors
         if (!librariesRes.ok || !playlistsRes.ok) {
-          if (librariesRes.status === 401 || playlistsRes.status === 401) {
-            router.push('/signin');
-            return;
-          }
-          throw new Error('Failed to fetch data');
+          const errors = [];
+          if (!librariesRes.ok) errors.push(`Libraries: ${librariesRes.status}`);
+          if (!playlistsRes.ok) errors.push(`Playlists: ${playlistsRes.status}`);
+          
+          logger.error('Failed to fetch data', { errors });
+          toast({
+            variant: "destructive",
+            title: ERROR_MESSAGES.failedToRetrieveLibraries,
+            description: errors.join(', '),
+          });
+          return;
         }
 
         const librariesData = await librariesRes.json();
@@ -42,13 +64,17 @@ export default function DashboardPage() {
         setPlaylists(playlistsData.data || []);
       } catch (error) {
         logger.error('Failed to fetch dashboard data', error);
+        toast({
+          variant: "destructive",
+          title: ERROR_MESSAGES.genericTryAgain,
+        });
       } finally {
         setLoading(false);
       }
     }
 
     fetchData();
-  }, [router]);
+  }, [router, toast]);
 
   if (loading) {
     return (
