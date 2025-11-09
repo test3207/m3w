@@ -1,14 +1,36 @@
+'use client';
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DASHBOARD_TEXT } from "@/locales/messages";
-import type { Session } from "next-auth";
 import { Sparkles } from "lucide-react";
 import { DashboardUserMenu } from "./dashboard-user-menu";
+import { logger } from "@/lib/logger-client";
 
-interface DashboardNavbarProps {
-  session: Session;
+interface User {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
 }
 
-export function DashboardNavbar({ session }: DashboardNavbarProps) {
+export function DashboardNavbar() {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    async function fetchSession() {
+      try {
+        const res = await fetch('/api/auth/session');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data?.user || null);
+        }
+      } catch (error) {
+        logger.error('Failed to fetch session', error);
+      }
+    }
+
+    fetchSession();
+  }, []);
   return (
     <header
       className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/65"
@@ -40,11 +62,13 @@ export function DashboardNavbar({ session }: DashboardNavbarProps) {
             </div>
           </div>
 
-          <DashboardUserMenu
-            name={session.user.name}
-            email={session.user.email || ""}
-            image={session.user.image}
-          />
+          {user && (
+            <DashboardUserMenu
+              name={user.name}
+              email={user.email || ""}
+              image={user.image}
+            />
+          )}
         </div>
       </div>
     </header>

@@ -1,9 +1,8 @@
+'use client';
+
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
-import { auth } from "@/lib/auth/config";
-import {
-  getPlaylistById,
-} from "@/lib/services/playlist.service";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -11,32 +10,69 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { HStack } from "@/components/ui/stack";
-import { PLAYLIST_TEXT } from "@/locales/messages";
+import { PLAYLIST_TEXT, COMMON_TEXT } from "@/locales/messages";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { PlaylistSongControls } from "@/components/features/playlists/playlist-song-controls";
+import { logger } from "@/lib/logger-client";
+import type { Playlist } from "@/types/models";
 
-interface PlaylistDetailPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
+export default function PlaylistDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
 
-export default async function PlaylistDetailPage({ params }: PlaylistDetailPageProps) {
-  const session = await auth();
+  const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
+  const fetchPlaylist = async () => {
+    if (!id) return;
+
+    try {
+      const res = await fetch(`/api/playlists/${id}`);
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.push('/signin');
+          return;
+        }
+        if (res.status === 404) {
+          router.push('/dashboard/playlists');
+          return;
+        }
+        throw new Error('Failed to fetch playlist');
+      }
+
+      const data = await res.json();
+      setPlaylist(data.data);
+    } catch (error) {
+      logger.error('Failed to fetch playlist', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPlaylist();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, router]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
+        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+      </div>
+    );
   }
-
-  const { id } = await params;
-
-  const playlist = await getPlaylistById(id, session.user.id);
 
   if (!playlist) {
-    notFound();
+    return (
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
+        <div className="text-center text-muted-foreground">{COMMON_TEXT.notFoundLabel}</div>
+      </div>
+    );
   }
 
-  const songs = playlist.songs;
+  const songs = playlist.songs ?? [];
   const totalDuration = songs.reduce((sum, item) => sum + (item.song.file?.duration ?? 0), 0);
 
   return (
@@ -102,7 +138,7 @@ export default async function PlaylistDetailPage({ params }: PlaylistDetailPageP
             ) : (
               <ul role="list" className="flex flex-col gap-3">
                 {songs.map((item, index) => (
-                  <li key={item.songId}>
+                  <li key={item.song.id}>
                     <ListItem
                       title={item.song.title}
                       description={item.song.artist || undefined}
@@ -125,10 +161,11 @@ export default async function PlaylistDetailPage({ params }: PlaylistDetailPageP
                       actions={
                         <PlaylistSongControls
                           playlistId={playlist.id}
-                          songId={item.songId}
+                          songId={item.song.id}
                           songTitle={item.song.title}
                           index={index}
                           total={songs.length}
+                          onMutate={fetchPlaylist}
                         />
                       }
                     />

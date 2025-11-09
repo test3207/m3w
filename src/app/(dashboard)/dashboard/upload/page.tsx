@@ -1,27 +1,59 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth/config";
-import { getUserLibraries } from "@/lib/services/library.service";
+'use client';
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { UploadSongForm } from "@/components/features/upload-song-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { UPLOAD_TEXT } from "@/locales/messages";
+import { UPLOAD_TEXT, COMMON_TEXT } from "@/locales/messages";
+import { logger } from "@/lib/logger-client";
+import type { Library, LibraryOption } from "@/types/models";
 
-export default async function UploadPageRefactored() {
-  const session = await auth();
+export default function UploadPage() {
+  const router = useRouter();
+  const [libraries, setLibraries] = useState<LibraryOption[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
+  useEffect(() => {
+    async function fetchLibraries() {
+      try {
+        const res = await fetch('/api/libraries');
+        if (!res.ok) {
+          if (res.status === 401) {
+            router.push('/signin');
+            return;
+          }
+          throw new Error('Failed to fetch libraries');
+        }
+        const data = await res.json();
+        const libs: Library[] = data.data || [];
+        
+        const libraryOptions = libs.map((library) => ({
+          id: library.id,
+          name: library.name,
+          description: library.description ?? null,
+          songCount: library._count?.songs ?? 0,
+        }));
+        
+        setLibraries(libraryOptions);
+      } catch (error) {
+        logger.error('Failed to fetch libraries', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchLibraries();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
+        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+      </div>
+    );
   }
-
-  const libraries = await getUserLibraries(session.user.id);
-
-  const libraryOptions = libraries.map((library) => ({
-    id: library.id,
-    name: library.name,
-    description: library.description ?? null,
-    songCount: library._count.songs,
-  }));
 
   return (
     <AdaptiveLayout
@@ -53,12 +85,12 @@ export default async function UploadPageRefactored() {
             <CardTitle>{UPLOAD_TEXT.page.cardTitle}</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto">
-            {libraryOptions.length === 0 ? (
+            {libraries.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {UPLOAD_TEXT.page.emptyState}
               </p>
             ) : (
-              <UploadSongForm libraries={libraryOptions} />
+              <UploadSongForm libraries={libraries} />
             )}
           </CardContent>
         </Card>

@@ -1,6 +1,5 @@
-'use client';
-
 import { Menu, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { signOutUser } from '@/app/(dashboard)/actions/sign-out';
+import { logger } from '@/lib/logger-client';
 
 interface DashboardUserMenuProps {
   name?: string | null;
@@ -19,6 +18,7 @@ interface DashboardUserMenuProps {
 }
 
 export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps) {
+  const router = useRouter();
   const displayName = name ?? email;
   const initials = (name || email)
     .split(' ')
@@ -26,6 +26,15 @@ export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps
     .join('')
     .slice(0, 2)
     .toUpperCase();
+
+  async function handleSignOut() {
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' });
+      router.push('/');
+    } catch (error) {
+      logger.error('Sign out failed', error);
+    }
+  }
 
   return (
     <div className="flex items-center gap-3">
@@ -48,14 +57,12 @@ export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps
             </div>
           </div>
           <DropdownMenuSeparator />
-          <form action={signOutUser}>
-            <DropdownMenuItem asChild>
-              <button type="submit" className="flex w-full items-center gap-2 text-left">
-                <LogOut className="h-4 w-4" />
-                <span>Sign out</span>
-              </button>
-            </DropdownMenuItem>
-          </form>
+          <DropdownMenuItem asChild>
+            <button onClick={handleSignOut} className="flex w-full items-center gap-2 text-left">
+              <LogOut className="h-4 w-4" />
+              <span>Sign out</span>
+            </button>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -70,15 +77,13 @@ export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps
             <p className="truncate text-xs text-muted-foreground">{email}</p>
           </div>
         </div>
-        <form action={signOutUser} className="flex items-center">
-          <Button type="submit" size="sm" variant="outline" className="hidden lg:inline-flex">
-            Sign out
-          </Button>
-          <Button type="submit" size="icon" variant="ghost" className="lg:hidden">
-            <LogOut className="h-5 w-5" />
-            <span className="sr-only">Sign out</span>
-          </Button>
-        </form>
+        <Button onClick={handleSignOut} size="sm" variant="outline" className="hidden lg:inline-flex">
+          Sign out
+        </Button>
+        <Button onClick={handleSignOut} size="icon" variant="ghost" className="lg:hidden">
+          <LogOut className="h-5 w-5" />
+          <span className="sr-only">Sign out</span>
+        </Button>
       </div>
     </div>
   );

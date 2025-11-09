@@ -1,11 +1,7 @@
-import { auth } from "@/lib/auth/config";
-import {
-  createPlaylist,
-  deletePlaylist as deletePlaylistService,
-  getUserPlaylists,
-} from "@/lib/services/playlist.service";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+'use client';
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,64 +15,108 @@ import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { COMMON_TEXT, PLAYLIST_TEXT } from "@/locales/messages";
 import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import Link from "next/link";
+import { logger } from "@/lib/logger-client";
+import type { Playlist } from "@/types/models";
 
-async function createPlaylistAction(formData: FormData) {
-  "use server";
+export default function PlaylistsPage() {
+  const router = useRouter();
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
+  useEffect(() => {
+    async function fetchPlaylists() {
+      try {
+        const res = await fetch('/api/playlists');
+        if (!res.ok) {
+          if (res.status === 401) {
+            router.push('/signin');
+            return;
+          }
+          throw new Error('Failed to fetch playlists');
+        }
+        const data = await res.json();
+        setPlaylists(data.data || []);
+      } catch (error) {
+        logger.error('Failed to fetch playlists', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPlaylists();
+  }, [router]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+    const coverUrl = formData.get("coverUrl") as string;
+
+    try {
+      const res = await fetch('/api/playlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || undefined,
+          coverUrl: coverUrl.trim() || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to create playlist');
+      }
+
+      const data = await res.json();
+      if (data.data) {
+        setPlaylists(prev => [...prev, data.data]);
+      }
+
+      event.currentTarget.reset();
+    } catch (error) {
+      logger.error('Failed to create playlist', error);
+      alert('Failed to create playlist. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (playlistId: string) => {
+    if (!confirm('Are you sure you want to delete this playlist?')) {
+      return;
+    }
+
+    setDeletingId(playlistId);
+    try {
+      const res = await fetch(`/api/playlists/${playlistId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to delete playlist');
+      }
+
+      setPlaylists(prev => prev.filter(p => p.id !== playlistId));
+    } catch (error) {
+      logger.error('Failed to delete playlist', error);
+      alert('Failed to delete playlist. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
+        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+      </div>
+    );
   }
-
-  const name = formData.get("name");
-  const description = formData.get("description");
-  const coverUrl = formData.get("coverUrl");
-
-  if (typeof name !== "string" || name.trim().length === 0) {
-    return;
-  }
-
-  const trimmedDescription =
-    typeof description === "string" && description.trim().length > 0
-      ? description.trim()
-      : null;
-
-  const normalizedCoverUrl =
-    typeof coverUrl === "string" && coverUrl.trim().length > 0
-      ? coverUrl.trim()
-      : null;
-
-  await createPlaylist(session.user.id, name.trim(), {
-    description: trimmedDescription,
-    coverUrl: normalizedCoverUrl,
-  });
-
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/playlists");
-}
-
-async function deletePlaylistAction(playlistId: string) {
-  "use server";
-
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
-  }
-
-  await deletePlaylistService(playlistId, session.user.id);
-
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/playlists");
-}
-
-export default async function PlaylistsPage() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
-  }
-
-  const playlists = await getUserPlaylists(session.user.id);
 
   return (
     <AdaptiveLayout
@@ -109,7 +149,7 @@ export default async function PlaylistsPage() {
               <CardTitle>{PLAYLIST_TEXT.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
-              <form action={createPlaylistAction} className="flex flex-col gap-4">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">{PLAYLIST_TEXT.manager.form.nameLabel}</Label>
                   <Input
@@ -118,6 +158,7 @@ export default async function PlaylistsPage() {
                     required
                     maxLength={100}
                     placeholder={PLAYLIST_TEXT.manager.form.namePlaceholder}
+                    disabled={submitting}
                   />
                 </div>
 
@@ -128,6 +169,7 @@ export default async function PlaylistsPage() {
                     name="description"
                     maxLength={500}
                     placeholder={PLAYLIST_TEXT.manager.form.descriptionPlaceholder}
+                    disabled={submitting}
                   />
                 </div>
 
@@ -138,11 +180,12 @@ export default async function PlaylistsPage() {
                     name="coverUrl"
                     type="url"
                     placeholder={PLAYLIST_TEXT.manager.form.coverPlaceholder}
+                    disabled={submitting}
                   />
                 </div>
 
-                <Button type="submit" className="w-full">
-                  {PLAYLIST_TEXT.manager.form.submitLabel}
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? 'Creating...' : PLAYLIST_TEXT.manager.form.submitLabel}
                 </Button>
               </form>
             </CardContent>
@@ -166,26 +209,15 @@ export default async function PlaylistsPage() {
                       <MetadataItem
                         key="songs"
                         label={PLAYLIST_TEXT.manager.list.metadataSongsLabel}
-                        value={playlist._count.songs}
+                        value={playlist._count?.songs ?? 0}
                         variant="outline"
                       />,
                     ];
 
-                    if (playlist.coverUrl) {
-                      metadata.push(
-                        <span key="cover" className="text-xs text-muted-foreground">
-                          {PLAYLIST_TEXT.manager.list.coverLabel}: {" "}
-                          <a
-                            href={playlist.coverUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline hover:text-foreground"
-                          >
-                            {COMMON_TEXT.viewLinkLabel}
-                          </a>
-                        </span>
-                      );
-                    }
+                    // TODO: Add cover URL support when backend implements it
+                    // if (playlist.coverUrl) {
+                    //   metadata.push(...)
+                    // }
 
                     metadata.push(
                       <span key="created" className="text-xs text-muted-foreground">
@@ -216,20 +248,15 @@ export default async function PlaylistsPage() {
                                 playlistName={playlist.name}
                               />
 
-                              <form
-                                action={async () => {
-                                  "use server";
-                                  await deletePlaylistAction(playlist.id);
-                                }}
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDelete(playlist.id)}
+                                disabled={deletingId === playlist.id}
                               >
-                                <Button
-                                  type="submit"
-                                  variant="destructive"
-                                  size="sm"
-                                >
-                                  {PLAYLIST_TEXT.manager.list.deleteButton}
-                                </Button>
-                              </form>
+                                {deletingId === playlist.id ? 'Deleting...' : PLAYLIST_TEXT.manager.list.deleteButton}
+                              </Button>
                             </HStack>
                           }
                         />

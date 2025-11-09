@@ -1,9 +1,8 @@
+'use client';
+
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
-import { auth } from "@/lib/auth/config";
-import { getLibraryById } from "@/lib/services/library.service";
-import { getSongsByLibrary } from "@/lib/services/song.service";
-import { getUserPlaylists } from "@/lib/services/playlist.service";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { HStack } from "@/components/ui/stack";
@@ -11,35 +10,98 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { LIBRARY_TEXT } from "@/locales/messages";
+import { LIBRARY_TEXT, COMMON_TEXT } from "@/locales/messages";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { AddSongToPlaylistForm } from "@/components/features/libraries/add-song-to-playlist-form";
+import { logger } from "@/lib/logger-client";
 
-interface LibraryDetailPageProps {
-  params: Promise<{
-    id: string;
-  }>;
+interface Song {
+  id: string;
+  title: string;
+  artist: string | null;
+  album: string | null;
+  file: {
+    duration: number | null;
+  };
 }
 
-export default async function LibraryDetailPage({ params }: LibraryDetailPageProps) {
-  const { id } = await params;
-  const session = await auth();
+interface Library {
+  id: string;
+  name: string;
+  description: string | null;
+}
 
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
+interface Playlist {
+  id: string;
+  name: string;
+}
+
+export default function LibraryDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
+
+  const [library, setLibrary] = useState<Library | null>(null);
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+
+    async function fetchData() {
+      try {
+        const [libraryRes, songsRes, playlistsRes] = await Promise.all([
+          fetch(`/api/libraries/${id}`),
+          fetch(`/api/libraries/${id}/songs`),
+          fetch('/api/playlists'),
+        ]);
+
+        if (!libraryRes.ok || !songsRes.ok || !playlistsRes.ok) {
+          if (libraryRes.status === 401 || songsRes.status === 401 || playlistsRes.status === 401) {
+            router.push('/signin');
+            return;
+          }
+          if (libraryRes.status === 404) {
+            router.push('/dashboard/libraries');
+            return;
+          }
+          throw new Error('Failed to fetch data');
+        }
+
+        const libraryData = await libraryRes.json();
+        const songsData = await songsRes.json();
+        const playlistsData = await playlistsRes.json();
+
+        setLibrary(libraryData.data);
+        setSongs(songsData.data || []);
+        setPlaylists(playlistsData.data || []);
+      } catch (error) {
+        logger.error('Failed to fetch library details', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [id, router]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
+        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+      </div>
+    );
   }
-
-  const [library, songs, playlists] = await Promise.all([
-    getLibraryById(id, session.user.id),
-    getSongsByLibrary(id, session.user.id),
-    getUserPlaylists(session.user.id),
-  ]);
 
   if (!library) {
-    notFound();
+    return (
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
+        <div className="text-center text-muted-foreground">{COMMON_TEXT.notFoundLabel}</div>
+      </div>
+    );
   }
 
-  const librarySongs = songs ?? [];
   const playlistOptions = playlists.map((playlist) => ({ id: playlist.id, name: playlist.name }));
 
   return (
@@ -81,14 +143,14 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
                 </Button>
                 <MetadataItem
                   label={LIBRARY_TEXT.detail.songCountLabel}
-                  value={librarySongs.length}
+                  value={songs.length}
                   variant="secondary"
                 />
               </HStack>
             </HStack>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto">
-            {librarySongs.length === 0 ? (
+            {songs.length === 0 ? (
               <EmptyState
                 icon="🎵"
                 title={LIBRARY_TEXT.detail.songListEmpty}
@@ -96,7 +158,7 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
               />
             ) : (
               <ul role="list" className="flex flex-col gap-3">
-                {librarySongs.map((song) => (
+                {songs.map((song) => (
                   <li key={song.id}>
                     <ListItem
                       title={song.title}

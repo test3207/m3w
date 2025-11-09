@@ -6,6 +6,7 @@ import { useAudioPlayer } from '@/lib/audio/useAudioPlayer';
 import type { Track } from '@/lib/audio/player';
 import type { PlayContext } from '@/lib/audio/context';
 import { PLAYLIST_TEXT } from '@/locales/messages';
+import { logger } from '@/lib/logger-client';
 
 interface PlaylistPlayButtonProps {
   playlistId: string;
@@ -35,7 +36,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
       });
 
       if (!tracksResponse.ok) {
-        console.error('Failed to load playlist tracks');
+        logger.error('Failed to load playlist tracks', { playlistId });
         return;
       }
 
@@ -43,7 +44,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
       const tracks: PlaylistTrackResponse[] = data.tracks ?? [];
 
       if (tracks.length === 0) {
-        console.warn('Playlist has no tracks');
+        logger.warn('Playlist has no tracks', { playlistId });
         return;
       }
 
@@ -63,7 +64,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
       }
 
       if (tracksWithAudio.length === 0) {
-        console.warn('No playable tracks in playlist');
+        logger.warn('No playable tracks in playlist', { playlistId });
         return;
       }
 
@@ -75,7 +76,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
 
       await playFromQueue(tracksWithAudio, 0, context);
     } catch (error) {
-      console.error('Failed to start playlist playback', error);
+      logger.error('Failed to start playlist playback', error);
     } finally {
       setIsLoading(false);
     }

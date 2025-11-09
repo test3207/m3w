@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-
 import { Button } from "@/components/ui/button";
 import { PLAYLIST_TEXT } from "@/locales/messages";
 import { toast } from "@/components/ui/use-toast";
-import { moveSongAction, removeSongAction, type MoveSongInput } from "@/app/(dashboard)/dashboard/playlists/[id]/actions";
+import { logger } from "@/lib/logger-client";
 
 interface PlaylistSongControlsProps {
   playlistId: string;
@@ -13,16 +12,25 @@ interface PlaylistSongControlsProps {
   songTitle: string;
   index: number;
   total: number;
+  onMutate?: () => void;
 }
 
-function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: PlaylistSongControlsProps) {
-  const [isPending, startTransition] = React.useTransition();
+function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onMutate }: PlaylistSongControlsProps) {
+  const [isPending, setIsPending] = React.useState(false);
 
-  const handleMove = (direction: MoveSongInput["direction"]) => {
-    startTransition(async () => {
-      const result = await moveSongAction({ playlistId, songId, direction });
+  const handleMove = async (direction: "up" | "down") => {
+    setIsPending(true);
+    
+    try {
+      const res = await fetch(`/api/playlists/${playlistId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'move', songId, direction }),
+      });
 
-      if (result.status === "success") {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         toast({
           title: PLAYLIST_TEXT.controls.toastMoveSuccessTitle,
           description:
@@ -30,39 +38,63 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
               ? `${PLAYLIST_TEXT.controls.toastMoveUpDescriptionPrefix}${songTitle}`
               : `${PLAYLIST_TEXT.controls.toastMoveDownDescriptionPrefix}${songTitle}`,
         });
-        return;
+        onMutate?.();
+      } else if (data.error?.includes('Invalid direction')) {
+        // Silent fail for edge cases
+      } else {
+        toast({
+          variant: "destructive",
+          title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
+          description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
+        });
       }
-
-      if (result.message === "invalid-direction") {
-        return;
-      }
-
+    } catch (error) {
+      logger.error('Failed to move song', error);
       toast({
         variant: "destructive",
         title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
         description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
       });
-    });
+    } finally {
+      setIsPending(false);
+    }
   };
 
-  const handleRemove = () => {
-    startTransition(async () => {
-      const result = await removeSongAction({ playlistId, songId });
+  const handleRemove = async () => {
+    setIsPending(true);
 
-      if (result.status === "success") {
+    try {
+      const res = await fetch(`/api/playlists/${playlistId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove', songId }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         toast({
           title: PLAYLIST_TEXT.controls.toastRemoveSuccessTitle,
           description: `${PLAYLIST_TEXT.controls.toastRemoveSuccessDescriptionPrefix}${songTitle}`,
         });
-        return;
+        onMutate?.();
+      } else {
+        toast({
+          variant: "destructive",
+          title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
+          description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
+        });
       }
-
+    } catch (error) {
+      logger.error('Failed to remove song', error);
       toast({
         variant: "destructive",
         title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
         description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
       });
-    });
+    } finally {
+      setIsPending(false);
+    }
   };
 
   return (
@@ -71,7 +103,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
         type="button"
         size="icon"
         variant="ghost"
-  aria-label={PLAYLIST_TEXT.controls.moveUp}
+        aria-label={PLAYLIST_TEXT.controls.moveUp}
         onClick={() => handleMove("up")}
         disabled={isPending || index === 0}
       >
@@ -81,7 +113,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
         type="button"
         size="icon"
         variant="ghost"
-  aria-label={PLAYLIST_TEXT.controls.moveDown}
+        aria-label={PLAYLIST_TEXT.controls.moveDown}
         onClick={() => handleMove("down")}
         disabled={isPending || index === total - 1}
       >
@@ -94,7 +126,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
         onClick={handleRemove}
         disabled={isPending}
       >
-  {PLAYLIST_TEXT.controls.removeButton}
+        {PLAYLIST_TEXT.controls.removeButton}
       </Button>
     </div>
   );

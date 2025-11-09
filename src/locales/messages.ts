@@ -45,6 +45,12 @@ export const COMMON_TEXT = {
   songsLabel: "Songs",
   manageSongsCta: "Manage songs",
   viewLinkLabel: "View",
+  loadingLabel: "Loading...",
+  notFoundLabel: "Not found",
+  errorLabel: "Error",
+  tryAgainLabel: "Try again",
+  confirmLabel: "Confirm",
+  cancelLabel: "Cancel",
 } as const;
 
 export const DASHBOARD_TEXT = {

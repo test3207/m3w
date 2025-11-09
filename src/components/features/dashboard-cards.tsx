@@ -11,13 +11,7 @@ import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { EmptyState } from "@/components/ui/empty-state";
 import { COMMON_TEXT, DASHBOARD_TEXT } from "@/locales/messages";
 import { Plus } from "lucide-react";
-
-interface Library {
-  id: string;
-  name: string;
-  description: string | null;
-  _count: { songs: number };
-}
+import type { Library, Playlist } from "@/types/models";
 
 interface LibrariesCardProps {
   libraries: Library[];
@@ -79,7 +73,7 @@ export function LibrariesCard({ libraries }: LibrariesCardProps) {
                     metadata={
                       <MetadataItem
                         label={COMMON_TEXT.songsLabel}
-                        value={library._count.songs}
+                        value={library._count?.songs ?? 0}
                         variant="secondary"
                       />
                     }
@@ -92,13 +86,6 @@ export function LibrariesCard({ libraries }: LibrariesCardProps) {
       </CardContent>
     </Card>
   );
-}
-
-interface Playlist {
-  id: string;
-  name: string;
-  description: string | null;
-  _count: { songs: number };
 }
 
 interface PlaylistsCardProps {
@@ -161,7 +148,7 @@ export function PlaylistsCard({ playlists }: PlaylistsCardProps) {
                     metadata={
                       <MetadataItem
                         label={COMMON_TEXT.songsLabel}
-                        value={playlist._count.songs}
+                        value={playlist._count?.songs ?? 0}
                         variant="outline"
                       />
                     }

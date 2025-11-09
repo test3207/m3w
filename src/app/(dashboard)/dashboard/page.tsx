@@ -1,27 +1,62 @@
-import { auth } from "@/lib/auth/config";
-import { redirect } from "next/navigation";
+'use client';
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getUserLibraries } from "@/lib/services/library.service";
-import { getUserPlaylists } from "@/lib/services/playlist.service";
-import { DASHBOARD_TEXT } from "@/locales/messages";
+import { DASHBOARD_TEXT, COMMON_TEXT } from "@/locales/messages";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import {
   LibrariesCard,
   PlaylistsCard,
   StorageCard,
 } from "@/components/features/dashboard-cards";
+import { logger } from "@/lib/logger-client";
+import type { Library, Playlist } from "@/types/models";
 
-export default async function DashboardPage() {
-  const session = await auth();
+export default function DashboardPage() {
+  const router = useRouter();
+  const [libraries, setLibraries] = useState<Library[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!session?.user) {
-    redirect("/auth/signin");
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [librariesRes, playlistsRes] = await Promise.all([
+          fetch('/api/libraries'),
+          fetch('/api/playlists'),
+        ]);
+
+        if (!librariesRes.ok || !playlistsRes.ok) {
+          if (librariesRes.status === 401 || playlistsRes.status === 401) {
+            router.push('/signin');
+            return;
+          }
+          throw new Error('Failed to fetch data');
+        }
+
+        const librariesData = await librariesRes.json();
+        const playlistsData = await playlistsRes.json();
+
+        setLibraries(librariesData.data || []);
+        setPlaylists(playlistsData.data || []);
+      } catch (error) {
+        logger.error('Failed to fetch dashboard data', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
+        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+      </div>
+    );
   }
-
-  const [libraries, playlists] = await Promise.all([
-    getUserLibraries(session.user.id),
-    getUserPlaylists(session.user.id),
-  ]);
 
   return (
     <AdaptiveLayout

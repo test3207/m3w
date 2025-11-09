@@ -6,13 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ERROR_MESSAGES, UPLOAD_TEXT } from "@/locales/messages";
-
-interface LibraryOption {
-  id: string;
-  name: string;
-  description: string | null;
-  songCount: number;
-}
+import { logger } from "@/lib/logger-client";
+import type { LibraryOption } from "@/types/models";
 
 interface UploadSongFormProps {
   libraries: LibraryOption[];
@@ -150,7 +145,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
 
       resetForm();
     } catch (error) {
-      console.error(error);
+      logger.error('Upload failed', error);
       setStatus({ type: "error", message: ERROR_MESSAGES.uploadErrorGeneric });
     } finally {
       setSubmitting(false);

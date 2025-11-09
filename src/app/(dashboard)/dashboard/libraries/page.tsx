@@ -1,7 +1,7 @@
-import { auth } from "@/lib/auth/config";
-import { createLibrary, getUserLibraries } from "@/lib/services/library.service";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+'use client';
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,42 +14,82 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import Link from "next/link";
 import { DeleteLibraryButton } from "@/components/features/libraries/delete-library-button";
-import { LIBRARY_TEXT } from "@/locales/messages";
+import { LIBRARY_TEXT, COMMON_TEXT } from "@/locales/messages";
+import { logger } from "@/lib/logger-client";
+import type { Library } from "@/types/models";
 
-async function createLibraryAction(formData: FormData) {
-  "use server";
+export default function LibrariesPageRefactored() {
+  const router = useRouter();
+  const [libraries, setLibraries] = useState<Library[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
+  useEffect(() => {
+    async function fetchLibraries() {
+      try {
+        const res = await fetch('/api/libraries');
+        if (!res.ok) {
+          if (res.status === 401) {
+            router.push('/signin');
+            return;
+          }
+          throw new Error('Failed to fetch libraries');
+        }
+        const data = await res.json();
+        setLibraries(data.data || []);
+      } catch (error) {
+        logger.error('Failed to fetch libraries', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchLibraries();
+  }, [router]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+
+    try {
+      const res = await fetch('/api/libraries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to create library');
+      }
+
+      const data = await res.json();
+      if (data.data) {
+        setLibraries(prev => [...prev, data.data]);
+      }
+      
+      event.currentTarget.reset();
+    } catch (error) {
+      logger.error('Failed to create library', error);
+      alert('Failed to create library. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
+        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+      </div>
+    );
   }
-
-  const name = formData.get("name");
-  const description = formData.get("description");
-
-  if (typeof name !== "string" || name.trim().length === 0) {
-    return;
-  }
-
-  const trimmedDescription =
-    typeof description === "string" && description.trim().length > 0
-      ? description.trim()
-      : null;
-
-  await createLibrary(session.user.id, name.trim(), trimmedDescription);
-
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/libraries");
-}
-
-export default async function LibrariesPageRefactored() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
-  }
-
-  const libraries = await getUserLibraries(session.user.id);
 
   return (
     <AdaptiveLayout
@@ -82,7 +122,7 @@ export default async function LibrariesPageRefactored() {
               <CardTitle>{LIBRARY_TEXT.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
-              <form action={createLibraryAction} className="flex flex-col gap-4">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">{LIBRARY_TEXT.manager.form.nameLabel}</Label>
                   <Input
@@ -90,6 +130,7 @@ export default async function LibrariesPageRefactored() {
                     name="name"
                     placeholder={LIBRARY_TEXT.manager.form.namePlaceholder}
                     required
+                    disabled={submitting}
                   />
                 </div>
 
@@ -100,11 +141,12 @@ export default async function LibrariesPageRefactored() {
                     name="description"
                     placeholder={LIBRARY_TEXT.manager.form.descriptionPlaceholder}
                     rows={3}
+                    disabled={submitting}
                   />
                 </div>
 
-                <Button type="submit" className="w-full">
-                  {LIBRARY_TEXT.manager.form.submitLabel}
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? 'Creating...' : LIBRARY_TEXT.manager.form.submitLabel}
                 </Button>
               </form>
             </CardContent>
@@ -139,7 +181,7 @@ export default async function LibrariesPageRefactored() {
                           <>
                             <MetadataItem
                               label={LIBRARY_TEXT.manager.list.metadataSongsLabel}
-                              value={library._count.songs}
+                              value={library._count?.songs ?? 0}
                               variant="secondary"
                             />
                             <MetadataItem
