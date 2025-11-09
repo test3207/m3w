@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (!action) {
       return NextResponse.json(
-        { error: 'Missing action parameter' },
+        { error: ERROR_MESSAGES.missingActionParameter },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
@@ -109,7 +109,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (action === 'add') {
       if (!songId) {
         return NextResponse.json(
-          { error: 'Missing songId' },
+          { error: ERROR_MESSAGES.missingSongId },
           { status: HttpStatusCode.BAD_REQUEST }
         );
       }
@@ -117,7 +117,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const result = await addSongToPlaylist(playlistId, songId, session.user.id);
       if (!result) {
         return NextResponse.json(
-          { error: 'Unauthorized or resource not found' },
+          { error: ERROR_MESSAGES.unauthorizedOrNotFound },
           { status: HttpStatusCode.FORBIDDEN }
         );
       }
@@ -129,7 +129,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (action === 'remove') {
       if (!songId) {
         return NextResponse.json(
-          { error: 'Missing songId' },
+          { error: ERROR_MESSAGES.missingSongId },
           { status: HttpStatusCode.BAD_REQUEST }
         );
       }
@@ -137,7 +137,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const result = await removeSongFromPlaylist(playlistId, songId, session.user.id);
       if (!result) {
         return NextResponse.json(
-          { error: 'Playlist not found or unauthorized' },
+          { error: ERROR_MESSAGES.playlistNotFoundOrUnauthorized },
           { status: HttpStatusCode.NOT_FOUND }
         );
       }
@@ -149,7 +149,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (action === 'move') {
       if (!songId || !direction || !['up', 'down'].includes(direction)) {
         return NextResponse.json(
-          { error: 'Invalid songId or direction' },
+          { error: ERROR_MESSAGES.invalidSongIdOrDirection },
           { status: HttpStatusCode.BAD_REQUEST }
         );
       }
@@ -157,7 +157,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const playlist = await getPlaylistById(playlistId, session.user.id);
       if (!playlist) {
         return NextResponse.json(
-          { error: 'Playlist not found' },
+          { error: ERROR_MESSAGES.playlistNotFound },
           { status: HttpStatusCode.NOT_FOUND }
         );
       }
@@ -167,7 +167,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
       if (currentIndex === -1) {
         return NextResponse.json(
-          { error: 'Song not found in playlist' },
+          { error: ERROR_MESSAGES.songNotFoundInPlaylist },
           { status: HttpStatusCode.NOT_FOUND }
         );
       }
@@ -178,7 +178,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         [order[currentIndex], order[currentIndex + 1]] = [order[currentIndex + 1], order[currentIndex]];
       } else {
         return NextResponse.json(
-          { error: 'Invalid direction for current position' },
+          { error: ERROR_MESSAGES.invalidDirectionForPosition },
           { status: HttpStatusCode.BAD_REQUEST }
         );
       }
@@ -186,7 +186,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const reorderResult = await reorderPlaylistSongs(playlistId, session.user.id, order);
       if (!reorderResult?.success) {
         return NextResponse.json(
-          { error: 'Failed to reorder songs' },
+          { error: ERROR_MESSAGES.failedToReorderSongs },
           { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
         );
       }
@@ -198,7 +198,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (action === 'reorder') {
       if (!Array.isArray(songIds)) {
         return NextResponse.json(
-          { error: 'Missing or invalid songIds array' },
+          { error: ERROR_MESSAGES.missingOrInvalidSongIds },
           { status: HttpStatusCode.BAD_REQUEST }
         );
       }
@@ -206,7 +206,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const result = await reorderPlaylistSongs(playlistId, session.user.id, songIds);
       if (!result?.success) {
         return NextResponse.json(
-          { error: result?.reason || 'Failed to reorder songs' },
+          { error: result?.reason || ERROR_MESSAGES.failedToReorderSongs },
           { status: HttpStatusCode.BAD_REQUEST }
         );
       }
@@ -215,13 +215,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     return NextResponse.json(
-      { error: `Unknown action: ${action}` },
+      { error: `${ERROR_MESSAGES.unknownAction}: ${action}` },
       { status: HttpStatusCode.BAD_REQUEST }
     );
   } catch (error) {
     logger.error({ msg: 'Failed to update playlist', error });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: ERROR_MESSAGES.internalServerError },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

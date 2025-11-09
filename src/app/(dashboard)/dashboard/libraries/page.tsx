@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import Link from "next/link";
 import { DeleteLibraryButton } from "@/components/features/libraries/delete-library-button";
-import { LIBRARY_TEXT, COMMON_TEXT } from "@/locales/messages";
+import { LIBRARY_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
 import { logger } from "@/lib/logger-client";
 import type { Library } from "@/types/models";
 
@@ -77,7 +77,7 @@ export default function LibrariesPageRefactored() {
       event.currentTarget.reset();
     } catch (error) {
       logger.error('Failed to create library', error);
-      alert('Failed to create library. Please try again.');
+      alert(ERROR_MESSAGES.failedToCreateLibrary);
     } finally {
       setSubmitting(false);
     }
@@ -146,7 +146,7 @@ export default function LibrariesPageRefactored() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? 'Creating...' : LIBRARY_TEXT.manager.form.submitLabel}
+                  {submitting ? COMMON_TEXT.creatingLabel : LIBRARY_TEXT.manager.form.submitLabel}
                 </Button>
               </form>
             </CardContent>

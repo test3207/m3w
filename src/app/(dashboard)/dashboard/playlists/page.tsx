@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { HStack } from "@/components/ui/stack";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { COMMON_TEXT, PLAYLIST_TEXT } from "@/locales/messages";
+import { COMMON_TEXT, PLAYLIST_TEXT, ERROR_MESSAGES } from "@/locales/messages";
 import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import Link from "next/link";
 import { logger } from "@/lib/logger-client";
@@ -80,14 +80,14 @@ export default function PlaylistsPage() {
       event.currentTarget.reset();
     } catch (error) {
       logger.error('Failed to create playlist', error);
-      alert('Failed to create playlist. Please try again.');
+      alert(ERROR_MESSAGES.failedToCreatePlaylist);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (playlistId: string) => {
-    if (!confirm('Are you sure you want to delete this playlist?')) {
+    if (!confirm(COMMON_TEXT.confirmDeletePlaylist)) {
       return;
     }
 
@@ -104,7 +104,7 @@ export default function PlaylistsPage() {
       setPlaylists(prev => prev.filter(p => p.id !== playlistId));
     } catch (error) {
       logger.error('Failed to delete playlist', error);
-      alert('Failed to delete playlist. Please try again.');
+      alert(ERROR_MESSAGES.failedToDeletePlaylist);
     } finally {
       setDeletingId(null);
     }
@@ -185,7 +185,7 @@ export default function PlaylistsPage() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? 'Creating...' : PLAYLIST_TEXT.manager.form.submitLabel}
+                  {submitting ? COMMON_TEXT.creatingLabel : PLAYLIST_TEXT.manager.form.submitLabel}
                 </Button>
               </form>
             </CardContent>
@@ -255,7 +255,7 @@ export default function PlaylistsPage() {
                                 onClick={() => handleDelete(playlist.id)}
                                 disabled={deletingId === playlist.id}
                               >
-                                {deletingId === playlist.id ? 'Deleting...' : PLAYLIST_TEXT.manager.list.deleteButton}
+                                {deletingId === playlist.id ? COMMON_TEXT.deletingLabel : PLAYLIST_TEXT.manager.list.deleteButton}
                               </Button>
                             </HStack>
                           }

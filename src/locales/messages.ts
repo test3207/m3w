@@ -20,6 +20,7 @@ export const ERROR_MESSAGES = {
   playlistOrSongNotFound: "Playlist or song not found",
   failedToDeletePlaylist: "Failed to delete playlist",
   playlistNotFound: "Playlist not found",
+  playlistNotFoundOrUnauthorized: "Playlist not found or unauthorized",
   invalidSongOrder: "Invalid song order",
   failedToReorderSongs: "Failed to reorder playlist songs",
   failedToSeedPlayback: "Failed to seed playback",
@@ -30,11 +31,22 @@ export const ERROR_MESSAGES = {
   failedToStreamAudio: "Failed to stream audio",
   failedToFetchPlaylistTracks: "Failed to fetch playlist tracks",
   songNotFound: "Song not found",
+  songNotFoundInPlaylist: "Song not found in playlist",
   uploadFailed: "Upload failed. Please try again later.",
   uploadErrorGeneric: "Something went wrong during upload. Please try again later.",
   noAudioFileSelected: "Please select an audio file.",
   noLibrarySelected: "Please choose a library to save the song.",
   libraryUnavailable: "Library not found",
+  missingActionParameter: "Missing action parameter",
+  missingSongId: "Missing songId",
+  missingOrInvalidSongIds: "Missing or invalid songIds array",
+  unauthorizedOrNotFound: "Unauthorized or resource not found",
+  invalidSongIdOrDirection: "Invalid songId or direction",
+  invalidDirectionForPosition: "Invalid direction for current position",
+  unknownAction: "Unknown action",
+  internalServerError: "Internal server error",
+  failedToSignOut: "Failed to sign out",
+  genericTryAgain: "Please try again.",
 } as const;
 
 export const SUCCESS_MESSAGES = {
@@ -51,6 +63,11 @@ export const COMMON_TEXT = {
   tryAgainLabel: "Try again",
   confirmLabel: "Confirm",
   cancelLabel: "Cancel",
+  creatingLabel: "Creating...",
+  deletingLabel: "Deleting...",
+  uploadingLabel: "Uploading...",
+  savingLabel: "Saving...",
+  confirmDeletePlaylist: "Are you sure you want to delete this playlist?",
 } as const;
 
 export const DASHBOARD_TEXT = {
