@@ -2,7 +2,60 @@
 
 ## Overview
 
-The Azure deployment workflow includes comprehensive pre-deployment checks to ensure code quality before deploying to production. If any check fails, the deployment is automatically aborted.
+The Azure deployment workflow uses a **reusable checks workflow** to ensure code quality before deploying to production. This approach eliminates code duplication and ensures PR checks and deployment checks use identical validation logic.
+
+## Architecture
+
+### Workflow Files
+
+```
+.github/workflows/
+├── reusable-checks.yml      # ⭐ Shared checks (reusable workflow)
+├── pr-check.yml              # PR validation (calls reusable-checks.yml)
+└── azure-deploy.yml          # Azure deployment (calls reusable-checks.yml)
+```
+
+**Key Benefits:**
+- ✅ **Single source of truth** - Checks defined once, used everywhere
+- ✅ **No code duplication** - PR and deploy use same validation logic
+- ✅ **Easy maintenance** - Update checks in one place
+- ✅ **Consistency guaranteed** - Impossible for PR and deploy checks to diverge
+
+### Reusable Checks Workflow
+
+`reusable-checks.yml` contains three jobs:
+
+1. **code-quality** - ESLint, TypeScript, Prisma validation, migration drift
+2. **build-and-test** - Build Next.js, run tests with coverage
+3. **docker-build** - Validate Docker image builds successfully
+
+This workflow accepts parameters:
+- `upload-coverage` - Whether to upload coverage to Codecov (true for PR, false for deploy)
+- `upload-artifacts` - Whether to save test results as artifacts (false for PR, true for deploy)
+
+### How PR Check Uses It
+
+```yaml
+# .github/workflows/pr-check.yml
+jobs:
+  run-checks:
+    uses: ./.github/workflows/reusable-checks.yml  # 👈 Calls reusable workflow
+    with:
+      upload-coverage: true      # Show coverage on PR
+      upload-artifacts: false    # Don't need artifacts for PR
+```
+
+### How Azure Deploy Uses It
+
+```yaml
+# .github/workflows/azure-deploy.yml
+jobs:
+  pre-deployment-checks:
+    uses: ./.github/workflows/reusable-checks.yml  # 👈 Same checks!
+    with:
+      upload-coverage: false     # Skip Codecov for deploy
+      upload-artifacts: true     # Save for debugging if needed
+```
 
 ## Workflow Stages
 
@@ -120,14 +173,64 @@ az containerapp revision activate \
 ## Job Dependencies
 
 ```
-code-quality ─────┐
-                  ├──> build-and-push ──> database-migration ──> deploy ──> notify
-build-and-test ───┘
+Reusable Checks (reusable-checks.yml)
+├── code-quality
+├── build-and-test
+└── docker-build
+
+Azure Deployment (azure-deploy.yml)
+pre-deployment-checks (calls reusable-checks.yml) ──> build-and-push ──> database-migration ──> deploy ──> notify
 ```
 
-- `build-and-push` requires **both** `code-quality` and `build-and-test` to succeed
-- If either pre-deployment check fails, `build-and-push` will not run
-- Subsequent jobs (`database-migration`, `deploy`, `notify`) are skipped
+- `build-and-push` requires `pre-deployment-checks` to succeed
+- `pre-deployment-checks` internally requires all three checks (code-quality, build-and-test, docker-build)
+- If **any** check fails in the reusable workflow, `pre-deployment-checks` fails
+- If `pre-deployment-checks` fails, all subsequent jobs are skipped
+
+## Benefits of Reusable Workflow Approach
+
+### 1. No Code Duplication
+
+**Before** (duplicated logic):
+```yaml
+# pr-check.yml has 150+ lines of check definitions
+# azure-deploy.yml copies same 150+ lines
+# Total: 300+ lines, must keep in sync manually
+```
+
+**After** (shared logic):
+```yaml
+# reusable-checks.yml: 150 lines (single source of truth)
+# pr-check.yml: 10 lines (calls reusable workflow)
+# azure-deploy.yml: 10 lines (calls reusable workflow)
+# Total: 170 lines, always in sync
+```
+
+### 2. Guaranteed Consistency
+
+With separate workflows, it's possible for PR checks and deployment checks to diverge over time (e.g., someone updates one but forgets the other). With a reusable workflow, **it's impossible for them to be different**.
+
+### 3. Easy Updates
+
+Need to add a new check? Update it in **one place** (`reusable-checks.yml`), and both PR and deploy workflows automatically get the update.
+
+**Example:** Adding a security audit check
+```yaml
+# Only edit reusable-checks.yml
+- name: Security audit
+  run: npm audit --production
+```
+
+Both PR checks and deployment will now include the security audit.
+
+### 4. Different Behavior Per Context
+
+The reusable workflow accepts parameters to customize behavior:
+
+- **PR context**: Upload coverage reports, show in PR comments
+- **Deploy context**: Skip coverage upload (saves time), save test artifacts for debugging
+
+Same checks, different outputs.
 
 ## Environment Variables Required
 
