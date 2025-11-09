@@ -1,0 +1,284 @@
+name: Azure Deployment
+
+on:
+  push:
+    branches:
+      - main       # Production deployment
+      - develop    # Staging deployment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+      tag:
+        description: 'Docker image tag (leave empty for branch name)'
+        required: false
+        type: string
+
+# Prevent concurrent deployments to the same environment
+concurrency:
+  group: azure-deploy-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+  cancel-in-progress: false
+
+env:
+  AZURE_REGISTRY: m3wacr.azurecr.io
+  IMAGE_NAME: m3w
+  RESOURCE_GROUP: m3w-rg
+  NODE_VERSION: '22'
+
+jobs:
+  prepare:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      image-tag: ${{ steps.set-tag.outputs.tag }}
+      app-name: ${{ steps.set-env.outputs.app-name }}
+    
+    steps:
+      - name: Determine deployment environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENV="production"
+          else
+            ENV="staging"
+          fi
+          
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          
+          # Set app name based on environment
+          case $ENV in
+            production)
+              echo "app-name=m3w-app" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "app-name=m3w-app-staging" >> $GITHUB_OUTPUT
+              ;;
+            development)
+              echo "app-name=m3w-app-dev" >> $GITHUB_OUTPUT
+              ;;
+          esac
+      
+      - name: Determine image tag
+        id: set-tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_SHA::8}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+  build-and-push:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    needs: prepare
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.AZURE_REGISTRY }}
+          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ needs.prepare.outputs.image-tag }}
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.environment == 'production' }}
+            type=sha,prefix={{branch}}-
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          build-args: |
+            NODE_ENV=production
+
+  database-migration:
+    name: Database Migration
+    runs-on: ubuntu-latest
+    needs: [prepare, build-and-push]
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      
+      - name: Verify migration status
+        run: |
+          echo "✅ Database migrations completed successfully"
+          npx prisma migrate status
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  deploy:
+    name: Deploy to Azure Container Apps
+    runs-on: ubuntu-latest
+    needs: [prepare, build-and-push, database-migration]
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}
+      url: ${{ steps.deploy.outputs.app-url }}
+    
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Deploy to Container Apps
+        id: deploy
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppName: ${{ needs.prepare.outputs.app-name }}
+          imageToDeploy: ${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.image-tag }}
+          environmentVariables: >
+            NODE_ENV=production
+            DATABASE_URL=secretref:database-url
+            REDIS_URL=secretref:redis-url
+            NEXTAUTH_URL=secretref:nextauth-url
+            NEXTAUTH_SECRET=secretref:nextauth-secret
+            GITHUB_CLIENT_ID=secretref:github-client-id
+            GITHUB_CLIENT_SECRET=secretref:github-client-secret
+            AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string
+            AZURE_STORAGE_CONTAINER_NAME=${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+      
+      - name: Get Container App URL
+        run: |
+          APP_URL=$(az containerapp show \
+            --name ${{ needs.prepare.outputs.app-name }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          echo "app-url=https://$APP_URL" >> $GITHUB_OUTPUT
+          echo "🚀 Application deployed to: https://$APP_URL"
+
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: [prepare, deploy]
+    
+    steps:
+      - name: Wait for deployment to stabilize
+        run: sleep 30
+      
+      - name: Check application health
+        run: |
+          APP_URL=$(az containerapp show \
+            --name ${{ needs.prepare.outputs.app-name }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          
+          # Try health check endpoint (retry up to 5 times)
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APP_URL/api/health" || echo "000")
+            if [ "$STATUS" == "200" ]; then
+              echo "✅ Health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "⏳ Health check failed with status $STATUS (attempt $i/5)"
+            sleep 10
+          done
+          
+          echo "❌ Health check failed after 5 attempts"
+          exit 1
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [prepare, deploy, health-check]
+    if: always()
+    
+    steps:
+      - name: Deployment Success
+        if: needs.health-check.result == 'success'
+        run: |
+          echo "✅ Deployment to ${{ needs.prepare.outputs.environment }} completed successfully"
+          echo "🏷️  Image Tag: ${{ needs.prepare.outputs.image-tag }}"
+          echo "📦 Container App: ${{ needs.prepare.outputs.app-name }}"
+      
+      - name: Deployment Failure
+        if: needs.health-check.result != 'success'
+        run: |
+          echo "❌ Deployment to ${{ needs.prepare.outputs.environment }} failed"
+          echo "Please check the logs for more details"
+          exit 1
+
+  rollback:
+    name: Rollback (Manual)
+    runs-on: ubuntu-latest
+    needs: [prepare, deploy]
+    if: failure() && github.event_name == 'workflow_dispatch'
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}-rollback
+    
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Get previous revision
+        id: prev-revision
+        run: |
+          PREV_REVISION=$(az containerapp revision list \
+            --name ${{ needs.prepare.outputs.app-name }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[?properties.active==\`true\`] | [1].name" \
+            --output tsv)
+          echo "revision=$PREV_REVISION" >> $GITHUB_OUTPUT
+      
+      - name: Rollback to previous revision
+        if: steps.prev-revision.outputs.revision != ''
+        run: |
+          az containerapp revision activate \
+            --name ${{ needs.prepare.outputs.app-name }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision ${{ steps.prev-revision.outputs.revision }}
+          echo "🔄 Rolled back to revision: ${{ steps.prev-revision.outputs.revision }}"

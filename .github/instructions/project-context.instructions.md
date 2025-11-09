@@ -27,17 +27,13 @@
 - **Demo & Evaluation**
   - User testing and first deployment
   - Read-only demo environment so stakeholders can trial the app without data liability
-- **Deployment Pathfinding**
-  - Lightweight deployment path (GitHub Actions → Aliyun/Azure) mirroring the local setup
-- **Delivery & Infrastructure**
-  - CI/CD pipeline
-    - Build & release automation (lint/test/build/versioning/artifact)
-    - Deployment automation (staging/prod rollouts & promotion gates)
-  - Deployment strategy
-    - Example/demo deployment flow (read-only environment)
-    - Production deployment with observability & platform integrations
-      - Kubernetes deployment configurations
-      - Alignment of infrastructure tooling (Kubernetes, PostgreSQL, ELK, etc.) with the observability stack for production readiness
+- **Azure Deployment**
+  - Azure infrastructure templates (Bicep) for Container Apps, PostgreSQL, Redis, and Blob Storage
+  - GitHub Actions CI/CD pipeline for automated deployment
+  - Multi-environment support (development, staging, production)
+- **Storage Migration**
+  - Azure Blob Storage adapter to replace MinIO in cloud deployments
+  - Maintain MinIO support for local development
 ### Planned Initiatives (Upcoming)
 - **Core Product Enhancements**
   - Enhanced user profile management
@@ -206,21 +202,27 @@ m3w/
 
 #### Infrastructure
 
-Local Development:
+**Local Development:**
 - Podman Desktop or Docker Desktop
 - Next.js app (dev mode)
 - PostgreSQL
 - Redis
-- MinIO
+- MinIO (S3-compatible object storage)
 
-Production:
-- Kubernetes deployment
-- Container runtime: containerd
-- Ingress: Nginx or Traefik
-- Stateful services for PostgreSQL, Redis, MinIO
-- Persistent volumes
-- CI/CD via GitHub Actions
-- Container registry: Docker Hub (official images)
+**Azure Cloud Deployment:**
+- Azure Container Apps (serverless containers with auto-scaling)
+- Azure Database for PostgreSQL Flexible Server
+- Azure Cache for Redis
+- Azure Blob Storage (replaces MinIO in cloud)
+- Azure Container Registry (private Docker registry)
+- Application Insights (telemetry and monitoring)
+- Virtual Network with private endpoints for security
+- GitHub Actions CI/CD pipeline for automated deployment
+
+**Deployment Environments:**
+- Development: Minimal resources, scale-to-zero capable
+- Staging: Production-like for testing
+- Production: High availability with zone redundancy
 
 ### Database Design
 
