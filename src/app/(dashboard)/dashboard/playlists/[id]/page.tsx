@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { HStack } from "@/components/ui/stack";
-import { PLAYLIST_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 import { formatDuration } from "@/lib/utils/format-duration";
 import { PlaylistSongControls } from "@/components/features/playlists/playlist-song-controls";
 import { logger } from "@/lib/logger-client";
@@ -19,6 +20,7 @@ import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Playlist } from "@/types/models";
 
 export default function PlaylistDetailPage() {
+  useLocale(); // Subscribe to locale changes
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
@@ -43,7 +45,7 @@ export default function PlaylistDetailPage() {
       if (res.status === HttpStatusCode.NOT_FOUND) {
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.playlistNotFoundOrUnauthorized,
+          title: I18n.error.playlistNotFoundOrUnauthorized,
         });
         router.push('/dashboard/playlists');
         return;
@@ -57,7 +59,7 @@ export default function PlaylistDetailPage() {
         logger.error('Failed to fetch playlist', { status: res.status });
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.failedToGetPlaylists,
+          title: I18n.error.failedToGetPlaylists,
           description: `Status: ${res.status}`,
         });
         return;
@@ -69,7 +71,7 @@ export default function PlaylistDetailPage() {
       logger.error('Failed to fetch playlist', error);
       toast({
         variant: "destructive",
-        title: ERROR_MESSAGES.genericTryAgain,
+        title: I18n.error.genericTryAgain,
       });
     } finally {
       setLoading(false);
@@ -84,7 +86,7 @@ export default function PlaylistDetailPage() {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
       </div>
     );
   }
@@ -92,7 +94,7 @@ export default function PlaylistDetailPage() {
   if (!playlist) {
     return (
       <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{COMMON_TEXT.notFoundLabel}</div>
+        <div className="text-center text-muted-foreground">{I18n.common.notFoundLabel}</div>
       </div>
     );
   }
@@ -113,12 +115,12 @@ export default function PlaylistDetailPage() {
       >
         <div className="flex h-full flex-col justify-end gap-3">
           <Button variant="ghost" size="sm" className="w-fit" asChild>
-            <Link href="/dashboard/playlists">{PLAYLIST_TEXT.detail.backToPlaylists}</Link>
+            <Link href="/dashboard/playlists">{I18n.playlist.detail.backToPlaylists}</Link>
           </Button>
 
           <PageHeader
-            title={`${PLAYLIST_TEXT.detail.titlePrefix}${playlist.name}`}
-            description={PLAYLIST_TEXT.detail.description}
+            title={`${I18n.playlist.detail.titlePrefix}${playlist.name}`}
+            description={I18n.playlist.detail.description}
           />
         </div>
       </AdaptiveSection>
@@ -133,14 +135,14 @@ export default function PlaylistDetailPage() {
           <CardHeader>
             <HStack justify="between" align="center">
               <div className="flex flex-col gap-1">
-                <CardTitle>{PLAYLIST_TEXT.detail.songListTitle}</CardTitle>
+                <CardTitle>{I18n.playlist.detail.songListTitle}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  {PLAYLIST_TEXT.detail.playlistDurationLabel}: {formatDuration(totalDuration)}
+                  {I18n.playlist.detail.playlistDurationLabel}: {formatDuration(totalDuration)}
                 </p>
               </div>
 
               <MetadataItem
-                label={PLAYLIST_TEXT.detail.songCountLabel}
+                label={I18n.playlist.detail.songCountLabel}
                 value={songs.length}
                 variant="secondary"
               />
@@ -150,12 +152,12 @@ export default function PlaylistDetailPage() {
             {songs.length === 0 ? (
                 <EmptyState
                   icon="📻"
-                  title={PLAYLIST_TEXT.detail.songListEmpty}
-                  description={PLAYLIST_TEXT.detail.addedFromLibraryHelper}
+                  title={I18n.playlist.detail.songListEmpty}
+                  description={I18n.playlist.detail.addedFromLibraryHelper}
                   action={
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/dashboard/libraries">
-                        {PLAYLIST_TEXT.detail.manageLibrariesCta}
+                        {I18n.playlist.detail.manageLibrariesCta}
                       </Link>
                     </Button>
                   }
@@ -171,13 +173,13 @@ export default function PlaylistDetailPage() {
                         <HStack as="div" gap="xs" wrap>
                           {item.song.album ? (
                             <MetadataItem
-                              label={PLAYLIST_TEXT.detail.songAlbumLabel}
+                              label={I18n.playlist.detail.songAlbumLabel}
                               value={item.song.album}
                               variant="outline"
                             />
                           ) : null}
                           <MetadataItem
-                            label={PLAYLIST_TEXT.detail.songDurationLabel}
+                            label={I18n.playlist.detail.songDurationLabel}
                             value={formatDuration(item.song.file?.duration ?? null)}
                             variant="secondary"
                           />

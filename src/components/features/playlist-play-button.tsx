@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useAudioPlayer } from '@/lib/audio/useAudioPlayer';
 import type { Track } from '@/lib/audio/player';
 import type { PlayContext } from '@/lib/audio/context';
-import { PLAYLIST_TEXT } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
 
 interface PlaylistPlayButtonProps {
@@ -24,6 +25,7 @@ interface PlaylistTrackResponse {
 }
 
 export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayButtonProps) {
+  useLocale(); // Subscribe to locale changes
   const { playFromQueue } = useAudioPlayer();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -88,9 +90,9 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
       size="sm"
       onClick={handlePlay}
       disabled={isLoading}
-      aria-label={`${PLAYLIST_TEXT.controls.playButtonAriaPrefix}${playlistName}`}
+      aria-label={`${I18n.playlist.controls.playButtonAriaPrefix}${playlistName}`}
     >
-      {isLoading ? PLAYLIST_TEXT.controls.playButtonLoading : PLAYLIST_TEXT.controls.playButtonLabel}
+      {isLoading ? I18n.playlist.controls.playButtonLoading : I18n.playlist.controls.playButtonLabel}
     </Button>
   );
 }

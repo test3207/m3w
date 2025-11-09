@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
 import { uploadAudioFile, decrementFileRef } from '@/lib/services/upload.service';
 import { createSong } from '@/lib/services/song.service';
-import { ERROR_MESSAGES } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
 import { logger } from '@/lib/logger';
 import { HttpStatusCode } from '@/lib/constants/http-status';
 
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.unauthorized },
+        { error: I18n.error.unauthorized },
         { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json(
-          { error: ERROR_MESSAGES.fileTooLarge },
+          { error: I18n.error.fileTooLarge },
           { status: HttpStatusCode.PAYLOAD_TOO_LARGE }
         );
       }
@@ -50,14 +50,14 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.noFileProvided },
+        { error: I18n.error.noFileProvided },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
 
     if (typeof libraryId !== 'string' || libraryId.trim().length === 0) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.libraryIdRequired },
+        { error: I18n.error.libraryIdRequired },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidFileType },
+        { error: I18n.error.invalidFileType },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     // Validate file size (max 100MB)
     if (file.size > MAX_UPLOAD_SIZE_BYTES) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.fileTooLarge },
+        { error: I18n.error.fileTooLarge },
         { status: HttpStatusCode.PAYLOAD_TOO_LARGE }
       );
     }
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
     if (!song) {
       await decrementFileRef(result.fileId);
       return NextResponse.json(
-        { error: ERROR_MESSAGES.libraryUnavailable },
+        { error: I18n.error.libraryUnavailable },
         { status: HttpStatusCode.NOT_FOUND }
       );
     }
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
     logger.error({ msg: 'File upload failed', error });
 
     return NextResponse.json(
-      { error: ERROR_MESSAGES.fileUploadFailed },
+      { error: I18n.error.fileUploadFailed },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

@@ -7,7 +7,7 @@ import {
 } from '@/lib/services/library.service';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
-import { ERROR_MESSAGES } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
 import { HttpStatusCode } from '@/lib/constants/http-status';
 
 const updateLibrarySchema = z.object({
@@ -30,7 +30,7 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id } = await context.params;
@@ -38,7 +38,7 @@ export async function GET(
 
     if (!library) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.libraryNotFound },
+        { error: I18n.error.libraryNotFound },
         { status: HttpStatusCode.NOT_FOUND }
       );
     }
@@ -50,7 +50,7 @@ export async function GET(
   } catch (error) {
     logger.error({ msg: 'Failed to get library', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToRetrieveLibrary },
+      { error: I18n.error.failedToRetrieveLibrary },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
@@ -67,7 +67,7 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id } = await context.params;
@@ -76,7 +76,7 @@ export async function PATCH(
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidInput, details: validation.error.issues },
+        { error: I18n.error.invalidInput, details: validation.error.issues },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
@@ -85,7 +85,7 @@ export async function PATCH(
 
     if (!library) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.libraryNotFound },
+        { error: I18n.error.libraryNotFound },
         { status: HttpStatusCode.NOT_FOUND }
       );
     }
@@ -97,7 +97,7 @@ export async function PATCH(
   } catch (error) {
     logger.error({ msg: 'Failed to update library', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToUpdateLibrary },
+      { error: I18n.error.failedToUpdateLibrary },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
@@ -114,7 +114,7 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id } = await context.params;
@@ -122,7 +122,7 @@ export async function DELETE(
 
     if (!result) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.libraryNotFound },
+        { error: I18n.error.libraryNotFound },
         { status: HttpStatusCode.NOT_FOUND }
       );
     }
@@ -134,7 +134,7 @@ export async function DELETE(
   } catch (error) {
     logger.error({ msg: 'Failed to delete library', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToDeleteLibrary },
+      { error: I18n.error.failedToDeleteLibrary },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

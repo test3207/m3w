@@ -10,6 +10,7 @@ Production-grade web application built with Next.js, PostgreSQL, and Redis.
 - **Cache**: Redis 7
 - **Authentication**: NextAuth.js v5 (GitHub OAuth)
 - **Styling**: Tailwind CSS v4
+- **i18n**: Custom Proxy-based system with type safety
 - **Logging**: Pino
 - **Container Runtime**: Docker or Podman (your choice)
 
@@ -179,9 +180,16 @@ m3w/
 │   │   └── icon.png              # App Router favicon source
 │   ├── components/               # UI building blocks (features, layouts, primitives)
 │   ├── lib/                      # Business logic, adapters, utilities
-│   ├── locales/                  # i18n message catalogs
+│   ├── locales/                  # i18n message catalogs and generated types
+│   │   ├── messages/             # Translation JSON files (en.json, zh-CN.json)
+│   │   ├── generated/            # Auto-generated TypeScript types
+│   │   ├── i18n.ts               # Proxy runtime with event system
+│   │   └── use-locale.ts         # React hook for language reactivity
 │   ├── test/                     # Unit and integration test helpers
 │   └── types/                    # Shared TypeScript declarations
+├── scripts/                      # Build and development automation
+│   ├── build-i18n.js             # i18n type generation and merging
+│   └── watch-i18n.js             # Development hot reload for i18n
 ├── package.json                  # Project manifest and npm scripts
 ├── tailwind.config.ts            # Tailwind CSS configuration
 ├── tsconfig.json                 # TypeScript compiler options
@@ -198,10 +206,12 @@ m3w/
 
 ## Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
+- `npm run dev` - Start development server (with i18n watch mode)
+- `npm run build` - Build for production (with i18n type generation)
 - `npm start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run i18n:build` - Manually rebuild i18n types
+- `npm run i18n:watch` - Watch i18n source files for changes
 
 ## Testing & Code Quality
 
@@ -210,6 +220,73 @@ m3w/
 - When a mock cannot fully satisfy an interface, document the gap and keep its shape aligned with the contract
 - Extract shared fixtures once the same test data appears twice to avoid missing fields
 - Reusable factories live in `src/test/fixtures/metadata.ts` and `src/test/fixtures/prisma.ts`
+
+## Internationalization (i18n)
+
+M3W uses a custom Proxy-based i18n system with full type safety.
+
+### Quick Start
+
+**In Client Components:**
+
+```typescript
+'use client';
+
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
+
+export default function MyComponent() {
+  useLocale(); // Required for language switching
+  return <h1>{I18n.dashboard.title}</h1>;
+}
+```
+
+**In API Routes:**
+
+```typescript
+import { I18n } from '@/locales/i18n';
+
+export async function POST() {
+  return NextResponse.json({
+    message: I18n.error.unauthorized
+  });
+}
+```
+
+**Switching Language:**
+
+```typescript
+import { setLocale } from '@/locales/i18n';
+
+<button onClick={() => setLocale('zh-CN')}>中文</button>
+```
+
+### Adding New Text
+
+1. Add to `src/locales/messages/en.json`:
+
+   ```json
+   {
+     "feature": {
+       "newText": "Your new text"
+     }
+   }
+   ```
+
+2. Run `npm run i18n:build` (or restart dev server)
+
+3. Add translation to `src/locales/messages/zh-CN.json` (optional)
+
+4. Use in code: `I18n.feature.newText`
+
+### Features
+
+- **Type Safety**: Full TypeScript autocomplete and error checking
+- **Hot Reload**: Changes to `en.json` auto-rebuild types in dev mode
+- **No Page Refresh**: Language switching updates instantly
+- **Hover Hints**: JSDoc shows English text on hover
+
+For detailed documentation, see [i18n system instructions](.github/instructions/i18n-system.instructions.md).
 
 ## Database Management
 

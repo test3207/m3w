@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth/config';
 import { createPlaylist, getUserPlaylists } from '@/lib/services/playlist.service';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
-import { ERROR_MESSAGES } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
 import { HttpStatusCode } from '@/lib/constants/http-status';
 
 const createPlaylistSchema = z.object({
@@ -20,7 +20,7 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const playlists = await getUserPlaylists(session.user.id);
@@ -32,7 +32,7 @@ export async function GET() {
   } catch (error) {
     logger.error({ msg: 'Failed to get playlists', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToGetPlaylists },
+      { error: I18n.error.failedToGetPlaylists },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const body = await request.json();
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidInput, details: validation.error.issues },
+        { error: I18n.error.invalidInput, details: validation.error.issues },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error({ msg: 'Failed to create playlist', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToCreatePlaylist },
+      { error: I18n.error.failedToCreatePlaylist },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

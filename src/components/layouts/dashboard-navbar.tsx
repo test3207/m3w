@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DASHBOARD_TEXT } from "@/locales/messages";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
 import { Sparkles } from "lucide-react";
 import { DashboardUserMenu } from "./dashboard-user-menu";
+import { LanguageSwitcher } from "./language-switcher";
 import { logger } from "@/lib/logger-client";
 
 interface User {
@@ -14,6 +16,7 @@ interface User {
 }
 
 export function DashboardNavbar() {
+  useLocale(); // Subscribe to locale changes
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -22,7 +25,9 @@ export function DashboardNavbar() {
         const res = await fetch('/api/auth/session');
         if (res.ok) {
           const data = await res.json();
-          setUser(data?.user || null);
+          console.log('[DashboardNavbar] Session API response:', data);
+          console.log('[DashboardNavbar] Extracted user:', data?.data?.user);
+          setUser(data?.data?.user || null);
         }
       } catch (error) {
         logger.error('Failed to fetch session', error);
@@ -42,33 +47,36 @@ export function DashboardNavbar() {
             <Link
               href="/dashboard"
               className="group inline-flex items-center gap-2 rounded-full px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:bg-primary/10"
-              aria-label={DASHBOARD_TEXT.navbar.goToDashboard}
+              aria-label={I18n.dashboard.navbar.goToDashboard}
             >
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
                 M3W
               </span>
               <div className="hidden xs:flex flex-col leading-tight">
-                <span className="text-sm font-semibold tracking-tight text-foreground group-hover:text-primary">
-                  {DASHBOARD_TEXT.navbar.title}
+                <span className="text-sm font-semibold tracking-tight text-foreground group-hover:text-primary" suppressHydrationWarning>
+                  {I18n.dashboard.navbar.title}
                 </span>
-                <span className="text-[11px] text-muted-foreground">
-                  {DASHBOARD_TEXT.badgeProductionReady}
+                <span className="text-[11px] text-muted-foreground" suppressHydrationWarning>
+                  {I18n.dashboard.badgeProductionReady}
                 </span>
               </div>
             </Link>
             <div className="hidden md:flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span>{DASHBOARD_TEXT.badgeProductionReady}</span>
+              <span suppressHydrationWarning>{I18n.dashboard.badgeProductionReady}</span>
             </div>
           </div>
 
-          {user && (
-            <DashboardUserMenu
-              name={user.name}
-              email={user.email || ""}
-              image={user.image}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            {user && (
+              <DashboardUserMenu
+                name={user.name}
+                email={user.email || ""}
+                image={user.image}
+              />
+            )}
+          </div>
         </div>
       </div>
     </header>

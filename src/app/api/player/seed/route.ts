@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
 import { logger } from '@/lib/logger';
 import { getDefaultPlaybackSeed } from '@/lib/services/player.service';
-import { ERROR_MESSAGES } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
 import { HttpStatusCode } from '@/lib/constants/http-status';
 
 export async function GET() {
@@ -11,7 +11,7 @@ export async function GET() {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.unauthorized },
+        { error: I18n.error.unauthorized },
         { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
@@ -51,7 +51,7 @@ export async function GET() {
     });
 
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToSeedPlayback },
+      { error: I18n.error.failedToSeedPlayback },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth/config';
 import { addSongToPlaylist } from '@/lib/services/playlist.service';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
-import { ERROR_MESSAGES } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
 import { HttpStatusCode } from '@/lib/constants/http-status';
 
 type RouteContext = {
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id } = await context.params;
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidInput, details: validation.error.issues },
+        { error: I18n.error.invalidInput, details: validation.error.issues },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const relation = await addSongToPlaylist(id, validation.data.songId, session.user.id);
 
     if (!relation) {
-      return NextResponse.json({ error: ERROR_MESSAGES.playlistNotFound }, { status: HttpStatusCode.NOT_FOUND });
+      return NextResponse.json({ error: I18n.error.playlistNotFound }, { status: HttpStatusCode.NOT_FOUND });
     }
 
     return NextResponse.json({
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   } catch (error) {
     logger.error({ msg: 'Failed to add song to playlist', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToAddSongToPlaylist },
+      { error: I18n.error.failedToAddSongToPlaylist },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

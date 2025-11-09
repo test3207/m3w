@@ -6,7 +6,7 @@ import {
 } from '@/lib/services/library.service';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
-import { ERROR_MESSAGES } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
 import { HttpStatusCode } from '@/lib/constants/http-status';
 
 const createLibrarySchema = z.object({
@@ -22,7 +22,7 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const libraries = await getUserLibraries(session.user.id);
@@ -34,7 +34,7 @@ export async function GET() {
   } catch (error) {
     logger.error({ msg: 'Failed to get libraries', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToRetrieveLibraries },
+      { error: I18n.error.failedToRetrieveLibraries },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const body = await request.json();
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidInput, details: validation.error.issues },
+        { error: I18n.error.invalidInput, details: validation.error.issues },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error({ msg: 'Failed to create library', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToCreateLibrary },
+      { error: I18n.error.failedToCreateLibrary },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

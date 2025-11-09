@@ -1,11 +1,8 @@
-import type { Metadata } from "next";
+'use client';
+
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-
-export const metadata: Metadata = {
-  title: "M3W - Next.js Full-Stack App",
-  description: "Production-grade web application built with Next.js",
-};
+import { I18nProvider } from "@/components/providers/i18n-provider";
 
 export default function RootLayout({
   children,
@@ -15,7 +12,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
+        <I18nProvider>
+          {children}
+        </I18nProvider>
         <Toaster />
       </body>
     </html>

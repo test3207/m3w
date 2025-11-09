@@ -6,13 +6,15 @@ import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-l
 import { UploadSongForm } from "@/components/features/upload-song-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { UPLOAD_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Library, LibraryOption } from "@/types/models";
 
 export default function UploadPage() {
+  useLocale(); // Subscribe to locale changes
   const router = useRouter();
   const { toast } = useToast();
   const [libraries, setLibraries] = useState<LibraryOption[]>([]);
@@ -34,7 +36,7 @@ export default function UploadPage() {
           logger.error('Failed to fetch libraries', { status: res.status });
           toast({
             variant: "destructive",
-            title: ERROR_MESSAGES.failedToRetrieveLibraries,
+            title: I18n.error.failedToRetrieveLibraries,
           });
           return;
         }
@@ -54,7 +56,7 @@ export default function UploadPage() {
         logger.error('Failed to fetch libraries', error);
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.genericTryAgain,
+          title: I18n.error.genericTryAgain,
         });
       } finally {
         setLoading(false);
@@ -67,7 +69,7 @@ export default function UploadPage() {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
       </div>
     );
   }
@@ -85,8 +87,8 @@ export default function UploadPage() {
       >
         <div className="flex h-full flex-col justify-end">
           <PageHeader
-            title={UPLOAD_TEXT.page.title}
-            description={UPLOAD_TEXT.page.description}
+            title={I18n.upload.page.title}
+            description={I18n.upload.page.description}
           />
         </div>
       </AdaptiveSection>
@@ -99,12 +101,12 @@ export default function UploadPage() {
       >
         <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader>
-            <CardTitle>{UPLOAD_TEXT.page.cardTitle}</CardTitle>
+            <CardTitle>{I18n.upload.page.cardTitle}</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto">
             {libraries.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {UPLOAD_TEXT.page.emptyState}
+                {I18n.upload.page.emptyState}
               </p>
             ) : (
               <UploadSongForm libraries={libraries} />

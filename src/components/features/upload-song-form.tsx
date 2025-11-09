@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ERROR_MESSAGES, UPLOAD_TEXT } from "@/locales/messages";
+import { I18n } from '@/locales/i18n';
 import { logger } from "@/lib/logger-client";
 import type { LibraryOption } from "@/types/models";
 
@@ -85,12 +85,12 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
     event.preventDefault();
 
     if (!file) {
-      setStatus({ type: "error", message: ERROR_MESSAGES.noAudioFileSelected });
+      setStatus({ type: "error", message: I18n.error.noAudioFileSelected });
       return;
     }
 
     if (!libraryId) {
-      setStatus({ type: "error", message: ERROR_MESSAGES.noLibrarySelected });
+      setStatus({ type: "error", message: I18n.error.noLibrarySelected });
       return;
     }
 
@@ -121,7 +121,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
       const result = await response.json();
 
       if (!response.ok || !result?.success) {
-        const message = result?.error ?? ERROR_MESSAGES.uploadFailed;
+        const message = result?.error ?? I18n.error.uploadFailed;
         setStatus({ type: "error", message });
         return;
       }
@@ -134,7 +134,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
 
       setStatus({
         type: "success",
-  message: `${UPLOAD_TEXT.form.successPrefix}${songTitle}${UPLOAD_TEXT.form.successSuffix}${selectedLibraryName || UPLOAD_TEXT.form.successFallbackLibrary}`,
+  message: `${I18n.upload.form.successPrefix}${songTitle}${I18n.upload.form.successSuffix}${selectedLibraryName || I18n.upload.form.successFallbackLibrary}`,
         details: {
           songTitle,
           libraryName: selectedLibraryName || "",
@@ -146,7 +146,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
       resetForm();
     } catch (error) {
       logger.error('Upload failed', error);
-      setStatus({ type: "error", message: ERROR_MESSAGES.uploadErrorGeneric });
+      setStatus({ type: "error", message: I18n.error.uploadErrorGeneric });
     } finally {
       setSubmitting(false);
     }
@@ -157,7 +157,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-  <Label htmlFor="library">{UPLOAD_TEXT.form.selectLibraryLabel}</Label>
+  <Label htmlFor="library">{I18n.upload.form.selectLibraryLabel}</Label>
         <select
           id="library"
           value={libraryId}
@@ -165,21 +165,21 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           {libraries.length === 0 ? (
-            <option value="">{UPLOAD_TEXT.form.libraryOptionFallback}</option>
+            <option value="">{I18n.upload.form.libraryOptionFallback}</option>
           ) : null}
           {libraries.map((library) => (
             <option key={library.id} value={library.id}>
-              {library.name} ({library.songCount}{UPLOAD_TEXT.form.librarySongSuffix})
+              {library.name} ({library.songCount}{I18n.upload.form.librarySongSuffix})
             </option>
           ))}
         </select>
         <p className="text-xs text-muted-foreground">
-          {UPLOAD_TEXT.form.selectLibraryPlaceholder}
+          {I18n.upload.form.selectLibraryPlaceholder}
         </p>
       </div>
 
       <div className="space-y-2">
-  <Label htmlFor="file">{UPLOAD_TEXT.form.selectFileLabel}</Label>
+  <Label htmlFor="file">{I18n.upload.form.selectFileLabel}</Label>
         <Input
           ref={fileInputRef}
           id="file"
@@ -189,109 +189,109 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           required
         />
         <p className="text-xs text-muted-foreground">
-          {UPLOAD_TEXT.form.fileHelper}
+          {I18n.upload.form.fileHelper}
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="title">{UPLOAD_TEXT.form.titleLabel}</Label>
+          <Label htmlFor="title">{I18n.upload.form.titleLabel}</Label>
           <Input
             id="title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.titlePlaceholder}
+            placeholder={I18n.upload.form.titlePlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="artist">{UPLOAD_TEXT.form.artistLabel}</Label>
+          <Label htmlFor="artist">{I18n.upload.form.artistLabel}</Label>
           <Input
             id="artist"
             value={artist}
             onChange={(event) => setArtist(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
+            placeholder={I18n.upload.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="album">{UPLOAD_TEXT.form.albumLabel}</Label>
+          <Label htmlFor="album">{I18n.upload.form.albumLabel}</Label>
           <Input
             id="album"
             value={album}
             onChange={(event) => setAlbum(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
+            placeholder={I18n.upload.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="albumArtist">{UPLOAD_TEXT.form.albumArtistLabel}</Label>
+          <Label htmlFor="albumArtist">{I18n.upload.form.albumArtistLabel}</Label>
           <Input
             id="albumArtist"
             value={albumArtist}
             onChange={(event) => setAlbumArtist(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
+            placeholder={I18n.upload.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="genre">{UPLOAD_TEXT.form.genreLabel}</Label>
+          <Label htmlFor="genre">{I18n.upload.form.genreLabel}</Label>
           <Input
             id="genre"
             value={genre}
             onChange={(event) => setGenre(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
+            placeholder={I18n.upload.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="composer">{UPLOAD_TEXT.form.composerLabel}</Label>
+          <Label htmlFor="composer">{I18n.upload.form.composerLabel}</Label>
           <Input
             id="composer"
             value={composer}
             onChange={(event) => setComposer(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
+            placeholder={I18n.upload.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="year">{UPLOAD_TEXT.form.yearLabel}</Label>
+          <Label htmlFor="year">{I18n.upload.form.yearLabel}</Label>
           <Input
             id="year"
             value={year}
             onChange={(event) => setYear(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.yearPlaceholder}
+            placeholder={I18n.upload.form.yearPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="trackNumber">{UPLOAD_TEXT.form.trackNumberLabel}</Label>
+          <Label htmlFor="trackNumber">{I18n.upload.form.trackNumberLabel}</Label>
           <Input
             id="trackNumber"
             value={trackNumber}
             onChange={(event) => setTrackNumber(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
+            placeholder={I18n.upload.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="discNumber">{UPLOAD_TEXT.form.discNumberLabel}</Label>
+          <Label htmlFor="discNumber">{I18n.upload.form.discNumberLabel}</Label>
           <Input
             id="discNumber"
             value={discNumber}
             onChange={(event) => setDiscNumber(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
+            placeholder={I18n.upload.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="coverUrl">{UPLOAD_TEXT.form.coverLabel}</Label>
+          <Label htmlFor="coverUrl">{I18n.upload.form.coverLabel}</Label>
           <Textarea
             id="coverUrl"
             value={coverUrl}
             onChange={(event) => setCoverUrl(event.target.value)}
-            placeholder={UPLOAD_TEXT.form.coverPlaceholder}
+            placeholder={I18n.upload.form.coverPlaceholder}
           />
         </div>
       </div>
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={!isReady || submitting}>
-          {submitting ? UPLOAD_TEXT.form.uploadingLabel : UPLOAD_TEXT.form.uploadButton}
+          {submitting ? I18n.upload.form.uploadingLabel : I18n.upload.form.uploadButton}
         </Button>
         <Button type="button" variant="ghost" onClick={resetForm} disabled={submitting}>
-          {UPLOAD_TEXT.form.resetButton}
+          {I18n.upload.form.resetButton}
         </Button>
       </div>
 
@@ -300,16 +300,16 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           <p>{status.message}</p>
           <div className="mt-2 text-xs text-green-800">
             <p>
-              {UPLOAD_TEXT.form.successDurationPrefix}
+              {I18n.upload.form.successDurationPrefix}
               {status.details.duration 
-                ? `${status.details.duration}${UPLOAD_TEXT.form.durationUnit}` 
-                : UPLOAD_TEXT.form.successDurationFallback}
+                ? `${status.details.duration}${I18n.upload.form.durationUnit}` 
+                : I18n.upload.form.successDurationFallback}
             </p>
             <p>
-              {UPLOAD_TEXT.form.successBitratePrefix}
+              {I18n.upload.form.successBitratePrefix}
               {status.details.bitrate 
-                ? `${status.details.bitrate}${UPLOAD_TEXT.form.bitrateUnit}` 
-                : UPLOAD_TEXT.form.successBitrateFallback}
+                ? `${status.details.bitrate}${I18n.upload.form.bitrateUnit}` 
+                : I18n.upload.form.successBitrateFallback}
             </p>
           </div>
         </div>

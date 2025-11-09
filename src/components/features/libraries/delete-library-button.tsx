@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import { deleteLibraryAction } from '@/app/(dashboard)/dashboard/libraries/actions';
-import { LIBRARY_TEXT } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 interface DeleteLibraryButtonProps {
   libraryId: string;
@@ -22,6 +23,7 @@ interface DeleteLibraryButtonProps {
 }
 
 export function DeleteLibraryButton({ libraryId, libraryName }: DeleteLibraryButtonProps) {
+  useLocale(); // Subscribe to locale changes
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
@@ -31,8 +33,8 @@ export function DeleteLibraryButton({ libraryId, libraryName }: DeleteLibraryBut
 
       if (result.status === 'success') {
         toast({
-          title: LIBRARY_TEXT.manager.list.toastDeleteSuccessTitle,
-          description: `${LIBRARY_TEXT.manager.list.toastDeleteSuccessDescriptionPrefix}${libraryName}`,
+          title: I18n.library.manager.list.toastDeleteSuccessTitle,
+          description: `${I18n.library.manager.list.toastDeleteSuccessDescriptionPrefix}${libraryName}`,
         });
         setOpen(false);
         return;
@@ -40,11 +42,11 @@ export function DeleteLibraryButton({ libraryId, libraryName }: DeleteLibraryBut
 
       toast({
         variant: 'destructive',
-        title: LIBRARY_TEXT.manager.list.toastDeleteErrorTitle,
+        title: I18n.library.manager.list.toastDeleteErrorTitle,
         description:
           result.message === 'not-authorized'
-            ? LIBRARY_TEXT.manager.list.toastDeleteErrorUnauthorized
-            : LIBRARY_TEXT.manager.list.toastDeleteErrorDescription,
+            ? I18n.library.manager.list.toastDeleteErrorUnauthorized
+            : I18n.library.manager.list.toastDeleteErrorDescription,
       });
     });
   }, [libraryId, libraryName, startTransition]);
@@ -53,14 +55,14 @@ export function DeleteLibraryButton({ libraryId, libraryName }: DeleteLibraryBut
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="destructive" size="sm" disabled={isPending}>
-          {LIBRARY_TEXT.manager.list.deleteButton}
+          {I18n.library.manager.list.deleteButton}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{LIBRARY_TEXT.manager.list.deleteConfirmTitle}</DialogTitle>
+          <DialogTitle>{I18n.library.manager.list.deleteConfirmTitle}</DialogTitle>
           <DialogDescription>
-            {LIBRARY_TEXT.manager.list.deleteConfirmDescription}
+            {I18n.library.manager.list.deleteConfirmDescription}
             <span className="mt-2 block font-medium text-foreground">{libraryName}</span>
           </DialogDescription>
         </DialogHeader>
@@ -71,7 +73,7 @@ export function DeleteLibraryButton({ libraryId, libraryName }: DeleteLibraryBut
             onClick={() => setOpen(false)}
             disabled={isPending}
           >
-            {LIBRARY_TEXT.manager.list.deleteConfirmCancel}
+            {I18n.library.manager.list.deleteConfirmCancel}
           </Button>
           <Button
             type="button"
@@ -80,8 +82,8 @@ export function DeleteLibraryButton({ libraryId, libraryName }: DeleteLibraryBut
             disabled={isPending}
           >
             {isPending
-              ? LIBRARY_TEXT.manager.list.deleteConfirmPending
-              : LIBRARY_TEXT.manager.list.deleteConfirmSubmit}
+              ? I18n.library.manager.list.deleteConfirmPending
+              : I18n.library.manager.list.deleteConfirmSubmit}
           </Button>
         </DialogFooter>
       </DialogContent>

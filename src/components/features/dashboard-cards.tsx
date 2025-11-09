@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { EmptyState } from "@/components/ui/empty-state";
-import { COMMON_TEXT, DASHBOARD_TEXT } from "@/locales/messages";
+import { I18n } from '@/locales/i18n';
 import { Plus } from "lucide-react";
 import type { Library, Playlist } from "@/types/models";
 
@@ -24,35 +24,35 @@ export function LibrariesCard({ libraries }: LibrariesCardProps) {
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-xl font-semibold">
             <span className="text-2xl" aria-hidden="true">
-              {DASHBOARD_TEXT.cards.libraries.titleIcon}
+              {I18n.dashboard.cards.libraries.titleIcon}
             </span>
-            {DASHBOARD_TEXT.cards.libraries.titleSuffix}
+            {I18n.dashboard.cards.libraries.titleSuffix}
           </CardTitle>
           <Button variant="outline" size="icon" asChild>
             <Link
               href="/dashboard/libraries"
-              aria-label={DASHBOARD_TEXT.cards.libraries.createLabel}
+              aria-label={I18n.dashboard.cards.libraries.createLabel}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               <span className="sr-only">
-                {DASHBOARD_TEXT.cards.libraries.createLabel}
+                {I18n.dashboard.cards.libraries.createLabel}
               </span>
             </Link>
           </Button>
         </div>
         <CardDescription>
-          {DASHBOARD_TEXT.cards.libraries.description}
+          {I18n.dashboard.cards.libraries.description}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {libraries.length === 0 ? (
           <EmptyState
             icon="🎵"
-            title={DASHBOARD_TEXT.cards.libraries.emptyTitle}
+            title={I18n.dashboard.cards.libraries.emptyTitle}
             action={
               <Button variant="outline" size="sm" asChild>
                 <Link href="/dashboard/libraries">
-                  {DASHBOARD_TEXT.cards.libraries.emptyActionLabel}
+                  {I18n.dashboard.cards.libraries.emptyActionLabel}
                 </Link>
               </Button>
             }
@@ -72,7 +72,7 @@ export function LibrariesCard({ libraries }: LibrariesCardProps) {
                     description={library.description || undefined}
                     metadata={
                       <MetadataItem
-                        label={COMMON_TEXT.songsLabel}
+                        label={I18n.common.songsLabel}
                         value={library._count?.songs ?? 0}
                         variant="secondary"
                       />
@@ -99,35 +99,35 @@ export function PlaylistsCard({ playlists }: PlaylistsCardProps) {
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-xl font-semibold">
             <span className="text-2xl" aria-hidden="true">
-              {DASHBOARD_TEXT.cards.playlists.titleIcon}
+              {I18n.dashboard.cards.playlists.titleIcon}
             </span>
-            {DASHBOARD_TEXT.cards.playlists.titleSuffix}
+            {I18n.dashboard.cards.playlists.titleSuffix}
           </CardTitle>
           <Button variant="outline" size="icon" asChild>
             <Link
               href="/dashboard/playlists"
-              aria-label={DASHBOARD_TEXT.cards.playlists.createLabel}
+              aria-label={I18n.dashboard.cards.playlists.createLabel}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               <span className="sr-only">
-                {DASHBOARD_TEXT.cards.playlists.createLabel}
+                {I18n.dashboard.cards.playlists.createLabel}
               </span>
             </Link>
           </Button>
         </div>
         <CardDescription>
-          {DASHBOARD_TEXT.cards.playlists.description}
+          {I18n.dashboard.cards.playlists.description}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {playlists.length === 0 ? (
           <EmptyState
             icon="📻"
-            title={DASHBOARD_TEXT.cards.playlists.emptyTitle}
+            title={I18n.dashboard.cards.playlists.emptyTitle}
             action={
               <Button variant="outline" size="sm" asChild>
                 <Link href="/dashboard/playlists">
-                  {DASHBOARD_TEXT.cards.playlists.emptyActionLabel}
+                  {I18n.dashboard.cards.playlists.emptyActionLabel}
                 </Link>
               </Button>
             }
@@ -147,7 +147,7 @@ export function PlaylistsCard({ playlists }: PlaylistsCardProps) {
                     description={playlist.description || undefined}
                     metadata={
                       <MetadataItem
-                        label={COMMON_TEXT.songsLabel}
+                        label={I18n.common.songsLabel}
                         value={playlist._count?.songs ?? 0}
                         variant="outline"
                       />
@@ -169,17 +169,17 @@ export function StorageCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span className="text-2xl" aria-hidden="true">
-            {DASHBOARD_TEXT.cards.storage.titleIcon}
+            {I18n.dashboard.cards.storage.titleIcon}
           </span>
-          {DASHBOARD_TEXT.cards.storage.titleSuffix}
+          {I18n.dashboard.cards.storage.titleSuffix}
         </CardTitle>
         <CardDescription>
-          {DASHBOARD_TEXT.cards.storage.description}
+          {I18n.dashboard.cards.storage.description}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-          {DASHBOARD_TEXT.cards.storage.placeholder}
+          {I18n.dashboard.cards.storage.placeholder}
         </div>
       </CardContent>
     </Card>

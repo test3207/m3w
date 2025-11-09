@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/config';
 import { removeSongFromPlaylist } from '@/lib/services/playlist.service';
 import { logger } from '@/lib/logger';
-import { ERROR_MESSAGES } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
 import { HttpStatusCode } from '@/lib/constants/http-status';
 
 type RouteContext = {
@@ -17,14 +17,14 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
+      return NextResponse.json({ error: I18n.error.unauthorized }, { status: HttpStatusCode.UNAUTHORIZED });
     }
 
     const { id, songId } = await context.params;
     const result = await removeSongFromPlaylist(id, songId, session.user.id);
 
     if (!result) {
-      return NextResponse.json({ error: ERROR_MESSAGES.playlistOrSongNotFound }, { status: HttpStatusCode.NOT_FOUND });
+      return NextResponse.json({ error: I18n.error.playlistOrSongNotFound }, { status: HttpStatusCode.NOT_FOUND });
     }
 
     return NextResponse.json({
@@ -34,7 +34,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   } catch (error) {
     logger.error({ msg: 'Failed to remove song from playlist', error });
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToRemoveSongFromPlaylist },
+      { error: I18n.error.failedToRemoveSongFromPlaylist },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

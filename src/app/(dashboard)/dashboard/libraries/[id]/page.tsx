@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { LIBRARY_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { AddSongToPlaylistForm } from "@/components/features/libraries/add-song-to-playlist-form";
 import { logger } from "@/lib/logger-client";
@@ -39,6 +40,7 @@ interface Playlist {
 }
 
 export default function LibraryDetailPage() {
+  useLocale(); // Subscribe to locale changes
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
@@ -70,7 +72,7 @@ export default function LibraryDetailPage() {
         if (libraryRes.status === HttpStatusCode.NOT_FOUND) {
           toast({
             variant: "destructive",
-            title: ERROR_MESSAGES.libraryNotFound,
+            title: I18n.error.libraryNotFound,
           });
           router.push('/dashboard/libraries');
           return;
@@ -93,7 +95,7 @@ export default function LibraryDetailPage() {
           logger.error('Failed to fetch data', { errors });
           toast({
             variant: "destructive",
-            title: ERROR_MESSAGES.failedToRetrieveLibraries,
+            title: I18n.error.failedToRetrieveLibraries,
             description: errors.join(', '),
           });
           return;
@@ -110,7 +112,7 @@ export default function LibraryDetailPage() {
         logger.error('Failed to fetch library details', error);
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.genericTryAgain,
+          title: I18n.error.genericTryAgain,
         });
       } finally {
         setLoading(false);
@@ -123,7 +125,7 @@ export default function LibraryDetailPage() {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
       </div>
     );
   }
@@ -131,7 +133,7 @@ export default function LibraryDetailPage() {
   if (!library) {
     return (
       <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{COMMON_TEXT.notFoundLabel}</div>
+        <div className="text-center text-muted-foreground">{I18n.common.notFoundLabel}</div>
       </div>
     );
   }
@@ -151,12 +153,12 @@ export default function LibraryDetailPage() {
       >
         <div className="flex h-full flex-col justify-end gap-3">
           <Button variant="ghost" size="sm" className="w-fit" asChild>
-            <Link href="/dashboard/libraries">{LIBRARY_TEXT.detail.backToLibraries}</Link>
+            <Link href="/dashboard/libraries">{I18n.library.detail.backToLibraries}</Link>
           </Button>
 
           <PageHeader
-            title={`${LIBRARY_TEXT.detail.titlePrefix}${library.name}`}
-            description={LIBRARY_TEXT.detail.description}
+            title={`${I18n.library.detail.titlePrefix}${library.name}`}
+            description={I18n.library.detail.description}
           />
         </div>
       </AdaptiveSection>
@@ -170,13 +172,13 @@ export default function LibraryDetailPage() {
         <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader>
             <HStack justify="between" align="center" wrap>
-              <CardTitle>{LIBRARY_TEXT.detail.songListTitle}</CardTitle>
+              <CardTitle>{I18n.library.detail.songListTitle}</CardTitle>
               <HStack as="div" gap="sm" align="center" wrap>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard/upload">{LIBRARY_TEXT.detail.uploadSongsCta}</Link>
+                  <Link href="/dashboard/upload">{I18n.library.detail.uploadSongsCta}</Link>
                 </Button>
                 <MetadataItem
-                  label={LIBRARY_TEXT.detail.songCountLabel}
+                  label={I18n.library.detail.songCountLabel}
                   value={songs.length}
                   variant="secondary"
                 />
@@ -187,8 +189,8 @@ export default function LibraryDetailPage() {
             {songs.length === 0 ? (
               <EmptyState
                 icon="🎵"
-                title={LIBRARY_TEXT.detail.songListEmpty}
-                description={LIBRARY_TEXT.detail.songListEmptyHelper}
+                title={I18n.library.detail.songListEmpty}
+                description={I18n.library.detail.songListEmptyHelper}
               />
             ) : (
               <ul role="list" className="flex flex-col gap-3">
@@ -201,13 +203,13 @@ export default function LibraryDetailPage() {
                         <HStack as="div" gap="xs" wrap>
                           {song.album ? (
                             <MetadataItem
-                              label={LIBRARY_TEXT.detail.songAlbumLabel}
+                              label={I18n.library.detail.songAlbumLabel}
                               value={song.album}
                               variant="outline"
                             />
                           ) : null}
                           <MetadataItem
-                            label={LIBRARY_TEXT.detail.songDurationLabel}
+                            label={I18n.library.detail.songDurationLabel}
                             value={formatDuration(song.file?.duration ?? null)}
                             variant="secondary"
                           />
@@ -229,12 +231,12 @@ export default function LibraryDetailPage() {
 
             {playlists.length === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">
-                {LIBRARY_TEXT.detail.noPlaylistsHelper}{" "}
+                {I18n.library.detail.noPlaylistsHelper}{" "}
                 <Link
                   href="/dashboard/playlists"
                   className="font-medium text-primary underline-offset-2 hover:underline"
                 >
-                  {LIBRARY_TEXT.detail.goToPlaylistsLink}
+                  {I18n.library.detail.goToPlaylistsLink}
                 </Link>
                 .
               </p>

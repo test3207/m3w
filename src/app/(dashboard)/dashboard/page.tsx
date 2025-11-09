@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DASHBOARD_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import {
   LibrariesCard,
@@ -16,6 +17,7 @@ import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Library, Playlist } from "@/types/models";
 
 export default function DashboardPage() {
+  useLocale(); // Subscribe to locale changes
   const router = useRouter();
   const { toast } = useToast();
   const [libraries, setLibraries] = useState<Library[]>([]);
@@ -51,7 +53,7 @@ export default function DashboardPage() {
           logger.error('Failed to fetch data', { errors });
           toast({
             variant: "destructive",
-            title: ERROR_MESSAGES.failedToRetrieveLibraries,
+            title: I18n.error.failedToRetrieveLibraries,
             description: errors.join(', '),
           });
           return;
@@ -66,7 +68,7 @@ export default function DashboardPage() {
         logger.error('Failed to fetch dashboard data', error);
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.genericTryAgain,
+          title: I18n.error.genericTryAgain,
         });
       } finally {
         setLoading(false);
@@ -79,7 +81,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
       </div>
     );
   }
@@ -98,7 +100,7 @@ export default function DashboardPage() {
         <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold">
-              {DASHBOARD_TEXT.navbar.title}
+              {I18n.dashboard.navbar.title}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid flex-1 gap-3 overflow-auto md:grid-cols-2">

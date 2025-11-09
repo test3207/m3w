@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { LIBRARY_TEXT } from "@/locales/messages";
+import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
 
@@ -33,8 +33,8 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
     if (!selectedPlaylistId) {
       toast({
         variant: "destructive",
-        title: LIBRARY_TEXT.addToPlaylist.toastErrorTitle,
-        description: LIBRARY_TEXT.addToPlaylist.selectPlaylistFirst,
+        title: I18n.library.addToPlaylist.toastErrorTitle,
+        description: I18n.library.addToPlaylist.selectPlaylistFirst,
       });
       return;
     }
@@ -57,11 +57,11 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
         const playlistName = playlists.find((playlist) => playlist.id === selectedPlaylistId)?.name;
 
         toast({
-          title: LIBRARY_TEXT.addToPlaylist.toastSuccessTitle,
+          title: I18n.library.addToPlaylist.toastSuccessTitle,
           description:
             playlistName !== undefined
               ? `${songTitle} → ${playlistName}`
-              : LIBRARY_TEXT.addToPlaylist.toastSuccessDescription,
+              : I18n.library.addToPlaylist.toastSuccessDescription,
         });
 
         formRef.current?.reset();
@@ -69,16 +69,16 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
       } else {
         toast({
           variant: "destructive",
-          title: LIBRARY_TEXT.addToPlaylist.toastErrorTitle,
-          description: data.error || LIBRARY_TEXT.addToPlaylist.toastErrorDescription,
+          title: I18n.library.addToPlaylist.toastErrorTitle,
+          description: data.error || I18n.library.addToPlaylist.toastErrorDescription,
         });
       }
     } catch (error) {
       logger.error('Failed to add song to playlist', error);
       toast({
         variant: "destructive",
-        title: LIBRARY_TEXT.addToPlaylist.toastErrorTitle,
-        description: LIBRARY_TEXT.addToPlaylist.toastErrorDescription,
+        title: I18n.library.addToPlaylist.toastErrorTitle,
+        description: I18n.library.addToPlaylist.toastErrorDescription,
       });
     } finally {
       setIsSubmitting(false);
@@ -92,7 +92,7 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
       className="flex items-center gap-2"
     >
       <label className="sr-only" htmlFor={`playlist-${songId}`}>
-        {LIBRARY_TEXT.addToPlaylist.label}
+        {I18n.library.addToPlaylist.label}
       </label>
       <input type="hidden" name="songId" value={songId} />
       <input type="hidden" name="libraryId" value={libraryId} />
@@ -105,7 +105,7 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
         disabled={playlists.length === 0 || isSubmitting}
       >
         <option value="" disabled>
-          {LIBRARY_TEXT.addToPlaylist.placeholder}
+          {I18n.library.addToPlaylist.placeholder}
         </option>
         {playlists.map((playlist) => (
           <option key={playlist.id} value={playlist.id}>
@@ -120,8 +120,8 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
         disabled={playlists.length === 0 || selectedPlaylistId === "" || isSubmitting}
       >
         {isSubmitting
-          ? LIBRARY_TEXT.addToPlaylist.pendingLabel
-          : LIBRARY_TEXT.addToPlaylist.submitLabel}
+          ? I18n.library.addToPlaylist.pendingLabel
+          : I18n.library.addToPlaylist.submitLabel}
       </Button>
     </form>
   );

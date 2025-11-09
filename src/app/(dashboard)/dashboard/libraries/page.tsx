@@ -14,13 +14,15 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import Link from "next/link";
 import { DeleteLibraryButton } from "@/components/features/libraries/delete-library-button";
-import { LIBRARY_TEXT, COMMON_TEXT, ERROR_MESSAGES } from "@/locales/messages";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Library } from "@/types/models";
 
 export default function LibrariesPageRefactored() {
+  useLocale(); // Subscribe to locale changes
   const router = useRouter();
   const { toast } = useToast();
   const [libraries, setLibraries] = useState<Library[]>([]);
@@ -43,7 +45,7 @@ export default function LibrariesPageRefactored() {
           logger.error('Failed to fetch libraries', { status: res.status });
           toast({
             variant: "destructive",
-            title: ERROR_MESSAGES.failedToRetrieveLibraries,
+            title: I18n.error.failedToRetrieveLibraries,
           });
           return;
         }
@@ -54,7 +56,7 @@ export default function LibrariesPageRefactored() {
         logger.error('Failed to fetch libraries', error);
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.genericTryAgain,
+          title: I18n.error.genericTryAgain,
         });
       } finally {
         setLoading(false);
@@ -86,7 +88,7 @@ export default function LibrariesPageRefactored() {
         logger.error('Failed to create library', { status: res.status });
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.failedToCreateLibrary,
+          title: I18n.error.failedToCreateLibrary,
         });
         return;
       }
@@ -101,7 +103,7 @@ export default function LibrariesPageRefactored() {
       logger.error('Failed to create library', error);
       toast({
         variant: "destructive",
-        title: ERROR_MESSAGES.failedToCreateLibrary,
+        title: I18n.error.failedToCreateLibrary,
       });
     } finally {
       setSubmitting(false);
@@ -111,7 +113,7 @@ export default function LibrariesPageRefactored() {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
       </div>
     );
   }
@@ -129,8 +131,8 @@ export default function LibrariesPageRefactored() {
       >
         <div className="flex h-full flex-col justify-end">
           <PageHeader
-            title={LIBRARY_TEXT.manager.pageTitle}
-            description={LIBRARY_TEXT.manager.pageDescription}
+            title={I18n.library.manager.pageTitle}
+            description={I18n.library.manager.pageDescription}
           />
         </div>
       </AdaptiveSection>
@@ -144,34 +146,34 @@ export default function LibrariesPageRefactored() {
         <div className="grid h-full gap-6 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
-              <CardTitle>{LIBRARY_TEXT.manager.form.title}</CardTitle>
+              <CardTitle>{I18n.library.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">{LIBRARY_TEXT.manager.form.nameLabel}</Label>
+                  <Label htmlFor="name">{I18n.library.manager.form.nameLabel}</Label>
                   <Input
                     id="name"
                     name="name"
-                    placeholder={LIBRARY_TEXT.manager.form.namePlaceholder}
+                    placeholder={I18n.library.manager.form.namePlaceholder}
                     required
                     disabled={submitting}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">{LIBRARY_TEXT.manager.form.descriptionLabel}</Label>
+                  <Label htmlFor="description">{I18n.library.manager.form.descriptionLabel}</Label>
                   <Textarea
                     id="description"
                     name="description"
-                    placeholder={LIBRARY_TEXT.manager.form.descriptionPlaceholder}
+                    placeholder={I18n.library.manager.form.descriptionPlaceholder}
                     rows={3}
                     disabled={submitting}
                   />
                 </div>
 
                 <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? COMMON_TEXT.creatingLabel : LIBRARY_TEXT.manager.form.submitLabel}
+                  {submitting ? I18n.common.creatingLabel : I18n.library.manager.form.submitLabel}
                 </Button>
               </form>
             </CardContent>
@@ -179,18 +181,18 @@ export default function LibrariesPageRefactored() {
 
           <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
-              <CardTitle>{LIBRARY_TEXT.manager.list.title}</CardTitle>
+              <CardTitle>{I18n.library.manager.list.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
               {libraries.length === 0 ? (
                 <EmptyState
                   icon="📚"
-                  title={LIBRARY_TEXT.manager.list.emptyTitle}
-                  description={LIBRARY_TEXT.manager.list.emptyDescription}
+                  title={I18n.library.manager.list.emptyTitle}
+                  description={I18n.library.manager.list.emptyDescription}
                   action={
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/dashboard/upload">
-                        {LIBRARY_TEXT.manager.list.emptyActionLabel}
+                        {I18n.library.manager.list.emptyActionLabel}
                       </Link>
                     </Button>
                   }
@@ -205,17 +207,17 @@ export default function LibrariesPageRefactored() {
                         metadata={
                           <>
                             <MetadataItem
-                              label={LIBRARY_TEXT.manager.list.metadataSongsLabel}
+                              label={I18n.library.manager.list.metadataSongsLabel}
                               value={library._count?.songs ?? 0}
                               variant="secondary"
                             />
                             <MetadataItem
-                              label={LIBRARY_TEXT.manager.list.metadataCreatedLabel}
+                              label={I18n.library.manager.list.metadataCreatedLabel}
                               value={new Date(library.createdAt).toLocaleDateString()}
                               variant="outline"
                             />
                             <MetadataItem
-                              label={LIBRARY_TEXT.manager.list.metadataUpdatedLabel}
+                              label={I18n.library.manager.list.metadataUpdatedLabel}
                               value={new Date(library.updatedAt).toLocaleDateString()}
                               variant="outline"
                             />
@@ -225,7 +227,7 @@ export default function LibrariesPageRefactored() {
                           <HStack gap="xs">
                             <Button variant="outline" size="sm" asChild>
                               <Link href={`/dashboard/libraries/${library.id}`}>
-                                {LIBRARY_TEXT.manager.list.manageSongsCta}
+                                {I18n.library.manager.list.manageSongsCta}
                               </Link>
                             </Button>
                             <DeleteLibraryButton

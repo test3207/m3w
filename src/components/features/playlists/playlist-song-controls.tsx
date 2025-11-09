@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PLAYLIST_TEXT } from "@/locales/messages";
+import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
 
@@ -32,11 +32,11 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
 
       if (res.ok && data.success) {
         toast({
-          title: PLAYLIST_TEXT.controls.toastMoveSuccessTitle,
+          title: I18n.playlist.controls.toastMoveSuccessTitle,
           description:
             direction === "up"
-              ? `${PLAYLIST_TEXT.controls.toastMoveUpDescriptionPrefix}${songTitle}`
-              : `${PLAYLIST_TEXT.controls.toastMoveDownDescriptionPrefix}${songTitle}`,
+              ? `${I18n.playlist.controls.toastMoveUpDescriptionPrefix}${songTitle}`
+              : `${I18n.playlist.controls.toastMoveDownDescriptionPrefix}${songTitle}`,
         });
         onMutate?.();
       } else if (data.error?.includes('Invalid direction')) {
@@ -44,16 +44,16 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
       } else {
         toast({
           variant: "destructive",
-          title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
-          description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
+          title: I18n.playlist.controls.toastActionErrorTitle,
+          description: I18n.playlist.controls.toastActionErrorDescription,
         });
       }
     } catch (error) {
       logger.error('Failed to move song', error);
       toast({
         variant: "destructive",
-        title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
-        description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
+        title: I18n.playlist.controls.toastActionErrorTitle,
+        description: I18n.playlist.controls.toastActionErrorDescription,
       });
     } finally {
       setIsPending(false);
@@ -74,23 +74,23 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
 
       if (res.ok && data.success) {
         toast({
-          title: PLAYLIST_TEXT.controls.toastRemoveSuccessTitle,
-          description: `${PLAYLIST_TEXT.controls.toastRemoveSuccessDescriptionPrefix}${songTitle}`,
+          title: I18n.playlist.controls.toastRemoveSuccessTitle,
+          description: `${I18n.playlist.controls.toastRemoveSuccessDescriptionPrefix}${songTitle}`,
         });
         onMutate?.();
       } else {
         toast({
           variant: "destructive",
-          title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
-          description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
+          title: I18n.playlist.controls.toastActionErrorTitle,
+          description: I18n.playlist.controls.toastActionErrorDescription,
         });
       }
     } catch (error) {
       logger.error('Failed to remove song', error);
       toast({
         variant: "destructive",
-        title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
-        description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
+        title: I18n.playlist.controls.toastActionErrorTitle,
+        description: I18n.playlist.controls.toastActionErrorDescription,
       });
     } finally {
       setIsPending(false);
@@ -103,7 +103,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
         type="button"
         size="icon"
         variant="ghost"
-        aria-label={PLAYLIST_TEXT.controls.moveUp}
+        aria-label={I18n.playlist.controls.moveUp}
         onClick={() => handleMove("up")}
         disabled={isPending || index === 0}
       >
@@ -113,7 +113,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
         type="button"
         size="icon"
         variant="ghost"
-        aria-label={PLAYLIST_TEXT.controls.moveDown}
+        aria-label={I18n.playlist.controls.moveDown}
         onClick={() => handleMove("down")}
         disabled={isPending || index === total - 1}
       >
@@ -126,7 +126,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
         onClick={handleRemove}
         disabled={isPending}
       >
-        {PLAYLIST_TEXT.controls.removeButton}
+        {I18n.playlist.controls.removeButton}
       </Button>
     </div>
   );

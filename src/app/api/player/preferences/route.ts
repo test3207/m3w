@@ -8,7 +8,7 @@ import {
   updatePlaybackPreferences,
   playbackPreferenceUpdateSchema,
 } from '@/lib/services/player.service';
-import { ERROR_MESSAGES } from '@/locales/messages';
+import { I18n } from '@/locales/i18n';
 import { HttpStatusCode } from '@/lib/constants/http-status';
 
 export async function GET() {
@@ -17,7 +17,7 @@ export async function GET() {
 
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.unauthorized },
+        { error: I18n.error.unauthorized },
         { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
@@ -35,7 +35,7 @@ export async function GET() {
     });
 
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToGetPlaybackPreferences },
+      { error: I18n.error.failedToGetPlaybackPreferences },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }
@@ -47,7 +47,7 @@ export async function PUT(request: Request) {
 
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.unauthorized },
+        { error: I18n.error.unauthorized },
         { status: HttpStatusCode.UNAUTHORIZED }
       );
     }
@@ -64,7 +64,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     if (error instanceof ZodError || error instanceof SyntaxError) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.invalidInput },
+        { error: I18n.error.invalidInput },
         { status: HttpStatusCode.BAD_REQUEST }
       );
     }
@@ -75,7 +75,7 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json(
-      { error: ERROR_MESSAGES.failedToUpdatePlaybackPreferences },
+      { error: I18n.error.failedToUpdatePlaybackPreferences },
       { status: HttpStatusCode.INTERNAL_SERVER_ERROR }
     );
   }

@@ -22,6 +22,7 @@
 - Upload and metadata services covered by Vitest unit tests
 - Toast feedback system unified via `use-toast` store and wired into playlist and library dashboard actions
 - Audio streaming via API proxy with Range request support (MinIO access internalized)
+- Internationalization (i18n) system with custom Proxy-based architecture, build tooling, and reactive language switching
 
 ### Active Initiatives (In Progress)
 - **Demo & Evaluation**
@@ -171,6 +172,7 @@ m3w/
 - Language: TypeScript 5
 - UI Component Library: shadcn/ui (Radix UI with Tailwind CSS)
 - Styling: Tailwind CSS v4
+- Internationalization: Custom Proxy-based i18n with auto-generated TypeScript types
 - State Management: Zustand or Valtio (proxy-based reactivity)
 - Form Handling: React Hook Form with Zod
 - Data Fetching: `fetch` in server components and TanStack Query in client components
@@ -265,6 +267,70 @@ Observability plans include Pino logging, optional Prometheus and Grafana, optio
 - State management library choice beyond server components (Zustand or Jotai)
 - Detailed testing strategy (Vitest, Playwright, coverage targets)
 - CI/CD automation specifics (test pipeline, deployment approvals, environment management)
+- User language preference persistence strategy (database-backed recommended)
+
+## i18n System Architecture
+
+The project uses a custom Proxy-based internationalization system that provides full type safety and reactive language switching without page refresh.
+
+### Key Features
+- **Property Access Syntax**: `I18n.dashboard.title` (not function calls)
+- **Type Safety**: Auto-generated TypeScript definitions with JSDoc hover hints
+- **Reactive Updates**: Event-driven language switching triggers component re-renders
+- **Build Integration**: Automatic type generation on `npm run dev` and `npm run build`
+- **Hot Reload**: Watch mode during development auto-rebuilds on changes
+
+### File Structure
+- `src/locales/messages/en.json` - Source of truth (218+ keys, nested structure)
+- `src/locales/messages/zh-CN.json` - Chinese translations
+- `src/locales/generated/types.d.ts` - Auto-generated TypeScript definitions
+- `src/locales/i18n.ts` - Proxy runtime with event system
+- `src/locales/use-locale.ts` - React hook for component reactivity
+- `scripts/build-i18n.js` - Type generation and translation merging
+- `scripts/watch-i18n.js` - Development hot reload
+
+### Usage Patterns
+
+**Client Components:**
+```typescript
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
+
+export default function MyComponent() {
+  useLocale(); // Subscribe to language changes
+  return <h1>{I18n.dashboard.title}</h1>;
+}
+```
+
+**API Routes:**
+```typescript
+import { I18n } from '@/locales/i18n';
+
+export async function POST() {
+  return NextResponse.json({
+    message: I18n.error.unauthorized
+  });
+}
+```
+
+**Language Switching:**
+```typescript
+import { setLocale } from '@/locales/i18n';
+
+<button onClick={() => setLocale('zh-CN')}>中文</button>
+```
+
+### Adding New Text
+1. Add key to `src/locales/messages/en.json`
+2. Build script auto-generates TypeScript types
+3. Add translation to `zh-CN.json` (optional, defaults to English)
+4. Use in code: `I18n.category.newKey`
+
+### Architecture Decisions
+- Full CSR (root layout marked `'use client'`) to avoid SSR hydration mismatches
+- No localStorage persistence (reserved for future database-backed preferences)
+- Module-level initialization ensures consistent server/client state
+- `suppressHydrationWarning` on i18n text elements prevents React warnings
 
 ## References
 - Next.js Documentation: https://nextjs.org/docs

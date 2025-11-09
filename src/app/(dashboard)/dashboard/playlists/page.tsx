@@ -12,7 +12,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { HStack } from "@/components/ui/stack";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { COMMON_TEXT, PLAYLIST_TEXT, ERROR_MESSAGES } from "@/locales/messages";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
 import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import Link from "next/link";
 import { logger } from "@/lib/logger-client";
@@ -21,6 +22,7 @@ import { HttpStatusCode } from "@/lib/constants/http-status";
 import type { Playlist } from "@/types/models";
 
 export default function PlaylistsPage() {
+  useLocale(); // Subscribe to locale changes
   const router = useRouter();
   const { toast } = useToast();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -44,7 +46,7 @@ export default function PlaylistsPage() {
           logger.error('Failed to fetch playlists', { status: res.status });
           toast({
             variant: "destructive",
-            title: ERROR_MESSAGES.failedToGetPlaylists,
+            title: I18n.error.failedToGetPlaylists,
           });
           return;
         }
@@ -55,7 +57,7 @@ export default function PlaylistsPage() {
         logger.error('Failed to fetch playlists', error);
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.genericTryAgain,
+          title: I18n.error.genericTryAgain,
         });
       } finally {
         setLoading(false);
@@ -89,7 +91,7 @@ export default function PlaylistsPage() {
         logger.error('Failed to create playlist', { status: res.status });
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.failedToCreatePlaylist,
+          title: I18n.error.failedToCreatePlaylist,
         });
         return;
       }
@@ -104,7 +106,7 @@ export default function PlaylistsPage() {
       logger.error('Failed to create playlist', error);
       toast({
         variant: "destructive",
-        title: ERROR_MESSAGES.failedToCreatePlaylist,
+        title: I18n.error.failedToCreatePlaylist,
       });
     } finally {
       setSubmitting(false);
@@ -112,7 +114,7 @@ export default function PlaylistsPage() {
   };
 
   const handleDelete = async (playlistId: string) => {
-    if (!confirm(COMMON_TEXT.confirmDeletePlaylist)) {
+    if (!confirm(I18n.common.confirmDeletePlaylist)) {
       return;
     }
 
@@ -126,7 +128,7 @@ export default function PlaylistsPage() {
         logger.error('Failed to delete playlist', { status: res.status });
         toast({
           variant: "destructive",
-          title: ERROR_MESSAGES.failedToDeletePlaylist,
+          title: I18n.error.failedToDeletePlaylist,
         });
         return;
       }
@@ -136,7 +138,7 @@ export default function PlaylistsPage() {
       logger.error('Failed to delete playlist', error);
       toast({
         variant: "destructive",
-        title: ERROR_MESSAGES.failedToDeletePlaylist,
+        title: I18n.error.failedToDeletePlaylist,
       });
     } finally {
       setDeletingId(null);
@@ -146,7 +148,7 @@ export default function PlaylistsPage() {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{COMMON_TEXT.loadingLabel}</div>
+        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
       </div>
     );
   }
@@ -164,8 +166,8 @@ export default function PlaylistsPage() {
       >
         <div className="flex h-full flex-col justify-end">
           <PageHeader
-            title={PLAYLIST_TEXT.manager.pageTitle}
-            description={PLAYLIST_TEXT.manager.pageDescription}
+            title={I18n.playlist.manager.pageTitle}
+            description={I18n.playlist.manager.pageDescription}
           />
         </div>
       </AdaptiveSection>
@@ -179,46 +181,46 @@ export default function PlaylistsPage() {
         <div className="grid h-full gap-6 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
-              <CardTitle>{PLAYLIST_TEXT.manager.form.title}</CardTitle>
+              <CardTitle>{I18n.playlist.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">{PLAYLIST_TEXT.manager.form.nameLabel}</Label>
+                  <Label htmlFor="name">{I18n.playlist.manager.form.nameLabel}</Label>
                   <Input
                     id="name"
                     name="name"
                     required
                     maxLength={100}
-                    placeholder={PLAYLIST_TEXT.manager.form.namePlaceholder}
+                    placeholder={I18n.playlist.manager.form.namePlaceholder}
                     disabled={submitting}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">{PLAYLIST_TEXT.manager.form.descriptionLabel}</Label>
+                  <Label htmlFor="description">{I18n.playlist.manager.form.descriptionLabel}</Label>
                   <Textarea
                     id="description"
                     name="description"
                     maxLength={500}
-                    placeholder={PLAYLIST_TEXT.manager.form.descriptionPlaceholder}
+                    placeholder={I18n.playlist.manager.form.descriptionPlaceholder}
                     disabled={submitting}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="coverUrl">{PLAYLIST_TEXT.manager.form.coverLabel}</Label>
+                  <Label htmlFor="coverUrl">{I18n.playlist.manager.form.coverLabel}</Label>
                   <Input
                     id="coverUrl"
                     name="coverUrl"
                     type="url"
-                    placeholder={PLAYLIST_TEXT.manager.form.coverPlaceholder}
+                    placeholder={I18n.playlist.manager.form.coverPlaceholder}
                     disabled={submitting}
                   />
                 </div>
 
                 <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? COMMON_TEXT.creatingLabel : PLAYLIST_TEXT.manager.form.submitLabel}
+                  {submitting ? I18n.common.creatingLabel : I18n.playlist.manager.form.submitLabel}
                 </Button>
               </form>
             </CardContent>
@@ -226,14 +228,14 @@ export default function PlaylistsPage() {
 
           <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
-              <CardTitle>{PLAYLIST_TEXT.manager.list.title}</CardTitle>
+              <CardTitle>{I18n.playlist.manager.list.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
               {playlists.length === 0 ? (
                 <EmptyState
                   icon="📻"
-                  title={PLAYLIST_TEXT.manager.list.emptyTitle}
-                  description={PLAYLIST_TEXT.manager.list.emptyDescription}
+                  title={I18n.playlist.manager.list.emptyTitle}
+                  description={I18n.playlist.manager.list.emptyDescription}
                 />
               ) : (
                 <ul role="list" className="flex flex-col gap-3">
@@ -241,7 +243,7 @@ export default function PlaylistsPage() {
                     const metadata = [
                       <MetadataItem
                         key="songs"
-                        label={PLAYLIST_TEXT.manager.list.metadataSongsLabel}
+                        label={I18n.playlist.manager.list.metadataSongsLabel}
                         value={playlist._count?.songs ?? 0}
                         variant="outline"
                       />,
@@ -254,11 +256,11 @@ export default function PlaylistsPage() {
 
                     metadata.push(
                       <span key="created" className="text-xs text-muted-foreground">
-                        {PLAYLIST_TEXT.manager.list.metadataCreatedLabel}: {" "}
+                        {I18n.playlist.manager.list.metadataCreatedLabel}: {" "}
                         {new Date(playlist.createdAt).toLocaleDateString()}
                       </span>,
                       <span key="updated" className="text-xs text-muted-foreground">
-                        {PLAYLIST_TEXT.manager.list.metadataUpdatedLabel}: {" "}
+                        {I18n.playlist.manager.list.metadataUpdatedLabel}: {" "}
                         {new Date(playlist.updatedAt).toLocaleDateString()}
                       </span>
                     );
@@ -273,7 +275,7 @@ export default function PlaylistsPage() {
                             <HStack gap="xs">
                               <Button variant="outline" size="sm" asChild>
                                 <Link href={`/dashboard/playlists/${playlist.id}`}>
-                                  {PLAYLIST_TEXT.manager.list.manageSongsCta}
+                                  {I18n.playlist.manager.list.manageSongsCta}
                                 </Link>
                               </Button>
                               <PlaylistPlayButton
@@ -288,7 +290,7 @@ export default function PlaylistsPage() {
                                 onClick={() => handleDelete(playlist.id)}
                                 disabled={deletingId === playlist.id}
                               >
-                                {deletingId === playlist.id ? COMMON_TEXT.deletingLabel : PLAYLIST_TEXT.manager.list.deleteButton}
+                                {deletingId === playlist.id ? I18n.common.deletingLabel : I18n.playlist.manager.list.deleteButton}
                               </Button>
                             </HStack>
                           }
@@ -305,3 +307,4 @@ export default function PlaylistsPage() {
     </AdaptiveLayout>
   );
 }
+
