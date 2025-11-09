@@ -41,110 +41,161 @@ export const SUCCESS_MESSAGES = {
   uploadCompleted: "File upload completed",
 } as const;
 
-export const UI_TEXT = {
-  dashboard: {
+export const COMMON_TEXT = {
+  songsLabel: "Songs",
+  manageSongsCta: "Manage songs",
+  viewLinkLabel: "View",
+} as const;
+
+export const DASHBOARD_TEXT = {
+  title: "M3W Dashboard",
+  welcome: {
+    prefix: "Welcome back, ",
+    fallback: "there",
+    suffix: "! 👋",
+    description: "Your Next.js full-stack application is ready. Start building amazing features!",
+  },
+  badgeProductionReady: "Production Ready",
+  navbar: {
     title: "M3W Dashboard",
-    welcomePrefix: "Welcome back, ",
-    welcomeFallback: "there",
-    welcomeSuffix: "! 👋",
-    welcomeDescription: "Your Next.js full-stack application is ready. Start building amazing features!",
-    badgeProductionReady: "Production Ready",
-    librariesCard: {
-      title: "🎵",
+    goToDashboard: "Return to dashboard",
+    signOut: "Sign Out",
+  },
+  cards: {
+    libraries: {
+      titleIcon: "🎵",
       titleSuffix: "Your Libraries",
       description: "Click a library to manage songs, or use the + button to create a new one",
-      empty: "You have not created any libraries yet.",
-      songsSuffix: " songs",
+      emptyTitle: "You have not created any libraries yet.",
       createLabel: "Create library",
+      emptyActionLabel: "Create library",
     },
-    playlistsCard: {
-      title: "📻",
+    playlists: {
+      titleIcon: "📻",
       titleSuffix: "Your Playlists",
       description: "Tap a playlist to edit it, or press + to start a new mix",
-      empty: "No playlists yet. Create one to start organizing tracks.",
-      songsSuffix: " songs",
+      emptyTitle: "No playlists yet. Create one to start organizing tracks.",
       createLabel: "Create playlist",
+      emptyActionLabel: "Create playlist",
     },
-    storageCard: {
-      title: "📊",
+    storage: {
+      titleIcon: "📊",
       titleSuffix: "Storage At A Glance",
       description: "Keep track of how much data you sync locally",
       placeholder: "Storage metrics will appear once offline caching is configured.",
     },
-    navbar: {
-      title: "M3W Dashboard",
-      goToDashboard: "Return to dashboard",
-      signOut: "Sign Out",
-    },
   },
-  libraryManager: {
+} as const;
+
+export const LIBRARY_TEXT = {
+  manager: {
     pageTitle: "Library Manager",
     pageDescription: "Create, review, and remove music libraries. Each library keeps its own metadata and songs.",
-    createCardTitle: "Create a new library",
-    nameLabel: "Library name",
-    namePlaceholder: "Jazz Collection",
-    descriptionLabel: "Description",
-    descriptionPlaceholder: "Optional notes about this library",
-    createButton: "Create library",
-    listTitle: "Your libraries",
-    empty: "No libraries yet. Use the form to create your first collection.",
-    songsSuffix: " songs",
-    createdOnPrefix: "Created on ",
-    updatedOnPrefix: "Updated ",
-    deleteButton: "Delete",
-    deleteWarning: "No libraries are available yet. Create one in Library Manager first.",
-    detailTitlePrefix: "Library: ",
-    detailDescription: "Manage songs in this library and add them to your playlists.",
+    form: {
+      title: "Create a new library",
+      nameLabel: "Library name",
+      namePlaceholder: "Jazz Collection",
+      descriptionLabel: "Description",
+      descriptionPlaceholder: "Optional notes about this library",
+      submitLabel: "Create library",
+    },
+    list: {
+      title: "Your libraries",
+      emptyTitle: "No libraries yet",
+      emptyDescription: "Use the form to create your first collection.",
+      emptyActionLabel: "Upload Songs",
+      songsSuffix: " songs",
+      metadataSongsLabel: "Songs",
+      metadataCreatedLabel: "Created",
+      metadataUpdatedLabel: "Updated",
+      manageSongsCta: "Manage songs",
+      deleteButton: "Delete",
+      deleteConfirmTitle: "Delete library?",
+      deleteConfirmDescription: "This removes the library and disconnects its songs from playlists. You cannot undo this action.",
+      deleteConfirmCancel: "Cancel",
+      deleteConfirmSubmit: "Delete",
+      deleteConfirmPending: "Deleting...",
+      toastDeleteSuccessTitle: "Library removed",
+      toastDeleteSuccessDescriptionPrefix: "Deleted ",
+      toastDeleteErrorTitle: "Unable to delete library",
+      toastDeleteErrorDescription: "Something went wrong. Please try again.",
+      toastDeleteErrorUnauthorized: "You do not have permission to delete this library.",
+    },
+  },
+  detail: {
     backToLibraries: "Back to libraries",
+    titlePrefix: "Library: ",
+    description: "Manage songs in this library and add them to your playlists.",
+    uploadSongsCta: "Upload songs",
     songListTitle: "Songs in this library",
     songListEmpty: "No songs found in this library yet.",
+    songListEmptyHelper: "Use the Upload songs button to add tracks to this library.",
     songCountLabel: "Songs",
     songAlbumLabel: "Album",
     songDurationLabel: "Duration",
-    addToPlaylistLabel: "Add to playlist",
-    addToPlaylistPlaceholder: "Select a playlist",
-    addToPlaylistButton: "Add",
-    addingToPlaylistLabel: "Adding...",
-    toastAddSuccessTitle: "Added to playlist",
-    toastAddSuccessDescription: "Song added successfully.",
-    toastAddErrorTitle: "Unable to add song",
-    toastAddErrorDescription: "Please try again.",
-    selectPlaylistFirst: "Select a playlist first.",
     noPlaylistsHelper: "Create a playlist first to start adding songs.",
     goToPlaylistsLink: "Go to playlists",
   },
-  playlistBuilder: {
+  addToPlaylist: {
+    label: "Add to playlist",
+    placeholder: "Select a playlist",
+    submitLabel: "Add",
+    pendingLabel: "Adding...",
+    toastSuccessTitle: "Added to playlist",
+    toastSuccessDescription: "Song added successfully.",
+    toastErrorTitle: "Unable to add song",
+    toastErrorDescription: "Please try again.",
+    selectPlaylistFirst: "Select a playlist first.",
+  },
+} as const;
+
+export const PLAYLIST_TEXT = {
+  manager: {
     pageTitle: "Playlist Builder",
     pageDescription: "Combine songs across libraries, set custom artwork, and keep your favorite mixes up to date.",
-    createCardTitle: "Create a new playlist",
-    nameLabel: "Playlist name",
-    namePlaceholder: "Road Trip Mix",
-    descriptionLabel: "Description",
-    descriptionPlaceholder: "Capture the mood or story behind this playlist",
-    coverLabel: "Cover image URL",
-    coverPlaceholder: "https://example.com/cover.jpg",
-    createButton: "Create playlist",
-    listTitle: "Your playlists",
-    empty: "No playlists yet. Use the form to build your first mix.",
-    songsSuffix: " songs",
-    coverPrefix: "Cover: ",
-    createdOnPrefix: "Created on ",
-    updatedOnPrefix: "Updated ",
-    deleteButton: "Delete",
-    detailTitlePrefix: "Playlist: ",
-    detailDescription: "Review songs in this playlist, adjust ordering, and remove tracks you no longer need.",
+    form: {
+      title: "Create a new playlist",
+      nameLabel: "Playlist name",
+      namePlaceholder: "Road Trip Mix",
+      descriptionLabel: "Description",
+      descriptionPlaceholder: "Capture the mood or story behind this playlist",
+      coverLabel: "Cover image URL",
+      coverPlaceholder: "https://example.com/cover.jpg",
+      submitLabel: "Create playlist",
+    },
+    list: {
+      title: "Your playlists",
+      emptyTitle: "No playlists yet. Use the form to build your first mix.",
+      emptyDescription: "Use the form to build your first mix and start adding tracks immediately.",
+      emptyActionLabel: "Create playlist",
+      metadataSongsLabel: "Songs",
+      coverLabel: "Cover",
+      metadataCreatedLabel: "Created",
+      metadataUpdatedLabel: "Updated",
+      manageSongsCta: "Manage songs",
+      deleteButton: "Delete",
+    },
+  },
+  detail: {
     backToPlaylists: "Back to playlists",
+    titlePrefix: "Playlist: ",
+    description: "Review songs in this playlist, adjust ordering, and remove tracks you no longer need.",
     songListTitle: "Songs in this playlist",
     songListEmpty: "No songs in this playlist yet.",
     addedFromLibraryHelper: "Add songs from your libraries to build this playlist.",
+    playlistDurationLabel: "Total duration",
     songCountLabel: "Songs",
     songAlbumLabel: "Album",
     songDurationLabel: "Duration",
-    removeButton: "Remove",
+    manageLibrariesCta: "Manage libraries",
+  },
+  controls: {
     moveUp: "Move up",
     moveDown: "Move down",
-    playlistDurationLabel: "Total duration",
-    manageLibrariesCta: "Manage libraries",
+    removeButton: "Remove",
+    playButtonLabel: "Play",
+    playButtonLoading: "Loading...",
+    playButtonAriaPrefix: "Play playlist ",
     toastMoveSuccessTitle: "Order updated",
     toastMoveUpDescriptionPrefix: "Moved up: ",
     toastMoveDownDescriptionPrefix: "Moved down: ",
@@ -153,13 +204,16 @@ export const UI_TEXT = {
     toastActionErrorTitle: "Action failed",
     toastActionErrorDescription: "Please try again.",
   },
-  uploadPage: {
+} as const;
+
+export const UPLOAD_TEXT = {
+  page: {
     title: "Upload Songs",
     description: "Save audio files to your library; deduplication and metadata extraction run automatically.",
     cardTitle: "Upload Audio File",
     emptyState: "No libraries are available yet. Create one in Library Manager before uploading.",
   },
-  uploadForm: {
+  form: {
     selectLibraryLabel: "Select library",
     selectLibraryPlaceholder: "Uploaded songs will be saved to this library.",
     libraryOptionFallback: "Create a library first",
@@ -196,4 +250,3 @@ export const UI_TEXT = {
 } as const;
 
 export type ErrorMessageKey = keyof typeof ERROR_MESSAGES;
-export type UiText = typeof UI_TEXT;

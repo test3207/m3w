@@ -5,7 +5,7 @@ import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-l
 import { UploadSongForm } from "@/components/features/upload-song-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { UI_TEXT } from "@/locales/messages";
+import { UPLOAD_TEXT } from "@/locales/messages";
 
 export default async function UploadPageRefactored() {
   const session = await auth();
@@ -36,8 +36,8 @@ export default async function UploadPageRefactored() {
       >
         <div className="flex h-full flex-col justify-end">
           <PageHeader
-            title={UI_TEXT.uploadPage.title}
-            description={UI_TEXT.uploadPage.description}
+            title={UPLOAD_TEXT.page.title}
+            description={UPLOAD_TEXT.page.description}
           />
         </div>
       </AdaptiveSection>
@@ -50,12 +50,12 @@ export default async function UploadPageRefactored() {
       >
         <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader>
-            <CardTitle>{UI_TEXT.uploadPage.cardTitle}</CardTitle>
+            <CardTitle>{UPLOAD_TEXT.page.cardTitle}</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto">
             {libraryOptions.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {UI_TEXT.uploadPage.emptyState}
+                {UPLOAD_TEXT.page.emptyState}
               </p>
             ) : (
               <UploadSongForm libraries={libraryOptions} />

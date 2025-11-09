@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UI_TEXT } from "@/locales/messages";
+import { DASHBOARD_TEXT } from "@/locales/messages";
 import type { Session } from "next-auth";
 import { Sparkles } from "lucide-react";
 import { DashboardUserMenu } from "./dashboard-user-menu";
@@ -20,23 +20,23 @@ export function DashboardNavbar({ session }: DashboardNavbarProps) {
             <Link
               href="/dashboard"
               className="group inline-flex items-center gap-2 rounded-full px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:bg-primary/10"
-              aria-label={UI_TEXT.dashboard.navbar.goToDashboard}
+              aria-label={DASHBOARD_TEXT.navbar.goToDashboard}
             >
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
                 M3W
               </span>
               <div className="hidden xs:flex flex-col leading-tight">
                 <span className="text-sm font-semibold tracking-tight text-foreground group-hover:text-primary">
-                  {UI_TEXT.dashboard.navbar.title}
+                  {DASHBOARD_TEXT.navbar.title}
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  {UI_TEXT.dashboard.badgeProductionReady}
+                  {DASHBOARD_TEXT.badgeProductionReady}
                 </span>
               </div>
             </Link>
             <div className="hidden md:flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span>{UI_TEXT.dashboard.badgeProductionReady}</span>
+              <span>{DASHBOARD_TEXT.badgeProductionReady}</span>
             </div>
           </div>
 

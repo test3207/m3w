@@ -1,9 +1,5 @@
 import { auth } from "@/lib/auth/config";
-import {
-  createLibrary,
-  deleteLibrary as deleteLibraryService,
-  getUserLibraries,
-} from "@/lib/services/library.service";
+import { createLibrary, getUserLibraries } from "@/lib/services/library.service";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Button } from "@/components/ui/button";
@@ -17,6 +13,8 @@ import { HStack } from "@/components/ui/stack";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import Link from "next/link";
+import { DeleteLibraryButton } from "@/components/features/libraries/delete-library-button";
+import { LIBRARY_TEXT } from "@/locales/messages";
 
 async function createLibraryAction(formData: FormData) {
   "use server";
@@ -44,20 +42,6 @@ async function createLibraryAction(formData: FormData) {
   revalidatePath("/dashboard/libraries");
 }
 
-async function deleteLibraryAction(libraryId: string) {
-  "use server";
-
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/auth/signin");
-  }
-
-  await deleteLibraryService(libraryId, session.user.id);
-
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/libraries");
-}
-
 export default async function LibrariesPageRefactored() {
   const session = await auth();
 
@@ -80,8 +64,8 @@ export default async function LibrariesPageRefactored() {
       >
         <div className="flex h-full flex-col justify-end">
           <PageHeader
-            title="Library Manager"
-            description="Create, review, and remove music libraries. Each library keeps its own metadata and songs."
+            title={LIBRARY_TEXT.manager.pageTitle}
+            description={LIBRARY_TEXT.manager.pageDescription}
           />
         </div>
       </AdaptiveSection>
@@ -95,27 +79,32 @@ export default async function LibrariesPageRefactored() {
         <div className="grid h-full gap-6 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
-              <CardTitle>Create a new library</CardTitle>
+              <CardTitle>{LIBRARY_TEXT.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
               <form action={createLibraryAction} className="flex flex-col gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Library name</Label>
-                  <Input id="name" name="name" placeholder="Jazz Collection" required />
+                  <Label htmlFor="name">{LIBRARY_TEXT.manager.form.nameLabel}</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder={LIBRARY_TEXT.manager.form.namePlaceholder}
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{LIBRARY_TEXT.manager.form.descriptionLabel}</Label>
                   <Textarea
                     id="description"
                     name="description"
-                    placeholder="Optional notes about this library"
+                    placeholder={LIBRARY_TEXT.manager.form.descriptionPlaceholder}
                     rows={3}
                   />
                 </div>
 
                 <Button type="submit" className="w-full">
-                  Create library
+                  {LIBRARY_TEXT.manager.form.submitLabel}
                 </Button>
               </form>
             </CardContent>
@@ -123,17 +112,19 @@ export default async function LibrariesPageRefactored() {
 
           <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
-              <CardTitle>Your libraries</CardTitle>
+              <CardTitle>{LIBRARY_TEXT.manager.list.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
               {libraries.length === 0 ? (
                 <EmptyState
                   icon="📚"
-                  title="No libraries yet"
-                  description="Use the form to create your first collection."
+                  title={LIBRARY_TEXT.manager.list.emptyTitle}
+                  description={LIBRARY_TEXT.manager.list.emptyDescription}
                   action={
                     <Button variant="outline" size="sm" asChild>
-                      <Link href="/dashboard/upload">Upload Songs</Link>
+                      <Link href="/dashboard/upload">
+                        {LIBRARY_TEXT.manager.list.emptyActionLabel}
+                      </Link>
                     </Button>
                   }
                 />
@@ -147,13 +138,18 @@ export default async function LibrariesPageRefactored() {
                         metadata={
                           <>
                             <MetadataItem
-                              label="Songs"
+                              label={LIBRARY_TEXT.manager.list.metadataSongsLabel}
                               value={library._count.songs}
                               variant="secondary"
                             />
                             <MetadataItem
-                              label="Created"
+                              label={LIBRARY_TEXT.manager.list.metadataCreatedLabel}
                               value={new Date(library.createdAt).toLocaleDateString()}
+                              variant="outline"
+                            />
+                            <MetadataItem
+                              label={LIBRARY_TEXT.manager.list.metadataUpdatedLabel}
+                              value={new Date(library.updatedAt).toLocaleDateString()}
                               variant="outline"
                             />
                           </>
@@ -162,23 +158,13 @@ export default async function LibrariesPageRefactored() {
                           <HStack gap="xs">
                             <Button variant="outline" size="sm" asChild>
                               <Link href={`/dashboard/libraries/${library.id}`}>
-                                Manage songs
+                                {LIBRARY_TEXT.manager.list.manageSongsCta}
                               </Link>
                             </Button>
-                            <form
-                              action={async () => {
-                                "use server";
-                                await deleteLibraryAction(library.id);
-                              }}
-                            >
-                              <Button
-                                type="submit"
-                                variant="destructive"
-                                size="sm"
-                              >
-                                Delete
-                              </Button>
-                            </form>
+                            <DeleteLibraryButton
+                              libraryId={library.id}
+                              libraryName={library.name}
+                            />
                           </HStack>
                         }
                       />

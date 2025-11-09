@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getUserLibraries } from "@/lib/services/library.service";
 import { getUserPlaylists } from "@/lib/services/playlist.service";
-import { UI_TEXT } from "@/locales/messages";
+import { DASHBOARD_TEXT } from "@/locales/messages";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import {
   LibrariesCard,
@@ -37,7 +37,7 @@ export default async function DashboardPage() {
         <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold">
-              {UI_TEXT.dashboard.navbar.title}
+              {DASHBOARD_TEXT.navbar.title}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid flex-1 gap-3 overflow-auto md:grid-cols-2">

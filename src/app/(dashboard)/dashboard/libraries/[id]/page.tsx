@@ -11,17 +11,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { UI_TEXT } from "@/locales/messages";
+import { LIBRARY_TEXT } from "@/locales/messages";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { AddSongToPlaylistForm } from "@/components/features/libraries/add-song-to-playlist-form";
 
 interface LibraryDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function LibraryDetailPage({ params }: LibraryDetailPageProps) {
+  const { id } = await params;
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -29,8 +30,8 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
   }
 
   const [library, songs, playlists] = await Promise.all([
-    getLibraryById(params.id, session.user.id),
-    getSongsByLibrary(params.id, session.user.id),
+    getLibraryById(id, session.user.id),
+    getSongsByLibrary(id, session.user.id),
     getUserPlaylists(session.user.id),
   ]);
 
@@ -54,12 +55,12 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
       >
         <div className="flex h-full flex-col justify-end gap-3">
           <Button variant="ghost" size="sm" className="w-fit" asChild>
-            <Link href="/dashboard/libraries">{UI_TEXT.libraryManager.backToLibraries}</Link>
+            <Link href="/dashboard/libraries">{LIBRARY_TEXT.detail.backToLibraries}</Link>
           </Button>
 
           <PageHeader
-            title={`${UI_TEXT.libraryManager.detailTitlePrefix}${library.name}`}
-            description={UI_TEXT.libraryManager.detailDescription}
+            title={`${LIBRARY_TEXT.detail.titlePrefix}${library.name}`}
+            description={LIBRARY_TEXT.detail.description}
           />
         </div>
       </AdaptiveSection>
@@ -72,25 +73,26 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
       >
         <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader>
-            <HStack justify="between" align="center">
-              <CardTitle>{UI_TEXT.libraryManager.songListTitle}</CardTitle>
-              <MetadataItem
-                label={UI_TEXT.libraryManager.songCountLabel}
-                value={librarySongs.length}
-                variant="secondary"
-              />
+            <HStack justify="between" align="center" wrap>
+              <CardTitle>{LIBRARY_TEXT.detail.songListTitle}</CardTitle>
+              <HStack as="div" gap="sm" align="center" wrap>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/dashboard/upload">{LIBRARY_TEXT.detail.uploadSongsCta}</Link>
+                </Button>
+                <MetadataItem
+                  label={LIBRARY_TEXT.detail.songCountLabel}
+                  value={librarySongs.length}
+                  variant="secondary"
+                />
+              </HStack>
             </HStack>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto">
             {librarySongs.length === 0 ? (
               <EmptyState
                 icon="🎵"
-                title={UI_TEXT.libraryManager.songListEmpty}
-                action={
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/dashboard/upload">Upload Songs</Link>
-                  </Button>
-                }
+                title={LIBRARY_TEXT.detail.songListEmpty}
+                description={LIBRARY_TEXT.detail.songListEmptyHelper}
               />
             ) : (
               <ul role="list" className="flex flex-col gap-3">
@@ -103,13 +105,13 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
                         <HStack as="div" gap="xs" wrap>
                           {song.album ? (
                             <MetadataItem
-                              label={UI_TEXT.libraryManager.songAlbumLabel}
+                              label={LIBRARY_TEXT.detail.songAlbumLabel}
                               value={song.album}
                               variant="outline"
                             />
                           ) : null}
                           <MetadataItem
-                            label={UI_TEXT.libraryManager.songDurationLabel}
+                            label={LIBRARY_TEXT.detail.songDurationLabel}
                             value={formatDuration(song.file?.duration ?? null)}
                             variant="secondary"
                           />
@@ -131,12 +133,12 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
 
             {playlists.length === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">
-                {UI_TEXT.libraryManager.noPlaylistsHelper}{" "}
+                {LIBRARY_TEXT.detail.noPlaylistsHelper}{" "}
                 <Link
                   href="/dashboard/playlists"
                   className="font-medium text-primary underline-offset-2 hover:underline"
                 >
-                  {UI_TEXT.libraryManager.goToPlaylistsLink}
+                  {LIBRARY_TEXT.detail.goToPlaylistsLink}
                 </Link>
                 .
               </p>

@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
-import { UI_TEXT } from "@/locales/messages";
+import { PLAYLIST_TEXT } from "@/locales/messages";
 import { toast } from "@/components/ui/use-toast";
 import { moveSongAction, removeSongAction, type MoveSongInput } from "@/app/(dashboard)/dashboard/playlists/[id]/actions";
 
@@ -24,11 +24,11 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
 
       if (result.status === "success") {
         toast({
-          title: UI_TEXT.playlistBuilder.toastMoveSuccessTitle,
+          title: PLAYLIST_TEXT.controls.toastMoveSuccessTitle,
           description:
             direction === "up"
-              ? `${UI_TEXT.playlistBuilder.toastMoveUpDescriptionPrefix}${songTitle}`
-              : `${UI_TEXT.playlistBuilder.toastMoveDownDescriptionPrefix}${songTitle}`,
+              ? `${PLAYLIST_TEXT.controls.toastMoveUpDescriptionPrefix}${songTitle}`
+              : `${PLAYLIST_TEXT.controls.toastMoveDownDescriptionPrefix}${songTitle}`,
         });
         return;
       }
@@ -39,8 +39,8 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
 
       toast({
         variant: "destructive",
-        title: UI_TEXT.playlistBuilder.toastActionErrorTitle,
-        description: UI_TEXT.playlistBuilder.toastActionErrorDescription,
+        title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
+        description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
       });
     });
   };
@@ -51,16 +51,16 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
 
       if (result.status === "success") {
         toast({
-          title: UI_TEXT.playlistBuilder.toastRemoveSuccessTitle,
-          description: `${UI_TEXT.playlistBuilder.toastRemoveSuccessDescriptionPrefix}${songTitle}`,
+          title: PLAYLIST_TEXT.controls.toastRemoveSuccessTitle,
+          description: `${PLAYLIST_TEXT.controls.toastRemoveSuccessDescriptionPrefix}${songTitle}`,
         });
         return;
       }
 
       toast({
         variant: "destructive",
-        title: UI_TEXT.playlistBuilder.toastActionErrorTitle,
-        description: UI_TEXT.playlistBuilder.toastActionErrorDescription,
+        title: PLAYLIST_TEXT.controls.toastActionErrorTitle,
+        description: PLAYLIST_TEXT.controls.toastActionErrorDescription,
       });
     });
   };
@@ -71,7 +71,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
         type="button"
         size="icon"
         variant="ghost"
-        aria-label={UI_TEXT.playlistBuilder.moveUp}
+  aria-label={PLAYLIST_TEXT.controls.moveUp}
         onClick={() => handleMove("up")}
         disabled={isPending || index === 0}
       >
@@ -81,7 +81,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
         type="button"
         size="icon"
         variant="ghost"
-        aria-label={UI_TEXT.playlistBuilder.moveDown}
+  aria-label={PLAYLIST_TEXT.controls.moveDown}
         onClick={() => handleMove("down")}
         disabled={isPending || index === total - 1}
       >
@@ -94,7 +94,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total }: P
         onClick={handleRemove}
         disabled={isPending}
       >
-        {UI_TEXT.playlistBuilder.removeButton}
+  {PLAYLIST_TEXT.controls.removeButton}
       </Button>
     </div>
   );

@@ -8,6 +8,10 @@
 import { Howl, Howler } from 'howler';
 import { logger } from '@/lib/logger';
 
+// String emitted by Howler when browser policies block autoplay without user gesture.
+const HOWLER_AUTOPLAY_BLOCK_MESSAGE =
+  'Playback was unable to start. This is most commonly an issue on mobile devices and Chrome where playback was not within a user interaction.';
+
 const MIME_TYPE_TO_FORMAT: Record<string, string> = {
   'audio/mpeg': 'mp3',
   'audio/mp3': 'mp3',
@@ -367,25 +371,44 @@ class AudioPlayer {
         this.emit('error');
       },
       onplayerror: (_id, error) => {
-        logger.error({ err: error }, 'Audio play error');
+        const trackContext = this.currentTrack ? { trackId: this.currentTrack.id } : {};
+        const logPayload = {
+          ...(error ? { err: error } : {}),
+          ...trackContext,
+        };
+
+        const autoplayBlocked =
+          typeof error === 'string' && error.includes(HOWLER_AUTOPLAY_BLOCK_MESSAGE);
+
+        if (this.isRecovering) {
+          logger.error(logPayload, 'Audio play retry failed');
+        } else if (autoplayBlocked) {
+          // Browsers reject autoplay without user interaction; downgrade noise to debug level.
+          logger.debug(logPayload, 'Audio play blocked by autoplay policy');
+        } else {
+          logger.warn(logPayload, 'Audio play failed, attempting recovery');
+        }
+
         const audioCtx = Howler.ctx;
         if (audioCtx?.state === 'suspended') {
           void audioCtx.resume().catch((resumeError: unknown) => {
-            logger.error({ err: resumeError }, 'Audio context resume failed');
+            logger.error({ err: resumeError, ...trackContext }, 'Audio context resume failed');
           });
         }
+
         const trackToRetry = this.currentTrack;
         this.unloadHowl();
 
         if (trackToRetry && !this.isRecovering) {
           this.isRecovering = true;
           void this.play(trackToRetry).catch((retryError: unknown) => {
-            logger.error({ err: retryError }, 'Audio auto-retry failed');
+            logger.error({ err: retryError, ...trackContext }, 'Audio auto-retry failed');
             this.isRecovering = false;
           });
         } else {
           this.isRecovering = false;
         }
+
         this.emit('error');
       },
     });

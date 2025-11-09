@@ -4,7 +4,7 @@ import * as React from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import { UI_TEXT } from "@/locales/messages";
+import { LIBRARY_TEXT } from "@/locales/messages";
 import { toast } from "@/components/ui/use-toast";
 import { addSongToPlaylistAction } from "@/app/(dashboard)/dashboard/libraries/[id]/actions";
 import {
@@ -30,8 +30,8 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   return (
     <Button type="submit" size="sm" variant="secondary" disabled={disabled || pending}>
       {pending
-        ? UI_TEXT.libraryManager.addingToPlaylistLabel
-        : UI_TEXT.libraryManager.addToPlaylistButton}
+        ? LIBRARY_TEXT.addToPlaylist.pendingLabel
+        : LIBRARY_TEXT.addToPlaylist.submitLabel}
     </Button>
   );
 }
@@ -62,11 +62,11 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
       const playlistName = playlists.find((playlist) => playlist.id === state.playlistId)?.name;
 
       toast({
-        title: UI_TEXT.libraryManager.toastAddSuccessTitle,
+        title: LIBRARY_TEXT.addToPlaylist.toastSuccessTitle,
         description:
           playlistName !== undefined
             ? `${songTitle} → ${playlistName}`
-            : UI_TEXT.libraryManager.toastAddSuccessDescription,
+            : LIBRARY_TEXT.addToPlaylist.toastSuccessDescription,
       });
 
       formRef.current?.reset();
@@ -76,8 +76,8 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
     if (state.status === "error") {
       toast({
         variant: "destructive",
-        title: UI_TEXT.libraryManager.toastAddErrorTitle,
-        description: UI_TEXT.libraryManager.toastAddErrorDescription,
+        title: LIBRARY_TEXT.addToPlaylist.toastErrorTitle,
+        description: LIBRARY_TEXT.addToPlaylist.toastErrorDescription,
       });
     }
   }, [state, playlists, songTitle]);
@@ -92,14 +92,14 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
           event.preventDefault();
           toast({
             variant: "destructive",
-            title: UI_TEXT.libraryManager.toastAddErrorTitle,
-            description: UI_TEXT.libraryManager.selectPlaylistFirst,
+            title: LIBRARY_TEXT.addToPlaylist.toastErrorTitle,
+            description: LIBRARY_TEXT.addToPlaylist.selectPlaylistFirst,
           });
         }
       }}
     >
       <label className="sr-only" htmlFor={`playlist-${songId}`}>
-        {UI_TEXT.libraryManager.addToPlaylistLabel}
+  {LIBRARY_TEXT.addToPlaylist.label}
       </label>
       <input type="hidden" name="songId" value={songId} />
       <input type="hidden" name="libraryId" value={libraryId} />
@@ -112,7 +112,7 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
         disabled={playlists.length === 0}
       >
         <option value="" disabled>
-          {UI_TEXT.libraryManager.addToPlaylistPlaceholder}
+          {LIBRARY_TEXT.addToPlaylist.placeholder}
         </option>
         {playlists.map((playlist) => (
           <option key={playlist.id} value={playlist.id}>

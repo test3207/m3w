@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ERROR_MESSAGES, UI_TEXT } from "@/locales/messages";
+import { ERROR_MESSAGES, UPLOAD_TEXT } from "@/locales/messages";
 
 interface LibraryOption {
   id: string;
@@ -139,7 +139,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
 
       setStatus({
         type: "success",
-        message: `${UI_TEXT.uploadForm.successPrefix}${songTitle}${UI_TEXT.uploadForm.successSuffix}${selectedLibraryName || UI_TEXT.uploadForm.successFallbackLibrary}`,
+  message: `${UPLOAD_TEXT.form.successPrefix}${songTitle}${UPLOAD_TEXT.form.successSuffix}${selectedLibraryName || UPLOAD_TEXT.form.successFallbackLibrary}`,
         details: {
           songTitle,
           libraryName: selectedLibraryName || "",
@@ -162,7 +162,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="library">{UI_TEXT.uploadForm.selectLibraryLabel}</Label>
+  <Label htmlFor="library">{UPLOAD_TEXT.form.selectLibraryLabel}</Label>
         <select
           id="library"
           value={libraryId}
@@ -170,21 +170,21 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           {libraries.length === 0 ? (
-            <option value="">{UI_TEXT.uploadForm.libraryOptionFallback}</option>
+            <option value="">{UPLOAD_TEXT.form.libraryOptionFallback}</option>
           ) : null}
           {libraries.map((library) => (
             <option key={library.id} value={library.id}>
-              {library.name}（{library.songCount}{UI_TEXT.uploadForm.librarySongSuffix}）
+              {library.name} ({library.songCount}{UPLOAD_TEXT.form.librarySongSuffix})
             </option>
           ))}
         </select>
         <p className="text-xs text-muted-foreground">
-          {UI_TEXT.uploadForm.selectLibraryPlaceholder}
+          {UPLOAD_TEXT.form.selectLibraryPlaceholder}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="file">{UI_TEXT.uploadForm.selectFileLabel}</Label>
+  <Label htmlFor="file">{UPLOAD_TEXT.form.selectFileLabel}</Label>
         <Input
           ref={fileInputRef}
           id="file"
@@ -194,109 +194,109 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           required
         />
         <p className="text-xs text-muted-foreground">
-          {UI_TEXT.uploadForm.fileHelper}
+          {UPLOAD_TEXT.form.fileHelper}
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="title">{UI_TEXT.uploadForm.titleLabel}</Label>
+          <Label htmlFor="title">{UPLOAD_TEXT.form.titleLabel}</Label>
           <Input
             id="title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.titlePlaceholder}
+            placeholder={UPLOAD_TEXT.form.titlePlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="artist">{UI_TEXT.uploadForm.artistLabel}</Label>
+          <Label htmlFor="artist">{UPLOAD_TEXT.form.artistLabel}</Label>
           <Input
             id="artist"
             value={artist}
             onChange={(event) => setArtist(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.optionalPlaceholder}
+            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="album">{UI_TEXT.uploadForm.albumLabel}</Label>
+          <Label htmlFor="album">{UPLOAD_TEXT.form.albumLabel}</Label>
           <Input
             id="album"
             value={album}
             onChange={(event) => setAlbum(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.optionalPlaceholder}
+            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="albumArtist">{UI_TEXT.uploadForm.albumArtistLabel}</Label>
+          <Label htmlFor="albumArtist">{UPLOAD_TEXT.form.albumArtistLabel}</Label>
           <Input
             id="albumArtist"
             value={albumArtist}
             onChange={(event) => setAlbumArtist(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.optionalPlaceholder}
+            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="genre">{UI_TEXT.uploadForm.genreLabel}</Label>
+          <Label htmlFor="genre">{UPLOAD_TEXT.form.genreLabel}</Label>
           <Input
             id="genre"
             value={genre}
             onChange={(event) => setGenre(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.optionalPlaceholder}
+            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="composer">{UI_TEXT.uploadForm.composerLabel}</Label>
+          <Label htmlFor="composer">{UPLOAD_TEXT.form.composerLabel}</Label>
           <Input
             id="composer"
             value={composer}
             onChange={(event) => setComposer(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.optionalPlaceholder}
+            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="year">{UI_TEXT.uploadForm.yearLabel}</Label>
+          <Label htmlFor="year">{UPLOAD_TEXT.form.yearLabel}</Label>
           <Input
             id="year"
             value={year}
             onChange={(event) => setYear(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.yearPlaceholder}
+            placeholder={UPLOAD_TEXT.form.yearPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="trackNumber">{UI_TEXT.uploadForm.trackNumberLabel}</Label>
+          <Label htmlFor="trackNumber">{UPLOAD_TEXT.form.trackNumberLabel}</Label>
           <Input
             id="trackNumber"
             value={trackNumber}
             onChange={(event) => setTrackNumber(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.optionalPlaceholder}
+            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="discNumber">{UI_TEXT.uploadForm.discNumberLabel}</Label>
+          <Label htmlFor="discNumber">{UPLOAD_TEXT.form.discNumberLabel}</Label>
           <Input
             id="discNumber"
             value={discNumber}
             onChange={(event) => setDiscNumber(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.optionalPlaceholder}
+            placeholder={UPLOAD_TEXT.form.optionalPlaceholder}
           />
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="coverUrl">{UI_TEXT.uploadForm.coverLabel}</Label>
+          <Label htmlFor="coverUrl">{UPLOAD_TEXT.form.coverLabel}</Label>
           <Textarea
             id="coverUrl"
             value={coverUrl}
             onChange={(event) => setCoverUrl(event.target.value)}
-            placeholder={UI_TEXT.uploadForm.coverPlaceholder}
+            placeholder={UPLOAD_TEXT.form.coverPlaceholder}
           />
         </div>
       </div>
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={!isReady || submitting}>
-          {submitting ? UI_TEXT.uploadForm.uploadingLabel : UI_TEXT.uploadForm.uploadButton}
+          {submitting ? UPLOAD_TEXT.form.uploadingLabel : UPLOAD_TEXT.form.uploadButton}
         </Button>
         <Button type="button" variant="ghost" onClick={resetForm} disabled={submitting}>
-          {UI_TEXT.uploadForm.resetButton}
+          {UPLOAD_TEXT.form.resetButton}
         </Button>
       </div>
 
@@ -305,16 +305,16 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           <p>{status.message}</p>
           <div className="mt-2 text-xs text-green-800">
             <p>
-              {UI_TEXT.uploadForm.successDurationPrefix}
+              {UPLOAD_TEXT.form.successDurationPrefix}
               {status.details.duration 
-                ? `${status.details.duration}${UI_TEXT.uploadForm.durationUnit}` 
-                : UI_TEXT.uploadForm.successDurationFallback}
+                ? `${status.details.duration}${UPLOAD_TEXT.form.durationUnit}` 
+                : UPLOAD_TEXT.form.successDurationFallback}
             </p>
             <p>
-              {UI_TEXT.uploadForm.successBitratePrefix}
+              {UPLOAD_TEXT.form.successBitratePrefix}
               {status.details.bitrate 
-                ? `${status.details.bitrate}${UI_TEXT.uploadForm.bitrateUnit}` 
-                : UI_TEXT.uploadForm.successBitrateFallback}
+                ? `${status.details.bitrate}${UPLOAD_TEXT.form.bitrateUnit}` 
+                : UPLOAD_TEXT.form.successBitrateFallback}
             </p>
           </div>
         </div>

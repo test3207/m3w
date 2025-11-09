@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { EmptyState } from "@/components/ui/empty-state";
-import { UI_TEXT } from "@/locales/messages";
+import { COMMON_TEXT, DASHBOARD_TEXT } from "@/locales/messages";
 import { Plus } from "lucide-react";
 
 interface Library {
@@ -30,34 +30,36 @@ export function LibrariesCard({ libraries }: LibrariesCardProps) {
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-xl font-semibold">
             <span className="text-2xl" aria-hidden="true">
-              {UI_TEXT.dashboard.librariesCard.title}
+              {DASHBOARD_TEXT.cards.libraries.titleIcon}
             </span>
-            {UI_TEXT.dashboard.librariesCard.titleSuffix}
+            {DASHBOARD_TEXT.cards.libraries.titleSuffix}
           </CardTitle>
           <Button variant="outline" size="icon" asChild>
             <Link
               href="/dashboard/libraries"
-              aria-label={UI_TEXT.dashboard.librariesCard.createLabel}
+              aria-label={DASHBOARD_TEXT.cards.libraries.createLabel}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               <span className="sr-only">
-                {UI_TEXT.dashboard.librariesCard.createLabel}
+                {DASHBOARD_TEXT.cards.libraries.createLabel}
               </span>
             </Link>
           </Button>
         </div>
         <CardDescription>
-          {UI_TEXT.dashboard.librariesCard.description}
+          {DASHBOARD_TEXT.cards.libraries.description}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {libraries.length === 0 ? (
           <EmptyState
             icon="🎵"
-            title={UI_TEXT.dashboard.librariesCard.empty}
+            title={DASHBOARD_TEXT.cards.libraries.emptyTitle}
             action={
               <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/libraries">Create Library</Link>
+                <Link href="/dashboard/libraries">
+                  {DASHBOARD_TEXT.cards.libraries.emptyActionLabel}
+                </Link>
               </Button>
             }
           />
@@ -76,7 +78,7 @@ export function LibrariesCard({ libraries }: LibrariesCardProps) {
                     description={library.description || undefined}
                     metadata={
                       <MetadataItem
-                        label="Songs"
+                        label={COMMON_TEXT.songsLabel}
                         value={library._count.songs}
                         variant="secondary"
                       />
@@ -110,34 +112,36 @@ export function PlaylistsCard({ playlists }: PlaylistsCardProps) {
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-xl font-semibold">
             <span className="text-2xl" aria-hidden="true">
-              {UI_TEXT.dashboard.playlistsCard.title}
+              {DASHBOARD_TEXT.cards.playlists.titleIcon}
             </span>
-            {UI_TEXT.dashboard.playlistsCard.titleSuffix}
+            {DASHBOARD_TEXT.cards.playlists.titleSuffix}
           </CardTitle>
           <Button variant="outline" size="icon" asChild>
             <Link
               href="/dashboard/playlists"
-              aria-label={UI_TEXT.dashboard.playlistsCard.createLabel}
+              aria-label={DASHBOARD_TEXT.cards.playlists.createLabel}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               <span className="sr-only">
-                {UI_TEXT.dashboard.playlistsCard.createLabel}
+                {DASHBOARD_TEXT.cards.playlists.createLabel}
               </span>
             </Link>
           </Button>
         </div>
         <CardDescription>
-          {UI_TEXT.dashboard.playlistsCard.description}
+          {DASHBOARD_TEXT.cards.playlists.description}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {playlists.length === 0 ? (
           <EmptyState
             icon="📻"
-            title={UI_TEXT.dashboard.playlistsCard.empty}
+            title={DASHBOARD_TEXT.cards.playlists.emptyTitle}
             action={
               <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/playlists">Create Playlist</Link>
+                <Link href="/dashboard/playlists">
+                  {DASHBOARD_TEXT.cards.playlists.emptyActionLabel}
+                </Link>
               </Button>
             }
           />
@@ -156,7 +160,7 @@ export function PlaylistsCard({ playlists }: PlaylistsCardProps) {
                     description={playlist.description || undefined}
                     metadata={
                       <MetadataItem
-                        label="Songs"
+                        label={COMMON_TEXT.songsLabel}
                         value={playlist._count.songs}
                         variant="outline"
                       />
@@ -178,17 +182,17 @@ export function StorageCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span className="text-2xl" aria-hidden="true">
-            {UI_TEXT.dashboard.storageCard.title}
+            {DASHBOARD_TEXT.cards.storage.titleIcon}
           </span>
-          {UI_TEXT.dashboard.storageCard.titleSuffix}
+          {DASHBOARD_TEXT.cards.storage.titleSuffix}
         </CardTitle>
         <CardDescription>
-          {UI_TEXT.dashboard.storageCard.description}
+          {DASHBOARD_TEXT.cards.storage.description}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-          {UI_TEXT.dashboard.storageCard.placeholder}
+          {DASHBOARD_TEXT.cards.storage.placeholder}
         </div>
       </CardContent>
     </Card>

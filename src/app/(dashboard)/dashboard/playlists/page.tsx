@@ -16,7 +16,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { HStack } from "@/components/ui/stack";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { UI_TEXT } from "@/locales/messages";
+import { COMMON_TEXT, PLAYLIST_TEXT } from "@/locales/messages";
 import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import Link from "next/link";
 
@@ -91,8 +91,8 @@ export default async function PlaylistsPage() {
       >
         <div className="flex h-full flex-col justify-end">
           <PageHeader
-            title={UI_TEXT.playlistBuilder.pageTitle}
-            description={UI_TEXT.playlistBuilder.pageDescription}
+            title={PLAYLIST_TEXT.manager.pageTitle}
+            description={PLAYLIST_TEXT.manager.pageDescription}
           />
         </div>
       </AdaptiveSection>
@@ -106,43 +106,43 @@ export default async function PlaylistsPage() {
         <div className="grid h-full gap-6 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
-              <CardTitle>{UI_TEXT.playlistBuilder.createCardTitle}</CardTitle>
+              <CardTitle>{PLAYLIST_TEXT.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
               <form action={createPlaylistAction} className="flex flex-col gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">{UI_TEXT.playlistBuilder.nameLabel}</Label>
+                  <Label htmlFor="name">{PLAYLIST_TEXT.manager.form.nameLabel}</Label>
                   <Input
                     id="name"
                     name="name"
                     required
                     maxLength={100}
-                    placeholder={UI_TEXT.playlistBuilder.namePlaceholder}
+                    placeholder={PLAYLIST_TEXT.manager.form.namePlaceholder}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">{UI_TEXT.playlistBuilder.descriptionLabel}</Label>
+                  <Label htmlFor="description">{PLAYLIST_TEXT.manager.form.descriptionLabel}</Label>
                   <Textarea
                     id="description"
                     name="description"
                     maxLength={500}
-                    placeholder={UI_TEXT.playlistBuilder.descriptionPlaceholder}
+                    placeholder={PLAYLIST_TEXT.manager.form.descriptionPlaceholder}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="coverUrl">{UI_TEXT.playlistBuilder.coverLabel}</Label>
+                  <Label htmlFor="coverUrl">{PLAYLIST_TEXT.manager.form.coverLabel}</Label>
                   <Input
                     id="coverUrl"
                     name="coverUrl"
                     type="url"
-                    placeholder={UI_TEXT.playlistBuilder.coverPlaceholder}
+                    placeholder={PLAYLIST_TEXT.manager.form.coverPlaceholder}
                   />
                 </div>
 
                 <Button type="submit" className="w-full">
-                  {UI_TEXT.playlistBuilder.createButton}
+                  {PLAYLIST_TEXT.manager.form.submitLabel}
                 </Button>
               </form>
             </CardContent>
@@ -150,13 +150,14 @@ export default async function PlaylistsPage() {
 
           <Card className="flex h-full flex-col overflow-hidden">
             <CardHeader>
-              <CardTitle>{UI_TEXT.playlistBuilder.listTitle}</CardTitle>
+              <CardTitle>{PLAYLIST_TEXT.manager.list.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
               {playlists.length === 0 ? (
                 <EmptyState
                   icon="📻"
-                  title={UI_TEXT.playlistBuilder.empty}
+                  title={PLAYLIST_TEXT.manager.list.emptyTitle}
+                  description={PLAYLIST_TEXT.manager.list.emptyDescription}
                 />
               ) : (
                 <ul role="list" className="flex flex-col gap-3">
@@ -164,7 +165,7 @@ export default async function PlaylistsPage() {
                     const metadata = [
                       <MetadataItem
                         key="songs"
-                        label="Songs"
+                        label={PLAYLIST_TEXT.manager.list.metadataSongsLabel}
                         value={playlist._count.songs}
                         variant="outline"
                       />,
@@ -173,14 +174,14 @@ export default async function PlaylistsPage() {
                     if (playlist.coverUrl) {
                       metadata.push(
                         <span key="cover" className="text-xs text-muted-foreground">
-                          {UI_TEXT.playlistBuilder.coverPrefix}
+                          {PLAYLIST_TEXT.manager.list.coverLabel}: {" "}
                           <a
                             href={playlist.coverUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="underline hover:text-foreground"
                           >
-                            View
+                            {COMMON_TEXT.viewLinkLabel}
                           </a>
                         </span>
                       );
@@ -188,11 +189,11 @@ export default async function PlaylistsPage() {
 
                     metadata.push(
                       <span key="created" className="text-xs text-muted-foreground">
-                        {UI_TEXT.playlistBuilder.createdOnPrefix}
+                        {PLAYLIST_TEXT.manager.list.metadataCreatedLabel}: {" "}
                         {new Date(playlist.createdAt).toLocaleDateString()}
                       </span>,
                       <span key="updated" className="text-xs text-muted-foreground">
-                        {UI_TEXT.playlistBuilder.updatedOnPrefix}
+                        {PLAYLIST_TEXT.manager.list.metadataUpdatedLabel}: {" "}
                         {new Date(playlist.updatedAt).toLocaleDateString()}
                       </span>
                     );
@@ -207,7 +208,7 @@ export default async function PlaylistsPage() {
                             <HStack gap="xs">
                               <Button variant="outline" size="sm" asChild>
                                 <Link href={`/dashboard/playlists/${playlist.id}`}>
-                                  Manage songs
+                                  {PLAYLIST_TEXT.manager.list.manageSongsCta}
                                 </Link>
                               </Button>
                               <PlaylistPlayButton
@@ -226,7 +227,7 @@ export default async function PlaylistsPage() {
                                   variant="destructive"
                                   size="sm"
                                 >
-                                  {UI_TEXT.playlistBuilder.deleteButton}
+                                  {PLAYLIST_TEXT.manager.list.deleteButton}
                                 </Button>
                               </form>
                             </HStack>

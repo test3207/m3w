@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { HStack, VStack } from "@/components/ui/stack";
-import { UI_TEXT } from "@/locales/messages";
+import { DASHBOARD_TEXT } from "@/locales/messages";
 
 interface DashboardNavProps {
   user: {
@@ -31,7 +31,7 @@ export function DashboardNav({ user, userInitials, onSignOut }: DashboardNavProp
         <HStack justify="between" className="h-16">
           {/* Logo/Title */}
           <h1 className="text-xl font-bold">
-            {UI_TEXT.dashboard.navbar.title}
+            {DASHBOARD_TEXT.navbar.title}
           </h1>
 
           {/* User Section */}
@@ -61,7 +61,7 @@ export function DashboardNav({ user, userInitials, onSignOut }: DashboardNavProp
             {/* Sign Out Button */}
             <form action={onSignOut}>
               <Button type="submit" variant="outline" size="sm">
-                {UI_TEXT.dashboard.navbar.signOut}
+                {DASHBOARD_TEXT.navbar.signOut}
               </Button>
             </form>
           </HStack>
