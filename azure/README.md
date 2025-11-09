@@ -1,53 +1,53 @@
 # Azure Deployment
 
-M3W 的 Azure 单环境部署配置。
+M3W's single-environment Azure deployment configuration.
 
-## 成本
+## Cost
 
-- **预计月成本**: $40-60
-- **适用场景**: 个人项目、小团队使用
+- **Estimated Monthly Cost**: $40-60
+- **Use Cases**: Personal projects, small team usage
 
-## 快速开始
+## Quick Start
 
 ```bash
-# 1. 创建基础设施
+# 1. Create infrastructure
 ./deploy.sh create
 
-# 2. 查看连接信息
+# 2. View connection information
 ./deploy.sh secrets
 
-# 3. 配置 GitHub Secrets
-# 将上面输出的信息添加到 GitHub 仓库的 Secrets
+# 3. Configure GitHub Secrets
+# Add the output above to your GitHub repository Secrets
 
-# 4. 完整部署
+# 4. Full deployment
 ./deploy.sh full v1.0.0
 ```
 
-## 回滚
+## Rollback
 
 ```bash
-# 查看所有版本
+# View all revisions
 ./deploy.sh revisions
 
-# 回滚到上一个版本
+# Rollback to previous revision
 ./deploy.sh rollback
 ```
 
-## 文档
+## Documentation
 
-完整文档请查看: [docs/AZURE_DEPLOYMENT.md](../docs/AZURE_DEPLOYMENT.md)
+For complete documentation, see: [docs/AZURE_DEPLOYMENT.md](../docs/AZURE_DEPLOYMENT.md)
 
-## 文件说明
+## File Descriptions
 
-- `main.bicep` - 基础设施模板 (Container Apps, PostgreSQL, Storage, Registry)
-- `parameters.json` - 参数配置
-- `deploy.sh` - 部署自动化脚本
+- `main.bicep` - Infrastructure template (Container Apps, PostgreSQL, Storage, Registry)
+- `parameters.json` - Parameter configuration
+- `deploy.sh` - Deployment automation script
 - `.github/workflows/azure-deploy.yml` - CI/CD pipeline
 
-## 主要特性
+## Key Features
 
-- ✅ Scale to Zero - 无流量时自动缩减到 0
-- ✅ 快速回滚 - 保留最近 3 个版本
-- ✅ 自动扩展 - 根据负载自动扩展 (0-2 实例)
-- ✅ 健康检查 - 自动监控应用健康状态
-- ✅ 低成本 - 按使用量付费
+- ✅ Scale to Zero - Automatically scale down to 0 when no traffic
+- ✅ Quick Rollback - Keep last 3 revisions
+- ✅ Auto-scaling - Automatically scale based on load (0-2 instances)
+- ✅ Health Checks - Automatic application health monitoring
+- ✅ Low Cost - Pay-as-you-go pricing

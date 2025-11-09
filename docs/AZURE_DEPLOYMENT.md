@@ -1,51 +1,51 @@
-# Azure 部署指南
+# Azure Deployment Guide
 
-## 成本估算 (~$40-60/月)
+## Cost Estimation (~$40-60/month)
 
-| 服务 | 配置 | 月成本 (USD) |
-|------|------|-------------|
-| Container Apps | 0.5 vCPU, 1GB RAM, 可缩放到 0 | $15-25 |
+| Service | Configuration | Monthly Cost (USD) |
+|---------|--------------|-------------------|
+| Container Apps | 0.5 vCPU, 1GB RAM, Scale to zero | $15-25 |
 | PostgreSQL Flexible | B1ms (1 vCore, 2GB) | $13 |
-| Storage Account | Standard LRS, 按使用量 | $5-10 |
+| Storage Account | Standard LRS, Pay-as-you-go | $5-10 |
 | Container Registry | Basic | $5 |
-| Log Analytics | 按数据量 | $2-7 |
-| **总计** | | **$40-60** |
+| Log Analytics | Pay-as-you-go | $2-7 |
+| **Total** | | **$40-60** |
 
-## 成本优化措施
+## Cost Optimization Strategies
 
 ### 1. Container Apps
-- ✅ **Scale to Zero**: 无流量时自动缩减到 0 实例,不产生计算费用
-- ✅ **最小规格**: 0.5 vCPU + 1GB RAM
-- ✅ **最大 2 实例**: 限制最大并发实例数
-- ✅ **按秒计费**: 只为实际运行时间付费
+- ✅ **Scale to Zero**: Auto-scale to 0 instances when no traffic, no compute cost
+- ✅ **Minimal Resources**: 0.5 vCPU + 1GB RAM
+- ✅ **Max 2 Instances**: Limit maximum concurrent instances
+- ✅ **Per-Second Billing**: Pay only for actual runtime
 
 ### 2. PostgreSQL
-- ✅ **Burstable 层**: B1ms 最低配置
-- ✅ **32GB 存储**: 最小存储容量
-- ✅ **无高可用**: 单实例模式
-- ✅ **本地冗余**: 无异地备份
+- ✅ **Burstable Tier**: B1ms minimum configuration
+- ✅ **32GB Storage**: Minimum storage capacity
+- ✅ **No High Availability**: Single instance mode
+- ✅ **Local Redundancy**: No geo-redundant backup
 
-### 3. 存储
-- ✅ **LRS**: 本地冗余存储(最便宜)
-- ✅ **Hot 层**: 热层访问(适合音乐文件)
-- ✅ **按需付费**: 只为实际存储和流量付费
+### 3. Storage
+- ✅ **LRS**: Locally redundant storage (cheapest option)
+- ✅ **Hot Tier**: Hot tier access (suitable for music files)
+- ✅ **Pay-as-you-go**: Pay only for actual storage and bandwidth
 
-### 4. 容器镜像
-- ✅ **Basic ACR**: 基础版容器注册表
-- ✅ **镜像缓存**: 减少构建时间和费用
+### 4. Container Registry
+- ✅ **Basic ACR**: Basic tier container registry
+- ✅ **Image Caching**: Reduce build time and cost
 
-### 5. 无 Redis
-- ✅ **暂时移除**: Redis Cache 每月 $16-74
-- 💡 **后续可加**: 需要时再启用
+### 5. No Redis
+- ✅ **Temporarily Removed**: Redis Cache costs $16-74/month
+- 💡 **Add Later**: Enable when needed
 
-## 快速开始
+## Quick Start
 
-### 1. 部署基础设施
+### 1. Deploy Infrastructure
 
 ```bash
 cd azure
 
-# 创建资源组并部署
+# Create resource group and deploy
 az group create --name m3w-rg --location eastasia
 
 az deployment group create \
@@ -54,130 +54,130 @@ az deployment group create \
   --parameters @parameters.json
 ```
 
-### 2. 获取连接信息
+### 2. Get Connection Information
 
 ```bash
-# 部署完成后,获取输出值
+# After deployment completes, get output values
 az deployment group show \
   --resource-group m3w-rg \
   --name <deployment-name> \
   --query properties.outputs
 ```
 
-### 3. 配置 GitHub Secrets
+### 3. Configure GitHub Secrets
 
-在仓库设置中添加:
+Add these secrets in repository settings:
 
 ```
 AZURE_CREDENTIALS                    # Service Principal JSON
-AZURE_REGISTRY_LOGIN_SERVER          # 从输出获取
-AZURE_REGISTRY_USERNAME              # 从输出获取
-AZURE_REGISTRY_PASSWORD              # 从输出获取
-DATABASE_URL                         # 从输出获取
-NEXTAUTH_URL                         # 你的应用 URL
-NEXTAUTH_SECRET                      # 生成随机字符串
+AZURE_REGISTRY_LOGIN_SERVER          # Get from deployment output
+AZURE_REGISTRY_USERNAME              # Get from deployment output
+AZURE_REGISTRY_PASSWORD              # Get from deployment output
+DATABASE_URL                         # Get from deployment output
+NEXTAUTH_URL                         # Your application URL
+NEXTAUTH_SECRET                      # Generate random string
 GITHUB_CLIENT_ID                     # GitHub OAuth
 GITHUB_CLIENT_SECRET                 # GitHub OAuth
 ```
 
-### 4. 首次部署
+### 4. Initial Deployment
 
-推送到 main 分支会自动触发部署:
+Push to main branch will automatically trigger deployment:
 
 ```bash
 git push origin main
 ```
 
-或手动触发:
+Or manually trigger:
 
 ```bash
-# 在 GitHub Actions 页面
-# 选择 "Azure Deployment"
-# 点击 "Run workflow"
+# In GitHub Actions page
+# Select "Azure Deployment"
+# Click "Run workflow"
 # Action: deploy
 ```
 
-## 回滚机制
+## Rollback Mechanism
 
-Container Apps 会保留最近 3 个版本的修订版本(revisions)。
+Container Apps retains the last 3 revision versions.
 
-### 自动回滚
+### Automatic Rollback
 
-如果部署失败,Container Apps 会自动保持在上一个健康的版本运行。
+If deployment fails, Container Apps automatically maintains the previous healthy version.
 
-### 手动回滚
+### Manual Rollback
 
-**方法 1: 通过 GitHub Actions**
+**Method 1: via GitHub Actions**
 
 ```bash
-# 在 GitHub Actions 页面
-# 选择 "Azure Deployment"
-# 点击 "Run workflow"
+# In GitHub Actions page
+# Select "Azure Deployment"
+# Click "Run workflow"
 # Action: rollback
-# Revision: (留空自动回滚到上一个版本)
+# Revision: (leave empty to rollback to previous version)
 ```
 
-**方法 2: 通过 Azure CLI**
+**Method 2: via Azure CLI**
 
 ```bash
-# 查看所有版本
+# List all revisions
 az containerapp revision list \
   --name m3w-app \
   --resource-group m3w-rg \
   --output table
 
-# 回滚到指定版本
+# Rollback to specific revision
 az containerapp revision activate \
   --name m3w-app \
   --resource-group m3w-rg \
   --revision <revision-name>
 ```
 
-**方法 3: 通过 Azure Portal**
+**Method 3: via Azure Portal**
 
-1. 打开 Azure Portal
-2. 导航到 Container Apps → m3w-app
-3. 左侧菜单选择 "Revisions"
-4. 选择之前的健康版本
-5. 点击 "Activate" 激活
+1. Open Azure Portal
+2. Navigate to Container Apps → m3w-app
+3. Select "Revisions" from left menu
+4. Choose a previous healthy revision
+5. Click "Activate" to activate
 
-### 版本管理
+### Revision Management
 
-Container Apps 的版本模式:
-- `m3w-app--<random>`: 自动生成的版本名称
-- 每次部署创建新版本
-- 最多保留 3 个非活动版本
-- 可以在多个版本间快速切换流量
+Container Apps revision pattern:
+- `m3w-app--<random>`: Auto-generated revision name
+- New revision created for each deployment
+- Maximum 3 inactive revisions retained
+- Quick traffic switching between revisions
 
-## 监控和日志
+## Monitoring and Logs
 
-### 查看实时日志
+### View Live Logs
 
 ```bash
-# 流式查看日志
+# Stream logs
 az containerapp logs show \
   --name m3w-app \
   --resource-group m3w-rg \
   --follow
 
-# 查看最近 100 行
+# View last 100 lines
 az containerapp logs show \
   --name m3w-app \
   --resource-group m3w-rg \
   --tail 100
 ```
 
-### 在 Azure Portal 查看
+### View in Azure Portal
 
 1. Container Apps → m3w-app → Log stream
-2. 或使用 Log Analytics 进行查询
+2. Or use Log Analytics for queries
 
-## 成本监控
+## Cost Monitoring
 
-### 设置预算警报
+### Set Budget Alerts
 
 ```bash
-# 创建预算
+# Create budget
 az consumption budget create \
   --budget-name m3w-monthly-budget \
   --amount 60 \
@@ -187,10 +187,10 @@ az consumption budget create \
   --resource-group m3w-rg
 ```
 
-### 查看成本
+### View Costs
 
 ```bash
-# 查看本月成本
+# View current month costs
 az consumption usage list \
   --start-date $(date +%Y-%m-01) \
   --end-date $(date +%Y-%m-%d) \
@@ -198,27 +198,27 @@ az consumption usage list \
   --output table
 ```
 
-或在 Azure Portal:
+Or in Azure Portal:
 - Cost Management + Billing → Cost Analysis
 
-## 性能优化
+## Performance Optimization
 
-### 1. 启用 Scale to Zero
+### 1. Enable Scale to Zero
 
-当无流量时,应用会自动缩减到 0 实例:
-- 冷启动时间: ~10-15 秒
-- 适合个人项目或低流量应用
+When no traffic, app automatically scales to 0 instances:
+- Cold start time: ~10-15 seconds
+- Suitable for personal projects or low-traffic applications
 
-### 2. 数据库连接池
+### 2. Database Connection Pool
 
-在 `DATABASE_URL` 中配置:
+Configure in `DATABASE_URL`:
 ```
 postgresql://user:pass@server:5432/db?connection_limit=5&pool_timeout=10
 ```
 
-### 3. 存储访问
+### 3. Storage Access
 
-使用 CDN 或将静态资源移到 Storage Static Website (免费):
+Use CDN or migrate static assets to Storage Static Website (free):
 ```bash
 az storage blob service-properties update \
   --account-name m3wstorageXXX \
@@ -226,67 +226,67 @@ az storage blob service-properties update \
   --index-document index.html
 ```
 
-## 进一步降低成本
+## Further Cost Reduction
 
-### 如果需要更省钱
+### If You Need Even More Savings
 
-1. **使用 Free Tier 数据库** (仅开发/测试):
-   - Azure Database for PostgreSQL 无免费层
-   - 考虑使用 Supabase 免费层(500MB)
-   - 或 Neon.tech 免费层
+1. **Use Free Tier Database** (Development/Testing Only):
+   - Azure Database for PostgreSQL has no free tier
+   - Consider Supabase free tier (500MB)
+   - Or Neon.tech free tier
 
-2. **停止数据库**:
+2. **Stop Database When Idle**:
    ```bash
-   # 不使用时停止 PostgreSQL
+   # Stop PostgreSQL when not in use
    az postgres flexible-server stop \
      --name m3w-postgres-XXX \
      --resource-group m3w-rg
    
-   # 需要时再启动
+   # Start when needed
    az postgres flexible-server start \
      --name m3w-postgres-XXX \
      --resource-group m3w-rg
    ```
 
-3. **定时关闭**(夜间):
-   使用 Azure Automation 或 Azure Functions 定时停止服务
+3. **Scheduled Shutdown** (Nighttime):
+   Use Azure Automation or Azure Functions to stop services on schedule
 
-4. **使用 Azure 学生订阅**:
-   - 每月 $100 免费额度
-   - 12 个月免费服务
+4. **Use Azure Student Subscription**:
+   - $100 free credit monthly
+   - 12 months of free services
 
-## 故障排查
+## Troubleshooting
 
-### 应用无法启动
+### Application Fails to Start
 
 ```bash
-# 检查最新版本状态
+# Check latest revision status
 az containerapp revision list \
   --name m3w-app \
   --resource-group m3w-rg
 
-# 如果失败,立即回滚
+# If failed, rollback immediately
 az containerapp revision activate \
   --name m3w-app \
   --resource-group m3w-rg \
   --revision <previous-working-revision>
 ```
 
-### 数据库连接失败
+### Database Connection Failure
 
 ```bash
-# 测试连接
+# Test connection
 psql "$DATABASE_URL"
 
-# 检查防火墙
+# Check firewall rules
 az postgres flexible-server firewall-rule list \
   --name m3w-postgres-XXX \
   --resource-group m3w-rg
 ```
 
-## 清理资源
+## Resource Cleanup
 
-不用时删除所有资源:
+Delete all resources when no longer needed:
 
 ```bash
 az group delete --name m3w-rg --yes --no-wait
@@ -294,6 +294,6 @@ az group delete --name m3w-rg --yes --no-wait
 
 ---
 
-**预计月成本**: $40-60  
-**适用场景**: 个人项目、低流量应用  
-**优势**: 自动缩放、快速回滚、低成本
+**Estimated Monthly Cost**: $40-60  
+**Use Cases**: Personal projects, low-traffic applications  
+**Advantages**: Auto-scaling, quick rollback, low cost
