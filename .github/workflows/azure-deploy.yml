@@ -30,9 +30,98 @@ env:
   NODE_VERSION: '22'
 
 jobs:
+  # Pre-deployment checks (same as PR checks)
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint
+      
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+      
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db
+      
+      - name: Check for migration drift
+        run: |
+          # Check if there are uncommitted migration files
+          if [ -n "$(git status --porcelain prisma/migrations)" ]; then
+            echo "❌ Error: Uncommitted migration files detected"
+            git status prisma/migrations
+            exit 1
+          fi
+          echo "✅ No migration drift detected"
+
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      
+      - name: Build Next.js application
+        run: npm run build
+        env:
+          # Mock environment variables for build
+          DATABASE_URL: postgresql://mock:mock@localhost:5432/mock
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: mock-secret-for-build-only
+          GITHUB_CLIENT_ID: mock-client-id
+          GITHUB_CLIENT_SECRET: mock-client-secret
+          MINIO_ENDPOINT: localhost
+          MINIO_PORT: 9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+          MINIO_USE_SSL: false
+          MINIO_BUCKET_NAME: m3w-music
+      
+      - name: Run tests with coverage
+        run: npm run test -- --coverage
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: coverage/
+
   build-and-push:
     name: Build & Push Image
     runs-on: ubuntu-latest
+    needs: [code-quality, build-and-test]
     if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
     outputs:
       image-tag: ${{ steps.set-tag.outputs.tag }}
@@ -232,16 +321,22 @@ jobs:
   notify:
     name: Notify Status
     runs-on: ubuntu-latest
-    needs: [deploy]
+    needs: [code-quality, build-and-test, deploy]
     if: always() && (github.event_name == 'push' || github.event.inputs.action == 'deploy')
     
     steps:
       - name: Report Status
         run: |
-          if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ Deployment completed successfully"
+          if [ "${{ needs.code-quality.result }}" != "success" ]; then
+            echo "❌ Code quality checks failed - deployment aborted"
+            exit 1
+          elif [ "${{ needs.build-and-test.result }}" != "success" ]; then
+            echo "❌ Build and tests failed - deployment aborted"
+            exit 1
+          elif [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ All checks passed and deployment completed successfully"
             echo "🏷️  Image tag: ${{ needs.build-and-push.outputs.image-tag }}"
           else
-            echo "❌ Deployment failed"
+            echo "❌ Deployment failed after passing all checks"
             echo "💡 You can rollback using: workflow_dispatch with action=rollback"
           fi
