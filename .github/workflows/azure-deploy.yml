@@ -30,21 +30,16 @@ env:
   NODE_VERSION: '22'
 
 jobs:
-  # Pre-deployment checks using reusable workflow
-  pre-deployment-checks:
+  # Run PR checks before deployment
+  pr-checks:
     name: Pre-Deployment Checks
-    uses: ./.github/workflows/reusable-checks.yml
+    uses: ./.github/workflows/pr-check.yml
     if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
-    with:
-      upload-coverage: false
-      upload-artifacts: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   build-and-push:
     name: Build & Push Image
     runs-on: ubuntu-latest
-    needs: [pre-deployment-checks]
+    needs: [pr-checks]
     if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
     outputs:
       image-tag: ${{ steps.set-tag.outputs.tag }}
@@ -244,13 +239,13 @@ jobs:
   notify:
     name: Notify Status
     runs-on: ubuntu-latest
-    needs: [pre-deployment-checks, deploy]
+    needs: [pr-checks, deploy]
     if: always() && (github.event_name == 'push' || github.event.inputs.action == 'deploy')
     
     steps:
       - name: Report Status
         run: |
-          if [ "${{ needs.pre-deployment-checks.result }}" != "success" ]; then
+          if [ "${{ needs.pr-checks.result }}" != "success" ]; then
             echo "❌ Pre-deployment checks failed - deployment aborted"
             exit 1
           elif [ "${{ needs.deploy.result }}" == "success" ]; then
