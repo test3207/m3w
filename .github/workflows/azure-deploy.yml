@@ -3,88 +3,50 @@ name: Azure Deployment
 on:
   push:
     branches:
-      - main       # Production deployment
-      - develop    # Staging deployment
+      - main
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Deployment environment'
+      action:
+        description: 'Deployment action'
         required: true
         type: choice
         options:
-          - production
-          - staging
-          - development
-      tag:
-        description: 'Docker image tag (leave empty for branch name)'
+          - deploy
+          - rollback
+      revision:
+        description: 'Revision name for rollback (leave empty for previous)'
         required: false
         type: string
 
-# Prevent concurrent deployments to the same environment
 concurrency:
-  group: azure-deploy-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+  group: azure-deploy
   cancel-in-progress: false
 
 env:
   AZURE_REGISTRY: m3wacr.azurecr.io
   IMAGE_NAME: m3w
   RESOURCE_GROUP: m3w-rg
+  APP_NAME: m3w-app
   NODE_VERSION: '22'
 
 jobs:
-  prepare:
-    name: Prepare Deployment
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.set-env.outputs.environment }}
-      image-tag: ${{ steps.set-tag.outputs.tag }}
-      app-name: ${{ steps.set-env.outputs.app-name }}
-    
-    steps:
-      - name: Determine deployment environment
-        id: set-env
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            ENV="${{ github.event.inputs.environment }}"
-          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            ENV="production"
-          else
-            ENV="staging"
-          fi
-          
-          echo "environment=$ENV" >> $GITHUB_OUTPUT
-          
-          # Set app name based on environment
-          case $ENV in
-            production)
-              echo "app-name=m3w-app" >> $GITHUB_OUTPUT
-              ;;
-            staging)
-              echo "app-name=m3w-app-staging" >> $GITHUB_OUTPUT
-              ;;
-            development)
-              echo "app-name=m3w-app-dev" >> $GITHUB_OUTPUT
-              ;;
-          esac
-      
-      - name: Determine image tag
-        id: set-tag
-        run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            TAG="${{ github.event.inputs.tag }}"
-          else
-            TAG="${GITHUB_SHA::8}"
-          fi
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
   build-and-push:
     name: Build & Push Image
     runs-on: ubuntu-latest
-    needs: prepare
+    if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
+    outputs:
+      image-tag: ${{ steps.set-tag.outputs.tag }}
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Set image tag
+        id: set-tag
+        run: |
+          TAG="${GITHUB_SHA::8}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "🏷️  Image tag: $TAG"
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -92,19 +54,9 @@ jobs:
       - name: Log in to Azure Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.AZURE_REGISTRY }}
+          registry: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
           password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
-      
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=${{ needs.prepare.outputs.image-tag }}
-            type=raw,value=latest,enable=${{ needs.prepare.outputs.environment == 'production' }}
-            type=sha,prefix={{branch}}-
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -112,19 +64,17 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
-          build-args: |
-            NODE_ENV=production
+          tags: |
+            ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.set-tag.outputs.tag }}
+            ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=registry,ref=${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
 
   database-migration:
     name: Database Migration
     runs-on: ubuntu-latest
-    needs: [prepare, build-and-push]
-    environment:
-      name: ${{ needs.prepare.outputs.environment }}
+    needs: build-and-push
+    if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
     
     steps:
       - name: Checkout code
@@ -147,20 +97,21 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       
-      - name: Verify migration status
+      - name: Verify migration
         run: |
-          echo "✅ Database migrations completed successfully"
+          echo "✅ Database migrations completed"
           npx prisma migrate status
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   deploy:
-    name: Deploy to Azure Container Apps
+    name: Deploy to Container Apps
     runs-on: ubuntu-latest
-    needs: [prepare, build-and-push, database-migration]
+    needs: [build-and-push, database-migration]
+    if: github.event_name == 'push' || github.event.inputs.action == 'deploy'
     environment:
-      name: ${{ needs.prepare.outputs.environment }}
-      url: ${{ steps.deploy.outputs.app-url }}
+      name: production
+      url: ${{ steps.get-url.outputs.app-url }}
     
     steps:
       - name: Azure Login
@@ -168,95 +119,56 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
-      - name: Deploy to Container Apps
-        id: deploy
-        uses: azure/container-apps-deploy-action@v1
-        with:
-          resourceGroup: ${{ env.RESOURCE_GROUP }}
-          containerAppName: ${{ needs.prepare.outputs.app-name }}
-          imageToDeploy: ${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.image-tag }}
-          environmentVariables: >
-            NODE_ENV=production
-            DATABASE_URL=secretref:database-url
-            REDIS_URL=secretref:redis-url
-            NEXTAUTH_URL=secretref:nextauth-url
-            NEXTAUTH_SECRET=secretref:nextauth-secret
-            GITHUB_CLIENT_ID=secretref:github-client-id
-            GITHUB_CLIENT_SECRET=secretref:github-client-secret
-            AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string
-            AZURE_STORAGE_CONTAINER_NAME=${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+      - name: Deploy new revision
+        run: |
+          az containerapp update \
+            --name ${{ env.APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image-tag }} \
+            --set-env-vars \
+              NODE_ENV=production \
+              DATABASE_URL=secretref:database-url \
+              AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-connection-string \
+              AZURE_STORAGE_CONTAINER_NAME=music \
+              NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }} \
+              NEXTAUTH_SECRET=secretref:nextauth-secret \
+              GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }} \
+              GITHUB_CLIENT_SECRET=secretref:github-client-secret
       
-      - name: Get Container App URL
+      - name: Get application URL
+        id: get-url
         run: |
           APP_URL=$(az containerapp show \
-            --name ${{ needs.prepare.outputs.app-name }} \
+            --name ${{ env.APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query properties.configuration.ingress.fqdn \
             --output tsv)
           echo "app-url=https://$APP_URL" >> $GITHUB_OUTPUT
-          echo "🚀 Application deployed to: https://$APP_URL"
-
-  health-check:
-    name: Health Check
-    runs-on: ubuntu-latest
-    needs: [prepare, deploy]
-    
-    steps:
-      - name: Wait for deployment to stabilize
+          echo "🚀 Deployed to: https://$APP_URL"
+      
+      - name: Wait for deployment
         run: sleep 30
       
-      - name: Check application health
+      - name: Health check
         run: |
-          APP_URL=$(az containerapp show \
-            --name ${{ needs.prepare.outputs.app-name }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query properties.configuration.ingress.fqdn \
-            --output tsv)
-          
-          # Try health check endpoint (retry up to 5 times)
           for i in {1..5}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APP_URL/api/health" || echo "000")
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.get-url.outputs.app-url }}/api/health" || echo "000")
             if [ "$STATUS" == "200" ]; then
-              echo "✅ Health check passed (attempt $i)"
+              echo "✅ Health check passed"
               exit 0
             fi
-            echo "⏳ Health check failed with status $STATUS (attempt $i/5)"
+            echo "⏳ Waiting for app to be ready (attempt $i/5)..."
             sleep 10
           done
-          
-          echo "❌ Health check failed after 5 attempts"
-          exit 1
-        env:
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-  notify:
-    name: Notify Deployment Status
-    runs-on: ubuntu-latest
-    needs: [prepare, deploy, health-check]
-    if: always()
-    
-    steps:
-      - name: Deployment Success
-        if: needs.health-check.result == 'success'
-        run: |
-          echo "✅ Deployment to ${{ needs.prepare.outputs.environment }} completed successfully"
-          echo "🏷️  Image Tag: ${{ needs.prepare.outputs.image-tag }}"
-          echo "📦 Container App: ${{ needs.prepare.outputs.app-name }}"
-      
-      - name: Deployment Failure
-        if: needs.health-check.result != 'success'
-        run: |
-          echo "❌ Deployment to ${{ needs.prepare.outputs.environment }} failed"
-          echo "Please check the logs for more details"
+          echo "❌ Health check failed"
           exit 1
 
   rollback:
-    name: Rollback (Manual)
+    name: Rollback to Previous Revision
     runs-on: ubuntu-latest
-    needs: [prepare, deploy]
-    if: failure() && github.event_name == 'workflow_dispatch'
+    if: github.event.inputs.action == 'rollback'
     environment:
-      name: ${{ needs.prepare.outputs.environment }}-rollback
+      name: production-rollback
     
     steps:
       - name: Azure Login
@@ -264,21 +176,72 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
-      - name: Get previous revision
-        id: prev-revision
+      - name: Get current and previous revisions
+        id: revisions
         run: |
-          PREV_REVISION=$(az containerapp revision list \
-            --name ${{ needs.prepare.outputs.app-name }} \
+          echo "📋 Listing all revisions..."
+          az containerapp revision list \
+            --name ${{ env.APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query "[?properties.active==\`true\`] | [1].name" \
-            --output tsv)
+            --query "[].{Name:name, Active:properties.active, Created:properties.createdTime}" \
+            --output table
+          
+          if [ -n "${{ github.event.inputs.revision }}" ]; then
+            PREV_REVISION="${{ github.event.inputs.revision }}"
+          else
+            PREV_REVISION=$(az containerapp revision list \
+              --name ${{ env.APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "[?properties.active==\`true\`] | [1].name" \
+              --output tsv)
+          fi
+          
+          if [ -z "$PREV_REVISION" ]; then
+            echo "❌ No previous revision found"
+            exit 1
+          fi
+          
           echo "revision=$PREV_REVISION" >> $GITHUB_OUTPUT
+          echo "🔄 Will rollback to: $PREV_REVISION"
       
-      - name: Rollback to previous revision
-        if: steps.prev-revision.outputs.revision != ''
+      - name: Activate previous revision
         run: |
           az containerapp revision activate \
-            --name ${{ needs.prepare.outputs.app-name }} \
+            --name ${{ env.APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --revision ${{ steps.prev-revision.outputs.revision }}
-          echo "🔄 Rolled back to revision: ${{ steps.prev-revision.outputs.revision }}"
+            --revision ${{ steps.revisions.outputs.revision }}
+          
+          echo "✅ Rollback completed to revision: ${{ steps.revisions.outputs.revision }}"
+      
+      - name: Verify rollback
+        run: |
+          sleep 20
+          APP_URL=$(az containerapp show \
+            --name ${{ env.APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APP_URL/api/health" || echo "000")
+          if [ "$STATUS" == "200" ]; then
+            echo "✅ Rollback verified successfully"
+          else
+            echo "⚠️  Warning: Health check returned status $STATUS"
+          fi
+
+  notify:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always() && (github.event_name == 'push' || github.event.inputs.action == 'deploy')
+    
+    steps:
+      - name: Report Status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment completed successfully"
+            echo "🏷️  Image tag: ${{ needs.build-and-push.outputs.image-tag }}"
+          else
+            echo "❌ Deployment failed"
+            echo "💡 You can rollback using: workflow_dispatch with action=rollback"
+          fi

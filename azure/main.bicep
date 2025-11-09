@@ -1,17 +1,10 @@
-// Main Bicep template for M3W Azure infrastructure
-// This template deploys all required Azure resources for the M3W application
+// Azure Infrastructure for M3W
+// Optimized single-environment deployment with auto-scaling
+// Estimated cost: ~$40-60/month
 
 targetScope = 'resourceGroup'
 
 // Parameters
-@description('Environment name (dev, staging, production)')
-@allowed([
-  'dev'
-  'staging'
-  'production'
-])
-param environment string = 'production'
-
 @description('Location for all resources')
 param location string = resourceGroup().location
 
@@ -26,84 +19,22 @@ param postgresAdminLogin string
 @secure()
 param postgresAdminPassword string
 
-@description('Redis cache name')
-param redisCacheName string = 'm3w-redis-${uniqueSuffix}'
-
-@description('Container Apps minimum replica count')
-param minReplicas int = environment == 'production' ? 2 : 1
-
-@description('Container Apps maximum replica count')
-param maxReplicas int = environment == 'production' ? 10 : 3
-
 // Variables
-var appName = 'm3w-app-${environment}'
+var appName = 'm3w-app'
 var postgresServerName = 'm3w-postgres-${uniqueSuffix}'
 var storageAccountName = 'm3wstorage${uniqueSuffix}'
 var containerRegistryName = 'm3wacr${uniqueSuffix}'
 var logAnalyticsName = 'm3w-logs-${uniqueSuffix}'
-var appInsightsName = 'm3w-insights-${uniqueSuffix}'
-var vnetName = 'm3w-vnet'
-var containerAppsEnvironmentName = 'm3w-env-${environment}'
+var containerAppsEnvironmentName = 'm3w-env'
 
 // Tagging
 var commonTags = {
-  Environment: environment
   Application: 'M3W'
+  CostCenter: 'Personal'
   ManagedBy: 'Bicep'
 }
 
-// Virtual Network
-resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
-  name: vnetName
-  location: location
-  tags: commonTags
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        '10.0.0.0/16'
-      ]
-    }
-    subnets: [
-      {
-        name: 'container-apps-subnet'
-        properties: {
-          addressPrefix: '10.0.0.0/23'
-          delegations: [
-            {
-              name: 'containerAppsDelegation'
-              properties: {
-                serviceName: 'Microsoft.App/environments'
-              }
-            }
-          ]
-        }
-      }
-      {
-        name: 'database-subnet'
-        properties: {
-          addressPrefix: '10.0.2.0/24'
-          delegations: [
-            {
-              name: 'postgresDelegation'
-              properties: {
-                serviceName: 'Microsoft.DBforPostgreSQL/flexibleServers'
-              }
-            }
-          ]
-        }
-      }
-      {
-        name: 'private-endpoint-subnet'
-        properties: {
-          addressPrefix: '10.0.3.0/24'
-          privateEndpointNetworkPolicies: 'Disabled'
-        }
-      }
-    ]
-  }
-}
-
-// Log Analytics Workspace
+// Log Analytics Workspace (required for Container Apps)
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsName
   location: location
@@ -112,62 +43,56 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
     sku: {
       name: 'PerGB2018'
     }
-    retentionInDays: environment == 'production' ? 90 : 30
+    retentionInDays: 30 // Minimum retention to save cost
   }
 }
 
-// Application Insights
-resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
-  name: appInsightsName
-  location: location
-  tags: commonTags
-  kind: 'web'
-  properties: {
-    Application_Type: 'web'
-    WorkspaceResourceId: logAnalytics.id
-  }
-}
-
-// Container Registry
+// Container Registry (Basic tier)
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: containerRegistryName
   location: location
   tags: commonTags
   sku: {
-    name: environment == 'production' ? 'Standard' : 'Basic'
+    name: 'Basic' // Cheapest option at ~$5/month
   }
   properties: {
     adminUserEnabled: true
   }
 }
 
-// PostgreSQL Flexible Server
+// PostgreSQL Flexible Server (Burstable tier)
 resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-preview' = {
   name: postgresServerName
   location: location
   tags: commonTags
   sku: {
-    name: environment == 'production' ? 'Standard_D2s_v3' : 'Standard_B1ms'
-    tier: environment == 'production' ? 'GeneralPurpose' : 'Burstable'
+    name: 'Standard_B1ms' // Burstable tier: 1 vCore, 2GB RAM (~$13/month)
+    tier: 'Burstable'
   }
   properties: {
     administratorLogin: postgresAdminLogin
     administratorLoginPassword: postgresAdminPassword
     version: '16'
     storage: {
-      storageSizeGB: environment == 'production' ? 128 : 32
+      storageSizeGB: 32 // Minimum storage
     }
     backup: {
-      backupRetentionDays: environment == 'production' ? 35 : 7
-      geoRedundantBackup: environment == 'production' ? 'Enabled' : 'Disabled'
+      backupRetentionDays: 7 // Minimum retention
+      geoRedundantBackup: 'Disabled' // Save cost
     }
     highAvailability: {
-      mode: environment == 'production' ? 'ZoneRedundant' : 'Disabled'
+      mode: 'Disabled' // No HA to save cost
     }
-    network: {
-      delegatedSubnetResourceId: vnet.properties.subnets[1].id
-      privateDnsZoneArmResourceId: postgresDnsZone.id
-    }
+  }
+}
+
+// Configure PostgreSQL to allow Azure services
+resource postgresFirewall 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-03-01-preview' = {
+  parent: postgresServer
+  name: 'AllowAzureServices'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
   }
 }
 
@@ -181,86 +106,20 @@ resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2
   }
 }
 
-// Private DNS Zone for PostgreSQL
-resource postgresDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink.postgres.database.azure.com'
-  location: 'global'
-  tags: commonTags
-}
-
-resource postgresDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
-  parent: postgresDnsZone
-  name: '${vnetName}-link'
-  location: 'global'
-  properties: {
-    registrationEnabled: false
-    virtualNetwork: {
-      id: vnet.id
-    }
-  }
-}
-
-// Redis Cache
-resource redisCache 'Microsoft.Cache/redis@2023-08-01' = {
-  name: redisCacheName
-  location: location
-  tags: commonTags
-  properties: {
-    sku: {
-      name: environment == 'production' ? 'Standard' : 'Basic'
-      family: 'C'
-      capacity: environment == 'production' ? 1 : 0
-    }
-    enableNonSslPort: false
-    minimumTlsVersion: '1.2'
-    redisConfiguration: {
-      'maxmemory-policy': 'allkeys-lru'
-    }
-    publicNetworkAccess: 'Disabled'
-  }
-}
-
-// Private Endpoint for Redis
-resource redisPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-05-01' = {
-  name: '${redisCacheName}-pe'
-  location: location
-  tags: commonTags
-  properties: {
-    subnet: {
-      id: vnet.properties.subnets[2].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: '${redisCacheName}-connection'
-        properties: {
-          privateLinkServiceId: redisCache.id
-          groupIds: [
-            'redisCache'
-          ]
-        }
-      }
-    ]
-  }
-}
-
-// Storage Account for audio files
+// Storage Account for audio files (LRS for cost savings)
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
   location: location
   tags: commonTags
   sku: {
-    name: environment == 'production' ? 'Standard_GRS' : 'Standard_LRS'
+    name: 'Standard_LRS' // Locally redundant storage (cheapest)
   }
   kind: 'StorageV2'
   properties: {
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
     supportsHttpsTrafficOnly: true
-    accessTier: 'Hot'
-    networkAcls: {
-      defaultAction: 'Deny'
-      bypass: 'AzureServices'
-    }
+    accessTier: 'Hot' // Hot tier for frequently accessed files
   }
 }
 
@@ -291,7 +150,7 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01'
     }
     deleteRetentionPolicy: {
       enabled: true
-      days: environment == 'production' ? 30 : 7
+      days: 7 // Minimum retention
     }
   }
 }
@@ -304,38 +163,12 @@ resource musicContainer 'Microsoft.Storage/storageAccounts/blobServices/containe
   }
 }
 
-// Private Endpoint for Storage
-resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-05-01' = {
-  name: '${storageAccountName}-pe'
-  location: location
-  tags: commonTags
-  properties: {
-    subnet: {
-      id: vnet.properties.subnets[2].id
-    }
-    privateLinkServiceConnections: [
-      {
-        name: '${storageAccountName}-connection'
-        properties: {
-          privateLinkServiceId: storageAccount.id
-          groupIds: [
-            'blob'
-          ]
-        }
-      }
-    ]
-  }
-}
-
 // Container Apps Environment
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' = {
   name: containerAppsEnvironmentName
   location: location
   tags: commonTags
   properties: {
-    vnetConfiguration: {
-      infrastructureSubnetId: vnet.properties.subnets[0].id
-    }
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
@@ -346,7 +179,7 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01'
   }
 }
 
-// Container App
+// Container App (consumption-based pricing)
 resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: appName
   location: location
@@ -374,10 +207,6 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           value: 'postgresql://${postgresAdminLogin}:${postgresAdminPassword}@${postgresServer.properties.fullyQualifiedDomainName}:5432/m3w?sslmode=require'
         }
         {
-          name: 'redis-url'
-          value: 'rediss://:${redisCache.listKeys().primaryKey}@${redisCache.properties.hostName}:6380'
-        }
-        {
           name: 'azure-storage-connection-string'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
         }
@@ -393,15 +222,19 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           passwordSecretRef: 'container-registry-password'
         }
       ]
+      // Keep last 3 revisions for quick rollback
+      activeRevisionsMode: 'Multiple'
+      maxInactiveRevisions: 3
     }
     template: {
+      revisionSuffix: 'auto'
       containers: [
         {
           name: 'm3w'
           image: '${containerRegistry.properties.loginServer}/m3w:latest'
           resources: {
-            cpu: environment == 'production' ? 2 : json('0.5')
-            memory: environment == 'production' ? '4Gi' : '1Gi'
+            cpu: json('0.5') // 0.5 vCPU
+            memory: '1Gi'     // 1GB RAM
           }
           env: [
             {
@@ -413,20 +246,12 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               secretRef: 'database-url'
             }
             {
-              name: 'REDIS_URL'
-              secretRef: 'redis-url'
-            }
-            {
               name: 'AZURE_STORAGE_CONNECTION_STRING'
               secretRef: 'azure-storage-connection-string'
             }
             {
               name: 'AZURE_STORAGE_CONTAINER_NAME'
               value: 'music'
-            }
-            {
-              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-              value: appInsights.properties.ConnectionString
             }
           ]
           probes: [
@@ -438,6 +263,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               }
               initialDelaySeconds: 30
               periodSeconds: 10
+              failureThreshold: 3
             }
             {
               type: 'Readiness'
@@ -447,29 +273,20 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               }
               initialDelaySeconds: 10
               periodSeconds: 5
+              failureThreshold: 3
             }
           ]
         }
       ]
       scale: {
-        minReplicas: minReplicas
-        maxReplicas: maxReplicas
+        minReplicas: 0  // Scale to zero when not in use
+        maxReplicas: 2  // Maximum 2 instances
         rules: [
           {
             name: 'http-scaling'
             http: {
               metadata: {
-                concurrentRequests: '100'
-              }
-            }
-          }
-          {
-            name: 'cpu-scaling'
-            custom: {
-              type: 'cpu'
-              metadata: {
-                type: 'Utilization'
-                value: '70'
+                concurrentRequests: '50' // Scale up at 50 concurrent requests
               }
             }
           }
@@ -484,7 +301,7 @@ resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
   name: guid(storageAccount.id, containerApp.id, 'StorageBlobDataContributor')
   scope: storageAccount
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
     principalId: containerApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
@@ -493,8 +310,8 @@ resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
 // Outputs
 output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output containerRegistryLoginServer string = containerRegistry.properties.loginServer
+output containerRegistryUsername string = containerRegistry.listCredentials().username
+output containerRegistryPassword string = containerRegistry.listCredentials().passwords[0].value
 output postgresServerFqdn string = postgresServer.properties.fullyQualifiedDomainName
-output redisHostName string = redisCache.properties.hostName
 output storageAccountName string = storageAccount.name
-output appInsightsInstrumentationKey string = appInsights.properties.InstrumentationKey
-output appInsightsConnectionString string = appInsights.properties.ConnectionString
+output databaseUrl string = 'postgresql://${postgresAdminLogin}:***@${postgresServer.properties.fullyQualifiedDomainName}:5432/m3w?sslmode=require'

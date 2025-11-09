@@ -1,23 +1,23 @@
 #!/bin/bash
 # M3W Azure Deployment Script
-# This script helps manage Azure infrastructure and application deployments
+# Single-environment deployment with auto-scaling and rollback support
 
 set -e
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 RESOURCE_GROUP="m3w-rg"
 LOCATION="eastasia"
+APP_NAME="m3w-app"
 BICEP_FILE="${SCRIPT_DIR}/main.bicep"
+PARAM_FILE="${SCRIPT_DIR}/parameters.json"
 
-# Functions
 print_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -30,338 +30,361 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+print_step() {
+    echo -e "${BLUE}[STEP]${NC} $1"
+}
+
 check_az_cli() {
     if ! command -v az &> /dev/null; then
-        print_error "Azure CLI is not installed. Please install it first:"
-        print_info "macOS: brew install azure-cli"
-        print_info "Linux: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"
+        print_error "Azure CLI not installed"
+        print_info "Install: brew install azure-cli"
         exit 1
     fi
-    print_info "Azure CLI version: $(az --version | head -n 1)"
 }
 
 check_login() {
-    print_info "Checking Azure login status..."
+    print_info "Checking Azure login..."
     if ! az account show &> /dev/null; then
-        print_warning "Not logged in to Azure. Starting login..."
+        print_warning "Not logged in"
         az login
     fi
     
     SUBSCRIPTION_ID=$(az account show --query id -o tsv)
     SUBSCRIPTION_NAME=$(az account show --query name -o tsv)
-    print_info "Using subscription: $SUBSCRIPTION_NAME ($SUBSCRIPTION_ID)"
+    print_info "Subscription: $SUBSCRIPTION_NAME"
 }
 
-create_resource_group() {
-    local env=${1:-production}
-    local rg_name="${RESOURCE_GROUP}"
+create_infrastructure() {
+    print_step "Creating Azure infrastructure..."
     
-    if [ "$env" != "production" ]; then
-        rg_name="${RESOURCE_GROUP}-${env}"
-    fi
+    # Create resource group
+    print_info "Creating resource group: $RESOURCE_GROUP"
+    az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
     
-    print_info "Creating resource group: $rg_name"
+    # Deploy Bicep template
+    print_info "Deploying resources (10-15 minutes)..."
+    DEPLOYMENT_NAME="m3w-deploy-$(date +%Y%m%d-%H%M%S)"
     
-    if az group show --name "$rg_name" &> /dev/null; then
-        print_warning "Resource group $rg_name already exists"
-    else
-        az group create --name "$rg_name" --location "$LOCATION"
-        print_info "Resource group created successfully"
-    fi
-}
-
-deploy_infrastructure() {
-    local env=${1:-production}
-    local rg_name="${RESOURCE_GROUP}"
-    local param_file="${SCRIPT_DIR}/parameters.json"
-    
-    if [ "$env" != "production" ]; then
-        rg_name="${RESOURCE_GROUP}-${env}"
-        param_file="${SCRIPT_DIR}/parameters.${env}.json"
-    fi
-    
-    print_info "Deploying infrastructure to $rg_name environment..."
-    
-    # Check if parameter file exists
-    if [ ! -f "$param_file" ]; then
-        print_error "Parameter file not found: $param_file"
-        exit 1
-    fi
-    
-    # Validate Bicep template
-    print_info "Validating Bicep template..."
-    az deployment group validate \
-        --resource-group "$rg_name" \
-        --template-file "$BICEP_FILE" \
-        --parameters "@${param_file}"
-    
-    # Deploy infrastructure
-    print_info "Starting deployment (this may take 10-15 minutes)..."
     az deployment group create \
-        --resource-group "$rg_name" \
+        --resource-group "$RESOURCE_GROUP" \
         --template-file "$BICEP_FILE" \
-        --parameters "@${param_file}" \
-        --name "m3w-deployment-$(date +%Y%m%d-%H%M%S)"
+        --parameters "@${PARAM_FILE}" \
+        --name "$DEPLOYMENT_NAME" \
+        --output none
     
-    print_info "Infrastructure deployment completed successfully!"
+    print_info "✅ Infrastructure created successfully!"
     
-    # Get outputs
-    print_info "Deployment outputs:"
+    # Show outputs
+    print_step "Deployment Outputs:"
     az deployment group show \
-        --resource-group "$rg_name" \
-        --name "$(az deployment group list --resource-group "$rg_name" --query '[0].name' -o tsv)" \
-        --query properties.outputs
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$DEPLOYMENT_NAME" \
+        --query properties.outputs \
+        --output json
 }
 
-build_and_push_image() {
-    local env=${1:-production}
-    local tag=${2:-latest}
+build_and_push() {
+    print_step "Building and pushing Docker image..."
     
-    print_info "Building and pushing Docker image..."
+    # Get ACR details
+    ACR_NAME=$(az acr list --resource-group "$RESOURCE_GROUP" --query '[0].name' -o tsv)
+    ACR_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
     
-    # Get ACR login server
-    local acr_name=$(az acr list --resource-group "$RESOURCE_GROUP" --query '[0].name' -o tsv)
-    local acr_server=$(az acr show --name "$acr_name" --query loginServer -o tsv)
-    
-    print_info "Container Registry: $acr_server"
+    print_info "Registry: $ACR_SERVER"
     
     # Login to ACR
-    print_info "Logging in to Azure Container Registry..."
-    az acr login --name "$acr_name"
+    az acr login --name "$ACR_NAME"
     
-    # Build and push
-    print_info "Building Docker image..."
-    docker build -t "${acr_server}/m3w:${tag}" -f "${PROJECT_ROOT}/docker/Dockerfile" "$PROJECT_ROOT"
+    # Build
+    TAG="${1:-$(git rev-parse --short HEAD)}"
+    IMAGE="${ACR_SERVER}/m3w:${TAG}"
     
-    print_info "Pushing image to registry..."
-    docker push "${acr_server}/m3w:${tag}"
+    print_info "Building: $IMAGE"
+    docker build -t "$IMAGE" -f "${PROJECT_ROOT}/docker/Dockerfile" "$PROJECT_ROOT"
     
-    # Also tag as latest for production
-    if [ "$env" == "production" ]; then
-        docker tag "${acr_server}/m3w:${tag}" "${acr_server}/m3w:latest"
-        docker push "${acr_server}/m3w:latest"
-    fi
+    # Push
+    print_info "Pushing image..."
+    docker push "$IMAGE"
     
-    print_info "Image pushed successfully: ${acr_server}/m3w:${tag}"
+    # Tag as latest
+    docker tag "$IMAGE" "${ACR_SERVER}/m3w:latest"
+    docker push "${ACR_SERVER}/m3w:latest"
+    
+    print_info "✅ Image pushed: $TAG"
 }
 
 run_migrations() {
-    local env=${1:-production}
+    print_step "Running database migrations..."
     
-    print_info "Running database migrations..."
-    
-    # This should be run with proper DATABASE_URL from secrets
-    print_warning "Make sure DATABASE_URL is set in your environment"
+    if [ -z "$DATABASE_URL" ]; then
+        print_error "DATABASE_URL not set"
+        print_info "Export it first: export DATABASE_URL='postgresql://...'"
+        exit 1
+    fi
     
     cd "$PROJECT_ROOT"
     npm run db:migrate:deploy
     
-    print_info "Migrations completed successfully"
+    print_info "✅ Migrations completed"
 }
 
 deploy_app() {
-    local env=${1:-production}
-    local tag=${2:-latest}
-    local rg_name="${RESOURCE_GROUP}"
+    print_step "Deploying application..."
     
-    if [ "$env" != "production" ]; then
-        rg_name="${RESOURCE_GROUP}-${env}"
-    fi
+    TAG="${1:-latest}"
+    ACR_NAME=$(az acr list --resource-group "$RESOURCE_GROUP" --query '[0].name' -o tsv)
+    ACR_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
+    IMAGE="${ACR_SERVER}/m3w:${TAG}"
     
-    local app_name="m3w-app-${env}"
-    local acr_name=$(az acr list --resource-group "$RESOURCE_GROUP" --query '[0].name' -o tsv)
-    local acr_server=$(az acr show --name "$acr_name" --query loginServer -o tsv)
-    local image="${acr_server}/m3w:${tag}"
-    
-    print_info "Deploying application to Container Apps..."
-    print_info "Image: $image"
+    print_info "Deploying: $IMAGE"
     
     az containerapp update \
-        --name "$app_name" \
-        --resource-group "$rg_name" \
-        --image "$image" \
-        --revision-suffix "$(date +%Y%m%d-%H%M%S)"
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --image "$IMAGE" \
+        --output none
     
-    print_info "Application deployed successfully!"
-    
-    # Get app URL
-    local app_url=$(az containerapp show \
-        --name "$app_name" \
-        --resource-group "$rg_name" \
+    # Get URL
+    APP_URL=$(az containerapp show \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
         --query properties.configuration.ingress.fqdn -o tsv)
     
-    print_info "Application URL: https://$app_url"
+    print_info "✅ Deployed to: https://$APP_URL"
+}
+
+list_revisions() {
+    print_step "Container App Revisions:"
+    az containerapp revision list \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "[].{Name:name, Active:properties.active, Traffic:properties.trafficWeight, Created:properties.createdTime}" \
+        --output table
+}
+
+rollback() {
+    print_step "Rolling back to previous revision..."
+    
+    # Get previous active revision
+    PREV_REVISION=$(az containerapp revision list \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "[?properties.active==\`true\`] | [1].name" \
+        --output tsv)
+    
+    if [ -z "$PREV_REVISION" ]; then
+        print_error "No previous revision found"
+        list_revisions
+        exit 1
+    fi
+    
+    print_warning "Rolling back to: $PREV_REVISION"
+    read -p "Continue? (yes/no): " confirm
+    
+    if [ "$confirm" == "yes" ]; then
+        az containerapp revision activate \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --revision "$PREV_REVISION" \
+            --output none
+        
+        print_info "✅ Rollback completed"
+    else
+        print_info "Rollback cancelled"
+    fi
 }
 
 show_logs() {
-    local env=${1:-production}
-    local rg_name="${RESOURCE_GROUP}"
-    
-    if [ "$env" != "production" ]; then
-        rg_name="${RESOURCE_GROUP}-${env}"
-    fi
-    
-    local app_name="m3w-app-${env}"
-    
-    print_info "Fetching logs from $app_name..."
+    print_step "Streaming logs (Ctrl+C to exit)..."
     az containerapp logs show \
-        --name "$app_name" \
-        --resource-group "$rg_name" \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
         --follow
 }
 
-get_secrets() {
-    local env=${1:-production}
-    local rg_name="${RESOURCE_GROUP}"
+show_cost() {
+    print_step "Cost Analysis:"
     
-    if [ "$env" != "production" ]; then
-        rg_name="${RESOURCE_GROUP}-${env}"
+    START_DATE=$(date -v-30d +%Y-%m-%d 2>/dev/null || date -d "30 days ago" +%Y-%m-%d)
+    END_DATE=$(date +%Y-%m-%d)
+    
+    az consumption usage list \
+        --start-date "$START_DATE" \
+        --end-date "$END_DATE" \
+        --query "[?contains(instanceName, 'm3w')].{Service:instanceName, Cost:pretaxCost, Currency:currency}" \
+        --output table
+}
+
+show_status() {
+    print_step "Application Status:"
+    
+    APP_URL=$(az containerapp show \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query properties.configuration.ingress.fqdn -o tsv)
+    
+    REPLICAS=$(az containerapp replica list \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "length([])" -o tsv)
+    
+    echo "URL: https://$APP_URL"
+    echo "Active Replicas: $REPLICAS"
+    echo ""
+    
+    list_revisions
+}
+
+get_secrets() {
+    print_step "Connection Strings & Secrets:"
+    
+    DEPLOYMENT=$(az deployment group list \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "[0].name" -o tsv)
+    
+    if [ -z "$DEPLOYMENT" ]; then
+        print_error "No deployment found"
+        exit 1
     fi
     
-    print_info "Retrieving connection strings and secrets..."
-    
-    # PostgreSQL
-    local postgres_server=$(az postgres flexible-server list \
-        --resource-group "$rg_name" \
-        --query '[0].fullyQualifiedDomainName' -o tsv)
-    print_info "PostgreSQL Server: $postgres_server"
-    
-    # Redis
-    local redis_name=$(az redis list \
-        --resource-group "$rg_name" \
-        --query '[0].name' -o tsv)
-    local redis_key=$(az redis list-keys \
-        --name "$redis_name" \
-        --resource-group "$rg_name" \
-        --query primaryKey -o tsv)
-    local redis_host=$(az redis show \
-        --name "$redis_name" \
-        --resource-group "$rg_name" \
-        --query hostName -o tsv)
-    print_info "Redis URL: rediss://:${redis_key:0:10}...@$redis_host:6380"
-    
-    # Storage
-    local storage_name=$(az storage account list \
-        --resource-group "$rg_name" \
-        --query '[0].name' -o tsv)
-    local storage_key=$(az storage account keys list \
-        --account-name "$storage_name" \
-        --resource-group "$rg_name" \
-        --query '[0].value' -o tsv)
-    print_info "Storage Account: $storage_name"
-    
-    # Container Registry
-    local acr_name=$(az acr list \
-        --resource-group "$rg_name" \
-        --query '[0].name' -o tsv)
-    local acr_server=$(az acr show \
-        --name "$acr_name" \
-        --query loginServer -o tsv)
-    print_info "Container Registry: $acr_server"
+    az deployment group show \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$DEPLOYMENT" \
+        --query properties.outputs \
+        --output json | jq -r '
+            "Container App URL: " + .containerAppUrl.value,
+            "Registry Server: " + .containerRegistryLoginServer.value,
+            "Registry Username: " + .containerRegistryUsername.value,
+            "Registry Password: " + .containerRegistryPassword.value[:20] + "...",
+            "PostgreSQL Server: " + .postgresServerFqdn.value,
+            "Storage Account: " + .storageAccountName.value,
+            "",
+            "Export these for local use:",
+            "export DATABASE_URL=\"" + .databaseUrl.value + "\"",
+            "export AZURE_REGISTRY_LOGIN_SERVER=\"" + .containerRegistryLoginServer.value + "\"",
+            "export AZURE_REGISTRY_USERNAME=\"" + .containerRegistryUsername.value + "\"",
+            "export AZURE_REGISTRY_PASSWORD=\"" + .containerRegistryPassword.value + "\""
+        '
 }
 
 cleanup() {
-    local env=${1:-production}
-    local rg_name="${RESOURCE_GROUP}"
+    print_warning "⚠️  This will DELETE all resources in $RESOURCE_GROUP!"
+    print_warning "This action CANNOT be undone!"
+    echo ""
+    read -p "Type 'DELETE' to confirm: " confirm
     
-    if [ "$env" != "production" ]; then
-        rg_name="${RESOURCE_GROUP}-${env}"
-    fi
-    
-    print_warning "This will DELETE all resources in $rg_name!"
-    read -p "Are you sure? (type 'yes' to confirm): " confirm
-    
-    if [ "$confirm" == "yes" ]; then
-        print_info "Deleting resource group $rg_name..."
-        az group delete --name "$rg_name" --yes --no-wait
-        print_info "Deletion started. Resources will be removed in the background."
+    if [ "$confirm" == "DELETE" ]; then
+        print_info "Deleting resource group..."
+        az group delete --name "$RESOURCE_GROUP" --yes --no-wait
+        print_info "✅ Deletion started (running in background)"
     else
         print_info "Cleanup cancelled"
     fi
 }
 
-# Main menu
 show_help() {
     cat << EOF
-M3W Azure Deployment Script
+${BLUE}M3W Azure Deployment${NC}
 
-Usage: ./deploy.sh [command] [options]
+${GREEN}Infrastructure Commands:${NC}
+  create           Create all Azure resources
+  secrets          Show connection strings and credentials
+  cleanup          Delete all resources
 
-Commands:
-    setup [env]              - Create resource group (default: production)
-    create-infra [env]       - Deploy all Azure infrastructure
-    build-image [env] [tag]  - Build and push Docker image
-    migrate [env]            - Run database migrations
-    deploy-app [env] [tag]   - Deploy application to Container Apps
-    logs [env]               - Stream application logs
-    secrets [env]            - Show connection strings and secrets
-    full-deploy [env] [tag]  - Run complete deployment (build + migrate + deploy)
-    cleanup [env]            - Delete all resources (WARNING: destructive!)
-    help                     - Show this help message
+${GREEN}Application Commands:${NC}
+  build [tag]      Build and push Docker image
+  migrate          Run database migrations
+  deploy [tag]     Deploy application to Container Apps
+  full [tag]       Build + Migrate + Deploy (complete deployment)
 
-Environments:
-    production  (default)
-    staging
-    development
+${GREEN}Management Commands:${NC}
+  revisions        List all revisions
+  rollback         Rollback to previous revision
+  logs             Stream application logs
+  status           Show application status
+  cost             Show cost breakdown
 
-Examples:
-    ./deploy.sh setup production
-    ./deploy.sh create-infra production
-    ./deploy.sh build-image production v1.0.0
-    ./deploy.sh deploy-app staging latest
-    ./deploy.sh logs production
+${GREEN}Examples:${NC}
+  ./deploy.sh create
+  ./deploy.sh full v1.0.0
+  ./deploy.sh rollback
+  ./deploy.sh logs
+  ./deploy-budget.sh logs
+
+${YELLOW}Prerequisites:${NC}
+  - Azure CLI installed (brew install azure-cli)
+  - Logged in to Azure (az login)
+  - Docker installed
+
+${YELLOW}Environment Variables:${NC}
+  DATABASE_URL     Required for migrations
 
 EOF
 }
 
-# Main script execution
+# Main
 case "${1:-help}" in
-    setup)
+    create)
         check_az_cli
         check_login
-        create_resource_group "${2:-production}"
+        create_infrastructure
+        get_secrets
         ;;
-    create-infra)
+    build)
         check_az_cli
         check_login
-        create_resource_group "${2:-production}"
-        deploy_infrastructure "${2:-production}"
-        get_secrets "${2:-production}"
-        ;;
-    build-image)
-        check_az_cli
-        check_login
-        build_and_push_image "${2:-production}" "${3:-latest}"
+        build_and_push "${2:-latest}"
         ;;
     migrate)
-        run_migrations "${2:-production}"
+        run_migrations
         ;;
-    deploy-app)
+    deploy)
         check_az_cli
         check_login
-        deploy_app "${2:-production}" "${3:-latest}"
+        deploy_app "${2:-latest}"
+        ;;
+    full)
+        check_az_cli
+        check_login
+        build_and_push "${2:-latest}"
+        run_migrations
+        deploy_app "${2:-latest}"
+        show_status
+        ;;
+    revisions)
+        check_az_cli
+        check_login
+        list_revisions
+        ;;
+    rollback)
+        check_az_cli
+        check_login
+        rollback
         ;;
     logs)
         check_az_cli
         check_login
-        show_logs "${2:-production}"
+        show_logs
+        ;;
+    status)
+        check_az_cli
+        check_login
+        show_status
+        ;;
+    cost)
+        check_az_cli
+        check_login
+        show_cost
         ;;
     secrets)
         check_az_cli
         check_login
-        get_secrets "${2:-production}"
-        ;;
-    full-deploy)
-        check_az_cli
-        check_login
-        build_and_push_image "${2:-production}" "${3:-latest}"
-        run_migrations "${2:-production}"
-        deploy_app "${2:-production}" "${3:-latest}"
+        get_secrets
         ;;
     cleanup)
         check_az_cli
         check_login
-        cleanup "${2:-production}"
+        cleanup
         ;;
     help|*)
         show_help

@@ -1,234 +1,53 @@
-# Azure Deployment README
+# Azure Deployment
 
-This directory contains Azure deployment configurations for M3W.
+M3W 的 Azure 单环境部署配置。
 
-## Files Overview
+## 成本
 
-- **main.bicep**: Main infrastructure-as-code template defining all Azure resources
-- **parameters.json**: Production environment parameters
-- **parameters.staging.json**: Staging environment parameters
-- **deploy.sh**: Deployment automation script
+- **预计月成本**: $40-60
+- **适用场景**: 个人项目、小团队使用
 
-## Quick Start
-
-### 1. Prerequisites
+## 快速开始
 
 ```bash
-# Install Azure CLI
-brew install azure-cli
+# 1. 创建基础设施
+./deploy.sh create
 
-# Login to Azure
-az login
+# 2. 查看连接信息
+./deploy.sh secrets
 
-# Set your subscription
-az account set --subscription "YOUR_SUBSCRIPTION_ID"
+# 3. 配置 GitHub Secrets
+# 将上面输出的信息添加到 GitHub 仓库的 Secrets
+
+# 4. 完整部署
+./deploy.sh full v1.0.0
 ```
 
-### 2. Create GitHub Secrets
-
-Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
-
-```
-AZURE_CREDENTIALS           # Service Principal JSON
-AZURE_SUBSCRIPTION_ID       # Your Azure subscription ID
-AZURE_REGISTRY_USERNAME     # ACR username (after deployment)
-AZURE_REGISTRY_PASSWORD     # ACR password (after deployment)
-DATABASE_URL                # PostgreSQL connection string
-REDIS_URL                   # Redis connection string
-NEXTAUTH_SECRET             # NextAuth secret key
-GITHUB_CLIENT_ID            # GitHub OAuth client ID
-GITHUB_CLIENT_SECRET        # GitHub OAuth secret
-AZURE_STORAGE_CONNECTION_STRING  # Storage account connection string
-AZURE_STORAGE_CONTAINER_NAME     # Blob container name (music)
-```
-
-### 3. Deploy Infrastructure
+## 回滚
 
 ```bash
-# Create resource group and deploy all resources
-./deploy.sh create-infra production
+# 查看所有版本
+./deploy.sh revisions
 
-# Or for staging
-./deploy.sh create-infra staging
+# 回滚到上一个版本
+./deploy.sh rollback
 ```
 
-### 4. Get Connection Strings
+## 文档
 
-```bash
-# Retrieve all secrets and connection strings
-./deploy.sh secrets production
-```
+完整文档请查看: [docs/AZURE_DEPLOYMENT.md](../docs/AZURE_DEPLOYMENT.md)
 
-### 5. Build and Deploy Application
+## 文件说明
 
-```bash
-# Build Docker image and push to ACR
-./deploy.sh build-image production v1.0.0
+- `main.bicep` - 基础设施模板 (Container Apps, PostgreSQL, Storage, Registry)
+- `parameters.json` - 参数配置
+- `deploy.sh` - 部署自动化脚本
+- `.github/workflows/azure-deploy.yml` - CI/CD pipeline
 
-# Run database migrations
-DATABASE_URL="postgresql://..." ./deploy.sh migrate production
+## 主要特性
 
-# Deploy to Container Apps
-./deploy.sh deploy-app production v1.0.0
-
-# Or run all steps at once
-./deploy.sh full-deploy production v1.0.0
-```
-
-## Script Commands
-
-```bash
-# Setup
-./deploy.sh setup [env]              # Create resource group
-./deploy.sh create-infra [env]       # Deploy infrastructure
-
-# Application
-./deploy.sh build-image [env] [tag]  # Build and push Docker image
-./deploy.sh migrate [env]            # Run database migrations
-./deploy.sh deploy-app [env] [tag]   # Deploy to Container Apps
-./deploy.sh full-deploy [env] [tag]  # Complete deployment
-
-# Operations
-./deploy.sh logs [env]               # Stream application logs
-./deploy.sh secrets [env]            # Show connection strings
-./deploy.sh cleanup [env]            # Delete all resources
-```
-
-## Creating Service Principal for GitHub Actions
-
-```bash
-# Get your subscription ID
-SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-
-# Create service principal with contributor role
-az ad sp create-for-rbac \
-  --name "m3w-github-actions" \
-  --role contributor \
-  --scopes "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/m3w-rg" \
-  --sdk-auth
-
-# Copy the entire JSON output to AZURE_CREDENTIALS secret in GitHub
-```
-
-## Updating Parameters
-
-Edit `parameters.json` or `parameters.staging.json` to customize:
-
-- VM sizes (PostgreSQL, Redis tiers)
-- Replica counts (min/max instances)
-- Storage configurations
-- Network settings
-
-Then redeploy:
-
-```bash
-./deploy.sh create-infra production
-```
-
-## Monitoring
-
-### View Logs
-
-```bash
-# Stream live logs
-./deploy.sh logs production
-
-# Or use Azure CLI directly
-az containerapp logs show \
-  --name m3w-app-production \
-  --resource-group m3w-rg \
-  --follow
-```
-
-### Application Insights
-
-Access metrics and logs in Azure Portal:
-1. Navigate to your Application Insights resource
-2. View Live Metrics, Performance, Failures, etc.
-
-## Troubleshooting
-
-### Deployment Fails
-
-```bash
-# Check deployment status
-az deployment group show \
-  --resource-group m3w-rg \
-  --name DEPLOYMENT_NAME \
-  --query properties.error
-
-# Validate template before deploying
-az deployment group validate \
-  --resource-group m3w-rg \
-  --template-file main.bicep \
-  --parameters @parameters.json
-```
-
-### Container App Not Starting
-
-```bash
-# Check container logs
-az containerapp logs show \
-  --name m3w-app-production \
-  --resource-group m3w-rg \
-  --tail 100
-
-# Check revision status
-az containerapp revision list \
-  --name m3w-app-production \
-  --resource-group m3w-rg
-```
-
-### Database Connection Issues
-
-```bash
-# Test connection from local machine
-psql "postgresql://user:pass@server.postgres.database.azure.com:5432/m3w?sslmode=require"
-
-# Check firewall rules
-az postgres flexible-server firewall-rule list \
-  --resource-group m3w-rg \
-  --name m3w-postgres-XXXXX
-```
-
-## Cost Optimization
-
-### Development Environment
-
-Set `minReplicas: 0` in parameters to scale to zero when not in use:
-
-```json
-{
-  "minReplicas": {
-    "value": 0
-  }
-}
-```
-
-### Storage Tiers
-
-Move infrequently accessed audio to Cool tier:
-
-```bash
-az storage blob set-tier \
-  --account-name m3wstorageXXXXX \
-  --container-name music \
-  --name "old-songs/*" \
-  --tier Cool
-```
-
-## Cleanup
-
-To delete all resources:
-
-```bash
-./deploy.sh cleanup production
-```
-
-⚠️ **Warning**: This will permanently delete all data!
-
-## References
-
-- [Azure Container Apps Documentation](https://learn.microsoft.com/azure/container-apps/)
-- [Bicep Documentation](https://learn.microsoft.com/azure/azure-resource-manager/bicep/)
-- [GitHub Actions for Azure](https://github.com/Azure/actions)
+- ✅ Scale to Zero - 无流量时自动缩减到 0
+- ✅ 快速回滚 - 保留最近 3 个版本
+- ✅ 自动扩展 - 根据负载自动扩展 (0-2 实例)
+- ✅ 健康检查 - 自动监控应用健康状态
+- ✅ 低成本 - 按使用量付费
