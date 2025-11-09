@@ -10,6 +10,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { getAudioPlayer, type PlayerState, type Track } from '@/lib/audio/player';
 import { getPlayQueue, type RepeatMode } from '@/lib/audio/queue';
 import { getPlayContext, type PlayContext } from '@/lib/audio/context';
+import { useTrackPreloader } from '@/lib/audio/useTrackPreloader';
+import { logger } from '@/lib/logger';
 
 interface PlaybackPreferencesResponse {
   success: boolean;
@@ -36,10 +38,15 @@ interface PrimePlaybackPayload {
   startIndex?: number;
 }
 
+const MAX_PRELOADED_TRACKS = 5;
+
 export function useAudioPlayer() {
   const [playerState, setPlayerState] = useState<PlayerState>(() => getAudioPlayer().getState());
   const [queueState, setQueueState] = useState(() => getPlayQueue().getState());
   const resumeProgressRef = useRef<{ trackId: string; position: number } | null>(null);
+  const { prepareTrack, primeTrack: primePreloadedTrack, preloadNextInQueue } = useTrackPreloader(
+    MAX_PRELOADED_TRACKS
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -61,7 +68,7 @@ export function useAudioPlayer() {
           }
         }
       } catch (error) {
-        console.error('Failed to load playback preferences', error);
+        logger.error({ msg: 'Failed to load playback preferences', error });
       }
 
       try {
@@ -117,7 +124,7 @@ export function useAudioPlayer() {
           });
         }
       } catch (error) {
-        console.error('Failed to load playback progress', error);
+        logger.error({ msg: 'Failed to load playback progress', error });
       }
     };
 
@@ -138,7 +145,7 @@ export function useAudioPlayer() {
         },
         body: JSON.stringify(preferences),
       }).catch((error) => {
-        console.error('Failed to persist playback preferences', error);
+        logger.error({ msg: 'Failed to persist playback preferences', error });
       });
     },
     []
@@ -173,7 +180,7 @@ export function useAudioPlayer() {
       },
       body: JSON.stringify(payload),
     }).catch((error) => {
-      console.error('Failed to persist playback progress', error);
+      logger.error({ msg: 'Failed to persist playback progress', error });
     });
   }, []);
 
@@ -200,6 +207,23 @@ export function useAudioPlayer() {
     []
   );
 
+  const preloadUpcomingTrack = useCallback(() => {
+    const queue = getPlayQueue();
+    const state = queue.getState();
+    preloadNextInQueue(state.tracks, state.currentIndex);
+  }, [preloadNextInQueue]);
+
+  const playWithPreload = useCallback(
+    async (track: Track) => {
+      const playableTrack = await prepareTrack(track);
+      await getAudioPlayer().play(playableTrack);
+      const applied = applyResumeProgress(track.id);
+      persistProgress(applied ?? 0);
+      preloadUpcomingTrack();
+    },
+    [prepareTrack, applyResumeProgress, persistProgress, preloadUpcomingTrack]
+  );
+
   // Handle track end - auto play next and persist progress
   const handleTrackEnd = useCallback(
     (state: PlayerState) => {
@@ -208,18 +232,12 @@ export function useAudioPlayer() {
       const nextTrack = queue.next();
       setQueueState(queue.getState());
       if (nextTrack) {
-        void getAudioPlayer()
-          .play(nextTrack)
-          .then(() => {
-            const applied = applyResumeProgress(nextTrack.id);
-            persistProgress(applied ?? 0);
-          })
-          .catch((error) => {
-            console.error('Failed to auto-play next track', error);
-          });
+        void playWithPreload(nextTrack).catch((error) => {
+          logger.error({ msg: 'Failed to auto-play next track', error });
+        });
       }
     },
-    [applyResumeProgress, persistProgress]
+    [playWithPreload]
   );
 
   // Subscribe to all player events
@@ -240,14 +258,25 @@ export function useAudioPlayer() {
     };
   }, [handleTrackEnd]);
 
+  useEffect(() => {
+    const track = playerState.currentTrack;
+    if (!track) {
+      return;
+    }
+
+    primePreloadedTrack(track);
+  }, [playerState.currentTrack, primePreloadedTrack]);
+
+  useEffect(() => {
+    preloadUpcomingTrack();
+  }, [queueState.currentIndex, queueState.tracks, preloadUpcomingTrack]);
+
   // Play a track
   const play = useCallback(
     async (track: Track) => {
-      await getAudioPlayer().play(track);
-      const applied = applyResumeProgress(track.id);
-      persistProgress(applied ?? 0);
+      await playWithPreload(track);
     },
-    [applyResumeProgress, persistProgress]
+    [playWithPreload]
   );
 
   // Play from queue
@@ -262,12 +291,10 @@ export function useAudioPlayer() {
         if (context) {
           getPlayContext().setContext(context);
         }
-        await getAudioPlayer().play(track);
-        const applied = applyResumeProgress(track.id);
-        persistProgress(applied ?? 0);
+        await playWithPreload(track);
       }
     },
-    [applyResumeProgress, persistProgress]
+    [playWithPreload]
   );
 
   // Pause
@@ -299,24 +326,20 @@ export function useAudioPlayer() {
     const queue = getPlayQueue();
     const nextTrack = queue.next();
     if (nextTrack) {
-      await getAudioPlayer().play(nextTrack);
-      const applied = applyResumeProgress(nextTrack.id);
-      persistProgress(applied ?? 0);
+      await playWithPreload(nextTrack);
     }
     setQueueState(queue.getState());
-  }, [applyResumeProgress, persistProgress]);
+  }, [playWithPreload]);
 
   // Previous track
   const previous = useCallback(async () => {
     const queue = getPlayQueue();
     const prevTrack = queue.previous();
     if (prevTrack) {
-      await getAudioPlayer().play(prevTrack);
-      const applied = applyResumeProgress(prevTrack.id);
-      persistProgress(applied ?? 0);
+      await playWithPreload(prevTrack);
     }
     setQueueState(queue.getState());
-  }, [applyResumeProgress, persistProgress]);
+  }, [playWithPreload]);
 
   // Seek
   const seek = useCallback(
@@ -372,10 +395,12 @@ export function useAudioPlayer() {
       }
 
       getAudioPlayer().prime(payload.track);
+      primePreloadedTrack(payload.track);
+      preloadUpcomingTrack();
       setPlayerState(getAudioPlayer().getState());
       persistProgress(0);
     },
-    [persistProgress]
+    [persistProgress, primePreloadedTrack, preloadUpcomingTrack]
   );
 
   const trackedSongId = playerState.currentTrack?.id;

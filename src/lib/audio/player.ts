@@ -77,6 +77,7 @@ export interface Track {
   audioUrl: string;
   duration?: number;
   mimeType?: string;
+  resolvedUrl?: string;
 }
 
 export interface PlayerState {
@@ -317,10 +318,11 @@ class AudioPlayer {
    * Create configured Howl instance for track
    */
   private createHowl(track: Track): Howl {
+    const sourceUrl = track.resolvedUrl ?? track.audioUrl;
     const format = resolveAudioFormat(track);
 
     return new Howl({
-      src: [track.audioUrl],
+      src: [sourceUrl],
       ...(format ? { format } : {}),
       html5: true,
       preload: true,
