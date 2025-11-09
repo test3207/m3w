@@ -3,11 +3,7 @@ import { Button } from "@/components/ui/button";
 import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
-
-interface PlaylistOption {
-  id: string;
-  name: string;
-}
+import type { PlaylistOption } from "@/types/models";
 
 interface AddSongToPlaylistFormProps {
   songId: string;

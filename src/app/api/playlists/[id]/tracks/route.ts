@@ -4,16 +4,7 @@ import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { I18n } from '@/locales/i18n';
 import { HttpStatusCode } from "@/lib/constants/http-status";
-
-interface PlaylistTrackResponse {
-  id: string;
-  title: string;
-  artist: string | null;
-  album: string | null;
-  coverUrl: string | null;
-  duration: number | null;
-  mimeType: string | null;
-}
+import type { PlaylistTrackResponse } from "@/types/models";
 
 export async function GET(
   _request: Request,

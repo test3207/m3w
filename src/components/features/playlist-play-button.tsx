@@ -8,20 +8,11 @@ import type { PlayContext } from '@/lib/audio/context';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
+import type { PlaylistTrackResponse } from '@/types/models';
 
 interface PlaylistPlayButtonProps {
   playlistId: string;
   playlistName: string;
-}
-
-interface PlaylistTrackResponse {
-  id: string;
-  title: string;
-  artist: string | null;
-  album: string | null;
-  coverUrl: string | null;
-  duration: number | null;
-  mimeType: string | null;
 }
 
 export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayButtonProps) {

@@ -1,8 +1,18 @@
 /**
  * Frontend data models
  * Simplified versions of Prisma models for client-side usage
+ * 
+ * Backend original models location: prisma/schema.prisma
+ * These interfaces are frontend-friendly versions with:
+ * - Date objects converted to ISO strings
+ * - Optional relations for flexible queries
+ * - Computed fields like _count for aggregations
  */
 
+/**
+ * User model
+ * Backend: prisma/schema.prisma -> model User
+ */
 export interface User {
   id: string;
   email: string;
@@ -10,6 +20,10 @@ export interface User {
   image?: string | null;
 }
 
+/**
+ * Library model
+ * Backend: prisma/schema.prisma -> model Library
+ */
 export interface Library {
   id: string;
   name: string;
@@ -21,10 +35,17 @@ export interface Library {
   };
 }
 
+/**
+ * Library with songs relation
+ */
 export interface LibraryWithSongs extends Library {
   songs: Song[];
 }
 
+/**
+ * Song model
+ * Backend: prisma/schema.prisma -> model Song
+ */
 export interface Song {
   id: string;
   title: string;
@@ -47,6 +68,10 @@ export interface Song {
   } | null;
 }
 
+/**
+ * Playlist model
+ * Backend: prisma/schema.prisma -> model Playlist
+ */
 export interface Playlist {
   id: string;
   name: string;
@@ -60,6 +85,10 @@ export interface Playlist {
   songs?: PlaylistSong[];
 }
 
+/**
+ * PlaylistSong relation model
+ * Backend: prisma/schema.prisma -> model PlaylistSong
+ */
 export interface PlaylistSong {
   playlistId: string;
   songId: string;
@@ -68,6 +97,9 @@ export interface PlaylistSong {
   song: Song;
 }
 
+/**
+ * Simplified library data for dropdowns/selections
+ */
 export interface LibraryOption {
   id: string;
   name: string;
@@ -75,7 +107,24 @@ export interface LibraryOption {
   description: string | null;
 }
 
+/**
+ * Simplified playlist data for dropdowns/selections
+ */
 export interface PlaylistOption {
   id: string;
   name: string;
+}
+
+/**
+ * Playlist track response for player
+ * Simplified song data optimized for playback
+ */
+export interface PlaylistTrackResponse {
+  id: string;
+  title: string;
+  artist: string | null;
+  album: string | null;
+  coverUrl: string | null;
+  duration: number | null;
+  mimeType: string | null;
 }

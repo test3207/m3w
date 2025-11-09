@@ -8,12 +8,7 @@ import { Sparkles } from "lucide-react";
 import { DashboardUserMenu } from "./dashboard-user-menu";
 import { LanguageSwitcher } from "./language-switcher";
 import { logger } from "@/lib/logger-client";
-
-interface User {
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-}
+import type { User } from "@/types/models";
 
 export function DashboardNavbar() {
   useLocale(); // Subscribe to locale changes

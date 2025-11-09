@@ -17,27 +17,7 @@ import { AddSongToPlaylistForm } from "@/components/features/libraries/add-song-
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { HttpStatusCode } from "@/lib/constants/http-status";
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string | null;
-  album: string | null;
-  file: {
-    duration: number | null;
-  };
-}
-
-interface Library {
-  id: string;
-  name: string;
-  description: string | null;
-}
-
-interface Playlist {
-  id: string;
-  name: string;
-}
+import type { Song, Library, PlaylistOption } from "@/types/models";
 
 export default function LibraryDetailPage() {
   useLocale(); // Subscribe to locale changes
@@ -48,7 +28,7 @@ export default function LibraryDetailPage() {
 
   const [library, setLibrary] = useState<Library | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
