@@ -23,10 +23,21 @@ export interface OfflineSong extends Song {
   _audioBlob?: Blob; // Cached audio file
 }
 
+// Playlist-Song relationship (for ordering)
+export interface OfflinePlaylistSong {
+  id: string;
+  playlistId: string;
+  songId: string;
+  order: number;
+  addedAt: Date;
+  _syncStatus?: 'synced' | 'pending' | 'conflict';
+  _lastSyncedAt?: Date;
+}
+
 // Sync queue for offline changes
 export interface SyncQueueItem {
   id?: number;
-  entityType: 'library' | 'playlist' | 'song';
+  entityType: 'library' | 'playlist' | 'song' | 'playlistSong';
   entityId: string;
   operation: 'create' | 'update' | 'delete';
   data?: unknown;
@@ -41,6 +52,7 @@ export class M3WDatabase extends Dexie {
   libraries!: EntityTable<OfflineLibrary, 'id'>;
   playlists!: EntityTable<OfflinePlaylist, 'id'>;
   songs!: EntityTable<OfflineSong, 'id'>;
+  playlistSongs!: EntityTable<OfflinePlaylistSong, 'id'>;
   syncQueue!: EntityTable<SyncQueueItem, 'id'>;
 
   constructor() {
@@ -50,6 +62,7 @@ export class M3WDatabase extends Dexie {
       libraries: 'id, userId, name, createdAt, _syncStatus',
       playlists: 'id, userId, name, createdAt, _syncStatus',
       songs: 'id, libraryId, title, artist, album, _syncStatus',
+      playlistSongs: 'id, playlistId, songId, [playlistId+songId], order, _syncStatus',
       syncQueue: '++id, entityType, entityId, operation, createdAt',
     });
   }
@@ -64,6 +77,7 @@ export async function clearAllData() {
     db.libraries.clear(),
     db.playlists.clear(),
     db.songs.clear(),
+    db.playlistSongs.clear(),
     db.syncQueue.clear(),
   ]);
 }

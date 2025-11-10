@@ -15,7 +15,7 @@ import { useLocale } from "@/locales/use-locale";
 import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { HttpStatusCode } from "@/lib/constants/http-status";
+import { apiClient, ApiError } from "@/lib/api/client";
 import type { Playlist } from "@/types/models";
 
 export default function PlaylistsPage() {
@@ -30,33 +30,19 @@ export default function PlaylistsPage() {
   useEffect(() => {
     async function fetchPlaylists() {
       try {
-        const res = await fetch('http://localhost:4000/api/playlists', {
-          credentials: 'include',
-        });
+        const data = await apiClient.get<{ success: boolean; data: Playlist[] }>('/playlists');
+        setPlaylists(data.data || []);
+      } catch (error) {
+        logger.error('Failed to fetch playlists', error);
         
-        if (res.status === HttpStatusCode.UNAUTHORIZED) {
+        if (error instanceof ApiError && error.status === 401) {
           navigate('/signin');
           return;
         }
         
-        logger.info('Fetch playlists response', { status: res.status });
-        
-        if (!res.ok) {
-          logger.error('Failed to fetch playlists', { status: res.status });
-          toast({
-            variant: "destructive",
-            title: I18n.error.failedToGetPlaylists,
-          });
-          return;
-        }
-        
-        const data = await res.json();
-        setPlaylists(data.data || []);
-      } catch (error) {
-        logger.error('Failed to fetch playlists', error);
         toast({
           variant: "destructive",
-          title: I18n.error.genericTryAgain,
+          title: I18n.error.failedToGetPlaylists,
         });
       } finally {
         setLoading(false);
@@ -76,27 +62,12 @@ export default function PlaylistsPage() {
     const coverUrl = formData.get("coverUrl") as string;
 
     try {
-      const res = await fetch('http://localhost:4000/api/playlists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || undefined,
-          coverUrl: coverUrl.trim() || undefined,
-        }),
+      const data = await apiClient.post<{ success: boolean; data: Playlist }>('/playlists', {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        coverUrl: coverUrl.trim() || undefined,
       });
 
-      if (!res.ok) {
-        logger.error('Failed to create playlist', { status: res.status });
-        toast({
-          variant: "destructive",
-          title: I18n.error.failedToCreatePlaylist,
-        });
-        return;
-      }
-
-      const data = await res.json();
       if (data.data) {
         setPlaylists(prev => [...prev, data.data]);
       }
@@ -107,6 +78,12 @@ export default function PlaylistsPage() {
       });
     } catch (error) {
       logger.error('Failed to create playlist', error);
+      
+      if (error instanceof ApiError && error.status === 401) {
+        navigate('/signin');
+        return;
+      }
+      
       toast({
         variant: "destructive",
         title: I18n.error.failedToCreatePlaylist,
@@ -123,19 +100,7 @@ export default function PlaylistsPage() {
 
     setDeletingId(playlistId);
     try {
-      const res = await fetch(`http://localhost:4000/api/playlists/${playlistId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        logger.error('Failed to delete playlist', { status: res.status });
-        toast({
-          variant: "destructive",
-          title: I18n.error.failedToDeletePlaylist,
-        });
-        return;
-      }
+      await apiClient.delete<{ success: boolean; message: string }>(`/playlists/${playlistId}`);
 
       setPlaylists(prev => prev.filter(p => p.id !== playlistId));
       toast({
@@ -143,6 +108,12 @@ export default function PlaylistsPage() {
       });
     } catch (error) {
       logger.error('Failed to delete playlist', error);
+      
+      if (error instanceof ApiError && error.status === 401) {
+        navigate('/signin');
+        return;
+      }
+      
       toast({
         variant: "destructive",
         title: I18n.error.failedToDeletePlaylist,

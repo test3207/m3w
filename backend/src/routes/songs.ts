@@ -30,6 +30,9 @@ app.get('/:id', async (c: Context) => {
           userId,
         },
       },
+      include: {
+        file: true,
+      },
     });
 
     if (!song) {
@@ -277,6 +280,23 @@ app.get('/:id/stream', async (c: Context) => {
     // For Range requests, we need to skip bytes and limit the stream
     let currentByte = 0;
     let isClosed = false;
+    
+    const closeController = (controller: ReadableStreamDefaultController, error?: Error) => {
+      if (isClosed) return;
+      isClosed = true;
+      
+      try {
+        if (error) {
+          controller.error(error);
+        } else {
+          controller.close();
+        }
+      } catch (err) {
+        // Controller may already be closed, ignore the error
+        logger.debug({ err }, 'Controller already closed');
+      }
+    };
+    
     const transformedStream = new ReadableStream({
       async start(controller) {
         dataStream.on('data', (chunk: Buffer) => {
@@ -294,10 +314,7 @@ app.get('/:id/stream', async (c: Context) => {
           // Stop if we've passed range end
           if (chunkStart > end) {
             dataStream.destroy();
-            if (!isClosed) {
-              isClosed = true;
-              controller.close();
-            }
+            closeController(controller);
             return;
           }
 
@@ -310,32 +327,41 @@ app.get('/:id/stream', async (c: Context) => {
             output = output.subarray(0, end + 1 - Math.max(chunkStart, start));
           }
 
-          controller.enqueue(output);
+          // Safely enqueue data
+          try {
+            if (!isClosed) {
+              controller.enqueue(output);
+            }
+          } catch (err) {
+            logger.error({ err }, 'Error enqueueing chunk');
+            dataStream.destroy();
+            closeController(controller);
+            return;
+          }
 
           // Close after range end
           if (chunkEnd >= end + 1) {
             dataStream.destroy();
-            if (!isClosed) {
-              isClosed = true;
-              controller.close();
-            }
+            closeController(controller);
           }
         });
 
         dataStream.on('end', () => {
-          if (!isClosed) {
-            isClosed = true;
-            controller.close();
-          }
+          closeController(controller);
         });
 
         dataStream.on('error', (error: Error) => {
           logger.error({ error }, 'MinIO stream error');
-          if (!isClosed) {
-            isClosed = true;
-            controller.error(error);
-          }
+          closeController(controller, error);
         });
+      },
+      
+      cancel() {
+        // Clean up when stream is cancelled by client
+        if (!isClosed) {
+          dataStream.destroy();
+          isClosed = true;
+        }
       },
     });
 

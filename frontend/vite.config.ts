@@ -9,6 +9,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
+      devOptions: {
+        enabled: true, // Enable PWA in dev mode for testing
+        type: 'module',
+      },
       manifest: {
         name: 'M3W Music Player',
         short_name: 'M3W',

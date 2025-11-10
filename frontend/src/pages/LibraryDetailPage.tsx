@@ -13,7 +13,7 @@ import { formatDuration } from "@/lib/utils/format-duration";
 import { AddSongToPlaylistForm } from "@/components/features/libraries/add-song-to-playlist-form";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { HttpStatusCode } from "@/lib/constants/http-status";
+import { apiClient, ApiError } from "@/lib/api/client";
 import type { Song, Library, PlaylistOption } from "@/types/models";
 
 export default function LibraryDetailPage() {
@@ -27,25 +27,29 @@ export default function LibraryDetailPage() {
   const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchData = async () => {
     if (!id) return;
+    
+    try {
+      const [libraryData, songsData, playlistsData] = await Promise.all([
+        apiClient.get<{ success: boolean; data: Library }>(`/libraries/${id}`),
+        apiClient.get<{ success: boolean; data: Song[] }>(`/libraries/${id}/songs`),
+        apiClient.get<{ success: boolean; data: PlaylistOption[] }>('/playlists'),
+      ]);
 
-    async function fetchData() {
-      try {
-        const [libraryRes, songsRes, playlistsRes] = await Promise.all([
-          fetch(`http://localhost:4000/api/libraries/${id}`, { credentials: 'include' }),
-          fetch(`http://localhost:4000/api/libraries/${id}/songs`, { credentials: 'include' }),
-          fetch('http://localhost:4000/api/playlists', { credentials: 'include' }),
-        ]);
-
-        // Check authentication first
-        if (libraryRes.status === HttpStatusCode.UNAUTHORIZED || songsRes.status === HttpStatusCode.UNAUTHORIZED || playlistsRes.status === HttpStatusCode.UNAUTHORIZED) {
+      setLibrary(libraryData.data);
+      setSongs(songsData.data || []);
+      setPlaylists(playlistsData.data || []);
+    } catch (error) {
+      logger.error('Failed to fetch library details', error);
+      
+      if (error instanceof ApiError) {
+        if (error.status === 401) {
           navigate('/signin');
           return;
         }
-
-        // Check if library exists
-        if (libraryRes.status === HttpStatusCode.NOT_FOUND) {
+        
+        if (error.status === 404) {
           toast({
             variant: "destructive",
             title: I18n.error.libraryNotFound,
@@ -53,50 +57,26 @@ export default function LibraryDetailPage() {
           navigate('/dashboard/libraries');
           return;
         }
-
-        // Log status codes for debugging
-        logger.info('Fetch responses', {
-          libraryStatus: libraryRes.status,
-          songsStatus: songsRes.status,
-          playlistsStatus: playlistsRes.status,
+        
+        toast({
+          variant: "destructive",
+          title: I18n.error.failedToRetrieveLibraries,
+          description: error.message,
         });
-
-        // Check for other errors
-        if (!libraryRes.ok || !songsRes.ok || !playlistsRes.ok) {
-          const errors = [];
-          if (!libraryRes.ok) errors.push(`Library: ${libraryRes.status}`);
-          if (!songsRes.ok) errors.push(`Songs: ${songsRes.status}`);
-          if (!playlistsRes.ok) errors.push(`Playlists: ${playlistsRes.status}`);
-          
-          logger.error('Failed to fetch data', { errors });
-          toast({
-            variant: "destructive",
-            title: I18n.error.failedToRetrieveLibraries,
-            description: errors.join(', '),
-          });
-          return;
-        }
-
-        const libraryData = await libraryRes.json();
-        const songsData = await songsRes.json();
-        const playlistsData = await playlistsRes.json();
-
-        setLibrary(libraryData.data);
-        setSongs(songsData.data || []);
-        setPlaylists(playlistsData.data || []);
-      } catch (error) {
-        logger.error('Failed to fetch library details', error);
+      } else {
         toast({
           variant: "destructive",
           title: I18n.error.genericTryAgain,
         });
-      } finally {
-        setLoading(false);
       }
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchData();
-  }, [id, navigate, toast]);
+  }, [id]);
 
   if (loading) {
     return (
@@ -197,6 +177,7 @@ export default function LibraryDetailPage() {
                           songTitle={song.title}
                           libraryId={library.id}
                           playlists={playlistOptions}
+                          onAddSuccess={fetchData}
                         />
                       }
                     />

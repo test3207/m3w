@@ -13,8 +13,8 @@ import { formatDuration } from "@/lib/utils/format-duration";
 import { PlaylistSongControls } from "@/components/features/playlists/playlist-song-controls";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { HttpStatusCode } from "@/lib/constants/http-status";
-import type { Playlist } from "@/types/models";
+import { apiClient, ApiError } from "@/lib/api/client";
+import type { Playlist, Song } from "@/types/models";
 
 export default function PlaylistDetailPage() {
   useLocale();
@@ -23,63 +23,58 @@ export default function PlaylistDetailPage() {
   const { toast } = useToast();
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPlaylist = async () => {
+  const fetchData = async () => {
     if (!id) return;
 
     try {
-      const res = await fetch(`http://localhost:4000/api/playlists/${id}`, {
-        credentials: 'include',
-      });
+      const [playlistData, songsData] = await Promise.all([
+        apiClient.get<{ success: boolean; data: Playlist }>(`/playlists/${id}`),
+        apiClient.get<{ success: boolean; data: Song[] }>(`/playlists/${id}/songs`),
+      ]);
 
-      // Check authentication first
-      if (res.status === HttpStatusCode.UNAUTHORIZED) {
-        navigate('/signin');
-        return;
-      }
-
-      // Check if playlist exists
-      if (res.status === HttpStatusCode.NOT_FOUND) {
-        toast({
-          variant: "destructive",
-          title: I18n.error.playlistNotFoundOrUnauthorized,
-        });
-        navigate('/dashboard/playlists');
-        return;
-      }
-
-      // Log status code for debugging
-      logger.info('Fetch response', { status: res.status });
-
-      // Check for other errors
-      if (!res.ok) {
-        logger.error('Failed to fetch playlist', { status: res.status });
+      setPlaylist(playlistData.data);
+      setSongs(songsData.data || []);
+    } catch (error) {
+      logger.error('Failed to fetch playlist', error);
+      
+      if (error instanceof ApiError) {
+        if (error.status === 401) {
+          navigate('/signin');
+          return;
+        }
+        
+        if (error.status === 404) {
+          toast({
+            variant: "destructive",
+            title: I18n.error.playlistNotFoundOrUnauthorized,
+          });
+          navigate('/dashboard/playlists');
+          return;
+        }
+        
         toast({
           variant: "destructive",
           title: I18n.error.failedToGetPlaylists,
-          description: `Status: ${res.status}`,
+          description: error.message,
         });
-        return;
+      } else {
+        toast({
+          variant: "destructive",
+          title: I18n.error.genericTryAgain,
+        });
       }
-
-      const data = await res.json();
-      setPlaylist(data.data);
-    } catch (error) {
-      logger.error('Failed to fetch playlist', error);
-      toast({
-        variant: "destructive",
-        title: I18n.error.genericTryAgain,
-      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPlaylist();
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, navigate, toast]);
+  }, [id]);
 
   if (loading) {
     return (
@@ -97,8 +92,7 @@ export default function PlaylistDetailPage() {
     );
   }
 
-  const songs = playlist.songs ?? [];
-  const totalDuration = songs.reduce((sum, item) => sum + (item.song.file?.duration ?? 0), 0);
+  const totalDuration = songs.reduce((sum, song) => sum + (song.file?.duration ?? 0), 0);
 
   return (
     <AdaptiveLayout
@@ -162,23 +156,23 @@ export default function PlaylistDetailPage() {
                 />
             ) : (
               <ul role="list" className="flex flex-col gap-3">
-                {songs.map((item, index) => (
-                  <li key={item.song.id}>
+                {songs.map((song, index) => (
+                  <li key={song.id}>
                     <ListItem
-                      title={item.song.title}
-                      description={item.song.artist || undefined}
+                      title={song.title}
+                      description={song.artist || undefined}
                       metadata={
                         <HStack as="div" gap="xs" wrap>
-                          {item.song.album ? (
+                          {song.album ? (
                             <MetadataItem
                               label={I18n.playlist.detail.songAlbumLabel}
-                              value={item.song.album}
+                              value={song.album}
                               variant="outline"
                             />
                           ) : null}
                           <MetadataItem
                             label={I18n.playlist.detail.songDurationLabel}
-                            value={formatDuration(item.song.file?.duration ?? null)}
+                            value={formatDuration(song.file?.duration ?? null)}
                             variant="secondary"
                           />
                         </HStack>
@@ -186,11 +180,11 @@ export default function PlaylistDetailPage() {
                       actions={
                         <PlaylistSongControls
                           playlistId={playlist.id}
-                          songId={item.song.id}
-                          songTitle={item.song.title}
+                          songId={song.id}
+                          songTitle={song.title}
                           index={index}
                           total={songs.length}
-                          onMutate={fetchPlaylist}
+                          onMutate={fetchData}
                         />
                       }
                     />

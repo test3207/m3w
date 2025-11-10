@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { I18n } from '@/locales/i18n';
+import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
+import { calculateFileHash } from "@/lib/utils/hash";
+import { apiClient } from "@/lib/api/client";
 import type { LibraryOption } from "@/types/models";
 
 interface UploadSongFormProps {
   libraries: LibraryOption[];
+  onUploadSuccess?: () => void | Promise<void>;
 }
 
 type UploadStatus =
@@ -30,10 +33,8 @@ type UploadStatus =
     }
   | null;
 
-export function UploadSongForm({ libraries }: UploadSongFormProps) {
-  const [libraryId, setLibraryId] = useState<string>(
-    libraries[0]?.id ?? ""
-  );
+export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormProps) {
+  const [libraryId, setLibraryId] = useState<string>(libraries[0]?.id ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState<string>("");
   const [artist, setArtist] = useState<string>("");
@@ -94,47 +95,62 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("libraryId", libraryId);
-
-    if (title.trim()) formData.append("title", title.trim());
-    if (artist.trim()) formData.append("artist", artist.trim());
-    if (album.trim()) formData.append("album", album.trim());
-    if (albumArtist.trim()) formData.append("albumArtist", albumArtist.trim());
-    if (genre.trim()) formData.append("genre", genre.trim());
-    if (composer.trim()) formData.append("composer", composer.trim());
-    if (year.trim()) formData.append("year", year.trim());
-    if (trackNumber.trim()) formData.append("trackNumber", trackNumber.trim());
-    if (discNumber.trim()) formData.append("discNumber", discNumber.trim());
-    if (coverUrl.trim()) formData.append("coverUrl", coverUrl.trim());
-
     try {
       setSubmitting(true);
       setStatus(null);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      // 1. 计算文件 hash
+      logger.info("Calculating file hash...");
+      const hash = await calculateFileHash(file);
+      logger.info("File hash calculated", { hash });
 
-      const result = await response.json();
+      // 2. 准备上传数据
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("hash", hash); // 传递 hash 给后端
+      formData.append("libraryId", libraryId);
 
-      if (!response.ok || !result?.success) {
+      if (title.trim()) formData.append("title", title.trim());
+      if (artist.trim()) formData.append("artist", artist.trim());
+      if (album.trim()) formData.append("album", album.trim());
+      if (albumArtist.trim())
+        formData.append("albumArtist", albumArtist.trim());
+      if (genre.trim()) formData.append("genre", genre.trim());
+      if (composer.trim()) formData.append("composer", composer.trim());
+      if (year.trim()) formData.append("year", year.trim());
+      if (trackNumber.trim())
+        formData.append("trackNumber", trackNumber.trim());
+      if (discNumber.trim()) formData.append("discNumber", discNumber.trim());
+      if (coverUrl.trim()) formData.append("coverUrl", coverUrl.trim());
+
+      // 3. 上传到后端
+      const result = await apiClient.upload<{ 
+        success: boolean; 
+        data?: { 
+          song?: { 
+            title?: string; 
+            file?: { duration?: number; bitrate?: number } 
+          } 
+        };
+        error?: string;
+      }>('/upload/song', formData);
+
+      if (!result?.success) {
         const message = result?.error ?? I18n.error.uploadFailed;
         setStatus({ type: "error", message });
         return;
       }
 
       const fallbackTitle = title.trim().length > 0 ? title.trim() : file.name;
-      const songTitle: string =
-        result.data?.song?.title ?? fallbackTitle;
-      const duration: number | null = result.data?.upload?.metadata?.duration ?? null;
-      const bitrate: number | null = result.data?.upload?.metadata?.bitrate ?? null;
+      const songTitle: string = result.data?.song?.title ?? fallbackTitle;
+      const duration: number | null = result.data?.song?.file?.duration ?? null;
+      const bitrate: number | null = result.data?.song?.file?.bitrate ?? null;
 
       setStatus({
         type: "success",
-  message: `${I18n.upload.form.successPrefix}${songTitle}${I18n.upload.form.successSuffix}${selectedLibraryName || I18n.upload.form.successFallbackLibrary}`,
+        message: `${I18n.upload.form.successPrefix}${songTitle}${
+          I18n.upload.form.successSuffix
+        }${selectedLibraryName || I18n.upload.form.successFallbackLibrary}`,
         details: {
           songTitle,
           libraryName: selectedLibraryName || "",
@@ -144,8 +160,13 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
       });
 
       resetForm();
+      
+      // 刷新 libraries 数据
+      if (onUploadSuccess) {
+        await onUploadSuccess();
+      }
     } catch (error) {
-      logger.error('Upload failed', error);
+      logger.error("Upload failed", error);
       setStatus({ type: "error", message: I18n.error.uploadErrorGeneric });
     } finally {
       setSubmitting(false);
@@ -157,7 +178,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-  <Label htmlFor="library">{I18n.upload.form.selectLibraryLabel}</Label>
+        <Label htmlFor="library">{I18n.upload.form.selectLibraryLabel}</Label>
         <select
           id="library"
           value={libraryId}
@@ -169,7 +190,8 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           ) : null}
           {libraries.map((library) => (
             <option key={library.id} value={library.id}>
-              {library.name} ({library.songCount}{I18n.upload.form.librarySongSuffix})
+              {library.name} ({library.songCount}
+              {I18n.upload.form.librarySongSuffix})
             </option>
           ))}
         </select>
@@ -179,7 +201,7 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
       </div>
 
       <div className="space-y-2">
-  <Label htmlFor="file">{I18n.upload.form.selectFileLabel}</Label>
+        <Label htmlFor="file">{I18n.upload.form.selectFileLabel}</Label>
         <Input
           ref={fileInputRef}
           id="file"
@@ -222,7 +244,9 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="albumArtist">{I18n.upload.form.albumArtistLabel}</Label>
+          <Label htmlFor="albumArtist">
+            {I18n.upload.form.albumArtistLabel}
+          </Label>
           <Input
             id="albumArtist"
             value={albumArtist}
@@ -258,7 +282,9 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="trackNumber">{I18n.upload.form.trackNumberLabel}</Label>
+          <Label htmlFor="trackNumber">
+            {I18n.upload.form.trackNumberLabel}
+          </Label>
           <Input
             id="trackNumber"
             value={trackNumber}
@@ -288,9 +314,16 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={!isReady || submitting}>
-          {submitting ? I18n.upload.form.uploadingLabel : I18n.upload.form.uploadButton}
+          {submitting
+            ? I18n.upload.form.uploadingLabel
+            : I18n.upload.form.uploadButton}
         </Button>
-        <Button type="button" variant="ghost" onClick={resetForm} disabled={submitting}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={resetForm}
+          disabled={submitting}
+        >
           {I18n.upload.form.resetButton}
         </Button>
       </div>
@@ -301,14 +334,14 @@ export function UploadSongForm({ libraries }: UploadSongFormProps) {
           <div className="mt-2 text-xs text-green-800">
             <p>
               {I18n.upload.form.successDurationPrefix}
-              {status.details.duration 
-                ? `${status.details.duration}${I18n.upload.form.durationUnit}` 
+              {status.details.duration
+                ? `${status.details.duration}${I18n.upload.form.durationUnit}`
                 : I18n.upload.form.successDurationFallback}
             </p>
             <p>
               {I18n.upload.form.successBitratePrefix}
-              {status.details.bitrate 
-                ? `${status.details.bitrate}${I18n.upload.form.bitrateUnit}` 
+              {status.details.bitrate
+                ? `${status.details.bitrate}${I18n.upload.form.bitrateUnit}`
                 : I18n.upload.form.successBitrateFallback}
             </p>
           </div>

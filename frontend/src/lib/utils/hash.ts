@@ -1,33 +1,45 @@
-import crypto from 'crypto';
-import { createReadStream } from 'fs';
-import { logger } from '../logger';
+import { logger } from '../logger-client';
 
 /**
- * Calculate SHA256 hash of a file
+ * Calculate SHA256 hash of a File (browser version using Web Crypto API)
  */
-export async function calculateFileHash(filePath: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
-    const stream = createReadStream(filePath);
-
-    stream.on('data', (data) => hash.update(data));
-    stream.on('end', () => {
-      const fileHash = hash.digest('hex');
-      logger.debug({ msg: 'Calculated file hash', filePath, hash: fileHash });
-      resolve(fileHash);
+export async function calculateFileHash(file: File): Promise<string> {
+  try {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    logger.info('Calculated file hash', { 
+      fileName: file.name, 
+      fileSize: file.size, 
+      hash: hashHex 
     });
-    stream.on('error', (error) => {
-      logger.error({ msg: 'Error calculating file hash', filePath, error });
-      reject(error);
-    });
-  });
+    
+    return hashHex;
+  } catch (error) {
+    logger.error('Error calculating file hash', error);
+    throw error;
+  }
 }
 
 /**
- * Calculate SHA256 hash of a buffer
+ * Calculate SHA256 hash of an ArrayBuffer (browser version)
  */
-export function calculateBufferHash(buffer: Buffer): string {
-  const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-  logger.debug({ msg: 'Calculated buffer hash', size: buffer.length, hash });
-  return hash;
+export async function calculateBufferHash(buffer: ArrayBuffer): Promise<string> {
+  try {
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    logger.info('Calculated buffer hash', { 
+      size: buffer.byteLength, 
+      hash: hashHex 
+    });
+    
+    return hashHex;
+  } catch (error) {
+    logger.error('Error calculating buffer hash', error);
+    throw error;
+  }
 }

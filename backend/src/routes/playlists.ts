@@ -10,6 +10,7 @@ import {
   playlistIdSchema,
   addSongToPlaylistSchema,
   removeSongFromPlaylistSchema,
+  reorderPlaylistSongSchema,
 } from '@m3w/shared';
 import type { Context } from 'hono';
 
@@ -278,6 +279,7 @@ app.get('/:id/songs', async (c: Context) => {
           include: {
             song: {
               include: {
+                file: true,
                 library: {
                   select: {
                     id: true,
@@ -496,6 +498,132 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       {
         success: false,
         error: 'Failed to remove song from playlist',
+      },
+      500
+    );
+  }
+});
+
+// POST /api/playlists/:id/songs/reorder - Reorder song in playlist
+app.post('/:id/songs/reorder', async (c: Context) => {
+  try {
+    const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
+    const body = await c.req.json();
+    const { songId, direction } = reorderPlaylistSongSchema.parse(body);
+    const userId = getUserId(c);
+
+    // Check if playlist exists and belongs to user
+    const playlist = await prisma.playlist.findFirst({
+      where: { id, userId },
+    });
+
+    if (!playlist) {
+      return c.json(
+        {
+          success: false,
+          error: 'Playlist not found',
+        },
+        404
+      );
+    }
+
+    // Find current song in playlist
+    const currentSong = await prisma.playlistSong.findUnique({
+      where: {
+        playlistId_songId: {
+          playlistId: id,
+          songId,
+        },
+      },
+    });
+
+    if (!currentSong) {
+      return c.json(
+        {
+          success: false,
+          error: 'Song not found in playlist',
+        },
+        404
+      );
+    }
+
+    // Find adjacent song to swap with
+    const adjacentSong = await prisma.playlistSong.findFirst({
+      where: {
+        playlistId: id,
+        order: direction === 'up' ? { lt: currentSong.order } : { gt: currentSong.order },
+      },
+      orderBy: {
+        order: direction === 'up' ? 'desc' : 'asc',
+      },
+    });
+
+    // If no adjacent song found, we're at the boundary - return success without changes
+    if (!adjacentSong) {
+      logger.debug(
+        { playlistId: id, songId, direction, currentOrder: currentSong.order },
+        'Song already at boundary, no reorder needed'
+      );
+      return c.json({
+        success: true,
+        message: 'Song is already at the boundary',
+      });
+    }
+
+    // Swap orders using transaction
+    await prisma.$transaction([
+      prisma.playlistSong.update({
+        where: {
+          playlistId_songId: {
+            playlistId: id,
+            songId: currentSong.songId,
+          },
+        },
+        data: { order: adjacentSong.order },
+      }),
+      prisma.playlistSong.update({
+        where: {
+          playlistId_songId: {
+            playlistId: id,
+            songId: adjacentSong.songId,
+          },
+        },
+        data: { order: currentSong.order },
+      }),
+    ]);
+
+    logger.debug(
+      {
+        playlistId: id,
+        songId,
+        direction,
+        oldOrder: currentSong.order,
+        newOrder: adjacentSong.order,
+      },
+      'Playlist song reordered'
+    );
+
+    return c.json({
+      success: true,
+      message: 'Song reordered successfully',
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json(
+        {
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        },
+        400
+      );
+    }
+
+    logger.error({ error }, 'Failed to reorder song in playlist');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to reorder song in playlist',
       },
       500
     );

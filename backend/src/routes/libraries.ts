@@ -304,6 +304,9 @@ app.get('/:id/songs', async (c: Context) => {
 
     const songs = await prisma.song.findMany({
       where: { libraryId: id },
+      include: {
+        file: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -323,11 +326,12 @@ app.get('/:id/songs', async (c: Context) => {
       );
     }
 
-    logger.error({ error }, 'Failed to fetch library songs');
+    logger.error({ error, stack: error instanceof Error ? error.stack : undefined }, 'Failed to fetch library songs');
     return c.json(
       {
         success: false,
         error: 'Failed to fetch library songs',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       500
     );

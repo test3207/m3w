@@ -7,6 +7,7 @@
 
 import offlineProxy from '../offline-proxy';
 import { userDataRoutes, adminRoutes } from '@m3w/shared';
+import { API_BASE_URL } from '../api-config';
 
 // Helper to get auth token from store
 function getAuthToken(): string | null {
@@ -91,9 +92,8 @@ export async function routeRequest(
 
   // Online: try backend first
   try {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
     // Path already includes /api prefix from API contracts
-    const response = await fetch(`${backendUrl}${path}`, {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       credentials: 'include',
       headers: {

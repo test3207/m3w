@@ -8,6 +8,7 @@ import type { PlayContext } from '@/lib/audio/context';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
 import type { PlaylistTrackResponse } from '@/types/models';
 
 interface PlaylistPlayButtonProps {
@@ -24,7 +25,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
     try {
       setIsLoading(true);
 
-      const tracksResponse = await fetch(`/api/playlists/${playlistId}/tracks`, {
+      const tracksResponse = await fetch(API_ENDPOINTS.playlists.songs(playlistId), {
         cache: 'no-store',
       });
 

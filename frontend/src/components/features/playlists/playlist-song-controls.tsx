@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
+import { apiClient, ApiError } from "@/lib/api/client";
 
 interface PlaylistSongControlsProps {
   playlistId: string;
@@ -22,38 +23,25 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
     setIsPending(true);
     
     try {
-      const res = await fetch(`/api/playlists/${playlistId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'move', songId, direction }),
+      await apiClient.post<{ success: boolean; message: string }>(
+        `/playlists/${playlistId}/songs/reorder`,
+        { songId, direction }
+      );
+
+      toast({
+        title: I18n.playlist.controls.toastMoveSuccessTitle,
+        description:
+          direction === "up"
+            ? `${I18n.playlist.controls.toastMoveUpDescriptionPrefix}${songTitle}`
+            : `${I18n.playlist.controls.toastMoveDownDescriptionPrefix}${songTitle}`,
       });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        toast({
-          title: I18n.playlist.controls.toastMoveSuccessTitle,
-          description:
-            direction === "up"
-              ? `${I18n.playlist.controls.toastMoveUpDescriptionPrefix}${songTitle}`
-              : `${I18n.playlist.controls.toastMoveDownDescriptionPrefix}${songTitle}`,
-        });
-        onMutate?.();
-      } else if (data.error?.includes('Invalid direction')) {
-        // Silent fail for edge cases
-      } else {
-        toast({
-          variant: "destructive",
-          title: I18n.playlist.controls.toastActionErrorTitle,
-          description: I18n.playlist.controls.toastActionErrorDescription,
-        });
-      }
+      onMutate?.();
     } catch (error) {
       logger.error('Failed to move song', error);
       toast({
         variant: "destructive",
         title: I18n.playlist.controls.toastActionErrorTitle,
-        description: I18n.playlist.controls.toastActionErrorDescription,
+        description: error instanceof ApiError ? error.message : I18n.playlist.controls.toastActionErrorDescription,
       });
     } finally {
       setIsPending(false);
@@ -64,33 +52,21 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
     setIsPending(true);
 
     try {
-      const res = await fetch(`/api/playlists/${playlistId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'remove', songId }),
+      await apiClient.delete<{ success: boolean; message: string }>(
+        `/playlists/${playlistId}/songs/${songId}`
+      );
+
+      toast({
+        title: I18n.playlist.controls.toastRemoveSuccessTitle,
+        description: `${I18n.playlist.controls.toastRemoveSuccessDescriptionPrefix}${songTitle}`,
       });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        toast({
-          title: I18n.playlist.controls.toastRemoveSuccessTitle,
-          description: `${I18n.playlist.controls.toastRemoveSuccessDescriptionPrefix}${songTitle}`,
-        });
-        onMutate?.();
-      } else {
-        toast({
-          variant: "destructive",
-          title: I18n.playlist.controls.toastActionErrorTitle,
-          description: I18n.playlist.controls.toastActionErrorDescription,
-        });
-      }
+      onMutate?.();
     } catch (error) {
       logger.error('Failed to remove song', error);
       toast({
         variant: "destructive",
         title: I18n.playlist.controls.toastActionErrorTitle,
-        description: I18n.playlist.controls.toastActionErrorDescription,
+        description: error instanceof ApiError ? error.message : I18n.playlist.controls.toastActionErrorDescription,
       });
     } finally {
       setIsPending(false);

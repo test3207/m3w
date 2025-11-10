@@ -17,7 +17,7 @@ export const updateLibrarySchema = z.object({
 });
 
 export const libraryIdSchema = z.object({
-  id: z.string().uuid('Invalid library ID'),
+  id: z.string().min(1, 'Invalid library ID'),
 });
 
 // Playlist schemas
@@ -32,7 +32,7 @@ export const updatePlaylistSchema = z.object({
 });
 
 export const playlistIdSchema = z.object({
-  id: z.string().uuid('Invalid playlist ID'),
+  id: z.string().min(1, 'Invalid playlist ID'),
 });
 
 // Song schemas
@@ -40,38 +40,63 @@ export const createSongSchema = z.object({
   title: z.string().min(1, 'Song title is required').max(255),
   artist: z.string().max(255).optional().nullable(),
   album: z.string().max(255).optional().nullable(),
-  duration: z.number().int().positive().optional().nullable(),
-  fileHash: z.string().min(1, 'File hash is required'),
-  libraryId: z.string().uuid('Invalid library ID'),
+  albumArtist: z.string().max(255).optional().nullable(),
+  year: z.number().int().min(1000).max(9999).optional().nullable(),
+  genre: z.string().max(100).optional().nullable(),
+  trackNumber: z.number().int().positive().optional().nullable(),
+  discNumber: z.number().int().positive().optional().nullable(),
+  composer: z.string().max(255).optional().nullable(),
+  coverUrl: z.string().url().optional().nullable(),
+  fileId: z.string().min(1, 'File ID is required'),
+  libraryId: z.string().min(1, 'Invalid library ID'),
 });
 
 export const updateSongSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   artist: z.string().max(255).optional().nullable(),
   album: z.string().max(255).optional().nullable(),
-  duration: z.number().int().positive().optional().nullable(),
+  albumArtist: z.string().max(255).optional().nullable(),
+  year: z.number().int().min(1000).max(9999).optional().nullable(),
+  genre: z.string().max(100).optional().nullable(),
+  trackNumber: z.number().int().positive().optional().nullable(),
+  discNumber: z.number().int().positive().optional().nullable(),
+  composer: z.string().max(255).optional().nullable(),
+  coverUrl: z.string().url().optional().nullable(),
 });
 
 export const songIdSchema = z.object({
-  id: z.string().uuid('Invalid song ID'),
+  id: z.string().min(1, 'Invalid song ID'),
 });
 
 // Playlist-Song association schemas
 export const addSongToPlaylistSchema = z.object({
-  songId: z.string().uuid('Invalid song ID'),
+  songId: z.string().min(1, 'Invalid song ID'),
   position: z.number().int().nonnegative().optional(),
 });
 
 export const removeSongFromPlaylistSchema = z.object({
-  songId: z.string().uuid('Invalid song ID'),
+  songId: z.string().min(1, 'Invalid song ID'),
+});
+
+export const reorderPlaylistSongSchema = z.object({
+  songId: z.string().min(1, 'Invalid song ID'),
+  direction: z.enum(['up', 'down'], {
+    errorMap: () => ({ message: 'Direction must be "up" or "down"' }),
+  }),
 });
 
 // Upload schemas
 export const uploadSongMetadataSchema = z.object({
-  libraryId: z.string().uuid('Invalid library ID'),
+  libraryId: z.string().min(1, 'Invalid library ID'),
   title: z.string().max(255).optional(),
   artist: z.string().max(255).optional(),
   album: z.string().max(255).optional(),
+  albumArtist: z.string().max(255).optional(),
+  year: z.number().int().min(1000).max(9999).optional(),
+  genre: z.string().max(100).optional(),
+  trackNumber: z.number().int().positive().optional(),
+  discNumber: z.number().int().positive().optional(),
+  composer: z.string().max(255).optional(),
 });
 
 // Pagination schemas

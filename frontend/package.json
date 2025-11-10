@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "predev": "node ../scripts/build-i18n.cjs",
-    "dev": "concurrently \"vite\" \"node ../scripts/watch-i18n.cjs\"",
+    "dev": "concurrently --cwd .. \"cd frontend && vite\" \"node scripts/watch-i18n.cjs\"",
     "prebuild": "node ../scripts/build-i18n.cjs",
     "build": "tsc && vite build",
     "preview": "vite preview",

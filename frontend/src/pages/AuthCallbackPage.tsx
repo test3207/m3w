@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function AuthCallbackPage() {
       const expiresAt = Date.now() + 15 * 60 * 1000;
 
       // Fetch user info
-      fetch('http://localhost:4000/api/auth/me', {
+      fetch(API_ENDPOINTS.auth.me, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

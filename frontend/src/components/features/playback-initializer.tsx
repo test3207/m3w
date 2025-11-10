@@ -6,6 +6,7 @@ import { useAudioPlayer } from '@/lib/audio/useAudioPlayer';
 import type { PlayContext } from '@/lib/audio/context';
 import type { Track } from '@/lib/audio/player';
 import { logger } from '@/lib/logger-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 type SeedContext = PlayContext;
 
@@ -42,7 +43,7 @@ export function PlaybackInitializer() {
 
     const bootstrap = async () => {
       try {
-        const response = await fetch('/api/player/seed', { cache: 'no-store' });
+        const response = await fetch(API_ENDPOINTS.player.seed, { cache: 'no-store' });
         if (!response.ok) {
           return;
         }

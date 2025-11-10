@@ -15,7 +15,7 @@ import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { HttpStatusCode } from "@/lib/constants/http-status";
+import { apiClient, ApiError } from "@/lib/api/client";
 import type { Library } from "@/types/models";
 
 export default function LibrariesPage() {
@@ -29,33 +29,19 @@ export default function LibrariesPage() {
   useEffect(() => {
     async function fetchLibraries() {
       try {
-        const res = await fetch('http://localhost:4000/api/libraries', {
-          credentials: 'include',
-        });
+        const data = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
+        setLibraries(data.data || []);
+      } catch (error) {
+        logger.error('Failed to fetch libraries', error);
         
-        if (res.status === HttpStatusCode.UNAUTHORIZED) {
+        if (error instanceof ApiError && error.status === 401) {
           navigate('/signin');
           return;
         }
         
-        logger.info('Fetch libraries response', { status: res.status });
-        
-        if (!res.ok) {
-          logger.error('Failed to fetch libraries', { status: res.status });
-          toast({
-            variant: "destructive",
-            title: I18n.error.failedToRetrieveLibraries,
-          });
-          return;
-        }
-        
-        const data = await res.json();
-        setLibraries(data.data || []);
-      } catch (error) {
-        logger.error('Failed to fetch libraries', error);
         toast({
           variant: "destructive",
-          title: I18n.error.genericTryAgain,
+          title: I18n.error.failedToRetrieveLibraries,
         });
       } finally {
         setLoading(false);
@@ -74,26 +60,11 @@ export default function LibrariesPage() {
     const description = formData.get("description") as string;
 
     try {
-      const res = await fetch('http://localhost:4000/api/libraries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || undefined,
-        }),
+      const data = await apiClient.post<{ success: boolean; data: Library }>('/libraries', {
+        name: name.trim(),
+        description: description.trim() || undefined,
       });
 
-      if (!res.ok) {
-        logger.error('Failed to create library', { status: res.status });
-        toast({
-          variant: "destructive",
-          title: I18n.error.failedToCreateLibrary,
-        });
-        return;
-      }
-
-      const data = await res.json();
       if (data.data) {
         setLibraries(prev => [...prev, data.data]);
       }
@@ -104,6 +75,12 @@ export default function LibrariesPage() {
       });
     } catch (error) {
       logger.error('Failed to create library', error);
+      
+      if (error instanceof ApiError && error.status === 401) {
+        navigate('/signin');
+        return;
+      }
+      
       toast({
         variant: "destructive",
         title: I18n.error.failedToCreateLibrary,

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
+import { apiClient, ApiError } from "@/lib/api/client";
 import type { PlaylistOption } from "@/types/models";
 
 interface AddSongToPlaylistFormProps {
@@ -10,9 +11,10 @@ interface AddSongToPlaylistFormProps {
   songTitle: string;
   libraryId: string;
   playlists: PlaylistOption[];
+  onAddSuccess?: () => void | Promise<void>;
 }
 
-function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddSongToPlaylistFormProps) {
+function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists, onAddSuccess }: AddSongToPlaylistFormProps) {
   const [selectedPlaylistId, setSelectedPlaylistId] = React.useState<string>("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -38,43 +40,39 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists }: AddS
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`/api/playlists/${selectedPlaylistId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'add',
-          songId,
-        }),
+      await apiClient.post<{ success: boolean; error?: string }>(
+        `/playlists/${selectedPlaylistId}/songs`,
+        { songId }
+      );
+
+      const playlistName = playlists.find((playlist) => playlist.id === selectedPlaylistId)?.name;
+
+      toast({
+        title: I18n.library.addToPlaylist.toastSuccessTitle,
+        description:
+          playlistName !== undefined
+            ? `${songTitle} → ${playlistName}`
+            : I18n.library.addToPlaylist.toastSuccessDescription,
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        const playlistName = playlists.find((playlist) => playlist.id === selectedPlaylistId)?.name;
-
-        toast({
-          title: I18n.library.addToPlaylist.toastSuccessTitle,
-          description:
-            playlistName !== undefined
-              ? `${songTitle} → ${playlistName}`
-              : I18n.library.addToPlaylist.toastSuccessDescription,
-        });
-
-        formRef.current?.reset();
-        setSelectedPlaylistId("");
-      } else {
-        toast({
-          variant: "destructive",
-          title: I18n.library.addToPlaylist.toastErrorTitle,
-          description: data.error || I18n.library.addToPlaylist.toastErrorDescription,
-        });
+      formRef.current?.reset();
+      setSelectedPlaylistId("");
+      
+      // 刷新数据
+      if (onAddSuccess) {
+        await onAddSuccess();
       }
     } catch (error) {
       logger.error('Failed to add song to playlist', error);
+      
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : I18n.library.addToPlaylist.toastErrorDescription;
+      
       toast({
         variant: "destructive",
         title: I18n.library.addToPlaylist.toastErrorTitle,
-        description: I18n.library.addToPlaylist.toastErrorDescription,
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);

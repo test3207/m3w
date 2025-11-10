@@ -8,7 +8,7 @@ import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { HttpStatusCode } from "@/lib/constants/http-status";
+import { apiClient, ApiError } from "@/lib/api/client";
 import type { Library, LibraryOption } from "@/types/models";
 
 export default function UploadPage() {
@@ -18,51 +18,37 @@ export default function UploadPage() {
   const [libraries, setLibraries] = useState<LibraryOption[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchLibraries() {
-      try {
-        const res = await fetch('http://localhost:4000/api/libraries', {
-          credentials: 'include',
-        });
-        
-        if (res.status === HttpStatusCode.UNAUTHORIZED) {
-          navigate('/signin');
-          return;
-        }
-        
-        logger.info('Fetch libraries response', { status: res.status });
-        
-        if (!res.ok) {
-          logger.error('Failed to fetch libraries', { status: res.status });
-          toast({
-            variant: "destructive",
-            title: I18n.error.failedToRetrieveLibraries,
-          });
-          return;
-        }
-        
-        const data = await res.json();
-        const libs: Library[] = data.data || [];
-        
-        const libraryOptions = libs.map((library) => ({
-          id: library.id,
-          name: library.name,
-          description: library.description ?? null,
-          songCount: library._count?.songs ?? 0,
-        }));
-        
-        setLibraries(libraryOptions);
-      } catch (error) {
-        logger.error('Failed to fetch libraries', error);
-        toast({
-          variant: "destructive",
-          title: I18n.error.genericTryAgain,
-        });
-      } finally {
-        setLoading(false);
+  const fetchLibraries = async () => {
+    try {
+      const data = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
+      const libs: Library[] = data.data || [];
+      
+      const libraryOptions = libs.map((library) => ({
+        id: library.id,
+        name: library.name,
+        description: library.description ?? null,
+        songCount: library._count?.songs ?? 0,
+      }));
+      
+      setLibraries(libraryOptions);
+    } catch (error) {
+      logger.error('Failed to fetch libraries', error);
+      
+      if (error instanceof ApiError && error.status === 401) {
+        navigate('/signin');
+        return;
       }
+      
+      toast({
+        variant: "destructive",
+        title: I18n.error.failedToRetrieveLibraries,
+      });
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchLibraries();
   }, [navigate, toast]);
 
@@ -109,7 +95,7 @@ export default function UploadPage() {
                 {I18n.upload.page.emptyState}
               </p>
             ) : (
-              <UploadSongForm libraries={libraries} />
+              <UploadSongForm libraries={libraries} onUploadSuccess={fetchLibraries} />
             )}
           </CardContent>
         </Card>

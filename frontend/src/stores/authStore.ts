@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 export interface User {
   id: string;
@@ -70,7 +71,7 @@ export const useAuthStore = create<AuthStore>()(
         }
 
         try {
-          const response = await fetch('http://localhost:4000/api/auth/refresh', {
+          const response = await fetch(API_ENDPOINTS.auth.refresh, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -129,7 +130,7 @@ export const useAuthStore = create<AuthStore>()(
 
         // Verify token with backend
         try {
-          const response = await fetch('http://localhost:4000/api/auth/me', {
+          const response = await fetch(API_ENDPOINTS.auth.me, {
             headers: {
               Authorization: `Bearer ${tokens.accessToken}`,
             },
@@ -140,8 +141,14 @@ export const useAuthStore = create<AuthStore>()(
             return;
           }
 
-          const user = await response.json();
-          set({ user, isAuthenticated: true, isLoading: false });
+          const data = await response.json();
+          
+          if (!data.success || !data.data) {
+            clearAuth();
+            return;
+          }
+
+          set({ user: data.data, isAuthenticated: true, isLoading: false });
         } catch (error) {
           console.error('Auth check failed:', error);
           clearAuth();

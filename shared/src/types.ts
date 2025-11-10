@@ -71,20 +71,43 @@ export interface Song {
   title: string;
   artist: string | null;
   album: string | null;
-  duration: number | null;
-  fileHash: string;
+  albumArtist: string | null;
+  year: number | null;
+  genre: string | null;
+  trackNumber: number | null;
+  discNumber: number | null;
+  composer: string | null;
+  coverUrl: string | null;
+  fileId: string;
   libraryId: string;
-  userId: string;
   createdAt: Date;
   updatedAt: Date;
+  // 从 file 关联来的字段（后端返回时包含）
+  file?: {
+    id: string;
+    hash: string;
+    path: string;
+    size: number;
+    mimeType: string;
+    duration: number | null;
+    bitrate: number | null;
+    sampleRate: number | null;
+    channels: number | null;
+  };
 }
 
 export interface CreateSongInput {
   title: string;
   artist?: string | null;
   album?: string | null;
-  duration?: number | null;
-  fileHash: string;
+  albumArtist?: string | null;
+  year?: number | null;
+  genre?: string | null;
+  trackNumber?: number | null;
+  discNumber?: number | null;
+  composer?: string | null;
+  coverUrl?: string | null;
+  fileId: string;
   libraryId: string;
 }
 
@@ -92,7 +115,13 @@ export interface UpdateSongInput {
   title?: string;
   artist?: string | null;
   album?: string | null;
-  duration?: number | null;
+  albumArtist?: string | null;
+  year?: number | null;
+  genre?: string | null;
+  trackNumber?: number | null;
+  discNumber?: number | null;
+  composer?: string | null;
+  coverUrl?: string | null;
 }
 
 // Playlist-Song association
