@@ -16,14 +16,15 @@ Automated checks that run on every pull request to `main` or `develop` branches.
 **Jobs:**
 
 1. **Code Quality** (parallel)
-   - ESLint linting
-   - TypeScript type checking
+   - ESLint linting (frontend)
+   - TypeScript type checking (frontend + backend)
    - Prisma schema validation
    - Migration drift detection
 
 2. **Build & Test** (parallel)
-   - Next.js production build
-   - Vitest unit tests with coverage
+   - Vite frontend production build
+   - Hono backend build
+   - Vitest unit tests with coverage (frontend)
    - Coverage reports uploaded to Codecov
    - Coverage summary posted as PR comment
 
@@ -43,26 +44,28 @@ Automated checks that run on every pull request to `main` or `develop` branches.
 
 **Coverage Configuration:**
 
-Coverage excludes (see `vitest.config.ts`):
+Coverage excludes (see `frontend/vitest.config.ts`):
 
 - Config files (*.config.*, vitest.setup.ts)
-- Type definitions (*.d.ts, src/types/**)
-- Database (prisma/**, src/lib/db/prisma.ts)
-- Test files (**/*.test.ts, src/test/**)
+- Type definitions (*.d.ts, frontend/src/types/**)
+- Database (backend/prisma/**, backend/src/lib/prisma.ts)
+- Test files (**/*.test.ts, frontend/src/test/**)
 - UI components (covered by E2E tests)
-- Generated code (src/generated/**)
+- Generated code (frontend/src/locales/generated/**)
 
 **Local Testing:**
 
 ```bash
 # Run all checks locally
-npm run lint
-npx tsc --noEmit
-npx prisma validate
-npm run build
-npm run test:coverage
+npm run lint --prefix frontend
+npx tsc --noEmit --project frontend/tsconfig.json
+npx tsc --noEmit --project backend/tsconfig.json
+npx prisma validate --schema backend/prisma/schema.prisma
+npm run build --prefix frontend
+npm run build --prefix backend
+npm run test:coverage --prefix frontend
 
-# Build Docker image
+# Build Docker image (backend only)
 docker build -t m3w:test -f docker/Dockerfile .
 ```
 
@@ -78,6 +81,20 @@ Will build and publish Docker images on:
 ### Deploy (planned)
 
 Deployment workflows for staging and production environments.
+
+## Monorepo Structure
+
+The project uses npm workspaces with separate frontend and backend:
+
+- **Frontend** (`frontend/`): Vite + React SPA
+- **Backend** (`backend/`): Hono REST API
+- **Shared** (`shared/`): Common types and schemas
+
+CI/CD workflows handle:
+
+- Independent type checking for frontend and backend
+- Separate build processes for each workspace
+- Backend-only Docker image (backend + shared dependencies)
 
 ## Troubleshooting
 
@@ -100,7 +117,7 @@ If Docker build is slow or cache isn't working:
 
 If migration check fails:
 
-1. Run `npx prisma migrate dev` locally
+1. Run `npx prisma migrate dev --schema backend/prisma/schema.prisma` locally
 2. Commit the generated migration files
 3. Push to your PR branch
 
@@ -109,13 +126,21 @@ If migration check fails:
 1. **Always run checks locally before pushing**
 
    ```bash
-   npm run lint && npm run build && npm run test
+   # Frontend checks
+   npm run lint --prefix frontend
+   npm run build --prefix frontend
+   npm run test --prefix frontend
+   
+   # Backend checks
+   npx tsc --noEmit --project backend/tsconfig.json
+   npm run build --prefix backend
    ```
 
 2. **Keep PR checks fast**
    - PR checks run on every push to PR
    - Currently takes ~5-8 minutes total
    - Docker build uses layer caching
+   - Backend-only Docker image (no frontend in production image)
 
 3. **Monitor coverage trends**
    - Aim for >80% coverage on business logic

@@ -31,23 +31,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Run ESLint
-        run: npm run lint
+      - name: Run ESLint (Frontend)
+        run: npm run lint --prefix frontend
       
-      - name: TypeScript type check
-        run: npx tsc --noEmit
+      - name: Run ESLint (Backend)
+        run: npm run lint --prefix backend
+      
+      - name: TypeScript type check (Frontend)
+        run: npx tsc --noEmit --project frontend/tsconfig.json
+      
+      - name: TypeScript type check (Backend)
+        run: npx tsc --noEmit --project backend/tsconfig.json
       
       - name: Validate Prisma schema
-        run: npx prisma validate
+        run: npx prisma validate --schema backend/prisma/schema.prisma
         env:
           DATABASE_URL: postgresql://user:pass@localhost:5432/db
       
       - name: Check for migration drift
         run: |
           # Check if there are uncommitted migration files
-          if [ -n "$(git status --porcelain prisma/migrations)" ]; then
+          if [ -n "$(git status --porcelain backend/prisma/migrations)" ]; then
             echo "❌ Error: Uncommitted migration files detected"
-            git status prisma/migrations
+            git status backend/prisma/migrations
             exit 1
           fi
           echo "✅ No migration drift detected"
@@ -70,18 +76,44 @@ jobs:
         run: npm ci
       
       - name: Generate Prisma Client
-        run: npx prisma generate
+        run: npx prisma generate --schema backend/prisma/schema.prisma
       
-      - name: Build Next.js application
-        run: npm run build
+      - name: Build Frontend (Vite)
+        run: npm run build --prefix frontend
+        env:
+          VITE_API_URL: http://localhost:4000
+      
+      - name: Build Backend (Hono)
+        run: npm run build --prefix backend
         env:
           # Mock environment variables for build
           DATABASE_URL: postgresql://mock:mock@localhost:5432/mock
           REDIS_URL: redis://localhost:6379
-          NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: mock-secret-for-build-only
+          JWT_SECRET: mock-jwt-secret-for-build-only-must-be-at-least-32-chars
+          JWT_ACCESS_EXPIRY: 6h
+          JWT_REFRESH_EXPIRY: 90d
           GITHUB_CLIENT_ID: mock-client-id
           GITHUB_CLIENT_SECRET: mock-client-secret
+          GITHUB_CALLBACK_URL: http://localhost:4000/api/auth/callback
+          MINIO_ENDPOINT: localhost
+          MINIO_PORT: 9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+          MINIO_USE_SSL: false
+          MINIO_BUCKET_NAME: m3w-music
+          PORT: 4000
+          HOST: 0.0.0.0
+          CORS_ORIGIN: http://localhost:3000
+      
+      - name: Run tests with coverage (Frontend)
+        run: npm run test:coverage --prefix frontend
+      
+      - name: Run tests (Backend)
+        run: npm run test --prefix backend
+        env:
+          DATABASE_URL: postgresql://mock:mock@localhost:5432/mock
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: mock-jwt-secret-for-build-only-must-be-at-least-32-chars
           MINIO_ENDPOINT: localhost
           MINIO_PORT: 9000
           MINIO_ACCESS_KEY: minioadmin
@@ -89,15 +121,12 @@ jobs:
           MINIO_USE_SSL: false
           MINIO_BUCKET_NAME: m3w-music
       
-      - name: Run tests with coverage
-        run: npm run test -- --coverage
-      
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
+          files: ./frontend/coverage/lcov.info
           flags: unittests
           name: codecov-pr-${{ github.event.pull_request.number }}
           fail_ci_if_error: false
@@ -106,7 +135,7 @@ jobs:
         uses: romeovs/lcov-reporter-action@v0.3.1
         if: github.event_name == 'pull_request'
         with:
-          lcov-file: ./coverage/lcov.info
+          lcov-file: ./frontend/coverage/lcov.info
           github-token: ${{ secrets.GITHUB_TOKEN }}
           delete-old-comments: true
 
