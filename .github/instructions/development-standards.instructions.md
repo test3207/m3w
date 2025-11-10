@@ -9,29 +9,30 @@
 - Document prerequisites, setup instructions, and troubleshooting steps for all major platforms.
 - Update this document immediately when new technical decisions are made.
 
-## Rendering Strategy (CSR-First)
-- **All page components MUST include `'use client'` directive** to ensure pure Client-Side Rendering (CSR).
-- This enables seamless migration to a separate frontend/backend architecture in the future.
-- Next.js App Router defaults to Server Components; explicit `'use client'` prevents initial SSR.
-- Server Actions used in Client Components must be extracted to separate `actions.ts` files with `'use server'` directive.
-- API routes remain server-side and do not require `'use client'`.
+## Module System Standards
+- Root package.json has `"type": "module"` to treat .js files as ES modules.
+- Build scripts use CommonJS (`require`, `module.exports`) and must have `.cjs` extension.
+- Frontend and backend use ES modules (`import`/`export`) for all application code.
+- Configuration files that use CommonJS must use `.cjs` extension (e.g., `postcss.config.cjs`).
 
 ## Testing and Type Safety
 - Favor complete objects or factory helpers in tests to satisfy type constraints instead of chaining `as unknown as`.
 - Introduce named aliases (for example `LibraryWithCount`) for composite shapes to keep intent clear.
 - Align mock return values with their interfaces; if a gap is unavoidable, use a single `as` with a clarifying comment.
-- Extend shared fixtures in `src/test/fixtures/metadata.ts` and `src/test/fixtures/prisma.ts` before creating new mock data sources.
+- Extend shared fixtures in `frontend/src/test/fixtures/metadata.ts` and `backend/src/test/fixtures/prisma.ts` before creating new mock data sources.
 
 ## Key Technical Decisions
 - File storage uses hash-based deduplication with reference counting; metadata remains user-specific.
 - Audio streaming uses API proxy pattern (`/api/songs/[songId]/stream`) with Range request support; MinIO is never exposed to clients and remains internal to the backend network.
 - Metadata extraction prioritizes user edits over backend extraction, and backend extraction over frontend extraction.
-- Environment configuration requires central `.env` usage with dependencies recorded in `package.json`.
+- Environment configuration requires separate `.env` files for frontend and backend.
+- Backend environment variables in `backend/.env` (DATABASE_URL, JWT_SECRET, GITHUB_CLIENT_*, MinIO, Redis).
+- Frontend environment variables in `frontend/.env` (VITE_API_URL).
 - Container environments use `.env.docker` with `host.containers.internal` to access host services; local development uses `.env` with `localhost`.
 - When the production container joins the docker-compose network (`m3w_default`), use container service names (`m3w-postgres`, `m3w-redis`, `m3w-minio`) instead of `host.containers.internal`.
-- Authentication relies on NextAuth.js v5 with GitHub OAuth and database-backed sessions.
-- Offline-first architecture depends on Serwist service workers, IndexedDB via Dexie, and dual extraction for metadata.
-- User feedback flows through the toast store defined in `src/components/ui/use-toast.ts` with a single `<Toaster />` in `src/app/layout.tsx`.
+- Authentication uses JWT tokens with GitHub OAuth; no session database.
+- Offline-first architecture planned with IndexedDB via Dexie and Service Worker for PWA.
+- User feedback flows through the toast store defined in `frontend/src/components/ui/use-toast.ts` with a single `<Toaster />` in `frontend/src/main.tsx`.
 
 ## TypeScript Standards
 - `strict: true` must remain enabled.
@@ -40,18 +41,17 @@
 - Use Zod for runtime validation.
 
 ## Code Organization
-- **All page components (`page.tsx`) must include `'use client'` directive** for pure CSR.
-- Root and nested layouts should also use `'use client'` to prevent SSR hydration.
-- Server Actions used in Client Components must be extracted to separate `actions.ts` files with `'use server'` directive at the top.
-- Keep business logic in `src/lib/services`.
+- Keep business logic in `backend/src/lib/services`.
 - Keep API routes thin and delegate to services.
+- Frontend components organized by purpose: `components/ui` (primitives), `components/features` (domain), `components/layouts` (structure).
 - Dashboard routes render inside `DashboardLayoutShell`; compose page sections with `AdaptiveLayout` and `AdaptiveSection` so base and minimum heights stay consistent across breakpoints.
 
-## Server Action Patterns
-- Treat server actions as thin async wrappers around services that return `{ status, message, data? }` payloads for toast handling.
-- Export shared initial state objects from action modules for consistent form state.
+## API Response Patterns
+- API routes return `{ status, message, data? }` payloads for consistent error handling.
+- Export shared response types from `shared/src/types` for consistency.
 - Perform boundary validation with Zod or typed helpers before calling services.
-- Log developer diagnostics through `src/lib/logger.ts` while keeping user-facing messages concise.
+- Log developer diagnostics through `backend/src/lib/logger.ts` while keeping user-facing messages concise.
+- Client components map API responses to toasts using the `useToast` hook.
 
 ## Naming Conventions
 - Components use PascalCase.
@@ -68,7 +68,7 @@
 - Build production images with `podman build -t m3w:local -f docker/Dockerfile .` or equivalent Docker command.
 - Use `.env.docker` (created from `.env.docker.example`) for container environments.
 - When using docker-compose services, the container must join the `m3w_default` network to access PostgreSQL, Redis, and MinIO via their container names (`m3w-postgres`, `m3w-redis`, `m3w-minio`).
-- Run containers with `podman run -d --name m3w-prod --network m3w_default -p 3000:3000 --env-file .env.docker m3w:local`.
+- Run containers with `podman run -d --name m3w-prod --network m3w_default -p 4000:4000 --env-file backend/.env.docker m3w:local`.
 - For standalone containers without compose, use `host.containers.internal` in `.env.docker` to access host services.
 - Verify builds pass type checking, linting, and produce functional containers before deployment.
 - Test authentication flows and database connectivity in the containerized environment.

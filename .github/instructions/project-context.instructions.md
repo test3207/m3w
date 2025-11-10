@@ -2,14 +2,23 @@
 
 ## Current Execution Snapshot
 
+### Architecture Overview
+
+**Frontend**: Vite 5 + React 19 + React Router 6
+**Backend**: Hono 4 (Node.js) + Prisma + PostgreSQL + MinIO + Redis
+
+The project has been **migrated from Next.js to a separated frontend/backend architecture**:
+- **Frontend** (`/frontend`): Pure SPA using Vite, React Router, and TanStack Query
+- **Backend** (`/backend`): REST API using Hono framework with JWT authentication
+
 ### Completed
 - Architecture design
 - Technology stack selection
 - Project structure planning
-- Next.js project initialization
+- Vite + React + Hono project initialization
 - TypeScript configuration
 - Prisma setup
-- NextAuth.js integration (GitHub OAuth)
+- GitHub OAuth integration (JWT-based)
 - Docker Compose local environment (Docker Hub baseline with China proxy guidance)
 - Cross-platform setup scripts (PowerShell and Bash)
 - China network configuration (Docker Hub proxy/mirror documentation)
@@ -23,6 +32,23 @@
 - Toast feedback system unified via `use-toast` store and wired into playlist and library dashboard actions
 - Audio streaming via API proxy with Range request support (MinIO access internalized)
 - Internationalization (i18n) system with custom Proxy-based architecture, build tooling, and reactive language switching
+- **Vite Migration Complete**
+  - All pages migrated: Dashboard, Libraries, Playlists, Upload, Detail pages
+  - React Router 6 implementation with dynamic routes
+  - TanStack Query for data fetching
+  - All Next.js imports removed
+  - Server actions replaced with direct fetch API calls
+- **Authentication System**
+  - Hono backend with JWT tokens (6-hour access, 90-day refresh)
+  - GitHub OAuth flow
+  - Auto token refresh (triggers at 1 hour remaining, checks every 5 minutes)
+  - Session persistence with Zustand store
+- **Monorepo Structure**
+  - Frontend and backend separated into distinct directories
+  - Shared package for common types and schemas
+  - Independent package.json for each workspace
+  - Scripts directory for build tooling (.cjs files)
+  - Environment variables properly segregated (backend/.env, frontend/.env)
 
 ### Active Initiatives (In Progress)
 - **Demo & Evaluation**
@@ -62,31 +88,90 @@ m3w/
 │   ├── fonts/                    # Custom typefaces and licensing docs
 │   ├── image/                    # High-res logos, favicons, marketing art
 │   └── raw/                      # Working files (PSD, SVG, AI) grouped by feature
+├── backend/                      # Hono backend server (Node.js)
+│   ├── src/
+│   │   ├── index.ts              # Main entry point
+│   │   ├── lib/                  # Shared utilities (JWT, Prisma, Logger)
+│   │   └── routes/               # API route handlers
+│   │       ├── auth.ts           # Authentication (GitHub OAuth, JWT)
+│   │       ├── libraries.ts      # Library CRUD operations
+│   │       ├── playlists.ts      # Playlist management
+│   │       ├── songs.ts          # Song metadata and streaming
+│   │       ├── upload.ts         # File upload handling
+│   │       └── player.ts         # Playback state and preferences
+│   ├── prisma/                   # Database schema and migrations
+│   │   ├── schema.prisma
+│   │   └── migrations/
+│   ├── .env                      # Backend environment variables (git-ignored)
+│   ├── .env.example              # Backend environment template
+│   ├── package.json              # Backend dependencies
+│   └── tsconfig.json             # Backend TypeScript config
+├── frontend/                     # Vite frontend (React SPA)
+│   ├── src/
+│   │   ├── components/           # UI primitives, features, and layouts
+│   │   ├── hooks/                # React hooks (useAuthRefresh, etc.)
+│   │   ├── lib/                  # Client utilities and services
+│   │   │   ├── audio/            # Audio player and queue management
+│   │   │   ├── sync/             # Offline sync service (planned)
+│   │   │   └── logger-client.ts  # Client-side logging
+│   │   ├── locales/              # i18n message catalogs
+│   │   │   ├── messages/         # en.json, zh-CN.json
+│   │   │   ├── generated/        # Auto-generated types
+│   │   │   ├── i18n.ts           # Proxy-based i18n runtime
+│   │   │   └── use-locale.ts     # React hook for reactivity
+│   │   ├── pages/                # React Router page components
+│   │   │   ├── HomePage.tsx      # Landing page
+│   │   │   ├── SignInPage.tsx    # OAuth sign-in
+│   │   │   ├── DashboardPage.tsx # Main dashboard
+│   │   │   ├── LibrariesPage.tsx # Library list/create
+│   │   │   ├── LibraryDetailPage.tsx # Library songs view
+│   │   │   ├── PlaylistsPage.tsx # Playlist list/create
+│   │   │   ├── PlaylistDetailPage.tsx # Playlist songs management
+│   │   │   └── UploadPage.tsx    # File upload
+│   │   ├── stores/               # Zustand state stores
+│   │   │   └── authStore.ts      # Auth state with auto-refresh
+│   │   ├── test/                 # Unit and integration test helpers
+│   │   ├── types/                # Shared TypeScript declarations
+│   │   └── main.tsx              # Vite entry point with routing
+│   ├── public/                   # Static assets (PWA icons, etc.)
+│   ├── .env                      # Frontend environment variables (git-ignored)
+│   ├── .env.example              # Frontend environment template
+│   ├── index.html                # HTML entry point
+│   ├── package.json              # Frontend dependencies and scripts
+│   ├── vite.config.ts            # Vite configuration
+│   ├── postcss.config.cjs        # PostCSS configuration
+│   ├── tailwind.config.ts        # Tailwind CSS configuration
+│   ├── tsconfig.json             # TypeScript compiler options
+│   └── vitest.config.ts          # Vitest test runner configuration
+├── shared/                       # Shared code between frontend and backend
+│   ├── src/
+│   │   ├── schemas/              # Zod validation schemas
+│   │   └── types/                # Shared TypeScript types
+│   ├── package.json              # Shared dependencies
+│   └── tsconfig.json             # Shared TypeScript config
+├── scripts/                      # Build and development scripts
+│   ├── build-i18n.cjs            # i18n type generation
+│   ├── watch-i18n.cjs            # i18n watch mode
+│   └── generate-icons.cjs        # PWA icon generation
 ├── docker/                       # Container definitions and supporting scripts
+│   ├── Dockerfile                # Backend production image
+│   └── Dockerfile.dev            # Development image (if needed)
 ├── docs/                         # Developer documentation and regional guides
-├── prisma/                       # Database schema and migrations
-├── public/                       # Web-ready static files served verbatim by Next.js
-├── src/
-│   ├── app/                      # App Router entry points, route groups, static icons
-│   ├── components/               # UI primitives, features, and layouts
-│   ├── lib/                      # Business logic, adapters, and cross-cutting utilities
-│   ├── locales/                  # i18n message catalogs
-│   ├── test/                     # Unit and integration test helpers
-│   └── types/                    # Shared TypeScript declarations
-├── package.json                  # Project manifest and npm scripts
-├── tailwind.config.ts            # Tailwind CSS configuration
-├── tsconfig.json                 # TypeScript compiler options
-└── vitest.config.ts              # Vitest test runner configuration
+├── package.json                  # Root workspace configuration
+├── docker-compose.yml            # Local development services
+├── .dockerignore                 # Docker build exclusions
+├── README.md                     # Project documentation
+└── setup.ps1 / setup.sh          # Cross-platform setup scripts
 ```
 
 ### Asset Management
 
 - Treat `assets/` as the source-of-truth for original design files; never import from this directory at runtime.
-- Store optimized, production-ready files in `public/` or App Router icon slots (`src/app/icon.png`, `src/app/apple-icon.png`, and friends) so that Next.js can serve them statically.
-- Mirror directory names between `assets/` and `public/` when practical (for example `assets/image/library/hero.png` → `public/images/library/hero.png`) to keep provenance obvious.
+- Store optimized, production-ready files in `frontend/public/` for Vite to serve statically.
+- Mirror directory names between `assets/` and `frontend/public/` when practical (for example `assets/image/library/hero.png` → `frontend/public/images/library/hero.png`) to keep provenance obvious.
 - Keep derivative exports automated where possible (for example ImageMagick or Squoosh CLI); document the command used in `assets/README.md` when adding new asset families.
-- Favicon workflow: update the master artwork in `assets/image/fav.png`, then copy its optimized variant to `src/app/icon.png` (App Router favicon) and `public/favicon.png` (legacy fallbacks) during releases.
-- Avoid committing oversized or unused binaries—prune intermediates under `assets/raw/` once handed off to `image/` or `public/`.
+- PWA icon workflow: update the master artwork in `assets/image/fav.png`, then run `npm run icons:generate` from frontend directory to generate all required icon sizes.
+- Avoid committing oversized or unused binaries—prune intermediates under `assets/raw/` once handed off to `image/` or `frontend/public/`.
 
 ### Core Features
 - Self-hosted music library with full ownership
@@ -122,7 +207,8 @@ m3w/
 ### Long-Term Authentication
 - Sessions persist for 90 days with refresh tokens.
 - Users stay logged in unless a token is revoked server-side.
-- Access tokens refresh automatically every 15 minutes.
+- Access tokens last 6 hours for uninterrupted music listening.
+- Auto-refresh triggers when 1 hour remains, checking every 5 minutes.
 
 ### Storage Management
 - Users request persistent storage to prevent data eviction.
@@ -131,70 +217,74 @@ m3w/
 
 ## Core Architecture Decisions
 
-### Overall Architecture: Next.js Full-Stack (Monolithic)
-- Single codebase with frontend and backend separation
+### Overall Architecture: Separated Frontend/Backend
+- **Frontend**: Vite 5 + React 19 SPA with React Router 6
+- **Backend**: Hono 4 REST API with JWT authentication
 - End-to-end TypeScript type safety
-- Integrated SSR, SSG, and API routes
-- Simplified single-container deployment for self-hosting
-- Reduced network hops and synchronized deployments
+- Independent deployment of frontend and backend
+- Clear separation of concerns
 
 ```
 ┌─────────────────────────────────────────────┐
-│           Next.js Application               │
+│        Vite Frontend (React SPA)            │
 ├─────────────────────────────────────────────┤
-│  Frontend Layer                             │
-│  ├── App Router (/app)                      │
-│  ├── Server Components (SSR)                │
-│  ├── Client Components                      │
-│  └── UI Components (React + Component Lib)  │
-├─────────────────────────────────────────────┤
-│  Backend Layer                              │
-│  ├── API Routes (/app/api/*)                │
-│  ├── Route Handlers (Node.js)               │
-│  ├── Business Logic (Services)              │
-│  ├── Database Access (ORM)                  │
-│  └── Authentication (NextAuth.js)           │
+│  ├── React Router 6 (Client-side routing)   │
+│  ├── TanStack Query (Data fetching)         │
+│  ├── Zustand (Global state)                 │
+│  ├── UI Components (shadcn/ui + Tailwind)   │
+│  └── PWA (Service Worker + IndexedDB)       │
+└─────────────────────────────────────────────┘
+          ↓ HTTP/Fetch (port 3000 → 4000)
+┌─────────────────────────────────────────────┐
+│         Hono Backend (REST API)             │
+│  ├── API Routes (/api/*)                   │
+│  ├── Route Handlers (Hono)                 │
+│  ├── Business Logic (Services)             │
+│  ├── Database Access (Prisma ORM)          │
+│  └── Authentication (JWT)                  │
 ├─────────────────────────────────────────────┤
 │  Middleware Layer                           │
-│  ├── Auth Check (middleware.ts)             │
-│  ├── Logging                                │
+│  ├── Auth Middleware (JWT verification)    │
+│  ├── CORS (hono/cors)                       │
+│  ├── Logging (hono/logger + Pino)          │
 │  └── Rate Limiting (Future)                 │
 └─────────────────────────────────────────────┘
           ↓           ↓           ↓
-    PostgreSQL     Redis      Other Services
+    PostgreSQL     Redis      MinIO
 ```
 
 ### Technology Stack
 
 #### Frontend Layer
-- Framework: Next.js 15 (App Router)
-- Runtime: React 18
-- Language: TypeScript 5
-- UI Component Library: shadcn/ui (Radix UI with Tailwind CSS)
-- Styling: Tailwind CSS v4
-- Internationalization: Custom Proxy-based i18n with auto-generated TypeScript types
-- State Management: Zustand or Valtio (proxy-based reactivity)
-- Form Handling: React Hook Form with Zod
-- Data Fetching: `fetch` in server components and TanStack Query in client components
-- Audio Processing: Howler.js
-- Metadata Extraction (Client): `music-metadata-browser`
-- PWA: `@serwist/next`
-- Offline Storage: Dexie (IndexedDB wrapper)
-- Fuzzy Search: Fuse.js
+- **Framework**: Vite 5
+- **Runtime**: React 19
+- **Language**: TypeScript 5
+- **Routing**: React Router 6
+- **UI Component Library**: shadcn/ui (Radix UI with Tailwind CSS)
+- **Styling**: Tailwind CSS v4
+- **Internationalization**: Custom Proxy-based i18n with auto-generated TypeScript types
+- **State Management**: Zustand (auth, player state)
+- **Form Handling**: React Hook Form with Zod
+- **Data Fetching**: TanStack Query 5
+- **Audio Processing**: Howler.js
+- **Metadata Extraction (Client)**: `music-metadata-browser`
+- **PWA**: Vite PWA Plugin
+- **Offline Storage**: Dexie (IndexedDB wrapper)
+- **Fuzzy Search**: Fuse.js
 
 #### Backend Layer
-- API: Next.js Route Handlers (`/app/api/*`)
-- ORM: Prisma
-- Database: PostgreSQL 16
-- Cache: Redis 7
-- File Storage: MinIO (S3-compatible)
-- Authentication: NextAuth.js v5 with GitHub OAuth provider
-- Validation: Zod
-- Logging: Pino
-- Metadata Extraction: `music-metadata`
+- **Framework**: Hono 4 (Node.js)
+- **ORM**: Prisma
+- **Database**: PostgreSQL 16
+- **Cache**: Redis 7
+- **File Storage**: MinIO (S3-compatible)
+- **Authentication**: JWT (jsonwebtoken) with GitHub OAuth
+- **Validation**: Zod
+- **Logging**: Pino
+- **Metadata Extraction**: `music-metadata`
 
 #### PWA and Offline Features
-- Service Worker: Workbox or Serwist
+- Service Worker: Vite PWA Plugin (Workbox)
 - Cache Strategy:
   - Audio files: CacheFirst with range request support
   - API calls: NetworkFirst with fallback
@@ -238,15 +328,20 @@ Key points:
 Refer to `prisma/schema.prisma` for the schema definition.
 
 ### Authentication Strategy
-- Provider: GitHub OAuth via NextAuth.js v5
-- Session storage: Prisma adapter with PostgreSQL
-- Security: CSRF protection, HTTP-only cookies, secure cookies in production, session expiration handling
+- Provider: GitHub OAuth
+- Token Management: JWT (jsonwebtoken)
+  - Access Token: 6 hours (configurable via `JWT_ACCESS_EXPIRY`)
+  - Refresh Token: 90 days (configurable via `JWT_REFRESH_EXPIRY`)
+- Auto-refresh: Triggers when 1 hour remains, checks every 5 minutes
+- Security: HTTP-only cookies for Service Worker, JWT in Authorization header for API calls
+- Session persistence: Zustand store with localStorage
 
 ### Deployment Strategy
 
 Local Development:
 - Start services with Podman or Docker Compose
-- Run `npm run dev` for the Next.js server
+- Run `npm run dev` for the Vite frontend (port 3000)
+- Run `npm run dev` in `/backend` for the Hono server (port 4000)
 - Apply database migrations with `npx prisma migrate dev`
 
 Production Pipeline:
@@ -257,14 +352,13 @@ Production Pipeline:
 Observability plans include Pino logging, optional Prometheus and Grafana, optional OpenTelemetry, and alerting via Kubernetes events.
 
 ### Scalability Considerations
-- The Next.js app is stateless and supports horizontal scaling.
-- Sessions in the database enable multiple app instances.
+- Both frontend and backend are stateless and support horizontal scaling.
+- JWT tokens enable stateless authentication across multiple instances.
 - Redis provides shared caching.
-- Future microservice extraction keeps Next.js as the backend-for-frontend while splitting specialized services if needed.
+- Future microservice extraction possible with clear backend separation.
 - Integration points reserved for message queues, search, object storage, email, and upload pipelines.
 
 ## Pending Decisions
-- State management library choice beyond server components (Zustand or Jotai)
 - Detailed testing strategy (Vitest, Playwright, coverage targets)
 - CI/CD automation specifics (test pipeline, deployment approvals, environment management)
 - User language preference persistence strategy (database-backed recommended)

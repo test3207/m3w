@@ -125,21 +125,42 @@ fi
 echo ""
 
 # Install dependencies
-echo -e "${CYAN}📦 Installing npm dependencies...${NC}"
+echo -e "${CYAN}📦 Installing dependencies...${NC}"
+echo -e "  ${GRAY}Installing root dependencies...${NC}"
 npm install
-echo -e "  ${GREEN}✓ Dependencies installed${NC}"
+
+echo -e "  ${GRAY}Installing frontend dependencies...${NC}"
+cd frontend && npm install && cd ..
+
+echo -e "  ${GRAY}Installing backend dependencies...${NC}"
+cd backend && npm install && cd ..
+
+echo -e "  ${GRAY}Installing shared dependencies...${NC}"
+cd shared && npm install && cd ..
+
+echo -e "  ${GREEN}✓ All dependencies installed${NC}"
 echo ""
 
 # Setup environment variables
 if [ "$SKIP_ENV" = false ]; then
     echo -e "${CYAN}🔐 Setting up environment variables...${NC}"
-    if [ ! -f ".env" ]; then
-        cp ".env.example" ".env"
-        echo -e "  ${GREEN}✓ Created .env from template${NC}"
-        echo -e "  ${YELLOW}⚠️  Please edit .env and add your GitHub OAuth credentials${NC}"
+    
+    # Backend .env
+    if [ ! -f "backend/.env" ]; then
+        cp "backend/.env.example" "backend/.env"
+        echo -e "  ${GREEN}✓ Created backend/.env from template${NC}"
+        echo -e "  ${YELLOW}⚠️  Please edit backend/.env and add your GitHub OAuth credentials${NC}"
         echo -e "     ${GRAY}Visit: https://github.com/settings/developers${NC}"
     else
-        echo -e "  ${BLUE}ℹ️  .env already exists${NC}"
+        echo -e "  ${BLUE}ℹ️  backend/.env already exists${NC}"
+    fi
+    
+    # Frontend .env
+    if [ ! -f "frontend/.env" ]; then
+        cp "frontend/.env.example" "frontend/.env"
+        echo -e "  ${GREEN}✓ Created frontend/.env from template${NC}"
+    else
+        echo -e "  ${BLUE}ℹ️  frontend/.env already exists${NC}"
     fi
     echo ""
 fi
@@ -181,24 +202,29 @@ echo ""
 
 # Run Prisma migrations
 echo -e "${CYAN}🗄️  Running database migrations...${NC}"
+cd backend
 npx prisma generate
 if npx prisma migrate dev --name init; then
     echo -e "  ${GREEN}✓ Migrations completed${NC}"
 else
     echo -e "  ${YELLOW}⚠️  Migration failed - this is normal for first run${NC}"
 fi
+cd ..
 echo ""
 
 # Success message
 echo -e "${GREEN}✅ Setup complete!${NC}"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
-echo -e "  ${NC}1. Edit .env.local and add GitHub OAuth credentials${NC}"
+echo -e "  ${NC}1. Edit backend/.env and add GitHub OAuth credentials${NC}"
 echo -e "  ${NC}2. Run: npm run dev${NC}"
-echo -e "  ${NC}3. Visit: http://localhost:3000${NC}"
+echo -e "  ${NC}3. Frontend: http://localhost:3000${NC}"
+echo -e "  ${NC}4. Backend API: http://localhost:4000${NC}"
 echo ""
 echo -e "${CYAN}Useful commands:${NC}"
-echo -e "  ${NC}npm run dev              - Start development server${NC}"
+echo -e "  ${NC}npm run dev              - Start both frontend and backend${NC}"
+echo -e "  ${NC}npm run dev:frontend     - Start frontend only${NC}"
+echo -e "  ${NC}npm run dev:backend      - Start backend only${NC}"
 echo -e "  ${NC}npm run db:studio        - Open Prisma Studio${NC}"
 echo -e "  ${NC}npm run podman:down      - Stop containers${NC}"
 echo -e "  ${NC}npm run podman:logs      - View container logs${NC}"

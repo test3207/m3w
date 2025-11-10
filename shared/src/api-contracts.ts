@@ -1,0 +1,263 @@
+/**
+ * API Contracts for M3W project
+ * Defines route definitions with offline capability flags
+ * Used by backend, frontend offline proxy, and Service Worker
+ */
+
+export interface RouteDefinition {
+  path: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  offlineCapable: boolean;
+  description: string;
+}
+
+/**
+ * User Data Routes - Offline capable
+ * These routes work both online (real backend) and offline (IndexedDB proxy)
+ */
+export const userDataRoutes: RouteDefinition[] = [
+  // Libraries
+  {
+    path: '/api/libraries',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'List all libraries for current user',
+  },
+  {
+    path: '/api/libraries/:id',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'Get library by ID',
+  },
+  {
+    path: '/api/libraries',
+    method: 'POST',
+    offlineCapable: true,
+    description: 'Create new library (queued when offline)',
+  },
+  {
+    path: '/api/libraries/:id',
+    method: 'PATCH',
+    offlineCapable: true,
+    description: 'Update library (queued when offline)',
+  },
+  {
+    path: '/api/libraries/:id',
+    method: 'DELETE',
+    offlineCapable: true,
+    description: 'Delete library (queued when offline)',
+  },
+  {
+    path: '/api/libraries/:id/songs',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'List songs in library',
+  },
+
+  // Playlists
+  {
+    path: '/api/playlists',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'List all playlists for current user',
+  },
+  {
+    path: '/api/playlists/:id',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'Get playlist by ID',
+  },
+  {
+    path: '/api/playlists',
+    method: 'POST',
+    offlineCapable: true,
+    description: 'Create new playlist (queued when offline)',
+  },
+  {
+    path: '/api/playlists/:id',
+    method: 'PATCH',
+    offlineCapable: true,
+    description: 'Update playlist (queued when offline)',
+  },
+  {
+    path: '/api/playlists/:id',
+    method: 'DELETE',
+    offlineCapable: true,
+    description: 'Delete playlist (queued when offline)',
+  },
+  {
+    path: '/api/playlists/:id/songs',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'List songs in playlist',
+  },
+  {
+    path: '/api/playlists/:id/songs',
+    method: 'POST',
+    offlineCapable: true,
+    description: 'Add song to playlist (queued when offline)',
+  },
+  {
+    path: '/api/playlists/:id/songs/:songId',
+    method: 'DELETE',
+    offlineCapable: true,
+    description: 'Remove song from playlist (queued when offline)',
+  },
+
+  // Songs
+  {
+    path: '/api/songs/:id',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'Get song by ID',
+  },
+  {
+    path: '/api/songs/:id',
+    method: 'PATCH',
+    offlineCapable: true,
+    description: 'Update song metadata (queued when offline)',
+  },
+  {
+    path: '/api/songs/:id',
+    method: 'DELETE',
+    offlineCapable: true,
+    description: 'Delete song (queued when offline)',
+  },
+];
+
+/**
+ * Admin Routes - Online only
+ * These routes require network connection and never work offline
+ */
+export const adminRoutes: RouteDefinition[] = [
+  // Authentication
+  {
+    path: '/api/auth/login',
+    method: 'POST',
+    offlineCapable: false,
+    description: 'GitHub OAuth login callback',
+  },
+  {
+    path: '/api/auth/refresh',
+    method: 'POST',
+    offlineCapable: false,
+    description: 'Refresh access token',
+  },
+  {
+    path: '/api/auth/me',
+    method: 'GET',
+    offlineCapable: false,
+    description: 'Get current user info',
+  },
+  {
+    path: '/api/auth/logout',
+    method: 'POST',
+    offlineCapable: false,
+    description: 'Logout and invalidate tokens',
+  },
+
+  // User Management
+  {
+    path: '/api/users/:id',
+    method: 'GET',
+    offlineCapable: false,
+    description: 'Get user by ID (admin only)',
+  },
+  {
+    path: '/api/users/:id',
+    method: 'PATCH',
+    offlineCapable: false,
+    description: 'Update user (admin only)',
+  },
+
+  // Upload
+  {
+    path: '/api/upload/song',
+    method: 'POST',
+    offlineCapable: false,
+    description: 'Upload audio file to MinIO',
+  },
+
+  // Audio Streaming
+  {
+    path: '/api/songs/:id/stream',
+    method: 'GET',
+    offlineCapable: false,
+    description: 'Stream audio file (Range requests supported)',
+  },
+
+  // Player state (optional backend sync)
+  {
+    path: '/api/player/progress',
+    method: 'POST',
+    offlineCapable: false,
+    description: 'Sync playback progress to server',
+  },
+  {
+    path: '/api/player/preferences',
+    method: 'GET',
+    offlineCapable: false,
+    description: 'Get user playback preferences',
+  },
+  {
+    path: '/api/player/preferences',
+    method: 'PATCH',
+    offlineCapable: false,
+    description: 'Update user playback preferences',
+  },
+];
+
+/**
+ * All routes combined
+ */
+export const allRoutes = [...userDataRoutes, ...adminRoutes];
+
+/**
+ * Helper function to check if a route is offline capable
+ */
+export function isOfflineCapable(path: string, method: string): boolean {
+  const route = allRoutes.find(
+    (r) => matchPath(r.path, path) && r.method === method
+  );
+  return route?.offlineCapable ?? false;
+}
+
+/**
+ * Simple path matching (supports :param syntax)
+ */
+function matchPath(pattern: string, path: string): boolean {
+  const patternParts = pattern.split('/');
+  const pathParts = path.split('/');
+
+  if (patternParts.length !== pathParts.length) {
+    return false;
+  }
+
+  return patternParts.every((part, i) => {
+    if (part.startsWith(':')) {
+      return true; // Parameter segment matches anything
+    }
+    return part === pathParts[i];
+  });
+}
+
+/**
+ * Extract route parameters
+ */
+export function extractParams(
+  pattern: string,
+  path: string
+): Record<string, string> {
+  const patternParts = pattern.split('/');
+  const pathParts = path.split('/');
+  const params: Record<string, string> = {};
+
+  patternParts.forEach((part, i) => {
+    if (part.startsWith(':')) {
+      const paramName = part.slice(1);
+      params[paramName] = pathParts[i];
+    }
+  });
+
+  return params;
+}

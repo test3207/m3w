@@ -113,25 +113,67 @@ try {
 Write-Host ""
 
 # Install dependencies
-Write-Host "📦 Installing npm dependencies..." -ForegroundColor Cyan
+Write-Host "📦 Installing dependencies..." -ForegroundColor Cyan
+Write-Host "  Installing root dependencies..." -ForegroundColor Gray
 npm install
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ✗ npm install failed" -ForegroundColor Red
     exit 1
 }
-Write-Host "  ✓ Dependencies installed" -ForegroundColor Green
+
+Write-Host "  Installing frontend dependencies..." -ForegroundColor Gray
+Push-Location frontend
+npm install
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ✗ frontend npm install failed" -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+Pop-Location
+
+Write-Host "  Installing backend dependencies..." -ForegroundColor Gray
+Push-Location backend
+npm install
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ✗ backend npm install failed" -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+Pop-Location
+
+Write-Host "  Installing shared dependencies..." -ForegroundColor Gray
+Push-Location shared
+npm install
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ✗ shared npm install failed" -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+Pop-Location
+
+Write-Host "  ✓ All dependencies installed" -ForegroundColor Green
 Write-Host ""
 
 # Setup environment variables
 if (-not $SkipEnv) {
     Write-Host "🔐 Setting up environment variables..." -ForegroundColor Cyan
-    if (-not (Test-Path ".env")) {
-        Copy-Item ".env.example" ".env"
-        Write-Host "  ✓ Created .env from template" -ForegroundColor Green
-        Write-Host "  ⚠️  Please edit .env and add your GitHub OAuth credentials" -ForegroundColor Yellow
+    
+    # Backend .env
+    if (-not (Test-Path "backend\.env")) {
+        Copy-Item "backend\.env.example" "backend\.env"
+        Write-Host "  ✓ Created backend\.env from template" -ForegroundColor Green
+        Write-Host "  ⚠️  Please edit backend\.env and add your GitHub OAuth credentials" -ForegroundColor Yellow
         Write-Host "     Visit: https://github.com/settings/developers" -ForegroundColor Gray
     } else {
-        Write-Host "  ℹ️  .env already exists" -ForegroundColor Blue
+        Write-Host "  ℹ️  backend\.env already exists" -ForegroundColor Blue
+    }
+    
+    # Frontend .env
+    if (-not (Test-Path "frontend\.env")) {
+        Copy-Item "frontend\.env.example" "frontend\.env"
+        Write-Host "  ✓ Created frontend\.env from template" -ForegroundColor Green
+    } else {
+        Write-Host "  ℹ️  frontend\.env already exists" -ForegroundColor Blue
     }
     Write-Host ""
 }
@@ -186,6 +228,7 @@ Write-Host ""
 
 # Run Prisma migrations
 Write-Host "🗄️  Running database migrations..." -ForegroundColor Cyan
+Push-Location backend
 npx prisma generate
 npx prisma migrate dev --name init
 if ($LASTEXITCODE -ne 0) {
@@ -193,18 +236,22 @@ if ($LASTEXITCODE -ne 0) {
 } else {
     Write-Host "  ✓ Migrations completed" -ForegroundColor Green
 }
+Pop-Location
 Write-Host ""
 
 # Success message
 Write-Host "✅ Setup complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "  1. Edit .env.local and add GitHub OAuth credentials" -ForegroundColor White
+Write-Host "  1. Edit backend\.env and add GitHub OAuth credentials" -ForegroundColor White
 Write-Host "  2. Run: npm run dev" -ForegroundColor White
-Write-Host "  3. Visit: http://localhost:3000" -ForegroundColor White
+Write-Host "  3. Frontend: http://localhost:3000" -ForegroundColor White
+Write-Host "  4. Backend API: http://localhost:4000" -ForegroundColor White
 Write-Host ""
 Write-Host "Useful commands:" -ForegroundColor Cyan
-Write-Host "  npm run dev              - Start development server" -ForegroundColor White
+Write-Host "  npm run dev              - Start both frontend and backend" -ForegroundColor White
+Write-Host "  npm run dev:frontend     - Start frontend only" -ForegroundColor White
+Write-Host "  npm run dev:backend      - Start backend only" -ForegroundColor White
 Write-Host "  npm run db:studio        - Open Prisma Studio" -ForegroundColor White
 Write-Host "  npm run podman:down      - Stop containers" -ForegroundColor White
 Write-Host "  npm run podman:logs      - View container logs" -ForegroundColor White

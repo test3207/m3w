@@ -1,16 +1,24 @@
-# Development Dockerfile
+# Backend Development Dockerfile (Hono API)
 FROM node:22-alpine
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# Install shared dependencies
+COPY shared/package.json shared/package-lock.json ./shared/
+RUN cd shared && npm install
 
-RUN npm install
+# Install backend dependencies
+COPY backend/package.json backend/package-lock.json ./backend/
+RUN cd backend && npm install
 
-COPY . .
+# Copy source code
+COPY shared ./shared
+COPY backend ./backend
 
-EXPOSE 3000
+WORKDIR /app/backend
+
+EXPOSE 4000
 
 CMD ["npm", "run", "dev"]
