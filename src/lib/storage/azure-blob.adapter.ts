@@ -1,4 +1,9 @@
-import { BlobServiceClient, ContainerClient, BlockBlobClient } from '@azure/storage-blob';
+import { 
+  BlobServiceClient, 
+  ContainerClient, 
+  BlockBlobClient,
+  BlobSASPermissions 
+} from '@azure/storage-blob';
 
 /**
  * Azure Blob Storage adapter for M3W
@@ -7,6 +12,7 @@ import { BlobServiceClient, ContainerClient, BlockBlobClient } from '@azure/stor
 export class AzureBlobStorageAdapter {
   private blobServiceClient: BlobServiceClient;
   private containerName: string;
+  private initPromise: Promise<void>;
 
   constructor() {
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -16,6 +22,14 @@ export class AzureBlobStorageAdapter {
 
     this.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'music';
     this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    
+    // Initialize container (create if not exists)
+    this.initPromise = this.ensureContainerExists();
+  }
+
+  private async ensureContainerExists(): Promise<void> {
+    const containerClient = this.blobServiceClient.getContainerClient(this.containerName);
+    await containerClient.createIfNotExists();
   }
 
   private getContainerClient(): ContainerClient {
@@ -26,6 +40,9 @@ export class AzureBlobStorageAdapter {
    * Upload a file to Azure Blob Storage
    */
   async uploadFile(buffer: Buffer, key: string, contentType?: string): Promise<void> {
+    // Wait for container to be ready
+    await this.initPromise;
+    
     const containerClient = this.getContainerClient();
     const blockBlobClient = containerClient.getBlockBlobClient(key);
 
@@ -70,7 +87,7 @@ export class AzureBlobStorageAdapter {
     expiryDate.setMinutes(expiryDate.getMinutes() + expiryMinutes);
 
     const sasUrl = await blockBlobClient.generateSasUrl({
-      permissions: 'r', // Read-only
+      permissions: BlobSASPermissions.parse('r'), // Read-only
       expiresOn: expiryDate,
     });
 
