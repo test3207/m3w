@@ -1,0 +1,505 @@
+'use client';
+
+/**
+ * Audio Player React Hook
+ * 
+ * Provides audio player state and controls to React components
+ */
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getAudioPlayer, type PlayerState, type Track } from '@/lib/audio/player';
+import { getPlayQueue, type RepeatMode } from '@/lib/audio/queue';
+import { getPlayContext, type PlayContext } from '@/lib/audio/context';
+import { useTrackPreloader } from '@/lib/audio/useTrackPreloader';
+import { logger } from '@/lib/logger-client';
+import { api } from '@/lib/api/router';
+
+interface PlaybackPreferencesResponse {
+  success: boolean;
+  data?: {
+    shuffleEnabled: boolean;
+    repeatMode: RepeatMode;
+  } | null;
+}
+
+interface PlaybackProgressResponse {
+  success: boolean;
+  data?: {
+    track: Track;
+    position: number;
+    context?: PlayContext | null;
+    updatedAt: string;
+  } | null;
+}
+
+interface PlaybackSeedResponse {
+  success: boolean;
+  data?: {
+    track: Track;
+    context: PlayContext;
+  } | null;
+}
+
+interface PrimePlaybackPayload {
+  track: Track;
+  context?: PlayContext;
+  queue?: Track[];
+  startIndex?: number;
+}
+
+const MAX_PRELOADED_TRACKS = 5;
+
+export function useAudioPlayer() {
+  const [playerState, setPlayerState] = useState<PlayerState>(() => getAudioPlayer().getState());
+  const [queueState, setQueueState] = useState(() => getPlayQueue().getState());
+  const resumeProgressRef = useRef<{ trackId: string; position: number } | null>(null);
+  const { prepareTrack, primeTrack: primePreloadedTrack, preloadNextInQueue } = useTrackPreloader(
+    MAX_PRELOADED_TRACKS
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadInitialPlaybackState = async () => {
+      try {
+        const response = await api.get('/api/player/preferences');
+        if (response.ok) {
+          const json = (await response.json()) as PlaybackPreferencesResponse;
+          if (json?.data) {
+            const queue = getPlayQueue();
+            queue.setRepeatMode(json.data.repeatMode);
+            queue.setShuffle(json.data.shuffleEnabled);
+
+            if (isMounted) {
+              setQueueState(queue.getState());
+              setPlayerState(getAudioPlayer().getState());
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to load playback preferences', error);
+      }
+
+      // Helper function to load default seed
+      const loadDefaultSeed = async () => {
+        try {
+          const seedResponse = await api.get('/api/player/seed');
+          if (!seedResponse.ok) {
+            return;
+          }
+
+          const seedJson = (await seedResponse.json()) as PlaybackSeedResponse;
+          const seed = seedJson?.data;
+          if (!seed?.track) {
+            return;
+          }
+
+          const queue = getPlayQueue();
+          const player = getAudioPlayer();
+          const track: Track = {
+            id: seed.track.id,
+            title: seed.track.title,
+            artist: seed.track.artist ?? undefined,
+            album: seed.track.album ?? undefined,
+            coverUrl: seed.track.coverUrl ?? undefined,
+            duration: seed.track.duration ?? undefined,
+            audioUrl: seed.track.audioUrl,
+            mimeType: seed.track.mimeType ?? undefined,
+          };
+
+          queue.setQueue([track], 0);
+          if (seed.context) {
+            getPlayContext().setContext({
+              ...seed.context,
+              name: seed.context.name ?? '',
+            });
+          }
+
+          player.prime(track);
+
+          if (isMounted) {
+            const snapshot = player.getState();
+            setQueueState(queue.getState());
+            setPlayerState({
+              ...snapshot,
+              currentTrack: track,
+              currentTime: 0,
+              duration: track.duration ?? snapshot.duration,
+              isPlaying: false,
+            });
+          }
+        } catch (error) {
+          logger.error('Failed to load default playback seed', error);
+        }
+      };
+
+      try {
+        const response = await api.get('/api/player/progress');
+        if (!response.ok) {
+          // No progress found, try to load seed
+          await loadDefaultSeed();
+          return;
+        }
+
+        const json = (await response.json()) as PlaybackProgressResponse;
+        const progress = json?.data;
+        if (!progress?.track) {
+          // No progress data, try to load seed
+          await loadDefaultSeed();
+          return;
+        }
+
+        const queue = getPlayQueue();
+        const player = getAudioPlayer();
+        player.setPendingSeek(progress.position);
+        const track: Track = {
+          id: progress.track.id,
+          title: progress.track.title,
+          artist: progress.track.artist ?? undefined,
+          album: progress.track.album ?? undefined,
+          coverUrl: progress.track.coverUrl ?? undefined,
+          duration: progress.track.duration ?? undefined,
+          audioUrl: progress.track.audioUrl,
+          mimeType: progress.track.mimeType ?? undefined,
+        };
+
+        queue.setQueue([track], 0);
+        if (progress.context) {
+          getPlayContext().setContext({
+            ...progress.context,
+            name: progress.context.name ?? '',
+          });
+        }
+
+        resumeProgressRef.current = {
+          trackId: track.id,
+          position: progress.position,
+        };
+
+        player.prime(track);
+
+        if (isMounted) {
+          const snapshot = player.getState();
+          setQueueState(queue.getState());
+          setPlayerState({
+            ...snapshot,
+            currentTrack: track,
+            currentTime: progress.position,
+            duration: track.duration ?? snapshot.duration,
+            isPlaying: false,
+          });
+        }
+      } catch (error) {
+        logger.error('Failed to load playback progress', error);
+      }
+    };
+
+    void loadInitialPlaybackState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+
+  const persistPreferences = useCallback(
+    (preferences: Partial<{ shuffleEnabled: boolean; repeatMode: RepeatMode }>) => {
+      void api.put('/api/player/preferences', preferences).catch((error) => {
+        logger.error('Failed to persist playback preferences', error);
+      });
+    },
+    []
+  );
+
+  const persistProgress = useCallback((positionOverride?: number) => {
+    const state = getAudioPlayer().getState();
+    const track = state.currentTrack;
+
+    if (!track) {
+      return;
+    }
+
+    const context = getPlayContext().getContext();
+    const position = Math.max(
+      0,
+      Math.min(86_400, Math.round(positionOverride ?? state.currentTime))
+    );
+
+    const payload = {
+      songId: track.id,
+      position,
+      contextType: context?.type,
+      contextId: context?.id,
+      contextName: context?.name,
+    };
+
+    void api.put('/api/player/progress', payload).catch((error) => {
+      logger.error('Failed to persist playback progress', error);
+    });
+  }, []);
+
+  const applyResumeProgress = useCallback(
+    (trackId: string): number | null => {
+      const pending = resumeProgressRef.current;
+      if (!pending || pending.trackId !== trackId) {
+        return null;
+      }
+
+      resumeProgressRef.current = null;
+      const player = getAudioPlayer();
+      player.setPendingSeek(pending.position);
+      const state = player.getState();
+      if (state.isPlaying) {
+        player.seek(pending.position);
+      }
+      setPlayerState((prev) => ({
+        ...prev,
+        currentTime: pending.position,
+      }));
+      return pending.position;
+    },
+    []
+  );
+
+  const preloadUpcomingTrack = useCallback(() => {
+    const queue = getPlayQueue();
+    const state = queue.getState();
+    preloadNextInQueue(state.tracks, state.currentIndex);
+  }, [preloadNextInQueue]);
+
+  const playWithPreload = useCallback(
+    async (track: Track) => {
+      const playableTrack = await prepareTrack(track);
+      await getAudioPlayer().play(playableTrack);
+      const applied = applyResumeProgress(track.id);
+      persistProgress(applied ?? 0);
+      preloadUpcomingTrack();
+    },
+    [prepareTrack, applyResumeProgress, persistProgress, preloadUpcomingTrack]
+  );
+
+  // Handle track end - auto play next and persist progress
+  const handleTrackEnd = useCallback(
+    (state: PlayerState) => {
+      setPlayerState(state);
+      const queue = getPlayQueue();
+      const nextTrack = queue.next();
+      setQueueState(queue.getState());
+      if (nextTrack) {
+        void playWithPreload(nextTrack).catch((error) => {
+          logger.error('Failed to auto-play next track', error);
+        });
+      }
+    },
+    [playWithPreload]
+  );
+
+  // Subscribe to all player events
+  useEffect(() => {
+    const player = getAudioPlayer();
+    const unsubscribers = [
+      player.on('play', setPlayerState),
+      player.on('pause', setPlayerState),
+      player.on('end', handleTrackEnd),
+      player.on('load', setPlayerState),
+      player.on('seek', setPlayerState),
+      player.on('volume', setPlayerState),
+      player.on('error', setPlayerState),
+    ];
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, [handleTrackEnd]);
+
+  useEffect(() => {
+    const track = playerState.currentTrack;
+    if (!track) {
+      return;
+    }
+
+    primePreloadedTrack(track);
+  }, [playerState.currentTrack, primePreloadedTrack]);
+
+  useEffect(() => {
+    preloadUpcomingTrack();
+  }, [queueState.currentIndex, queueState.tracks, preloadUpcomingTrack]);
+
+  // Play a track
+  const play = useCallback(
+    async (track: Track) => {
+      await playWithPreload(track);
+    },
+    [playWithPreload]
+  );
+
+  // Play from queue
+  const playFromQueue = useCallback(
+    async (tracks: Track[], startIndex: number = 0, context?: PlayContext) => {
+      const queue = getPlayQueue();
+      queue.setQueue(tracks, startIndex);
+      setQueueState(queue.getState());
+      const track = queue.getCurrentTrack();
+      if (track) {
+        // Set play context if provided
+        if (context) {
+          getPlayContext().setContext(context);
+        }
+        await playWithPreload(track);
+      }
+    },
+    [playWithPreload]
+  );
+
+  // Pause
+  const pause = useCallback(() => {
+    getAudioPlayer().pause();
+  }, []);
+
+  // Resume
+  const resume = useCallback(() => {
+    const currentTrack = getAudioPlayer().getState().currentTrack;
+    const applied = currentTrack ? applyResumeProgress(currentTrack.id) : null;
+    getAudioPlayer().resume();
+    if (applied !== null) {
+      persistProgress(applied);
+    }
+  }, [applyResumeProgress, persistProgress]);
+
+  // Toggle play/pause
+  const togglePlay = useCallback(() => {
+    if (playerState.isPlaying) {
+      getAudioPlayer().pause();
+    } else {
+      resume();
+    }
+  }, [playerState.isPlaying, resume]);
+
+  // Next track
+  const next = useCallback(async () => {
+    const queue = getPlayQueue();
+    const nextTrack = queue.next();
+    if (nextTrack) {
+      await playWithPreload(nextTrack);
+    }
+    setQueueState(queue.getState());
+  }, [playWithPreload]);
+
+  // Previous track
+  const previous = useCallback(async () => {
+    const queue = getPlayQueue();
+    const prevTrack = queue.previous();
+    if (prevTrack) {
+      await playWithPreload(prevTrack);
+    }
+    setQueueState(queue.getState());
+  }, [playWithPreload]);
+
+  // Seek
+  const seek = useCallback(
+    (position: number) => {
+      getAudioPlayer().seek(position);
+      persistProgress(position);
+    },
+    [persistProgress]
+  );
+
+  // Set volume
+  const setVolume = useCallback((volume: number) => {
+    getAudioPlayer().setVolume(volume);
+  }, []);
+
+  // Toggle mute
+  const toggleMute = useCallback(() => {
+    getAudioPlayer().setMuted(!playerState.isMuted);
+  }, [playerState.isMuted]);
+
+  // Toggle shuffle
+  const toggleShuffle = useCallback(() => {
+    const queue = getPlayQueue();
+    const enabled = queue.toggleShuffle();
+    // Re-render with updated queue state
+    setPlayerState(getAudioPlayer().getState());
+    setQueueState(queue.getState());
+    persistPreferences({ shuffleEnabled: enabled });
+    return enabled;
+  }, [persistPreferences]);
+
+  // Cycle repeat mode
+  const cycleRepeat = useCallback(() => {
+    const queue = getPlayQueue();
+    const mode = queue.cycleRepeatMode();
+    setPlayerState(getAudioPlayer().getState());
+    setQueueState(queue.getState());
+    persistPreferences({ repeatMode: mode });
+    return mode;
+  }, [persistPreferences]);
+
+  const primeFromSeed = useCallback(
+    (payload: PrimePlaybackPayload) => {
+      const queue = getPlayQueue();
+      const tracks = payload.queue ?? [payload.track];
+      const startIndex = payload.startIndex ?? 0;
+
+      queue.setQueue(tracks, startIndex);
+      setQueueState(queue.getState());
+
+      if (payload.context) {
+        getPlayContext().setContext(payload.context);
+      }
+
+      getAudioPlayer().prime(payload.track);
+      primePreloadedTrack(payload.track);
+      preloadUpcomingTrack();
+      setPlayerState(getAudioPlayer().getState());
+      persistProgress(0);
+    },
+    [persistProgress, primePreloadedTrack, preloadUpcomingTrack]
+  );
+
+  const trackedSongId = playerState.currentTrack?.id;
+  const isPlaying = playerState.isPlaying;
+
+  useEffect(() => {
+    if (!trackedSongId) {
+      return;
+    }
+
+    persistProgress();
+
+    if (!isPlaying) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      persistProgress();
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      persistProgress();
+    };
+  }, [trackedSongId, isPlaying, persistProgress]);
+
+  return {
+    // State
+    ...playerState,
+    queueState,
+    playContext: getPlayContext().getContext(),
+
+    // Controls
+    play,
+    playFromQueue,
+    pause,
+    resume,
+    togglePlay,
+    next,
+    previous,
+    seek,
+    setVolume,
+    toggleMute,
+    toggleShuffle,
+    cycleRepeat,
+    primeFromSeed,
+  };
+}

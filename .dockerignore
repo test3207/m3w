@@ -1,90 +1,62 @@
-# Paths ignored by Docker builds
-
-# Dependencies
+# Node modules
 node_modules
+*/node_modules
 **/node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnp
-.pnp.js
 
-# Testing
-coverage
-.nyc_output
-*.lcov
-
-# Next.js
+# Build outputs
+dist
+*/dist
+**/dist
+build
+*/build
+**/build
 .next
-**/.next
 out
 
-# Production
-build
+# Development files
+dev-dist
+*.log
+npm-debug.log*
+*.tsbuildinfo
 
-# Misc
-.DS_Store
-*.pem
-
-# Local env files
+# Environment files
 .env
 .env.*
-.env.development.local
-.env.test.local
-.env.production.local
-.env.docker
+!.env.example
+!.env.docker.example
 
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-
-# Prisma
-prisma/dev.db
-prisma/dev.db-journal
+# Git
+.git
+.gitignore
 
 # IDE
 .vscode
 .idea
 *.swp
 *.swo
-*~
 
-# Git
-.git
-.gitignore
-.gitattributes
+# Test
+coverage
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
 
-# Docker
-Dockerfile*
-docker-compose*.yml
-.dockerignore
-docker
+# Frontend (not needed in backend image)
+frontend
 
-# Documentation
-README.md
+# Docs and scripts (only keep prisma)
 docs
-*.md
-
-# CI/CD
-.github
-
-# Assets (source files not needed in container)
+scripts
 assets
 
-# Test files
-**/*.test.ts
-**/*.test.tsx
-**/*.spec.ts
-**/*.spec.tsx
-src/test
-vitest.config.ts
-vitest.setup.ts
+# Docker
+docker
+docker-compose.yml
+Dockerfile*
+.dockerignore
 
-# Scripts
-setup.sh
-setup.ps1
-podman-env.ps1.example
-
+# Misc
+README.md
+*.md
+!backend/README.md
