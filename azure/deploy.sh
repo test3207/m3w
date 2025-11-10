@@ -96,11 +96,12 @@ build_and_push() {
     az acr login --name "$ACR_NAME"
     
     # Build
-    TAG="${1:-$(git rev-parse --short HEAD)}"
+    TAG="${1:-latest}"
     IMAGE="${ACR_SERVER}/m3w:${TAG}"
     
     print_info "Building: $IMAGE"
-    docker build -t "$IMAGE" -f "${PROJECT_ROOT}/docker/Dockerfile" "$PROJECT_ROOT"
+    # Use Azure-optimized Dockerfile with China mirrors
+    docker build -t "$IMAGE" -f "${PROJECT_ROOT}/docker/Dockerfile.azure" "$PROJECT_ROOT"
     
     # Push
     print_info "Pushing image..."

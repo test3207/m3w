@@ -231,7 +231,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
       containers: [
         {
           name: 'm3w'
-          image: '${containerRegistry.properties.loginServer}/m3w:latest'
+          // Use placeholder image for initial deployment, will be updated later
+          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           resources: {
             cpu: json('0.5') // 0.5 vCPU
             memory: '1Gi'     // 1GB RAM

@@ -1,5 +1,5 @@
 import { prisma } from '../db/prisma';
-import { deleteFile, uploadFile } from '../storage/minio-client';
+import { createStorageAdapter } from '../storage/azure-blob.adapter';
 import { calculateBufferHash } from '../utils/hash';
 import {
   extractMetadataFromBuffer,
@@ -9,7 +9,15 @@ import {
 } from '../metadata/extractor';
 import { logger } from '../logger';
 
-const BUCKET_NAME = process.env.MINIO_BUCKET_NAME || 'm3w-music';
+// Lazy initialize storage adapter on first use
+let storageAdapter: ReturnType<typeof createStorageAdapter> | null = null;
+
+function getStorageAdapter() {
+  if (!storageAdapter) {
+    storageAdapter = createStorageAdapter();
+  }
+  return storageAdapter;
+}
 
 interface UploadResult {
   fileId: string;
@@ -76,12 +84,10 @@ export async function uploadAudioFile(
       const metadata = await extractMetadataFromBuffer(buffer, mimeType);
       const physicalProps = extractPhysicalProperties(metadata);
 
-      // Step 4: Upload to MinIO (use hash as filename to avoid encoding issues)
+      // Step 4: Upload to storage (Azure Blob Storage in production, MinIO in dev)
       const extension = getExtensionFromMimeType(mimeType);
       const objectName = `files/${hash}${extension}`;
-      await uploadFile(BUCKET_NAME, objectName, buffer, buffer.length, {
-        'Content-Type': mimeType,
-      });
+      await getStorageAdapter().uploadFile(buffer, objectName, mimeType);
 
       // Step 5: Create File record
       file = await prisma.file.create({
@@ -199,7 +205,7 @@ export async function decrementFileRef(fileId: string): Promise<void> {
 
     if (newRefCount <= 0) {
       try {
-        await deleteFile(BUCKET_NAME, file.path);
+        await getStorageAdapter().deleteFile(file.path);
 
         logger.info({
           msg: 'File deleted from object storage',

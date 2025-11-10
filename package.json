@@ -38,6 +38,7 @@
   "description": "",
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
+    "@azure/storage-blob": "^12.29.1",
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
