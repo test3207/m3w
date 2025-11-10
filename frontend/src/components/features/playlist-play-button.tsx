@@ -8,6 +8,7 @@ import type { PlayContext } from '@/lib/audio/context';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
+import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api-config';
 import type { PlaylistTrackResponse } from '@/types/models';
 
@@ -25,17 +26,11 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
     try {
       setIsLoading(true);
 
-      const tracksResponse = await fetch(API_ENDPOINTS.playlists.songs(playlistId), {
-        cache: 'no-store',
-      });
-
-      if (!tracksResponse.ok) {
-        logger.error('Failed to load playlist tracks', { playlistId });
-        return;
-      }
-
-      const data = await tracksResponse.json();
-      const tracks: PlaylistTrackResponse[] = data.tracks ?? [];
+      const response = await apiClient.get<{ success: boolean; data: PlaylistTrackResponse[] }>(
+        API_ENDPOINTS.playlists.songs(playlistId)
+      );
+      
+      const tracks = response.data ?? [];
 
       if (tracks.length === 0) {
         logger.warn('Playlist has no tracks', { playlistId });

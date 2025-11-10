@@ -1,49 +1,53 @@
 /**
  * API Configuration
+ * All endpoints use relative paths without /api prefix
+ * apiClient will add /api prefix automatically
+ * For direct fetch calls, use with /api prefix manually
  */
-
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export const API_ENDPOINTS = {
   // Auth
   auth: {
-    github: `${API_BASE_URL}/api/auth/github`,
-    callback: `${API_BASE_URL}/api/auth/callback`,
-    refresh: `${API_BASE_URL}/api/auth/refresh`,
-    me: `${API_BASE_URL}/api/auth/me`,
+    github: '/api/auth/github',
+    callback: '/api/auth/callback',
+    refresh: '/api/auth/refresh',
+    me: '/api/auth/me',
+    signout: '/api/auth/signout',
   },
   // Libraries
   libraries: {
-    list: `${API_BASE_URL}/api/libraries`,
-    detail: (id: string) => `${API_BASE_URL}/api/libraries/${id}`,
-    songs: (id: string) => `${API_BASE_URL}/api/libraries/${id}/songs`,
-    create: `${API_BASE_URL}/api/libraries`,
-    delete: (id: string) => `${API_BASE_URL}/api/libraries/${id}`,
+    list: '/libraries',
+    detail: (id: string) => `/libraries/${id}`,
+    songs: (id: string) => `/libraries/${id}/songs`,
+    create: '/libraries',
+    delete: (id: string) => `/libraries/${id}`,
   },
   // Playlists
   playlists: {
-    list: `${API_BASE_URL}/api/playlists`,
-    detail: (id: string) => `${API_BASE_URL}/api/playlists/${id}`,
-    songs: (id: string) => `${API_BASE_URL}/api/playlists/${id}/songs`,
-    create: `${API_BASE_URL}/api/playlists`,
-    update: (id: string) => `${API_BASE_URL}/api/playlists/${id}`,
-    delete: (id: string) => `${API_BASE_URL}/api/playlists/${id}`,
-    addSong: (id: string) => `${API_BASE_URL}/api/playlists/${id}/songs`,
-    removeSong: (playlistId: string, songId: string) => `${API_BASE_URL}/api/playlists/${playlistId}/songs/${songId}`,
-    reorderSongs: (id: string) => `${API_BASE_URL}/api/playlists/${id}/songs/reorder`,
+    list: '/playlists',
+    detail: (id: string) => `/playlists/${id}`,
+    songs: (id: string) => `/playlists/${id}/songs`,
+    create: '/playlists',
+    update: (id: string) => `/playlists/${id}`,
+    delete: (id: string) => `/playlists/${id}`,
+    addSong: (id: string) => `/playlists/${id}/songs`,
+    removeSong: (playlistId: string, songId: string) => `/playlists/${playlistId}/songs/${songId}`,
+    reorderSongs: (id: string) => `/playlists/${id}/songs/reorder`,
   },
   // Songs
   songs: {
-    stream: (id: string) => `${API_BASE_URL}/api/songs/${id}/stream`,
+    stream: (id: string) => `/songs/${id}/stream`,
+    playlistCount: (id: string) => `/songs/${id}/playlist-count`,
+    delete: (id: string) => `/songs/${id}`,
   },
   // Upload
   upload: {
-    song: `${API_BASE_URL}/api/upload/song`,
+    song: '/upload/song',
   },
   // Player
   player: {
-    seed: `${API_BASE_URL}/api/player/seed`,
-    progress: `${API_BASE_URL}/api/player/progress`,
-    preferences: `${API_BASE_URL}/api/player/preferences`,
+    seed: '/player/seed',
+    progress: '/player/progress',
+    preferences: '/player/preferences',
   },
 } as const;

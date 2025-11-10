@@ -66,6 +66,10 @@ export interface Song {
     id: string;
     duration: number | null;
   } | null;
+  library?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 /**

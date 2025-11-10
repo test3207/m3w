@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { calculateFileHash } from "@/lib/utils/hash";
@@ -34,6 +35,7 @@ type UploadStatus =
   | null;
 
 export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormProps) {
+  const { toast } = useToast();
   const [libraryId, setLibraryId] = useState<string>(libraries[0]?.id ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState<string>("");
@@ -138,6 +140,11 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
       if (!result?.success) {
         const message = result?.error ?? I18n.error.uploadFailed;
         setStatus({ type: "error", message });
+        toast({
+          title: I18n.error.title,
+          description: message,
+          variant: "destructive",
+        });
         return;
       }
 
@@ -146,17 +153,24 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
       const duration: number | null = result.data?.song?.file?.duration ?? null;
       const bitrate: number | null = result.data?.song?.file?.bitrate ?? null;
 
+      const successMessage = `${I18n.upload.form.successPrefix}${songTitle}${
+        I18n.upload.form.successSuffix
+      }${selectedLibraryName || I18n.upload.form.successFallbackLibrary}`;
+
       setStatus({
         type: "success",
-        message: `${I18n.upload.form.successPrefix}${songTitle}${
-          I18n.upload.form.successSuffix
-        }${selectedLibraryName || I18n.upload.form.successFallbackLibrary}`,
+        message: successMessage,
         details: {
           songTitle,
           libraryName: selectedLibraryName || "",
           duration,
           bitrate,
         },
+      });
+
+      toast({
+        title: I18n.success.title,
+        description: successMessage,
       });
 
       resetForm();
@@ -167,7 +181,13 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
       }
     } catch (error) {
       logger.error("Upload failed", error);
-      setStatus({ type: "error", message: I18n.error.uploadErrorGeneric });
+      const errorMessage = I18n.error.uploadErrorGeneric;
+      setStatus({ type: "error", message: errorMessage });
+      toast({
+        title: I18n.error.title,
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }

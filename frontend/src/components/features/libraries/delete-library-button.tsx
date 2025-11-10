@@ -16,6 +16,7 @@ import { toast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
+import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api-config';
 
 interface DeleteLibraryButtonProps {
@@ -33,23 +34,7 @@ export function DeleteLibraryButton({ libraryId, libraryName, onDeleted }: Delet
     setIsPending(true);
     
     try {
-      const res = await fetch(API_ENDPOINTS.libraries.delete(libraryId), {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        logger.error('Failed to delete library', { status: res.status });
-        toast({
-          variant: 'destructive',
-          title: I18n.library.manager.list.toastDeleteErrorTitle,
-          description:
-            res.status === 403
-              ? I18n.library.manager.list.toastDeleteErrorUnauthorized
-              : I18n.library.manager.list.toastDeleteErrorDescription,
-        });
-        return;
-      }
+      await apiClient.delete(API_ENDPOINTS.libraries.delete(libraryId));
 
       toast({
         title: I18n.library.manager.list.toastDeleteSuccessTitle,

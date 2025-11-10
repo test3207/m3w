@@ -118,7 +118,7 @@ app.post('/song', async (c: Context) => {
 
       // 6. Upload to MinIO
       const minioClient = getMinioClient();
-      const bucketName = process.env.MINIO_BUCKET || 'music';
+      const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
       const objectName = `files/${fileHash}${getFileExtension(file.name)}`;
 
       // Ensure bucket exists
@@ -222,7 +222,8 @@ app.post('/song', async (c: Context) => {
       },
     });
   } catch (error) {
-    logger.error('Upload failed', { error });
+    logger.error({ error }, 'Upload failed');
+    logger.error(`Error details: ${error instanceof Error ? error.stack : String(error)}`);
     return c.json(
       {
         success: false,

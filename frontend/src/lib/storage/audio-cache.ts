@@ -10,6 +10,7 @@
 
 import { getStorageStatus, hasEnoughQuota } from './quota-manager';
 import { db } from '../db/schema';
+import { API_ENDPOINTS } from '../api-config';
 
 const AUDIO_CACHE_NAME = 'm3w-audio-cache-v1';
 const ESTIMATED_SONG_SIZE = 5 * 1024 * 1024; // 5 MB average per song
@@ -73,7 +74,7 @@ export async function cacheSong(
     throw new Error('Not enough storage quota available');
   }
 
-  const streamUrl = `/api/songs/${songId}/stream`;
+  const streamUrl = API_ENDPOINTS.songs.stream(songId);
 
   try {
     onProgress?.({
@@ -147,7 +148,7 @@ export async function cacheSongs(
 export async function isSongCached(songId: string): Promise<boolean> {
   try {
     const cache = await getAudioCache();
-    const streamUrl = `/api/songs/${songId}/stream`;
+    const streamUrl = API_ENDPOINTS.songs.stream(songId);
     const response = await cache.match(streamUrl);
     return response !== undefined;
   } catch (error) {
@@ -162,7 +163,7 @@ export async function isSongCached(songId: string): Promise<boolean> {
 export async function removeCachedSong(songId: string): Promise<boolean> {
   try {
     const cache = await getAudioCache();
-    const streamUrl = `/api/songs/${songId}/stream`;
+    const streamUrl = API_ENDPOINTS.songs.stream(songId);
     const deleted = await cache.delete(streamUrl);
     
     if (deleted) {

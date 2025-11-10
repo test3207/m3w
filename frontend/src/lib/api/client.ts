@@ -62,12 +62,16 @@ class ApiClient {
 
       // Use router to decide between backend and offline proxy
       const path = new URL(url).pathname;
+      
+      // Build headers - don't set Content-Type for FormData (browser will set it with boundary)
+      const headers: HeadersInit = { ...fetchOptions.headers };
+      if (!(fetchOptions.body instanceof FormData) && typeof headers === 'object' && !Array.isArray(headers)) {
+        (headers as Record<string, string>)['Content-Type'] = 'application/json';
+      }
+      
       const response = await routeRequest(path, {
         ...fetchOptions,
-        headers: {
-          'Content-Type': 'application/json',
-          ...fetchOptions.headers,
-        },
+        headers,
       });
 
       // Handle non-JSON responses (e.g., audio streams)

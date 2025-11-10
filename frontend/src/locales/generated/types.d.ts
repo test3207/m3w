@@ -8,6 +8,8 @@
 
 export interface Messages {
   error: {
+    /** Error */
+    title: string;
     /** Unauthorized */
     unauthorized: string;
     /** No file provided */
@@ -110,8 +112,12 @@ export interface Messages {
     pleaseSignInAgain: string;
     /** Please try again. */
     genericTryAgain: string;
+    /** Failed to delete song */
+    failedToDeleteSong: string;
   };
   success: {
+    /** Success */
+    title: string;
     /** File upload completed */
     uploadCompleted: string;
   };
@@ -134,6 +140,10 @@ export interface Messages {
     confirmLabel: string;
     /** Cancel */
     cancelLabel: string;
+    /** Cancel */
+    cancelButton: string;
+    /** Delete */
+    deleteButton: string;
     /** Creating... */
     creatingLabel: string;
     /** Deleting... */
@@ -318,6 +328,22 @@ export interface Messages {
       /** Select a playlist first. */
       selectPlaylistFirst: string;
     };
+    deleteSong: {
+      /** Delete song */
+      buttonLabel: string;
+      /** Delete song from library? */
+      dialogTitle: string;
+      /** This will permanently remove the song from this library. This action cannot be undone. */
+      dialogDescription: string;
+      /** ⚠️ This song is used in  */
+      playlistWarningPrefix: string;
+      /**  playlist(s). Removing it will also remove it from those playlists. */
+      playlistWarningSuffix: string;
+      /** Deleted song:  */
+      successPrefix: string;
+      /**  */
+      successSuffix: string;
+    };
   };
   playlist: {
     manager: {
@@ -383,6 +409,8 @@ export interface Messages {
       playlistDurationLabel: string;
       /** Songs */
       songCountLabel: string;
+      /** Library */
+      songLibraryLabel: string;
       /** Album */
       songAlbumLabel: string;
       /** Duration */
