@@ -28,23 +28,48 @@ jobs:
           node-version: '22'
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: Install dependencies (root)
         run: npm ci
       
+      - name: Install dependencies (frontend)
+        run: npm ci
+        working-directory: frontend
+      
+      - name: Install dependencies (backend)
+        run: npm ci
+        working-directory: backend
+      
+      - name: Install dependencies (shared)
+        run: npm ci
+        working-directory: shared
+      
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        working-directory: backend
+      
+      - name: Build i18n types
+        run: node ../scripts/build-i18n.cjs
+        working-directory: frontend
+      
       - name: Run ESLint (Frontend)
-        run: npm run lint --prefix frontend
+        run: npm run lint
+        working-directory: frontend
       
       - name: Run ESLint (Backend)
-        run: npm run lint --prefix backend
+        run: npm run lint
+        working-directory: backend
       
       - name: TypeScript type check (Frontend)
-        run: npx tsc --noEmit --project frontend/tsconfig.json
+        run: npx tsc --noEmit
+        working-directory: frontend
       
       - name: TypeScript type check (Backend)
-        run: npx tsc --noEmit --project backend/tsconfig.json
+        run: npx tsc --noEmit
+        working-directory: backend
       
       - name: Validate Prisma schema
-        run: npx prisma validate --schema backend/prisma/schema.prisma
+        run: npx prisma validate
+        working-directory: backend
         env:
           DATABASE_URL: postgresql://user:pass@localhost:5432/db
       
@@ -72,19 +97,38 @@ jobs:
           node-version: '22'
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: Install dependencies (root)
         run: npm ci
       
+      - name: Install dependencies (frontend)
+        run: npm ci
+        working-directory: frontend
+      
+      - name: Install dependencies (backend)
+        run: npm ci
+        working-directory: backend
+      
+      - name: Install dependencies (shared)
+        run: npm ci
+        working-directory: shared
+      
       - name: Generate Prisma Client
-        run: npx prisma generate --schema backend/prisma/schema.prisma
+        run: npx prisma generate
+        working-directory: backend
+      
+      - name: Build i18n types
+        run: node ../scripts/build-i18n.cjs
+        working-directory: frontend
       
       - name: Build Frontend (Vite)
-        run: npm run build --prefix frontend
+        run: npm run build
+        working-directory: frontend
         env:
           VITE_API_URL: http://localhost:4000
       
       - name: Build Backend (Hono)
-        run: npm run build --prefix backend
+        run: npm run build
+        working-directory: backend
         env:
           # Mock environment variables for build
           DATABASE_URL: postgresql://mock:mock@localhost:5432/mock
@@ -106,10 +150,12 @@ jobs:
           CORS_ORIGIN: http://localhost:3000
       
       - name: Run tests with coverage (Frontend)
-        run: npm run test:coverage --prefix frontend
+        run: npm run test:coverage
+        working-directory: frontend
       
       - name: Run tests (Backend)
-        run: npm run test --prefix backend
+        run: npm run test
+        working-directory: backend
         env:
           DATABASE_URL: postgresql://mock:mock@localhost:5432/mock
           REDIS_URL: redis://localhost:6379
