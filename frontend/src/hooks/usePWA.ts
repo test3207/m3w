@@ -58,15 +58,15 @@ export function useAudioCache() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<CacheProgress | null>(null);
 
-  // Load cached songs on mount
-  useEffect(() => {
-    refreshCachedSongs();
-  }, []);
-
   const refreshCachedSongs = useCallback(async () => {
     const songs = await getCachedSongs();
     setCachedSongIds(songs);
   }, []);
+
+  // Load cached songs on mount
+  useEffect(() => {
+    refreshCachedSongs();
+  }, [refreshCachedSongs]);
 
   const isCached = useCallback(
     (songId: string) => {

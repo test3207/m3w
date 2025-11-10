@@ -16,7 +16,7 @@ export function isPWAInstalled(): boolean {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
   
   // Check if running in standalone mode (Android Chrome)
-  const isStandaloneNavigator = ('standalone' in window.navigator) && (window.navigator as any).standalone;
+  const isStandaloneNavigator = ('standalone' in window.navigator) && (window.navigator as { standalone?: boolean }).standalone;
   
   // Check if launched from home screen
   const isLaunchedFromHomeScreen = window.matchMedia('(display-mode: standalone)').matches ||

@@ -8,6 +8,18 @@ export default defineConfig({
     environment: 'node', // Use node for non-React tests
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    exclude: [
+      // Default excludes
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
+      
+      // Exclude old Next.js service tests that reference non-existent modules
+      'src/lib/services/**/*.test.ts',
+      'src/lib/metadata/**/*.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

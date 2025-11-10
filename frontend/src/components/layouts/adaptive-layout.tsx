@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { useDashboardLayout } from "./dashboard-layout-shell";
+import { useDashboardLayout } from "./use-dashboard-layout";
 
 type AdaptiveLayoutContextValue = {
   sections: Map<

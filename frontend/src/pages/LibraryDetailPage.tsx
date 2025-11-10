@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -27,7 +27,7 @@ export default function LibraryDetailPage() {
   const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!id) return;
     
     try {
@@ -72,11 +72,11 @@ export default function LibraryDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate, toast]);
 
   useEffect(() => {
     fetchData();
-  }, [id]);
+  }, [fetchData]);
 
   if (loading) {
     return (

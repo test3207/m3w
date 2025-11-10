@@ -1,31 +1,13 @@
 'use client';
 
 import * as React from "react";
+import { DashboardLayoutProvider, type DashboardLayoutContextValue } from "./use-dashboard-layout";
 
 type DashboardLayoutShellProps = {
   header: React.ReactNode;
   footer?: React.ReactNode;
   children: React.ReactNode;
 };
-
-export interface DashboardLayoutContextValue {
-  availableHeight: number;
-  availableWidth: number;
-  headerHeight: number;
-  footerHeight: number;
-}
-
-const DashboardLayoutContext = React.createContext<DashboardLayoutContextValue | null>(null);
-
-export function useDashboardLayout(): DashboardLayoutContextValue {
-  const context = React.useContext(DashboardLayoutContext);
-
-  if (!context) {
-    throw new Error("useDashboardLayout must be used within DashboardLayoutShell");
-  }
-
-  return context;
-}
 
 export function DashboardLayoutShell({ header, footer, children }: DashboardLayoutShellProps) {
   const headerRef = React.useRef<HTMLDivElement | null>(null);
@@ -117,7 +99,7 @@ export function DashboardLayoutShell({ header, footer, children }: DashboardLayo
   );
 
   return (
-    <DashboardLayoutContext.Provider value={contextValue}>
+    <DashboardLayoutProvider value={contextValue}>
       <div
         className="flex min-h-screen max-h-screen flex-col overflow-hidden bg-background"
         style={layoutStyle}
@@ -132,6 +114,6 @@ export function DashboardLayoutShell({ header, footer, children }: DashboardLayo
           {footer}
         </div>
       </div>
-    </DashboardLayoutContext.Provider>
+    </DashboardLayoutProvider>
   );
 }

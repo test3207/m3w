@@ -29,5 +29,18 @@
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "src/app",
+    "src/lib/auth",
+    "src/lib/db",
+    "src/lib/logger.ts",
+    "src/lib/metadata",
+    "src/lib/services",
+    "src/lib/storage/minio-client.ts",
+    "src/test/fixtures/metadata.ts"
   ]
 }

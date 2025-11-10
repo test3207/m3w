@@ -18,7 +18,41 @@ export default function UploadPage() {
   const [libraries, setLibraries] = useState<LibraryOption[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchLibraries = async () => {
+  useEffect(() => {
+    const fetchLibraries = async () => {
+      try {
+        const data = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
+        const libs: Library[] = data.data || [];
+        
+        const libraryOptions = libs.map((library) => ({
+          id: library.id,
+          name: library.name,
+          description: library.description ?? null,
+          songCount: library._count?.songs ?? 0,
+        }));
+        
+        setLibraries(libraryOptions);
+      } catch (error) {
+        logger.error('Failed to fetch libraries', error);
+        
+        if (error instanceof ApiError && error.status === 401) {
+          navigate('/signin');
+          return;
+        }
+        
+        toast({
+          variant: "destructive",
+          title: I18n.error.failedToRetrieveLibraries,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLibraries();
+  }, [navigate, toast]);
+
+  const refetchLibraries = async () => {
     try {
       const data = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
       const libs: Library[] = data.data || [];
@@ -32,25 +66,14 @@ export default function UploadPage() {
       
       setLibraries(libraryOptions);
     } catch (error) {
-      logger.error('Failed to fetch libraries', error);
-      
-      if (error instanceof ApiError && error.status === 401) {
-        navigate('/signin');
-        return;
-      }
+      logger.error('Failed to refetch libraries', error);
       
       toast({
         variant: "destructive",
         title: I18n.error.failedToRetrieveLibraries,
       });
-    } finally {
-      setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchLibraries();
-  }, [navigate, toast]);
 
   if (loading) {
     return (
@@ -95,7 +118,7 @@ export default function UploadPage() {
                 {I18n.upload.page.emptyState}
               </p>
             ) : (
-              <UploadSongForm libraries={libraries} onUploadSuccess={fetchLibraries} />
+              <UploadSongForm libraries={libraries} onUploadSuccess={refetchLibraries} />
             )}
           </CardContent>
         </Card>
