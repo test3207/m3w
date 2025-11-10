@@ -35,12 +35,9 @@
     "dist",
     "build",
     "src/app",
-    "src/lib/auth",
-    "src/lib/db",
     "src/lib/logger.ts",
-    "src/lib/metadata",
-    "src/lib/services",
+    "src/lib/redis",
     "src/lib/storage/minio-client.ts",
-    "src/test/fixtures/metadata.ts"
+    "src/test/fixtures"
   ]
 }
