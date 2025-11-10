@@ -143,26 +143,51 @@ export class PlayQueue {
    * Move to next track
    */
   next(): Track | null {
-    const nextTrack = this.getNextTrack();
-    if (nextTrack) {
-      if (this.repeatMode === RepeatMode.ONE) {
-        // Don't change index for repeat one
-        return nextTrack;
-      }
-      this.currentIndex = this.tracks.indexOf(nextTrack);
+    if (this.tracks.length === 0) return null;
+
+    // Repeat one - return same track without changing index
+    if (this.repeatMode === RepeatMode.ONE) {
+      return this.getCurrentTrack();
     }
-    return nextTrack;
+
+    let nextIndex = this.currentIndex + 1;
+
+    // If at end of queue
+    if (nextIndex >= this.tracks.length) {
+      // Repeat all - go back to start
+      if (this.repeatMode === RepeatMode.ALL) {
+        nextIndex = 0;
+      } else {
+        // No repeat - no next track
+        return null;
+      }
+    }
+
+    this.currentIndex = nextIndex;
+    return this.tracks[nextIndex];
   }
 
   /**
    * Move to previous track
    */
   previous(): Track | null {
-    const prevTrack = this.getPreviousTrack();
-    if (prevTrack) {
-      this.currentIndex = this.tracks.indexOf(prevTrack);
+    if (this.tracks.length === 0) return null;
+
+    let prevIndex = this.currentIndex - 1;
+
+    // If at start of queue
+    if (prevIndex < 0) {
+      // Wrap to end if repeat is enabled
+      if (this.repeatMode === RepeatMode.ALL) {
+        prevIndex = this.tracks.length - 1;
+      } else {
+        // No repeat - restart current track (stay at index 0)
+        return this.getCurrentTrack();
+      }
     }
-    return prevTrack;
+
+    this.currentIndex = prevIndex;
+    return this.tracks[prevIndex];
   }
 
   /**

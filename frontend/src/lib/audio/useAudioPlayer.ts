@@ -336,16 +336,20 @@ export function useAudioPlayer() {
   // Play from queue
   const playFromQueue = useCallback(
     async (tracks: Track[], startIndex: number = 0, context?: PlayContext) => {
+      logger.info('playFromQueue called', { tracksCount: tracks.length, startIndex, context });
       const queue = getPlayQueue();
       queue.setQueue(tracks, startIndex);
       setQueueState(queue.getState());
       const track = queue.getCurrentTrack();
+      logger.info('Current track from queue', { track });
       if (track) {
         // Set play context if provided
         if (context) {
           getPlayContext().setContext(context);
         }
         await playWithPreload(track);
+      } else {
+        logger.warn('No track to play from queue');
       }
     },
     [playWithPreload]
@@ -377,10 +381,18 @@ export function useAudioPlayer() {
 
   // Next track
   const next = useCallback(async () => {
+    logger.info('Next button clicked');
     const queue = getPlayQueue();
+    const currentState = queue.getState();
+    logger.info('Current queue state', currentState);
+    
     const nextTrack = queue.next();
+    logger.info('Next track', { nextTrack });
+    
     if (nextTrack) {
       await playWithPreload(nextTrack);
+    } else {
+      logger.warn('No next track available');
     }
     setQueueState(queue.getState());
   }, [playWithPreload]);

@@ -406,4 +406,136 @@ app.get('/:id/stream', async (c: Context) => {
   }
 });
 
+// GET /api/songs/:id/playlist-count - Get number of playlists using this song
+app.get('/:id/playlist-count', async (c: Context) => {
+  try {
+    const { id } = songIdSchema.parse({ id: c.req.param('id') });
+    const userId = getUserId(c);
+
+    // Check if song belongs to user's library
+    const song = await prisma.song.findFirst({
+      where: {
+        id,
+        library: {
+          userId,
+        },
+      },
+    });
+
+    if (!song) {
+      return c.json(
+        {
+          success: false,
+          error: 'Song not found',
+        },
+        404
+      );
+    }
+
+    // Count playlists that contain this song
+    const count = await prisma.playlistSong.count({
+      where: {
+        songId: id,
+        playlist: {
+          userId,
+        },
+      },
+    });
+
+    return c.json({
+      success: true,
+      data: { count },
+    });
+  } catch (error) {
+    logger.error({ error, songId: c.req.param('id') }, 'Failed to get playlist count');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to get playlist count',
+      },
+      500
+    );
+  }
+});
+
+// DELETE /api/songs/:id - Delete song from library
+app.delete('/:id', async (c: Context) => {
+  try {
+    const { id } = songIdSchema.parse({ id: c.req.param('id') });
+    const userId = getUserId(c);
+
+    // Check if song belongs to user's library
+    const song = await prisma.song.findFirst({
+      where: {
+        id,
+        library: {
+          userId,
+        },
+      },
+      include: {
+        file: true,
+      },
+    });
+
+    if (!song) {
+      return c.json(
+        {
+          success: false,
+          error: 'Song not found',
+        },
+        404
+      );
+    }
+
+    const fileId = song.fileId;
+
+    // Delete the song (cascade will handle playlist_songs)
+    await prisma.song.delete({
+      where: { id },
+    });
+
+    // Decrement file reference count
+    const file = await prisma.file.findUnique({
+      where: { id: fileId },
+    });
+
+    if (file) {
+      const newRefCount = file.refCount - 1;
+      
+      if (newRefCount <= 0) {
+        // Delete file record and physical file from MinIO
+        await prisma.file.delete({
+          where: { id: fileId },
+        });
+        
+        // TODO: Delete physical file from MinIO
+        // This would require MinIO client integration
+        logger.info({ fileId, hash: file.hash }, 'File marked for deletion (refCount=0)');
+      } else {
+        // Just decrement the ref count
+        await prisma.file.update({
+          where: { id: fileId },
+          data: { refCount: newRefCount },
+        });
+      }
+    }
+
+    logger.info({ songId: id, userId }, 'Song deleted');
+
+    return c.json({
+      success: true,
+      message: 'Song deleted successfully',
+    });
+  } catch (error) {
+    logger.error({ error, songId: c.req.param('id') }, 'Failed to delete song');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to delete song',
+      },
+      500
+    );
+  }
+});
+
 export default app;

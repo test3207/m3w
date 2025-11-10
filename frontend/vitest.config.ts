@@ -1,10 +1,19 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig as defineVitestConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
+export default mergeConfig(
+  defineConfig({
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+  }),
+  defineVitestConfig({
+    test: {
     environment: 'node', // Use node for non-React tests
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
@@ -70,9 +79,5 @@ export default defineConfig({
       ],
     },
   },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-});
+  })
+);

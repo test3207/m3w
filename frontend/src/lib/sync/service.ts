@@ -6,7 +6,6 @@
 import { db } from '../db/schema';
 import type { SyncQueueItem } from '../db/schema';
 import { logger } from '../logger-client';
-import { API_BASE_URL } from '../api-config';
 
 export class SyncService {
   private isSyncing = false;
@@ -105,19 +104,19 @@ export class SyncService {
 
     switch (operation) {
       case 'create':
-        url = `${API_BASE_URL}/api/${entityType}s`;
+        url = `/api/${entityType}s`;
         method = 'POST';
         body = data;
         break;
 
       case 'update':
-        url = `${API_BASE_URL}/api/${entityType}s/${entityId}`;
+        url = `/api/${entityType}s/${entityId}`;
         method = 'PATCH';
         body = data;
         break;
 
       case 'delete':
-        url = `${API_BASE_URL}/api/${entityType}s/${entityId}`;
+        url = `/api/${entityType}s/${entityId}`;
         method = 'DELETE';
         body = undefined;
         break;

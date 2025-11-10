@@ -1,5 +1,6 @@
 {
   "error": {
+    "title": "错误",
     "unauthorized": "未授权",
     "noFileProvided": "未提供文件",
     "libraryIdRequired": "需要提供 libraryId",
@@ -50,9 +51,11 @@
     "failedToSignOut": "退出登录失败",
     "sessionExpired": "Session expired",
     "pleaseSignInAgain": "Please sign in again to continue",
-    "genericTryAgain": "请重试。"
+    "genericTryAgain": "请重试。",
+    "failedToDeleteSong": "删除歌曲失败"
   },
   "success": {
+    "title": "成功",
     "uploadCompleted": "文件上传完成"
   },
   "common": {
@@ -65,6 +68,8 @@
     "tryAgainLabel": "重试",
     "confirmLabel": "确认",
     "cancelLabel": "取消",
+    "cancelButton": "取消",
+    "deleteButton": "删除",
     "creatingLabel": "创建中...",
     "deletingLabel": "删除中...",
     "uploadingLabel": "上传中...",
@@ -165,10 +170,19 @@
       "submitLabel": "添加",
       "pendingLabel": "添加中...",
       "toastSuccessTitle": "已添加到播放列表",
-      "toastSuccessDescription": "歌曲添加成功。",
+      "toastSuccessDescription": "歌曲已成功添加。",
       "toastErrorTitle": "无法添加歌曲",
       "toastErrorDescription": "请重试。",
       "selectPlaylistFirst": "请先选择播放列表。"
+    },
+    "deleteSong": {
+      "buttonLabel": "删除歌曲",
+      "dialogTitle": "从音乐库删除歌曲？",
+      "dialogDescription": "这将从此音乐库永久删除该歌曲。此操作无法撤销。",
+      "playlistWarningPrefix": "⚠️ 此歌曲在 ",
+      "playlistWarningSuffix": " 个播放列表中使用。删除它也会将其从这些播放列表中移除。",
+      "successPrefix": "已删除歌曲：",
+      "successSuffix": ""
     }
   },
   "playlist": {
@@ -207,6 +221,7 @@
       "addedFromLibraryHelper": "从您的音乐库添加歌曲以构建此播放列表。",
       "playlistDurationLabel": "总时长",
       "songCountLabel": "歌曲",
+      "songLibraryLabel": "音乐库",
       "songAlbumLabel": "专辑",
       "songDurationLabel": "时长",
       "manageLibrariesCta": "管理音乐库"

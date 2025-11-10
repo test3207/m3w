@@ -1,5 +1,6 @@
 {
   "error": {
+    "title": "Error",
     "unauthorized": "Unauthorized",
     "noFileProvided": "No file provided",
     "libraryIdRequired": "libraryId is required",
@@ -50,9 +51,11 @@
     "failedToSignOut": "Failed to sign out",
     "sessionExpired": "Session expired",
     "pleaseSignInAgain": "Please sign in again to continue",
-    "genericTryAgain": "Please try again."
+    "genericTryAgain": "Please try again.",
+    "failedToDeleteSong": "Failed to delete song"
   },
   "success": {
+    "title": "Success",
     "uploadCompleted": "File upload completed"
   },
   "common": {
@@ -65,6 +68,8 @@
     "tryAgainLabel": "Try again",
     "confirmLabel": "Confirm",
     "cancelLabel": "Cancel",
+    "cancelButton": "Cancel",
+    "deleteButton": "Delete",
     "creatingLabel": "Creating...",
     "deletingLabel": "Deleting...",
     "uploadingLabel": "Uploading...",
@@ -169,6 +174,15 @@
       "toastErrorTitle": "Unable to add song",
       "toastErrorDescription": "Please try again.",
       "selectPlaylistFirst": "Select a playlist first."
+    },
+    "deleteSong": {
+      "buttonLabel": "Delete song",
+      "dialogTitle": "Delete song from library?",
+      "dialogDescription": "This will permanently remove the song from this library. This action cannot be undone.",
+      "playlistWarningPrefix": "⚠️ This song is used in ",
+      "playlistWarningSuffix": " playlist(s). Removing it will also remove it from those playlists.",
+      "successPrefix": "Deleted song: ",
+      "successSuffix": ""
     }
   },
   "playlist": {
@@ -207,6 +221,7 @@
       "addedFromLibraryHelper": "Add songs from your libraries to build this playlist.",
       "playlistDurationLabel": "Total duration",
       "songCountLabel": "Songs",
+      "songLibraryLabel": "Library",
       "songAlbumLabel": "Album",
       "songDurationLabel": "Duration",
       "manageLibrariesCta": "Manage libraries"

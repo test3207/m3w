@@ -163,6 +163,13 @@ export default function PlaylistDetailPage() {
                       description={song.artist || undefined}
                       metadata={
                         <HStack as="div" gap="xs" wrap>
+                          {song.library ? (
+                            <MetadataItem
+                              label={I18n.playlist.detail.songLibraryLabel}
+                              value={song.library.name}
+                              variant="default"
+                            />
+                          ) : null}
                           {song.album ? (
                             <MetadataItem
                               label={I18n.playlist.detail.songAlbumLabel}

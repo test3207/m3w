@@ -11,6 +11,7 @@ import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { AddSongToPlaylistForm } from "@/components/features/libraries/add-song-to-playlist-form";
+import { DeleteSongButton } from "@/components/features/libraries/delete-song-button";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
@@ -172,13 +173,20 @@ export default function LibraryDetailPage() {
                         </HStack>
                       }
                       actions={
-                        <AddSongToPlaylistForm
-                          songId={song.id}
-                          songTitle={song.title}
-                          libraryId={library.id}
-                          playlists={playlistOptions}
-                          onAddSuccess={fetchData}
-                        />
+                        <HStack as="div" gap="xs">
+                          <AddSongToPlaylistForm
+                            songId={song.id}
+                            songTitle={song.title}
+                            libraryId={library.id}
+                            playlists={playlistOptions}
+                            onAddSuccess={fetchData}
+                          />
+                          <DeleteSongButton
+                            songId={song.id}
+                            songTitle={song.title}
+                            onDeleteSuccess={fetchData}
+                          />
+                        </HStack>
                       }
                     />
                   </li>

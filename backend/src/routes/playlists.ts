@@ -304,8 +304,13 @@ app.get('/:id/songs', async (c: Context) => {
       );
     }
 
-    // Transform to flat song list
-    const songs = playlist.songs.map((ps) => ps.song);
+    // Transform to flat song list with file metadata and library info
+    const songs = playlist.songs.map((ps) => ({
+      ...ps.song,
+      mimeType: ps.song.file.mimeType,
+      duration: ps.song.file.duration,
+      library: ps.song.library, // Preserve library information
+    }));
 
     return c.json({
       success: true,
