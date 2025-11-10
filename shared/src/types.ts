@@ -82,7 +82,7 @@ export interface Song {
   libraryId: string;
   createdAt: Date;
   updatedAt: Date;
-  // 从 file 关联来的字段（后端返回时包含）
+  // Fields from file relation (included when returned by backend)
   file?: {
     id: string;
     hash: string;
