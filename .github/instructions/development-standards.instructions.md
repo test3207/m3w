@@ -9,6 +9,13 @@
 - Document prerequisites, setup instructions, and troubleshooting steps for all major platforms.
 - Update this document immediately when new technical decisions are made.
 
+## Rendering Strategy (CSR-First)
+- **All page components MUST include `'use client'` directive** to ensure pure Client-Side Rendering (CSR).
+- This enables seamless migration to a separate frontend/backend architecture in the future.
+- Next.js App Router defaults to Server Components; explicit `'use client'` prevents initial SSR.
+- Server Actions used in Client Components must be extracted to separate `actions.ts` files with `'use server'` directive.
+- API routes remain server-side and do not require `'use client'`.
+
 ## Testing and Type Safety
 - Favor complete objects or factory helpers in tests to satisfy type constraints instead of chaining `as unknown as`.
 - Introduce named aliases (for example `LibraryWithCount`) for composite shapes to keep intent clear.
@@ -33,8 +40,9 @@
 - Use Zod for runtime validation.
 
 ## Code Organization
-- Prefer server components to minimize client-side JavaScript.
-- Mark client components with `'use client'`.
+- **All page components (`page.tsx`) must include `'use client'` directive** for pure CSR.
+- Root and nested layouts should also use `'use client'` to prevent SSR hydration.
+- Server Actions used in Client Components must be extracted to separate `actions.ts` files with `'use server'` directive at the top.
 - Keep business logic in `src/lib/services`.
 - Keep API routes thin and delegate to services.
 - Dashboard routes render inside `DashboardLayoutShell`; compose page sections with `AdaptiveLayout` and `AdaptiveSection` so base and minimum heights stay consistent across breakpoints.

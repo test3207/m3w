@@ -1,4 +1,6 @@
-import { signIn } from "@/lib/auth/config";
+'use client';
+
+import { handleGitHubSignIn } from "./actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,12 +22,7 @@ export default function SignInPage() {
         </CardHeader>
 
         <CardContent>
-          <form
-            action={async () => {
-              "use server";
-              await signIn("github", { redirectTo: "/dashboard" });
-            }}
-          >
+          <form action={handleGitHubSignIn}>
             <Button type="submit" className="w-full" size="lg">
               <svg
                 className="w-5 h-5 mr-2"
