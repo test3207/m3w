@@ -81,7 +81,7 @@ export const removeSongFromPlaylistSchema = z.object({
 export const reorderPlaylistSongSchema = z.object({
   songId: z.string().min(1, 'Invalid song ID'),
   direction: z.enum(['up', 'down'], {
-    errorMap: () => ({ message: 'Direction must be "up" or "down"' }),
+    message: 'Direction must be "up" or "down"',
   }),
 });
 

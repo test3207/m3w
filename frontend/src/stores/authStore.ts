@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { API_ENDPOINTS } from '@/lib/api-config';
+import { API_ENDPOINTS } from '@/lib/api/api-config';
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/logger-client';
 
 export interface User {
   id: string;
@@ -78,7 +79,7 @@ export const useAuthStore = create<AuthStore>()(
           );
           
           if (!data.success || !data.data) {
-            console.error('Token refresh response invalid:', data);
+            logger.error('Token refresh response invalid', { data });
             get().clearAuth();
             return false;
           }
@@ -93,7 +94,7 @@ export const useAuthStore = create<AuthStore>()(
 
           return true;
         } catch (error) {
-          console.error('Token refresh failed:', error);
+          logger.error('Token refresh failed', { error });
           get().clearAuth();
           return false;
         }
@@ -134,7 +135,7 @@ export const useAuthStore = create<AuthStore>()(
 
           set({ user: data.data, isAuthenticated: true, isLoading: false });
         } catch (error) {
-          console.error('Auth check failed:', error);
+          logger.error('Auth check failed', { error });
           clearAuth();
         }
       },

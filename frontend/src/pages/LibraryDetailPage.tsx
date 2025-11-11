@@ -15,6 +15,7 @@ import { DeleteSongButton } from "@/components/features/libraries/delete-song-bu
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { Song, Library, PlaylistOption } from "@/types/models";
 
 export default function LibraryDetailPage() {
@@ -33,9 +34,9 @@ export default function LibraryDetailPage() {
     
     try {
       const [libraryData, songsData, playlistsData] = await Promise.all([
-        apiClient.get<{ success: boolean; data: Library }>(`/libraries/${id}`),
-        apiClient.get<{ success: boolean; data: Song[] }>(`/libraries/${id}/songs`),
-        apiClient.get<{ success: boolean; data: PlaylistOption[] }>('/playlists'),
+        apiClient.get<{ success: boolean; data: Library }>(API_ENDPOINTS.libraries.detail(id)),
+        apiClient.get<{ success: boolean; data: Song[] }>(API_ENDPOINTS.libraries.songs(id)),
+        apiClient.get<{ success: boolean; data: PlaylistOption[] }>(API_ENDPOINTS.playlists.list),
       ]);
 
       setLibrary(libraryData.data);

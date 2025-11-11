@@ -2,47 +2,69 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, type User } from '@/stores/authStore';
-import { API_ENDPOINTS } from '@/lib/api-config';
-import { apiClient } from '@/lib/api/client';
+import { useAuthStore } from '@/stores/authStore';
+import { logger } from '@/lib/logger-client';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
   useEffect(() => {
-    // Extract tokens from URL params
     const params = new URLSearchParams(window.location.search);
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
+    const success = params.get('success');
+    
+    if (success === 'true') {
+      // Backend has set HTTP-only cookies with tokens
+      // Now fetch user info (cookies will be sent automatically)
+      const fetchUserInfo = async () => {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/me`,
+            {
+              credentials: 'include', // Send cookies
+            }
+          );
 
-    if (accessToken && refreshToken) {
-      // Calculate expiry (tokens are valid for 15 minutes by default)
-      const expiresAt = Date.now() + 15 * 60 * 1000;
+          const data = await response.json();
 
-      // Fetch user info
-      apiClient.get<{ success: boolean; data: User }>(API_ENDPOINTS.auth.me, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-        .then((data) => {
-          if (data.success && data.data) {
-            setAuth(data.data, {
-              accessToken,
-              refreshToken,
-              expiresAt,
-            });
-            navigate('/dashboard');
+          if (response.ok && data.success && data.data) {
+            // Extract tokens from response headers or use a separate endpoint
+            // For now, we need to get tokens to store in frontend
+            // Let's call a new endpoint that returns tokens (non-HttpOnly)
+            const tokenResponse = await fetch(
+              `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/session`,
+              {
+                credentials: 'include',
+              }
+            );
+            
+            const tokenData = await tokenResponse.json();
+            
+            if (tokenResponse.ok && tokenData.success && tokenData.data) {
+              setAuth(data.data, {
+                accessToken: tokenData.data.accessToken,
+                refreshToken: tokenData.data.refreshToken,
+                expiresAt: tokenData.data.expiresAt,
+              });
+              navigate('/dashboard');
+            } else {
+              logger.error('Failed to get session', { tokenData });
+              navigate('/signin?error=session_failed');
+            }
           } else {
+            logger.error('Auth failed', { data });
             navigate('/signin?error=auth_failed');
           }
-        })
-        .catch(() => {
+        } catch (error) {
+          logger.error('Fetch user error', { error });
           navigate('/signin?error=auth_failed');
-        });
+        }
+      };
+
+      fetchUserInfo();
     } else {
-      navigate('/signin?error=missing_tokens');
+      // Error in auth callback
+      navigate('/signin?error=auth_failed');
     }
   }, [navigate, setAuth]);
 

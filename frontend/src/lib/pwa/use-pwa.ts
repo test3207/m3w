@@ -5,6 +5,7 @@
 
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { logger } from '../logger-client';
 
 export function usePWA() {
   const {
@@ -13,7 +14,7 @@ export function usePWA() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
-      console.log('SW Registered: ' + r);
+      logger.info('Service Worker registered', { registration: !!r });
       
       // Check for updates every hour
       if (r) {
@@ -23,13 +24,13 @@ export function usePWA() {
       }
     },
     onRegisterError(error) {
-      console.log('SW registration error', error);
+      logger.error('Service Worker registration failed', { error });
     },
   });
 
   useEffect(() => {
     if (offlineReady) {
-      console.log('App ready to work offline');
+      logger.info('App ready to work offline');
     }
   }, [offlineReady]);
 

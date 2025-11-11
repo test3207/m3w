@@ -8,7 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { API_ENDPOINTS } from "@/lib/api-config";
+
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,8 +18,8 @@ export default function SignInPage() {
   const handleGitHubSignIn = async () => {
     setIsLoading(true);
     try {
-      // Redirect to backend GitHub OAuth endpoint
-      window.location.href = API_ENDPOINTS.auth.github;
+      // Redirect to backend GitHub OAuth endpoint (must be full URL)
+      window.location.href = `${BACKEND_URL}/api/auth/github`;
     } catch (error) {
       toast({
         title: "Sign-in failed",

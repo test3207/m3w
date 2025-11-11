@@ -18,7 +18,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api-config';
+import { API_ENDPOINTS } from '@/lib/api/api-config';
 
 interface DeleteSongButtonProps {
   songId: string;

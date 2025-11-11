@@ -16,6 +16,7 @@ import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { Playlist } from "@/types/models";
 
 export default function PlaylistsPage() {
@@ -30,7 +31,7 @@ export default function PlaylistsPage() {
   useEffect(() => {
     async function fetchPlaylists() {
       try {
-        const data = await apiClient.get<{ success: boolean; data: Playlist[] }>('/playlists');
+        const data = await apiClient.get<{ success: boolean; data: Playlist[] }>(API_ENDPOINTS.playlists.list);
         setPlaylists(data.data || []);
       } catch (error) {
         logger.error('Failed to fetch playlists', error);
@@ -62,7 +63,7 @@ export default function PlaylistsPage() {
     const coverUrl = formData.get("coverUrl") as string;
 
     try {
-      const data = await apiClient.post<{ success: boolean; data: Playlist }>('/playlists', {
+      const data = await apiClient.post<{ success: boolean; data: Playlist }>(API_ENDPOINTS.playlists.create, {
         name: name.trim(),
         description: description.trim() || undefined,
         coverUrl: coverUrl.trim() || undefined,
@@ -100,7 +101,7 @@ export default function PlaylistsPage() {
 
     setDeletingId(playlistId);
     try {
-      await apiClient.delete<{ success: boolean; message: string }>(`/playlists/${playlistId}`);
+      await apiClient.delete<{ success: boolean; message: string }>(API_ENDPOINTS.playlists.delete(playlistId));
 
       setPlaylists(prev => prev.filter(p => p.id !== playlistId));
       toast({

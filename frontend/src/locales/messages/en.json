@@ -82,7 +82,7 @@
       "prefix": "Welcome back, ",
       "fallback": "there",
       "suffix": "! 👋",
-      "description": "Your Next.js full-stack application is ready. Start building amazing features!"
+      "description": "Your music library is ready. Start uploading and organizing your collection!"
     },
     "badgeProductionReady": "Production Ready",
     "navbar": {

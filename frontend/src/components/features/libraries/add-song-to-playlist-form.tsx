@@ -4,6 +4,7 @@ import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { PlaylistOption } from "@/types/models";
 
 interface AddSongToPlaylistFormProps {
@@ -41,7 +42,7 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists, onAddS
 
     try {
       await apiClient.post<{ success: boolean; error?: string }>(
-        `/playlists/${selectedPlaylistId}/songs`,
+        API_ENDPOINTS.playlists.addSong(selectedPlaylistId),
         { songId }
       );
 

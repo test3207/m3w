@@ -9,6 +9,7 @@ import { useLocale } from '@/locales/use-locale';
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { Library, LibraryOption } from "@/types/models";
 
 export default function UploadPage() {
@@ -21,7 +22,7 @@ export default function UploadPage() {
   useEffect(() => {
     const fetchLibraries = async () => {
       try {
-        const data = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
+        const data = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
         const libs: Library[] = data.data || [];
         
         const libraryOptions = libs.map((library) => ({
@@ -54,7 +55,7 @@ export default function UploadPage() {
 
   const refetchLibraries = async () => {
     try {
-      const data = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
+      const data = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
       const libs: Library[] = data.data || [];
       
       const libraryOptions = libs.map((library) => ({

@@ -16,6 +16,7 @@ import { useLocale } from "@/locales/use-locale";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { Library } from "@/types/models";
 
 export default function LibrariesPage() {
@@ -29,7 +30,7 @@ export default function LibrariesPage() {
   useEffect(() => {
     async function fetchLibraries() {
       try {
-        const data = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
+        const data = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
         setLibraries(data.data || []);
       } catch (error) {
         logger.error('Failed to fetch libraries', error);
@@ -60,7 +61,7 @@ export default function LibrariesPage() {
     const description = formData.get("description") as string;
 
     try {
-      const data = await apiClient.post<{ success: boolean; data: Library }>('/libraries', {
+      const data = await apiClient.post<{ success: boolean; data: Library }>(API_ENDPOINTS.libraries.create, {
         name: name.trim(),
         description: description.trim() || undefined,
       });

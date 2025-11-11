@@ -11,6 +11,7 @@
 import { initializeStorage, getStorageStatus, requestPersistentStorage } from '../storage/quota-manager';
 import { startAutoSync, getSyncStatus, manualSync } from '../sync/metadata-sync';
 import { isAudioCacheAvailable } from '../storage/audio-cache';
+import { logger } from '../logger-client';
 
 export interface PWAStatus {
   isPWAInstalled: boolean;
@@ -26,28 +27,32 @@ export interface PWAStatus {
  * Initialize PWA features
  */
 export async function initializePWA(): Promise<void> {
-  console.log('[PWA] Initializing PWA features...');
+  logger.info('Initializing PWA features');
 
   // Step 1: Initialize storage management
   await initializeStorage();
 
   // Step 2: Get current status
   const storageStatus = await getStorageStatus();
-  console.log('[PWA] Storage status:', storageStatus);
+  logger.info('Storage status', { 
+    isPWAInstalled: storageStatus.isPWAInstalled,
+    isPersisted: storageStatus.isPersisted,
+    canCache: storageStatus.canCache,
+  });
 
   // Step 3: Start automatic metadata sync if online
   if (navigator.onLine) {
-    console.log('[PWA] Starting metadata sync...');
+    logger.info('Starting metadata sync');
     startAutoSync();
   } else {
-    console.log('[PWA] Offline, skipping metadata sync');
+    logger.info('Offline, skipping metadata sync');
   }
 
   // Step 4: Check audio caching availability
   const audioCacheAvailable = await isAudioCacheAvailable();
-  console.log('[PWA] Audio caching available:', audioCacheAvailable);
+  logger.info('Audio caching status', { available: audioCacheAvailable });
 
-  console.log('[PWA] Initialization complete');
+  logger.info('PWA initialization complete');
 }
 
 /**
@@ -74,21 +79,21 @@ export async function getPWAStatus(): Promise<PWAStatus> {
  * This should be called when the browser's beforeinstallprompt fires
  */
 export async function handlePWAInstall(): Promise<void> {
-  console.log('[PWA] PWA installation detected');
+  logger.info('PWA installation detected');
 
   // Request persistent storage
   const persisted = await requestPersistentStorage();
   
   if (persisted) {
-    console.log('[PWA] Persistent storage granted');
+    logger.info('Persistent storage granted');
     
     // Trigger initial metadata sync
     if (navigator.onLine) {
-      console.log('[PWA] Starting initial metadata sync...');
+      logger.info('Starting initial metadata sync');
       await manualSync();
     }
   } else {
-    console.warn('[PWA] Persistent storage denied, audio caching unavailable');
+    logger.warn('Persistent storage denied, audio caching unavailable');
   }
 }
 
@@ -100,12 +105,12 @@ export function setupPWAInstallPrompt(
 ): void {
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
-    console.log('[PWA] Install prompt available');
+    logger.info('PWA install prompt available');
     onInstallPrompt?.(e);
   });
 
   window.addEventListener('appinstalled', () => {
-    console.log('[PWA] PWA installed');
+    logger.info('PWA installed');
     handlePWAInstall();
   });
 }
@@ -115,12 +120,12 @@ export function setupPWAInstallPrompt(
  */
 export function setupNetworkListeners(): void {
   window.addEventListener('online', () => {
-    console.log('[PWA] Network online, starting sync...');
+    logger.info('Network online, starting sync');
     startAutoSync();
   });
 
   window.addEventListener('offline', () => {
-    console.log('[PWA] Network offline');
+    logger.info('Network offline');
   });
 }
 
@@ -130,7 +135,7 @@ export function setupNetworkListeners(): void {
 export async function setupPWA(options?: {
   onInstallPrompt?: (event: Event) => void;
 }): Promise<void> {
-  console.log('[PWA] Setting up PWA...');
+  logger.info('Setting up PWA');
 
   // Initialize core PWA features
   await initializePWA();
@@ -139,5 +144,5 @@ export async function setupPWA(options?: {
   setupPWAInstallPrompt(options?.onInstallPrompt);
   setupNetworkListeners();
 
-  console.log('[PWA] Setup complete');
+  logger.info('PWA setup complete');
 }

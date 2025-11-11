@@ -36,7 +36,8 @@ class ApiClient {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
     const baseWithSlash = this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
     
-    const url = new URL(baseWithSlash + cleanEndpoint, window.location.origin);
+    // Build full URL with backend base URL
+    const url = new URL(cleanEndpoint, baseWithSlash);
     
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -60,14 +61,14 @@ class ApiClient {
     try {
       logger.info('API request', { url, method: options.method || 'GET' });
 
-      // Use router to decide between backend and offline proxy
-      const path = new URL(url).pathname;
-      
       // Build headers - don't set Content-Type for FormData (browser will set it with boundary)
       const headers: HeadersInit = { ...fetchOptions.headers };
       if (!(fetchOptions.body instanceof FormData) && typeof headers === 'object' && !Array.isArray(headers)) {
         (headers as Record<string, string>)['Content-Type'] = 'application/json';
       }
+      
+      // Extract pathname for routeRequest (it will build full URL internally)
+      const path = new URL(url).pathname;
       
       const response = await routeRequest(path, {
         ...fetchOptions,

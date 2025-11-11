@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { setCookie } from 'hono/cookie';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { generateTokens, verifyToken } from '../lib/jwt';
@@ -171,30 +172,44 @@ app.get('/callback', async (c: Context) => {
     // Generate JWT tokens
     const tokens = generateTokens(user);
 
-    // Set cookie for Service Worker and direct browser requests
+    // Set HTTP-only cookies for tokens (more secure than URL params)
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieMaxAge = 6 * 60 * 60; // 6 hours
-    c.header(
-      'Set-Cookie',
-      `auth-token=${tokens.accessToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${cookieMaxAge}${isProduction ? '; Secure' : ''}`
-    );
+    const cookieMaxAge = 6 * 60 * 60; // 6 hours in seconds
+    const refreshCookieMaxAge = 90 * 24 * 60 * 60; // 90 days in seconds
+    
+    // Set auth token cookie
+    setCookie(c, 'auth-token', tokens.accessToken, {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'Lax',
+      maxAge: cookieMaxAge,
+      secure: isProduction,
+    });
+    
+    // Set refresh token cookie
+    setCookie(c, 'refresh-token', tokens.refreshToken, {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'Lax',
+      maxAge: refreshCookieMaxAge,
+      secure: isProduction,
+    });
 
-    // Redirect to frontend with tokens
+    // Redirect to frontend success page (tokens are in HTTP-only cookies)
     const frontendUrl = new URL(process.env.CORS_ORIGIN || 'http://localhost:3000');
     frontendUrl.pathname = '/auth/callback';
-    frontendUrl.searchParams.set('access_token', tokens.accessToken);
-    frontendUrl.searchParams.set('refresh_token', tokens.refreshToken);
+    frontendUrl.searchParams.set('success', 'true');
 
     return c.redirect(frontendUrl.toString());
   } catch (error) {
     logger.error({ error }, 'OAuth callback error');
-    return c.json(
-      {
-        success: false,
-        error: 'Authentication failed',
-      },
-      500
-    );
+    
+    // Redirect to frontend with error
+    const frontendUrl = new URL(process.env.CORS_ORIGIN || 'http://localhost:3000');
+    frontendUrl.pathname = '/signin';
+    frontendUrl.searchParams.set('error', 'auth_failed');
+    
+    return c.redirect(frontendUrl.toString());
   }
 });
 
@@ -301,6 +316,48 @@ app.get('/me', authMiddleware, async (c: Context) => {
       {
         success: false,
         error: 'Failed to fetch user info',
+      },
+      500
+    );
+  }
+});
+
+// GET /api/auth/session - Get session tokens (requires auth via cookie)
+app.get('/session', authMiddleware, async (c: Context) => {
+  try {
+    const auth = c.get('auth');
+
+    const user = await prisma.user.findUnique({
+      where: { id: auth.userId },
+    });
+
+    if (!user) {
+      return c.json(
+        {
+          success: false,
+          error: 'User not found',
+        },
+        404
+      );
+    }
+
+    // Generate fresh tokens for frontend storage
+    const tokens = generateTokens(user);
+
+    return c.json({
+      success: true,
+      data: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: tokens.expiresAt,
+      },
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to get session');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to get session',
       },
       500
     );

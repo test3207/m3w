@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { Track } from '@/lib/audio/player';
 import { logger } from '@/lib/logger-client';
-import { api } from '@/lib/api/router';
+import { apiClient } from '@/lib/api/client';
 
 const MAX_PRELOADED_TRACKS = 5;
 
@@ -51,8 +51,8 @@ export function useTrackPreloader(limit: number = MAX_PRELOADED_TRACKS) {
 
       const preloadPromise: Promise<PreloadResult> = (async () => {
         try {
-          // Fetch audio through API router (adds Authorization header automatically)
-          const response = await api.get(track.audioUrl);
+          // Fetch audio through API client (handles auth and offline routing)
+          const response = await apiClient.get<Response>(track.audioUrl);
           
           if (!response.ok) {
             throw new Error(`Failed to fetch audio: ${response.status}`);

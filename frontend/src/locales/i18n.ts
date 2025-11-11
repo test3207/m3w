@@ -1,4 +1,5 @@
 import type { Messages } from './generated/types';
+import { logger } from '@/lib/logger-client';
 
 // Store for all language messages (flat dot-notation keys)
 const messagesStore = new Map<string, Record<string, string>>();
@@ -92,7 +93,7 @@ export function registerMessages(locale: string, messages: Record<string, unknow
  */
 export function setLocale(locale: string): void {
   if (!messagesStore.has(locale)) {
-    console.warn(`[i18n] Locale "${locale}" not registered, falling back to "${currentLocale}"`);
+    logger.warn('Locale not registered, falling back', { locale, fallback: currentLocale });
     return;
   }
   currentLocale = locale;

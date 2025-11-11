@@ -32,6 +32,6 @@ prisma
     logger.info('Connected to PostgreSQL database');
   })
   .catch((error) => {
-    logger.error({ error }, 'Failed to connect to database');
+    logger.error(error, 'Failed to connect to database');
     process.exit(1);
   });

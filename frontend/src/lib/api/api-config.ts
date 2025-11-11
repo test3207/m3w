@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
     detail: (id: string) => `/api/libraries/${id}`,
     songs: (id: string) => `/api/libraries/${id}/songs`,
     create: '/api/libraries',
+    update: (id: string) => `/api/libraries/${id}`,
     delete: (id: string) => `/api/libraries/${id}`,
   },
   // Playlists
@@ -34,13 +35,15 @@ export const API_ENDPOINTS = {
   },
   // Songs
   songs: {
+    detail: (id: string) => `/api/songs/${id}`,
+    update: (id: string) => `/api/songs/${id}`,
     stream: (id: string) => `/api/songs/${id}/stream`,
     playlistCount: (id: string) => `/api/songs/${id}/playlist-count`,
     delete: (id: string) => `/api/songs/${id}`,
   },
   // Upload
   upload: {
-    song: '/api/upload/song',
+    file: '/api/upload',
   },
   // Player
   player: {

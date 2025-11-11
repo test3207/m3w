@@ -82,7 +82,7 @@
       "prefix": "欢迎回来，",
       "fallback": "您好",
       "suffix": "！👋",
-      "description": "您的 Next.js 全栈应用已就绪。开始构建精彩功能吧！"
+      "description": "您的音乐库已就绪。开始上传和整理您的收藏吧！"
     },
     "badgeProductionReady": "生产就绪",
     "navbar": {

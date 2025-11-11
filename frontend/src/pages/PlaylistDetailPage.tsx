@@ -14,6 +14,7 @@ import { PlaylistSongControls } from "@/components/features/playlists/playlist-s
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { Playlist, Song } from "@/types/models";
 
 export default function PlaylistDetailPage() {
@@ -31,8 +32,8 @@ export default function PlaylistDetailPage() {
 
     try {
       const [playlistData, songsData] = await Promise.all([
-        apiClient.get<{ success: boolean; data: Playlist }>(`/playlists/${id}`),
-        apiClient.get<{ success: boolean; data: Song[] }>(`/playlists/${id}/songs`),
+        apiClient.get<{ success: boolean; data: Playlist }>(API_ENDPOINTS.playlists.detail(id)),
+        apiClient.get<{ success: boolean; data: Song[] }>(API_ENDPOINTS.playlists.songs(id)),
       ]);
 
       setPlaylist(playlistData.data);

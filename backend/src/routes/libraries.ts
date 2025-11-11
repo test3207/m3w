@@ -86,13 +86,13 @@ app.get('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Invalid library ID',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
     }
 
-    logger.error({ error }, 'Failed to fetch library');
+    logger.error(error, 'Failed to fetch library');
     return c.json(
       {
         success: false,
@@ -136,7 +136,7 @@ app.post('/', async (c: Context) => {
         {
           success: false,
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -197,7 +197,7 @@ app.patch('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -264,7 +264,7 @@ app.delete('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Invalid library ID',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -320,7 +320,7 @@ app.get('/:id/songs', async (c: Context) => {
         {
           success: false,
           error: 'Invalid library ID',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
