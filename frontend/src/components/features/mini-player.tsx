@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { HStack, VStack } from '@/components/ui/stack';
 import { Repeat, Repeat1, Shuffle } from 'lucide-react';
 import { RepeatMode } from '@/lib/audio/queue';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -20,6 +22,8 @@ function formatTime(seconds: number): string {
 }
 
 export function MiniPlayer() {
+  useLocale(); // Subscribe to locale changes
+  
   const {
     currentTrack,
     isPlaying,
@@ -86,18 +90,18 @@ export function MiniPlayer() {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const repeatLabels: Record<RepeatMode, string> = {
-    [RepeatMode.OFF]: 'Repeat off',
-    [RepeatMode.ALL]: 'Repeat all',
-    [RepeatMode.ONE]: 'Repeat one',
+    [RepeatMode.OFF]: I18n.player.repeat.off,
+    [RepeatMode.ALL]: I18n.player.repeat.all,
+    [RepeatMode.ONE]: I18n.player.repeat.one,
   };
   const repeatLabel = repeatLabels[repeatMode];
-  const shuffleLabel = shuffleEnabled ? 'Disable shuffle' : 'Enable shuffle';
+  const shuffleLabel = shuffleEnabled ? I18n.player.shuffle.disable : I18n.player.shuffle.enable;
   const repeatStateText: Record<RepeatMode, string> = {
-    [RepeatMode.OFF]: 'Repeat: Off',
-    [RepeatMode.ALL]: 'Repeat: Queue',
-    [RepeatMode.ONE]: 'Repeat: Track',
+    [RepeatMode.OFF]: I18n.player.state.repeatOff,
+    [RepeatMode.ALL]: I18n.player.state.repeatQueue,
+    [RepeatMode.ONE]: I18n.player.state.repeatTrack,
   };
-  const shuffleStateText = shuffleEnabled ? 'Shuffle: On' : 'Shuffle: Off';
+  const shuffleStateText = shuffleEnabled ? I18n.player.state.shuffleOn : I18n.player.state.shuffleOff;
 
   const renderRepeatIcon = () => {
     if (repeatMode === RepeatMode.ONE) {
@@ -119,14 +123,14 @@ export function MiniPlayer() {
       ref={containerRef}
       className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50"
       role="region"
-      aria-label="Audio player controls"
+      aria-label={I18n.player.ariaLabel}
     >
       {/* Progress Bar */}
       <div
         className="h-1 bg-muted cursor-pointer hover:h-2 transition-all"
         onClick={handleSeek}
         role="slider"
-        aria-label="Seek"
+        aria-label={I18n.player.seekLabel}
         aria-valuemin={0}
         aria-valuemax={duration}
         aria-valuenow={currentTime}
@@ -176,7 +180,7 @@ export function MiniPlayer() {
               variant="ghost"
               size="icon"
               onClick={previous}
-              aria-label="Previous track"
+              aria-label={I18n.player.previousTrack}
             >
               <svg
                 className="w-5 h-5"
@@ -197,7 +201,7 @@ export function MiniPlayer() {
               variant="default"
               size="icon"
               onClick={togglePlay}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
+              aria-label={isPlaying ? I18n.player.pause : I18n.player.play}
             >
               {isPlaying ? (
                 <svg
@@ -234,7 +238,7 @@ export function MiniPlayer() {
               variant="ghost"
               size="icon"
               onClick={next}
-              aria-label="Next track"
+              aria-label={I18n.player.nextTrack}
             >
               <svg
                 className="w-5 h-5"
@@ -287,7 +291,7 @@ export function MiniPlayer() {
               variant="ghost"
               size="icon"
               onClick={toggleMute}
-              aria-label={isMuted ? 'Unmute' : 'Mute'}
+              aria-label={isMuted ? I18n.player.unmute : I18n.player.mute}
             >
               {isMuted || volume === 0 ? (
                 <svg
@@ -328,7 +332,7 @@ export function MiniPlayer() {
               value={isMuted ? 0 : volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
               className="w-20 h-1"
-              aria-label="Volume"
+              aria-label={I18n.player.volume}
             />
           </HStack>
         </HStack>

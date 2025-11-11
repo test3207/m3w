@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export default function PlaylistsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     async function fetchPlaylists() {
@@ -73,7 +74,7 @@ export default function PlaylistsPage() {
         setPlaylists(prev => [...prev, data.data]);
       }
 
-      event.currentTarget.reset();
+      formRef.current?.reset();
       toast({
         title: "Playlist created successfully",
       });
@@ -163,7 +164,7 @@ export default function PlaylistsPage() {
               <CardTitle>{I18n.playlist.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">{I18n.playlist.manager.form.nameLabel}</Label>
                   <Input

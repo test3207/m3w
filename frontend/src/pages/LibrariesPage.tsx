@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ export default function LibrariesPage() {
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     async function fetchLibraries() {
@@ -70,7 +71,7 @@ export default function LibrariesPage() {
         setLibraries(prev => [...prev, data.data]);
       }
       
-      event.currentTarget.reset();
+      formRef.current?.reset();
       toast({
         title: "Library created successfully",
       });
@@ -130,7 +131,7 @@ export default function LibrariesPage() {
               <CardTitle>{I18n.library.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">{I18n.library.manager.form.nameLabel}</Label>
                   <Input

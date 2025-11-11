@@ -18,8 +18,8 @@ const app = new Hono();
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
 
-// POST /api/upload/song - Upload audio file to MinIO
-app.post('/song', async (c: Context) => {
+// POST /api/upload - Upload audio file to MinIO
+app.post('/', async (c: Context) => {
   try {
     const userId = getUserId(c);
     const formData = await c.req.formData();

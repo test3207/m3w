@@ -367,6 +367,13 @@ class AudioPlayer {
         this.emit('seek');
       },
       onloaderror: (_id, error) => {
+        // In development, hot reload can cause stale audio URLs
+        // Suppress errors if we're in dev mode and there's no current track
+        const isDev = import.meta.env.DEV;
+        if (isDev && !this.currentTrack) {
+          logger.info('Audio load error suppressed (likely hot reload)', { err: error });
+          return;
+        }
         logger.error('Audio load error', { err: error });
         this.emit('error');
       },
@@ -453,6 +460,17 @@ export function getAudioPlayer(): AudioPlayer {
     playerInstance = new AudioPlayer();
   }
   return playerInstance;
+}
+
+// Clean up on hot module replacement (HMR) during development
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    if (playerInstance) {
+      logger.info('HMR: Cleaning up audio player instance');
+      playerInstance['unloadHowl']();
+      playerInstance = null;
+    }
+  });
 }
 
 export { AudioPlayer };

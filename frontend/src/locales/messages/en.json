@@ -242,6 +242,33 @@
       "toastActionErrorDescription": "Please try again."
     }
   },
+  "player": {
+    "ariaLabel": "Audio player controls",
+    "seekLabel": "Seek",
+    "previousTrack": "Previous track",
+    "nextTrack": "Next track",
+    "play": "Play",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "volume": "Volume",
+    "repeat": {
+      "off": "Repeat off",
+      "all": "Repeat all",
+      "one": "Repeat one"
+    },
+    "shuffle": {
+      "enable": "Enable shuffle",
+      "disable": "Disable shuffle"
+    },
+    "state": {
+      "repeatOff": "Repeat: Off",
+      "repeatQueue": "Repeat: Queue",
+      "repeatTrack": "Repeat: Track",
+      "shuffleOn": "Shuffle: On",
+      "shuffleOff": "Shuffle: Off"
+    }
+  },
   "upload": {
     "page": {
       "title": "Upload Songs",

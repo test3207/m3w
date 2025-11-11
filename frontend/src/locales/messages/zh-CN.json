@@ -242,12 +242,39 @@
       "toastActionErrorDescription": "请重试。"
     }
   },
+  "player": {
+    "ariaLabel": "音频播放器控制",
+    "seekLabel": "进度调整",
+    "previousTrack": "上一曲",
+    "nextTrack": "下一曲",
+    "play": "播放",
+    "pause": "暂停",
+    "mute": "静音",
+    "unmute": "取消静音",
+    "volume": "音量",
+    "repeat": {
+      "off": "关闭循环",
+      "all": "循环全部",
+      "one": "单曲循环"
+    },
+    "shuffle": {
+      "enable": "开启随机播放",
+      "disable": "关闭随机播放"
+    },
+    "state": {
+      "repeatOff": "循环：关闭",
+      "repeatQueue": "循环：队列",
+      "repeatTrack": "循环：单曲",
+      "shuffleOn": "随机：开启",
+      "shuffleOff": "随机：关闭"
+    }
+  },
   "upload": {
     "page": {
       "title": "上传歌曲",
-      "description": "将音频文件保存到您的音乐库；去重和元数据提取将自动运行。",
+      "description": "将音频文件保存到您的库中；系统会自动进行去重和元数据提取。",
       "cardTitle": "上传音频文件",
-      "emptyState": "还没有可用的音乐库。在上传之前，请先在音乐库管理中创建一个。"
+      "emptyState": "暂无可用库。请先在库管理器中创建一个库再上传。"
     },
     "form": {
       "selectLibraryLabel": "选择音乐库",
