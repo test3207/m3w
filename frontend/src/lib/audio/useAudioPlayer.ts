@@ -63,6 +63,25 @@ export function useAudioPlayer() {
     MAX_PRELOADED_TRACKS
   );
 
+  // Initialize preferences separately from playback state
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const json = await apiClient.get<PlaybackPreferencesResponse>(API_ENDPOINTS.player.preferences);
+        if (json?.data) {
+          const queue = getPlayQueue();
+          queue.setRepeatMode(json.data.repeatMode);
+          queue.setShuffle(json.data.shuffleEnabled);
+          setQueueState(queue.getState());
+        }
+      } catch (error) {
+        logger.error('Failed to load playback preferences', error);
+      }
+    };
+
+    void loadPreferences();
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -88,22 +107,6 @@ export function useAudioPlayer() {
     };
 
     const doLoadInitialPlaybackState = async () => {
-      try {
-        const json = await apiClient.get<PlaybackPreferencesResponse>(API_ENDPOINTS.player.preferences);
-        if (json?.data) {
-          const queue = getPlayQueue();
-          queue.setRepeatMode(json.data.repeatMode);
-          queue.setShuffle(json.data.shuffleEnabled);
-
-          if (isMounted) {
-            setQueueState(queue.getState());
-            setPlayerState(getAudioPlayer().getState());
-          }
-        }
-      } catch (error) {
-        logger.error('Failed to load playback preferences', error);
-      }
-
       // Helper function to load default seed
       const loadDefaultSeed = async () => {
         try {
@@ -233,7 +236,6 @@ export function useAudioPlayer() {
 
           if (isMounted) {
             const snapshot = player.getState();
-            setQueueState(queue.getState());
             setPlayerState({
               ...snapshot,
               currentTrack: track,
@@ -384,7 +386,6 @@ export function useAudioPlayer() {
 
         if (isMounted) {
           const snapshot = player.getState();
-          setQueueState(queue.getState());
           setPlayerState({
             ...snapshot,
             currentTrack: track,
