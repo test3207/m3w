@@ -252,7 +252,7 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
                 key={index}
                 className="flex items-center gap-3 rounded-lg border bg-card p-3 text-sm"
               >
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   {item.status === "pending" && (
                     <Music className="h-5 w-5 text-muted-foreground" />
                   )}

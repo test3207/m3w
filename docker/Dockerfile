@@ -1,5 +1,5 @@
 # Backend Production Dockerfile (Hono API)
-FROM node:22-alpine AS base
+FROM node:25.1.0-alpine AS base
 
 # Install dependencies
 FROM base AS deps
