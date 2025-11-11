@@ -6,7 +6,9 @@
  */
 
 import { apiClient } from '../api/client';
+import { API_ENDPOINTS } from '../api/api-config';
 import { db } from '../db/schema';
+import { logger } from '../logger-client';
 import type { Library, Playlist, Song } from '@m3w/shared';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -41,63 +43,57 @@ function setLastSyncTime(timestamp: number): void {
  */
 export async function syncMetadata(): Promise<SyncResult> {
   try {
-    console.log('[MetadataSync] Starting metadata sync...');
+    logger.info('Starting metadata sync');
 
     // Fetch all libraries
-    const librariesResponse = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
+    const librariesResponse = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
     const libraries = librariesResponse.data;
     
     await db.libraries.bulkPut(
       libraries.map((lib) => ({
         ...lib,
-        createdAt: new Date(lib.createdAt),
-        updatedAt: new Date(lib.updatedAt),
         _syncStatus: 'synced' as const,
       }))
     );
-    console.log(`[MetadataSync] Synced ${libraries.length} libraries`);
+    logger.info('Libraries synced', { count: libraries.length });
 
     // Fetch all playlists
-    const playlistsResponse = await apiClient.get<{ success: boolean; data: Playlist[] }>('/playlists');
+    const playlistsResponse = await apiClient.get<{ success: boolean; data: Playlist[] }>(API_ENDPOINTS.playlists.list);
     const playlists = playlistsResponse.data;
     
     await db.playlists.bulkPut(
       playlists.map((playlist) => ({
         ...playlist,
-        createdAt: new Date(playlist.createdAt),
-        updatedAt: new Date(playlist.updatedAt),
         _syncStatus: 'synced' as const,
       }))
     );
-    console.log(`[MetadataSync] Synced ${playlists.length} playlists`);
+    logger.info('Playlists synced', { count: playlists.length });
 
     // Fetch songs for each library (batched)
     let totalSongs = 0;
     for (const library of libraries) {
       try {
-        const songsResponse = await apiClient.get<{ success: boolean; data: Song[] }>(`/libraries/${library.id}/songs`);
+        const songsResponse = await apiClient.get<{ success: boolean; data: Song[] }>(API_ENDPOINTS.libraries.songs(library.id));
         const songs = songsResponse.data;
         
         await db.songs.bulkPut(
           songs.map((song) => ({
             ...song,
-            createdAt: new Date(song.createdAt),
-            updatedAt: new Date(song.updatedAt),
             _syncStatus: 'synced' as const,
           }))
         );
         totalSongs += songs.length;
       } catch (error) {
-        console.error(`[MetadataSync] Failed to sync songs for library ${library.id}:`, error);
+        logger.error('Failed to sync library songs', { libraryId: library.id, error });
       }
     }
-    console.log(`[MetadataSync] Synced ${totalSongs} songs`);
+    logger.info('Songs synced', { totalSongs });
 
     // Fetch playlist songs for each playlist (batched)
     let totalPlaylistSongs = 0;
     for (const playlist of playlists) {
       try {
-        const playlistSongsResponse = await apiClient.get<{ success: boolean; data: Array<Song & { order?: number }> }>(`/playlists/${playlist.id}/songs`);
+        const playlistSongsResponse = await apiClient.get<{ success: boolean; data: Array<Song & { order?: number }> }>(API_ENDPOINTS.playlists.songs(playlist.id));
         const songs = playlistSongsResponse.data;
         
         // Store playlist-song relationships with order
@@ -116,18 +112,16 @@ export async function syncMetadata(): Promise<SyncResult> {
         await db.songs.bulkPut(
           songs.map((song) => ({
             ...song,
-            createdAt: new Date(song.createdAt),
-            updatedAt: new Date(song.updatedAt),
             _syncStatus: 'synced' as const,
           }))
         );
 
         totalPlaylistSongs += songs.length;
       } catch (error) {
-        console.error(`[MetadataSync] Failed to sync songs for playlist ${playlist.id}:`, error);
+        logger.error('Failed to sync playlist songs', { playlistId: playlist.id, error });
       }
     }
-    console.log(`[MetadataSync] Synced ${totalPlaylistSongs} playlist songs`);
+    logger.info('Playlist songs synced', { totalPlaylistSongs });
 
     // Update last sync timestamp
     setLastSyncTime(Date.now());
@@ -140,7 +134,7 @@ export async function syncMetadata(): Promise<SyncResult> {
       playlistSongs: totalPlaylistSongs,
     };
   } catch (error) {
-    console.error('[MetadataSync] Sync failed:', error);
+    logger.error('Metadata sync failed', { error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -168,21 +162,21 @@ let syncIntervalId: NodeJS.Timeout | null = null;
 
 export function startAutoSync(): void {
   if (syncIntervalId) {
-    console.log('[MetadataSync] Auto-sync already running');
+    logger.info('Auto-sync already running');
     return;
   }
 
-  console.log('[MetadataSync] Starting auto-sync...');
+  logger.info('Starting auto-sync');
 
   // Initial sync
   if (shouldSync()) {
-    syncMetadata().catch(console.error);
+    syncMetadata().catch((error) => logger.error('Auto-sync failed', { error }));
   }
 
   // Periodic sync
   syncIntervalId = setInterval(() => {
     if (shouldSync()) {
-      syncMetadata().catch(console.error);
+      syncMetadata().catch((error) => logger.error('Auto-sync failed', { error }));
     }
   }, SYNC_INTERVAL);
 }
@@ -194,7 +188,7 @@ export function stopAutoSync(): void {
   if (syncIntervalId) {
     clearInterval(syncIntervalId);
     syncIntervalId = null;
-    console.log('[MetadataSync] Auto-sync stopped');
+    logger.info('Auto-sync stopped');
   }
 }
 
@@ -202,7 +196,7 @@ export function stopAutoSync(): void {
  * Trigger sync manually
  */
 export async function manualSync(): Promise<SyncResult> {
-  console.log('[MetadataSync] Manual sync triggered');
+  logger.info('Manual sync triggered');
   return syncMetadata();
 }
 

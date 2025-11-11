@@ -17,7 +17,7 @@ import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api-config';
+import { API_ENDPOINTS } from '@/lib/api/api-config';
 
 interface DeleteLibraryButtonProps {
   libraryId: string;

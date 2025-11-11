@@ -6,6 +6,7 @@ import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 
 interface PlaylistSongControlsProps {
   playlistId: string;
@@ -24,7 +25,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
     
     try {
       await apiClient.post<{ success: boolean; message: string }>(
-        `/playlists/${playlistId}/songs/reorder`,
+        API_ENDPOINTS.playlists.reorderSongs(playlistId),
         { songId, direction }
       );
 
@@ -53,7 +54,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
 
     try {
       await apiClient.delete<{ success: boolean; message: string }>(
-        `/playlists/${playlistId}/songs/${songId}`
+        API_ENDPOINTS.playlists.removeSong(playlistId, songId)
       );
 
       toast({

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { Playlist } from "@/types/models";
 
 export default function PlaylistsPage() {
@@ -26,11 +27,12 @@ export default function PlaylistsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     async function fetchPlaylists() {
       try {
-        const data = await apiClient.get<{ success: boolean; data: Playlist[] }>('/playlists');
+        const data = await apiClient.get<{ success: boolean; data: Playlist[] }>(API_ENDPOINTS.playlists.list);
         setPlaylists(data.data || []);
       } catch (error) {
         logger.error('Failed to fetch playlists', error);
@@ -62,7 +64,7 @@ export default function PlaylistsPage() {
     const coverUrl = formData.get("coverUrl") as string;
 
     try {
-      const data = await apiClient.post<{ success: boolean; data: Playlist }>('/playlists', {
+      const data = await apiClient.post<{ success: boolean; data: Playlist }>(API_ENDPOINTS.playlists.create, {
         name: name.trim(),
         description: description.trim() || undefined,
         coverUrl: coverUrl.trim() || undefined,
@@ -72,7 +74,7 @@ export default function PlaylistsPage() {
         setPlaylists(prev => [...prev, data.data]);
       }
 
-      event.currentTarget.reset();
+      formRef.current?.reset();
       toast({
         title: "Playlist created successfully",
       });
@@ -100,7 +102,7 @@ export default function PlaylistsPage() {
 
     setDeletingId(playlistId);
     try {
-      await apiClient.delete<{ success: boolean; message: string }>(`/playlists/${playlistId}`);
+      await apiClient.delete<{ success: boolean; message: string }>(API_ENDPOINTS.playlists.delete(playlistId));
 
       setPlaylists(prev => prev.filter(p => p.id !== playlistId));
       toast({
@@ -162,7 +164,7 @@ export default function PlaylistsPage() {
               <CardTitle>{I18n.playlist.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">{I18n.playlist.manager.form.nameLabel}</Label>
                   <Input

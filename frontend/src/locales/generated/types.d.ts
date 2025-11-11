@@ -165,7 +165,7 @@ export interface Messages {
       fallback: string;
       /** ! 👋 */
       suffix: string;
-      /** Your Next.js full-stack application is ready. Start building amazing features! */
+      /** Your music library is ready. Start uploading and organizing your collection! */
       description: string;
     };
     /** Production Ready */
@@ -445,6 +445,52 @@ export interface Messages {
       toastActionErrorTitle: string;
       /** Please try again. */
       toastActionErrorDescription: string;
+    };
+  };
+  player: {
+    /** Audio player controls */
+    ariaLabel: string;
+    /** Seek */
+    seekLabel: string;
+    /** Previous track */
+    previousTrack: string;
+    /** Next track */
+    nextTrack: string;
+    /** Play */
+    play: string;
+    /** Pause */
+    pause: string;
+    /** Mute */
+    mute: string;
+    /** Unmute */
+    unmute: string;
+    /** Volume */
+    volume: string;
+    repeat: {
+      /** Repeat off */
+      off: string;
+      /** Repeat all */
+      all: string;
+      /** Repeat one */
+      one: string;
+    };
+    shuffle: {
+      /** Enable shuffle */
+      enable: string;
+      /** Disable shuffle */
+      disable: string;
+    };
+    state: {
+      /** Repeat: Off */
+      repeatOff: string;
+      /** Repeat: Queue */
+      repeatQueue: string;
+      /** Repeat: Track */
+      repeatTrack: string;
+      /** Shuffle: On */
+      shuffleOn: string;
+      /** Shuffle: Off */
+      shuffleOff: string;
     };
   };
   upload: {

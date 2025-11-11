@@ -18,8 +18,8 @@ const app = new Hono();
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
 
-// POST /api/upload/song - Upload audio file to MinIO
-app.post('/song', async (c: Context) => {
+// POST /api/upload - Upload audio file to MinIO
+app.post('/', async (c: Context) => {
   try {
     const userId = getUserId(c);
     const formData = await c.req.formData();
@@ -72,7 +72,7 @@ app.post('/song', async (c: Context) => {
     const actualHash = crypto.createHash('sha256').update(buffer).digest('hex');
     
     if (frontendHash && frontendHash !== actualHash) {
-      logger.warn('Hash mismatch', { frontendHash, actualHash });
+      logger.warn({ frontendHash, actualHash }, 'Hash mismatch');
       return c.json(
         {
           success: false,
@@ -83,7 +83,7 @@ app.post('/song', async (c: Context) => {
     }
 
     const fileHash = actualHash;
-    logger.info('Processing upload', { fileHash, fileName: file.name, fileSize: file.size });
+    logger.info({ fileHash, fileName: file.name, fileSize: file.size }, 'Processing upload');
 
     // 4. Check if file already exists (deduplication)
     let fileRecord = await prisma.file.findUnique({
@@ -111,9 +111,9 @@ app.post('/song', async (c: Context) => {
           sampleRate: parsed.format.sampleRate,
           channels: parsed.format.numberOfChannels,
         };
-        logger.info('Metadata extracted', metadata);
+        logger.info(metadata, 'Metadata extracted');
       } catch (error) {
-        logger.warn('Failed to extract metadata', { error });
+        logger.warn({ error }, 'Failed to extract metadata');
       }
 
       // 6. Upload to MinIO
@@ -125,7 +125,7 @@ app.post('/song', async (c: Context) => {
       const bucketExists = await minioClient.bucketExists(bucketName);
       if (!bucketExists) {
         await minioClient.makeBucket(bucketName);
-        logger.info('Created bucket', { bucketName });
+        logger.info({ bucketName }, 'Created bucket');
       }
 
       // Upload file
@@ -139,7 +139,7 @@ app.post('/song', async (c: Context) => {
         }
       );
 
-      logger.info('File uploaded to MinIO', { objectName });
+      logger.info({ objectName }, 'File uploaded to MinIO');
 
       // 7. Create File record
       fileRecord = await prisma.file.create({
@@ -156,9 +156,9 @@ app.post('/song', async (c: Context) => {
         },
       });
 
-      logger.info('File record created', { fileId: fileRecord.id });
+      logger.info({ fileId: fileRecord.id }, 'File record created');
     } else {
-      logger.info('File already exists, reusing', { fileId: fileRecord.id });
+      logger.info({ fileId: fileRecord.id }, 'File already exists, reusing');
     }
 
     // 8. Extract user-provided metadata
@@ -211,7 +211,7 @@ app.post('/song', async (c: Context) => {
       return newSong;
     });
 
-    logger.info('Song created', { songId: song.id, fileId: fileRecord.id });
+    logger.info({ songId: song.id, fileId: fileRecord.id }, 'Song created');
 
     return c.json({
       success: true,
@@ -222,7 +222,7 @@ app.post('/song', async (c: Context) => {
       },
     });
   } catch (error) {
-    logger.error({ error }, 'Upload failed');
+    logger.error(error, 'Upload failed');
     logger.error(`Error details: ${error instanceof Error ? error.stack : String(error)}`);
     return c.json(
       {

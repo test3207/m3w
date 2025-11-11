@@ -55,7 +55,7 @@ app.get('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Invalid song ID',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -116,7 +116,7 @@ app.patch('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -192,7 +192,7 @@ app.delete('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Invalid song ID',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );

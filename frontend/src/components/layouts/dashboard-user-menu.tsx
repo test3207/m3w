@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api-config';
+import { API_ENDPOINTS } from '@/lib/api/api-config';
 
 interface DashboardUserMenuProps {
   name?: string | null;

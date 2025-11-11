@@ -8,8 +8,8 @@ describe('JWT Utilities', () => {
     email: 'test@example.com',
     name: 'Test User',
     image: 'https://example.com/avatar.jpg',
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   describe('generateAccessToken', () => {

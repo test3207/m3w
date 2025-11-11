@@ -10,8 +10,9 @@
 
 import { getStorageStatus, hasEnoughQuota } from './quota-manager';
 import { db } from '../db/schema';
-import { API_ENDPOINTS } from '../api-config';
+import { API_ENDPOINTS } from '../api/api-config';
 import { apiClient } from '../api/client';
+import { logger } from '../logger-client';
 
 const AUDIO_CACHE_NAME = 'm3w-audio-cache-v1';
 const ESTIMATED_SONG_SIZE = 5 * 1024 * 1024; // 5 MB average per song
@@ -75,8 +76,6 @@ export async function cacheSong(
     throw new Error('Not enough storage quota available');
   }
 
-  const streamUrl = API_ENDPOINTS.songs.stream(songId);
-
   try {
     onProgress?.({
       songId,
@@ -86,7 +85,7 @@ export async function cacheSong(
     });
 
     // Fetch the audio file using apiClient (returns Response for non-JSON)
-    const response = await apiClient.get<Response>(streamUrl);
+    const response = await apiClient.get<Response>(API_ENDPOINTS.songs.stream(songId));
     if (!response.ok) {
       throw new Error(`Failed to fetch audio: ${response.statusText}`);
     }
@@ -96,7 +95,7 @@ export async function cacheSong(
 
     // Cache the response
     const cache = await getAudioCache();
-    await cache.put(streamUrl, responseClone);
+    await cache.put(API_ENDPOINTS.songs.stream(songId), responseClone);
 
     onProgress?.({
       songId,
@@ -105,7 +104,7 @@ export async function cacheSong(
       status: 'completed',
     });
 
-    console.log(`[AudioCache] Cached song ${songId}: ${song.title}`);
+    logger.info('Song cached successfully', { songId, title: song.title });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
@@ -117,7 +116,7 @@ export async function cacheSong(
       error: errorMessage,
     });
 
-    console.error(`[AudioCache] Failed to cache song ${songId}:`, error);
+    logger.error('Failed to cache song', { songId, error });
     throw error;
   }
 }
@@ -129,18 +128,18 @@ export async function cacheSongs(
   songIds: string[],
   onProgress?: (progress: CacheProgress) => void
 ): Promise<void> {
-  console.log(`[AudioCache] Caching ${songIds.length} songs...`);
+  logger.info('Caching songs batch', { count: songIds.length });
 
   for (const songId of songIds) {
     try {
       await cacheSong(songId, onProgress);
     } catch (error) {
-      console.error(`[AudioCache] Failed to cache song ${songId}:`, error);
+      logger.error('Failed to cache song in batch', { songId, error });
       // Continue with next song instead of failing entire batch
     }
   }
 
-  console.log(`[AudioCache] Finished caching batch`);
+  logger.info('Finished caching batch');
 }
 
 /**
@@ -149,11 +148,10 @@ export async function cacheSongs(
 export async function isSongCached(songId: string): Promise<boolean> {
   try {
     const cache = await getAudioCache();
-    const streamUrl = API_ENDPOINTS.songs.stream(songId);
-    const response = await cache.match(streamUrl);
+    const response = await cache.match(API_ENDPOINTS.songs.stream(songId));
     return response !== undefined;
   } catch (error) {
-    console.error(`[AudioCache] Error checking cache for song ${songId}:`, error);
+    logger.error('Error checking cache', { songId, error });
     return false;
   }
 }
@@ -164,16 +162,15 @@ export async function isSongCached(songId: string): Promise<boolean> {
 export async function removeCachedSong(songId: string): Promise<boolean> {
   try {
     const cache = await getAudioCache();
-    const streamUrl = API_ENDPOINTS.songs.stream(songId);
-    const deleted = await cache.delete(streamUrl);
+    const deleted = await cache.delete(API_ENDPOINTS.songs.stream(songId));
     
     if (deleted) {
-      console.log(`[AudioCache] Removed cached song ${songId}`);
+      logger.info('Removed cached song', { songId });
     }
     
     return deleted;
   } catch (error) {
-    console.error(`[AudioCache] Failed to remove cached song ${songId}:`, error);
+    logger.error('Failed to remove cached song', { songId, error });
     return false;
   }
 }
@@ -196,7 +193,7 @@ export async function getCachedSongs(): Promise<string[]> {
     
     return songIds;
   } catch (error) {
-    console.error('[AudioCache] Failed to get cached songs:', error);
+    logger.error('Failed to get cached songs', { error });
     return [];
   }
 }
@@ -234,7 +231,7 @@ export async function getCacheStats(): Promise<CacheStats> {
       songs,
     };
   } catch (error) {
-    console.error('[AudioCache] Failed to get cache stats:', error);
+    logger.error('Failed to get cache stats', { error });
     return {
       totalCached: 0,
       totalSize: 0,
@@ -249,10 +246,10 @@ export async function getCacheStats(): Promise<CacheStats> {
 export async function clearAudioCache(): Promise<boolean> {
   try {
     const deleted = await caches.delete(AUDIO_CACHE_NAME);
-    console.log(`[AudioCache] Cache cleared: ${deleted}`);
+    logger.info('Audio cache cleared', { deleted });
     return deleted;
   } catch (error) {
-    console.error('[AudioCache] Failed to clear cache:', error);
+    logger.error('Failed to clear cache', { error });
     return false;
   }
 }
@@ -264,7 +261,7 @@ export async function cachePlaylist(
   playlistId: string,
   onProgress?: (progress: CacheProgress) => void
 ): Promise<void> {
-  console.log(`[AudioCache] Caching playlist ${playlistId}...`);
+  logger.info('Caching playlist', { playlistId });
 
   // Get all songs in playlist from IndexedDB
   const playlistSongs = await db.playlistSongs
@@ -284,7 +281,7 @@ export async function cacheLibrary(
   libraryId: string,
   onProgress?: (progress: CacheProgress) => void
 ): Promise<void> {
-  console.log(`[AudioCache] Caching library ${libraryId}...`);
+  logger.info('Caching library', { libraryId });
 
   // Get all songs in library from IndexedDB
   const songs = await db.songs
@@ -302,7 +299,7 @@ export async function cacheLibrary(
  * (Note: Cache API doesn't track access time, so this is a simplified version)
  */
 export async function evictOldestCachedSongs(count: number): Promise<void> {
-  console.log(`[AudioCache] Evicting ${count} oldest cached songs...`);
+  logger.info('Evicting oldest cached songs', { count });
 
   const stats = await getCacheStats();
   
@@ -324,7 +321,7 @@ export async function checkAndEvictIfNeeded(): Promise<void> {
   const hasQuota = await hasEnoughQuota(MIN_FREE_QUOTA);
   
   if (!hasQuota) {
-    console.warn('[AudioCache] Low storage quota, evicting cached songs...');
+    logger.warn('Low storage quota, evicting cached songs');
     await evictOldestCachedSongs(10); // Remove 10 oldest songs
   }
 }

@@ -9,7 +9,7 @@ import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api-config';
+import { API_ENDPOINTS } from '@/lib/api/api-config';
 import type { PlaylistTrackResponse } from '@/types/models';
 
 interface PlaylistPlayButtonProps {
@@ -47,7 +47,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
           album: track.album ?? undefined,
           coverUrl: track.coverUrl ?? undefined,
           duration: track.duration ?? undefined,
-          audioUrl: `/api/songs/${track.id}/stream`,
+          audioUrl: API_ENDPOINTS.songs.stream(track.id),
           mimeType: track.mimeType ?? undefined,
         });
       }

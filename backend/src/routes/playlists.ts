@@ -85,7 +85,7 @@ app.get('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Invalid playlist ID',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -135,7 +135,7 @@ app.post('/', async (c: Context) => {
         {
           success: false,
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -196,7 +196,7 @@ app.patch('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -248,7 +248,7 @@ app.delete('/:id', async (c: Context) => {
         {
           success: false,
           error: 'Invalid playlist ID',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -322,7 +322,7 @@ app.get('/:id/songs', async (c: Context) => {
         {
           success: false,
           error: 'Invalid playlist ID',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -423,7 +423,7 @@ app.post('/:id/songs', async (c: Context) => {
         {
           success: false,
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -492,7 +492,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
         {
           success: false,
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );
@@ -618,7 +618,7 @@ app.post('/:id/songs/reorder', async (c: Context) => {
         {
           success: false,
           error: 'Validation failed',
-          details: error.errors,
+          details: error.issues,
         },
         400
       );

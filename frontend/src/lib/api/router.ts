@@ -7,6 +7,10 @@
 
 import offlineProxy from '../offline-proxy';
 import { userDataRoutes, adminRoutes } from '@m3w/shared';
+import { logger } from '../logger-client';
+
+// Backend API base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 // Helper to get auth token from store
 function getAuthToken(): string | null {
@@ -72,7 +76,7 @@ export async function routeRequest(
 
   if (!isOnline) {
     if (offlineCapable) {
-      // Use offline proxy
+      logger.info('Using offline proxy', { path, method });
       return await callOfflineProxy(path, init);
     } else {
       // Cannot fulfill request offline
@@ -91,8 +95,10 @@ export async function routeRequest(
 
   // Online: try backend first
   try {
-    // Path already includes /api prefix, use relative path for Vite proxy
-    const response = await fetch(path, {
+    // Build full backend URL from path
+    const fullUrl = new URL(path, API_BASE_URL).toString();
+    
+    const response = await fetch(fullUrl, {
       ...init,
       credentials: 'include',
       headers: {
@@ -108,17 +114,12 @@ export async function routeRequest(
     }
 
     // If backend fails and route is offline-capable, fallback to offline proxy
-    console.warn(
-      `Backend request failed for ${path}, falling back to offline proxy`
-    );
+    logger.warn('Backend request failed, falling back to offline proxy', { path, status: response.status });
     return await callOfflineProxy(path, init);
   } catch (error) {
     // Network error: fallback to offline proxy if possible
     if (offlineCapable) {
-      console.warn(
-        `Backend unreachable for ${path}, using offline proxy:`,
-        error
-      );
+      logger.warn('Backend unreachable, using offline proxy', { path, error });
       return await callOfflineProxy(path, init);
     }
 
@@ -148,7 +149,7 @@ async function callOfflineProxy(
     // Call offline proxy via Hono fetch
     return await offlineProxy.fetch(request);
   } catch (error) {
-    console.error('Offline proxy error:', error);
+    logger.error('Offline proxy failed', { path, error });
     return new Response(
       JSON.stringify({
         success: false,
@@ -161,45 +162,3 @@ async function callOfflineProxy(
     );
   }
 }
-
-// Export helper for common HTTP methods
-export const api = {
-  get: (path: string, init?: Omit<RequestInit, 'method'>) =>
-    routeRequest(path, { ...init, method: 'GET' }),
-
-  post: (path: string, body?: unknown, init?: Omit<RequestInit, 'method' | 'body'>) =>
-    routeRequest(path, {
-      ...init,
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
-      headers: {
-        'Content-Type': 'application/json',
-        ...init?.headers,
-      },
-    }),
-
-  patch: (path: string, body?: unknown, init?: Omit<RequestInit, 'method' | 'body'>) =>
-    routeRequest(path, {
-      ...init,
-      method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
-      headers: {
-        'Content-Type': 'application/json',
-        ...init?.headers,
-      },
-    }),
-
-  put: (path: string, body?: unknown, init?: Omit<RequestInit, 'method' | 'body'>) =>
-    routeRequest(path, {
-      ...init,
-      method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
-      headers: {
-        'Content-Type': 'application/json',
-        ...init?.headers,
-      },
-    }),
-
-  delete: (path: string, init?: Omit<RequestInit, 'method'>) =>
-    routeRequest(path, { ...init, method: 'DELETE' }),
-};

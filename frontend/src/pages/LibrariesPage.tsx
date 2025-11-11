@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { useLocale } from "@/locales/use-locale";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { Library } from "@/types/models";
 
 export default function LibrariesPage() {
@@ -25,11 +26,12 @@ export default function LibrariesPage() {
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     async function fetchLibraries() {
       try {
-        const data = await apiClient.get<{ success: boolean; data: Library[] }>('/libraries');
+        const data = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
         setLibraries(data.data || []);
       } catch (error) {
         logger.error('Failed to fetch libraries', error);
@@ -60,7 +62,7 @@ export default function LibrariesPage() {
     const description = formData.get("description") as string;
 
     try {
-      const data = await apiClient.post<{ success: boolean; data: Library }>('/libraries', {
+      const data = await apiClient.post<{ success: boolean; data: Library }>(API_ENDPOINTS.libraries.create, {
         name: name.trim(),
         description: description.trim() || undefined,
       });
@@ -69,7 +71,7 @@ export default function LibrariesPage() {
         setLibraries(prev => [...prev, data.data]);
       }
       
-      event.currentTarget.reset();
+      formRef.current?.reset();
       toast({
         title: "Library created successfully",
       });
@@ -129,7 +131,7 @@ export default function LibrariesPage() {
               <CardTitle>{I18n.library.manager.form.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">{I18n.library.manager.form.nameLabel}</Label>
                   <Input

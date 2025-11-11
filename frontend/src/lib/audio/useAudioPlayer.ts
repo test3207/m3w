@@ -12,7 +12,8 @@ import { getPlayQueue, type RepeatMode } from '@/lib/audio/queue';
 import { getPlayContext, type PlayContext } from '@/lib/audio/context';
 import { useTrackPreloader } from '@/lib/audio/useTrackPreloader';
 import { logger } from '@/lib/logger-client';
-import { api } from '@/lib/api/router';
+import { apiClient } from '@/lib/api/client';
+import { API_ENDPOINTS } from '@/lib/api/api-config';
 
 interface PlaybackPreferencesResponse {
   success: boolean;
@@ -62,18 +63,15 @@ export function useAudioPlayer() {
 
     const loadInitialPlaybackState = async () => {
       try {
-        const response = await api.get('/api/player/preferences');
-        if (response.ok) {
-          const json = (await response.json()) as PlaybackPreferencesResponse;
-          if (json?.data) {
-            const queue = getPlayQueue();
-            queue.setRepeatMode(json.data.repeatMode);
-            queue.setShuffle(json.data.shuffleEnabled);
+        const json = await apiClient.get<PlaybackPreferencesResponse>(API_ENDPOINTS.player.preferences);
+        if (json?.data) {
+          const queue = getPlayQueue();
+          queue.setRepeatMode(json.data.repeatMode);
+          queue.setShuffle(json.data.shuffleEnabled);
 
-            if (isMounted) {
-              setQueueState(queue.getState());
-              setPlayerState(getAudioPlayer().getState());
-            }
+          if (isMounted) {
+            setQueueState(queue.getState());
+            setPlayerState(getAudioPlayer().getState());
           }
         }
       } catch (error) {
@@ -83,13 +81,8 @@ export function useAudioPlayer() {
       // Helper function to load default seed
       const loadDefaultSeed = async () => {
         try {
-          const seedResponse = await api.get('/api/player/seed');
-          if (!seedResponse.ok) {
-            return;
-          }
-
-          const seedJson = (await seedResponse.json()) as PlaybackSeedResponse;
-          const seed = seedJson?.data;
+          const json = await apiClient.get<PlaybackSeedResponse>(API_ENDPOINTS.player.seed);
+          const seed = json?.data;
           if (!seed?.track) {
             return;
           }
@@ -134,14 +127,7 @@ export function useAudioPlayer() {
       };
 
       try {
-        const response = await api.get('/api/player/progress');
-        if (!response.ok) {
-          // No progress found, try to load seed
-          await loadDefaultSeed();
-          return;
-        }
-
-        const json = (await response.json()) as PlaybackProgressResponse;
+        const json = await apiClient.get<PlaybackProgressResponse>(API_ENDPOINTS.player.progress);
         const progress = json?.data;
         if (!progress?.track) {
           // No progress data, try to load seed
@@ -204,7 +190,7 @@ export function useAudioPlayer() {
 
   const persistPreferences = useCallback(
     (preferences: Partial<{ shuffleEnabled: boolean; repeatMode: RepeatMode }>) => {
-      void api.put('/api/player/preferences', preferences).catch((error) => {
+      void apiClient.put(API_ENDPOINTS.player.preferences, preferences).catch((error: unknown) => {
         logger.error('Failed to persist playback preferences', error);
       });
     },
@@ -233,7 +219,7 @@ export function useAudioPlayer() {
       contextName: context?.name,
     };
 
-    void api.put('/api/player/progress', payload).catch((error) => {
+    void apiClient.put(API_ENDPOINTS.player.progress, payload).catch((error: unknown) => {
       logger.error('Failed to persist playback progress', error);
     });
   }, []);

@@ -10,6 +10,7 @@ import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { apiClient } from "@/lib/api/client";
+import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { LibraryOption } from "@/types/models";
 
 interface UploadSongFormProps {
@@ -135,7 +136,7 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
           } 
         };
         error?: string;
-      }>('/upload/song', formData);
+      }>(API_ENDPOINTS.upload.file, formData);
 
       if (!result?.success) {
         const message = result?.error ?? I18n.error.uploadFailed;
