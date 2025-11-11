@@ -56,6 +56,42 @@ export default defineConfig({
               },
             },
           },
+          // Cache API GET requests with NetworkFirst strategy
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/') && 
+              (url.pathname.includes('/songs') || 
+               url.pathname.includes('/libraries') || 
+               url.pathname.includes('/playlists')),
+            handler: 'NetworkFirst',
+            method: 'GET',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+              },
+              networkTimeoutSeconds: 10,
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          // Cache audio files with CacheFirst strategy
+          {
+            urlPattern: ({ url }) => url.pathname.match(/^\/api\/songs\/\d+\/stream/),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'audio-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              rangeRequests: true, // Support Range requests for audio
+            },
+          },
         ],
       },
     }),
@@ -65,11 +101,48 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core libraries
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // TanStack Query
+          'query-vendor': ['@tanstack/react-query'],
+          // Radix UI components
+          'ui-vendor': [
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-avatar',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-label',
+            '@radix-ui/react-separator',
+            '@radix-ui/react-slot',
+            '@radix-ui/react-toast',
+          ],
+          // PWA and offline support
+          'pwa-vendor': [
+            'workbox-core',
+            'workbox-precaching',
+            'workbox-routing',
+            'workbox-strategies',
+            'dexie',
+            'dexie-react-hooks',
+          ],
+          // Audio and utilities
+          'utils-vendor': ['howler', 'zustand', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
+    // Increase chunk size warning limit to 600KB (still reasonable with code splitting)
+    chunkSizeWarningLimit: 600,
+  },
   server: {
     port: 3000,
     open: true,
-    proxy: {
-      '/api': 'http://localhost:4000',
-    },
+  },
+  preview: {
+    port: 3000,
+    strictPort: true, // Fail if port is in use instead of trying another
   },
 });

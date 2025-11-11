@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { API_ENDPOINTS } from '@/lib/api-config';
+import { apiClient } from '@/lib/api/client';
 
 export interface User {
   id: string;
@@ -71,20 +72,10 @@ export const useAuthStore = create<AuthStore>()(
         }
 
         try {
-          const response = await fetch(API_ENDPOINTS.auth.refresh, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ refreshToken: tokens.refreshToken }),
-          });
-
-          if (!response.ok) {
-            console.error('Token refresh failed with status:', response.status);
-            get().clearAuth();
-            return false;
-          }
-
-          const data = await response.json();
+          const data = await apiClient.post<{ success: boolean; data: { accessToken: string; refreshToken?: string; expiresAt: number } }>(
+            API_ENDPOINTS.auth.refresh,
+            { refreshToken: tokens.refreshToken }
+          );
           
           if (!data.success || !data.data) {
             console.error('Token refresh response invalid:', data);
@@ -130,18 +121,11 @@ export const useAuthStore = create<AuthStore>()(
 
         // Verify token with backend
         try {
-          const response = await fetch(API_ENDPOINTS.auth.me, {
+          const data = await apiClient.get<{ success: boolean; data: User }>(API_ENDPOINTS.auth.me, {
             headers: {
               Authorization: `Bearer ${tokens.accessToken}`,
             },
           });
-
-          if (!response.ok) {
-            clearAuth();
-            return;
-          }
-
-          const data = await response.json();
           
           if (!data.success || !data.data) {
             clearAuth();

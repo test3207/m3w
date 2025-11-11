@@ -1,8 +1,6 @@
 /**
  * API Configuration
- * All endpoints use relative paths without /api prefix
- * apiClient will add /api prefix automatically
- * For direct fetch calls, use with /api prefix manually
+ * All endpoints are relative paths. Base URL is configured in apiClient.
  */
 
 export const API_ENDPOINTS = {
@@ -16,38 +14,38 @@ export const API_ENDPOINTS = {
   },
   // Libraries
   libraries: {
-    list: '/libraries',
-    detail: (id: string) => `/libraries/${id}`,
-    songs: (id: string) => `/libraries/${id}/songs`,
-    create: '/libraries',
-    delete: (id: string) => `/libraries/${id}`,
+    list: '/api/libraries',
+    detail: (id: string) => `/api/libraries/${id}`,
+    songs: (id: string) => `/api/libraries/${id}/songs`,
+    create: '/api/libraries',
+    delete: (id: string) => `/api/libraries/${id}`,
   },
   // Playlists
   playlists: {
-    list: '/playlists',
-    detail: (id: string) => `/playlists/${id}`,
-    songs: (id: string) => `/playlists/${id}/songs`,
-    create: '/playlists',
-    update: (id: string) => `/playlists/${id}`,
-    delete: (id: string) => `/playlists/${id}`,
-    addSong: (id: string) => `/playlists/${id}/songs`,
-    removeSong: (playlistId: string, songId: string) => `/playlists/${playlistId}/songs/${songId}`,
-    reorderSongs: (id: string) => `/playlists/${id}/songs/reorder`,
+    list: '/api/playlists',
+    detail: (id: string) => `/api/playlists/${id}`,
+    songs: (id: string) => `/api/playlists/${id}/songs`,
+    create: '/api/playlists',
+    update: (id: string) => `/api/playlists/${id}`,
+    delete: (id: string) => `/api/playlists/${id}`,
+    addSong: (id: string) => `/api/playlists/${id}/songs`,
+    removeSong: (playlistId: string, songId: string) => `/api/playlists/${playlistId}/songs/${songId}`,
+    reorderSongs: (id: string) => `/api/playlists/${id}/songs/reorder`,
   },
   // Songs
   songs: {
-    stream: (id: string) => `/songs/${id}/stream`,
-    playlistCount: (id: string) => `/songs/${id}/playlist-count`,
-    delete: (id: string) => `/songs/${id}`,
+    stream: (id: string) => `/api/songs/${id}/stream`,
+    playlistCount: (id: string) => `/api/songs/${id}/playlist-count`,
+    delete: (id: string) => `/api/songs/${id}`,
   },
   // Upload
   upload: {
-    song: '/upload/song',
+    song: '/api/upload/song',
   },
   // Player
   player: {
-    seed: '/player/seed',
-    progress: '/player/progress',
-    preferences: '/player/preferences',
+    seed: '/api/player/seed',
+    progress: '/api/player/progress',
+    preferences: '/api/player/preferences',
   },
 } as const;

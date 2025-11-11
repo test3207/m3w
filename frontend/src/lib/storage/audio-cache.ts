@@ -11,6 +11,7 @@
 import { getStorageStatus, hasEnoughQuota } from './quota-manager';
 import { db } from '../db/schema';
 import { API_ENDPOINTS } from '../api-config';
+import { apiClient } from '../api/client';
 
 const AUDIO_CACHE_NAME = 'm3w-audio-cache-v1';
 const ESTIMATED_SONG_SIZE = 5 * 1024 * 1024; // 5 MB average per song
@@ -84,8 +85,8 @@ export async function cacheSong(
       status: 'downloading',
     });
 
-    // Fetch the audio file
-    const response = await fetch(streamUrl);
+    // Fetch the audio file using apiClient (returns Response for non-JSON)
+    const response = await apiClient.get<Response>(streamUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch audio: ${response.statusText}`);
     }

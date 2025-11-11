@@ -6,6 +6,7 @@
 import { db } from '../db/schema';
 import type { SyncQueueItem } from '../db/schema';
 import { logger } from '../logger-client';
+import { apiClient } from '../api/client';
 
 export class SyncService {
   private isSyncing = false;
@@ -99,49 +100,29 @@ export class SyncService {
     const { entityType, entityId, operation, data } = item;
 
     let url: string;
-    let method: string;
-    let body: unknown | undefined;
+    let result: { success?: boolean; data?: unknown };
 
     switch (operation) {
       case 'create':
         url = `/api/${entityType}s`;
-        method = 'POST';
-        body = data;
+        result = await apiClient.post(url, data);
         break;
 
       case 'update':
         url = `/api/${entityType}s/${entityId}`;
-        method = 'PATCH';
-        body = data;
+        result = await apiClient.patch(url, data);
         break;
 
       case 'delete':
         url = `/api/${entityType}s/${entityId}`;
-        method = 'DELETE';
-        body = undefined;
+        result = await apiClient.delete(url);
         break;
 
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
 
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || error.error || response.statusText);
-    }
-
     // Update local data with synced status
-    const result = await response.json();
-
     if (operation !== 'delete' && result.data) {
       switch (entityType) {
         case 'library':
