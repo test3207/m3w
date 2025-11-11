@@ -131,3 +131,34 @@ export function getLocale(): string {
 export function getAvailableLocales(): string[] {
   return Array.from(messagesStore.keys());
 }
+
+/**
+ * Format a translation string by replacing placeholders
+ * 
+ * Supports {0}, {1}, {2}, etc.
+ * 
+ * @example
+ * ```ts
+ * // messages.json: "Hello {0}, you have {1} messages"
+ * format(I18n.welcome.message, "John", 5)
+ * // => "Hello John, you have 5 messages"
+ * 
+ * // messages.json: "With the great {0} comes the great {1}"
+ * format(I18n.quote.spiderman, "power", "responsibility")
+ * // => "With the great power comes the great responsibility"
+ * ```
+ * 
+ * @param template - Translation string with placeholders
+ * @param values - Values to replace placeholders with
+ * @returns Formatted string
+ */
+export function format(template: string, ...values: (string | number)[]): string {
+  let result = template;
+  
+  values.forEach((value, index) => {
+    const regex = new RegExp(`\\{${index}\\}`, 'g');
+    result = result.replace(regex, String(value));
+  });
+  
+  return result;
+}

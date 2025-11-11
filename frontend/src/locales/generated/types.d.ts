@@ -154,6 +154,12 @@ export interface Messages {
     savingLabel: string;
     /** Are you sure you want to delete this playlist? */
     confirmDeletePlaylist: string;
+    /** {0} items */
+    itemsCount: string;
+    /** Hello {0}, welcome back! */
+    greetingWithName: string;
+    /** From {0} to {1} */
+    dateRange: string;
   };
   dashboard: {
     /** M3W Dashboard */
