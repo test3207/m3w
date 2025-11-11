@@ -1,5 +1,5 @@
 # Backend Development Dockerfile (Hono API)
-FROM node:22-alpine
+FROM node:25.1.0-alpine
 
 RUN apk add --no-cache libc6-compat openssl
 
