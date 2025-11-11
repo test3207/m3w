@@ -124,15 +124,7 @@ class AudioPlayer {
    * Load and play a track
    */
   async play(track: Track): Promise<void> {
-    if (this.currentTrack?.id === track.id && this.howl) {
-      this.howl.stop();
-      this.howl.seek(0);
-      this.howl.play();
-      this.startProgressUpdate();
-      this.emit('play');
-      return;
-    }
-
+    // Always unload and create new Howl instance to ensure fresh event listeners
     this.unloadHowl();
     this.currentTrack = track;
     this.howl = this.createHowl(track);
