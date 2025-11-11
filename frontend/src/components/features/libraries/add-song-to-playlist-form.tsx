@@ -1,10 +1,12 @@
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
 import { apiClient, ApiError } from "@/lib/api/client";
 import { API_ENDPOINTS } from "@/lib/api/api-config";
+import { PLAYLISTS_QUERY_KEY } from "@/hooks/usePlaylists";
 import type { PlaylistOption } from "@/types/models";
 
 interface AddSongToPlaylistFormProps {
@@ -13,9 +15,11 @@ interface AddSongToPlaylistFormProps {
   libraryId: string;
   playlists: PlaylistOption[];
   onAddSuccess?: () => void | Promise<void>;
+  onPlaylistUpdated?: (playlistId: string) => void | Promise<void>;
 }
 
-function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists, onAddSuccess }: AddSongToPlaylistFormProps) {
+function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists, onAddSuccess, onPlaylistUpdated }: AddSongToPlaylistFormProps) {
+  const queryClient = useQueryClient();
   const [selectedPlaylistId, setSelectedPlaylistId] = React.useState<string>("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -58,6 +62,14 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists, onAddS
 
       formRef.current?.reset();
       setSelectedPlaylistId("");
+      
+      // Invalidate playlists query to update song count on dashboard
+      queryClient.invalidateQueries({ queryKey: PLAYLISTS_QUERY_KEY });
+      
+      // 通知播放列表已更新
+      if (onPlaylistUpdated) {
+        await onPlaylistUpdated(selectedPlaylistId);
+      }
       
       // 刷新数据
       if (onAddSuccess) {

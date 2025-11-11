@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
 import { apiClient, ApiError } from "@/lib/api/client";
 import { API_ENDPOINTS } from "@/lib/api/api-config";
+import { PLAYLISTS_QUERY_KEY } from "@/hooks/usePlaylists";
 
 interface PlaylistSongControlsProps {
   playlistId: string;
@@ -15,9 +17,11 @@ interface PlaylistSongControlsProps {
   index: number;
   total: number;
   onMutate?: () => void;
+  onPlaylistUpdated?: (playlistId: string) => void | Promise<void>;
 }
 
-function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onMutate }: PlaylistSongControlsProps) {
+function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onMutate, onPlaylistUpdated }: PlaylistSongControlsProps) {
+  const queryClient = useQueryClient();
   const [isPending, setIsPending] = React.useState(false);
 
   const handleMove = async (direction: "up" | "down") => {
@@ -36,6 +40,15 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
             ? `${I18n.playlist.controls.toastMoveUpDescriptionPrefix}${songTitle}`
             : `${I18n.playlist.controls.toastMoveDownDescriptionPrefix}${songTitle}`,
       });
+      
+      // Invalidate playlists query to update song count on dashboard
+      queryClient.invalidateQueries({ queryKey: PLAYLISTS_QUERY_KEY });
+      
+      // 通知播放列表已更新
+      if (onPlaylistUpdated) {
+        await onPlaylistUpdated(playlistId);
+      }
+      
       onMutate?.();
     } catch (error) {
       logger.error('Failed to move song', error);
@@ -61,6 +74,15 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
         title: I18n.playlist.controls.toastRemoveSuccessTitle,
         description: `${I18n.playlist.controls.toastRemoveSuccessDescriptionPrefix}${songTitle}`,
       });
+      
+      // Invalidate playlists query to update song count on dashboard
+      queryClient.invalidateQueries({ queryKey: PLAYLISTS_QUERY_KEY });
+      
+      // 通知播放列表已更新
+      if (onPlaylistUpdated) {
+        await onPlaylistUpdated(playlistId);
+      }
+      
       onMutate?.();
     } catch (error) {
       logger.error('Failed to remove song', error);

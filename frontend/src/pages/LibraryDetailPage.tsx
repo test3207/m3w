@@ -12,6 +12,7 @@ import { useLocale } from "@/locales/use-locale";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { AddSongToPlaylistForm } from "@/components/features/libraries/add-song-to-playlist-form";
 import { DeleteSongButton } from "@/components/features/libraries/delete-song-button";
+import { useAudioPlayer } from "@/lib/audio/useAudioPlayer";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
@@ -23,6 +24,7 @@ export default function LibraryDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { refreshCurrentPlaylistQueue } = useAudioPlayer();
 
   const [library, setLibrary] = useState<Library | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -181,6 +183,7 @@ export default function LibraryDetailPage() {
                             libraryId={library.id}
                             playlists={playlistOptions}
                             onAddSuccess={fetchData}
+                            onPlaylistUpdated={refreshCurrentPlaylistQueue}
                           />
                           <DeleteSongButton
                             songId={song.id}

@@ -107,6 +107,8 @@ export function useAddSongToPlaylist() {
     onSuccess: (_, { playlistId }) => {
       // Invalidate playlist to refetch with new song
       queryClient.invalidateQueries({ queryKey: ['playlist', playlistId] });
+      // Invalidate playlists list to update song count on dashboard
+      queryClient.invalidateQueries({ queryKey: PLAYLISTS_QUERY_KEY });
     },
   });
 }
@@ -122,6 +124,8 @@ export function useRemoveSongFromPlaylist() {
       apiClient.delete<ApiResponse<void>>(API_ENDPOINTS.playlists.removeSong(playlistId, songId)),
     onSuccess: (_, { playlistId }) => {
       queryClient.invalidateQueries({ queryKey: ['playlist', playlistId] });
+      // Invalidate playlists list to update song count on dashboard
+      queryClient.invalidateQueries({ queryKey: PLAYLISTS_QUERY_KEY });
     },
   });
 }

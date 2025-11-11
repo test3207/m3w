@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -19,6 +20,8 @@ import { I18n } from '@/locales/i18n';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/lib/api/api-config';
+import { LIBRARIES_QUERY_KEY } from '@/hooks/useLibraries';
+import { PLAYLISTS_QUERY_KEY } from '@/hooks/usePlaylists';
 
 interface DeleteSongButtonProps {
   songId: string;
@@ -32,6 +35,7 @@ export function DeleteSongButton({
   onDeleteSuccess,
 }: DeleteSongButtonProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
   const [playlistCount, setPlaylistCount] = useState<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -69,6 +73,10 @@ export function DeleteSongButton({
       });
 
       setIsOpen(false);
+
+      // Invalidate queries to update counts on dashboard
+      queryClient.invalidateQueries({ queryKey: LIBRARIES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PLAYLISTS_QUERY_KEY });
 
       if (onDeleteSuccess) {
         await onDeleteSuccess();

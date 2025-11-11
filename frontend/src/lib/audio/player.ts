@@ -143,12 +143,20 @@ class AudioPlayer {
    * Prime player with a track without auto-playing
    */
   prime(track: Track): void {
+    logger.info('Priming player', { 
+      trackId: track.id, 
+      audioUrl: track.audioUrl,
+      hasExistingHowl: !!this.howl,
+      isSameTrack: this.currentTrack?.id === track.id 
+    });
+    
     if (this.currentTrack?.id === track.id && this.howl) {
       this.emit('load');
       return;
     }
 
     if (!this.canInitializeAudio()) {
+      logger.info('Cannot initialize audio yet, deferring');
       this.currentTrack = track;
       this.emit('load');
       return;
@@ -156,6 +164,7 @@ class AudioPlayer {
 
     this.unloadHowl();
     this.currentTrack = track;
+    logger.info('Creating Howl instance', { audioUrl: track.audioUrl });
     this.howl = this.createHowl(track);
     this.howl.load();
     this.emit('load');
@@ -367,15 +376,21 @@ class AudioPlayer {
         this.emit('seek');
       },
       onloaderror: (_id, error) => {
-        // In development, hot reload can cause stale audio URLs
-        // Suppress errors if we're in dev mode and there's no current track
+        // In development, hot reload or initial page load can cause stale audio URLs
+        // Suppress errors if we're in dev mode and the player hasn't been actively used
         const isDev = import.meta.env.DEV;
-        if (isDev && !this.currentTrack) {
-          logger.info('Audio load error suppressed (likely hot reload)', { err: error });
+        const hasUserInteraction = this.howl?.playing() || false;
+        
+        if (isDev && !hasUserInteraction && !this.currentTrack) {
+          logger.info('Audio load error suppressed (likely dev environment or page load)', { err: error });
           return;
         }
-        logger.error('Audio load error', { err: error });
-        this.emit('error');
+        
+        // Only log errors for actual playback attempts
+        if (hasUserInteraction || !isDev) {
+          logger.error('Audio load error', { err: error });
+          this.emit('error');
+        }
       },
       onplayerror: (_id, error) => {
         const trackContext = this.currentTrack ? { trackId: this.currentTrack.id } : {};

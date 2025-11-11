@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
@@ -12,189 +11,181 @@ import { calculateFileHash } from "@/lib/utils/hash";
 import { apiClient } from "@/lib/api/client";
 import { API_ENDPOINTS } from "@/lib/api/api-config";
 import type { LibraryOption } from "@/types/models";
+import { CheckCircle2, XCircle, Loader2, Music } from "lucide-react";
 
 interface UploadSongFormProps {
   libraries: LibraryOption[];
   onUploadSuccess?: () => void | Promise<void>;
 }
 
-type UploadStatus =
-  | {
-      type: "success";
-      message: string;
-      details: {
-        songTitle: string;
-        libraryName: string;
-        duration: number | null;
-        bitrate: number | null;
-      };
-    }
-  | {
-      type: "error";
-      message: string;
-    }
-  | null;
+interface FileUploadItem {
+  file: File;
+  status: "pending" | "uploading" | "success" | "error";
+  progress?: number;
+  error?: string;
+  songTitle?: string;
+}
 
 export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormProps) {
   const { toast } = useToast();
   const [libraryId, setLibraryId] = useState<string>(libraries[0]?.id ?? "");
-  const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState<string>("");
-  const [artist, setArtist] = useState<string>("");
-  const [album, setAlbum] = useState<string>("");
-  const [albumArtist, setAlbumArtist] = useState<string>("");
-  const [genre, setGenre] = useState<string>("");
-  const [composer, setComposer] = useState<string>("");
-  const [year, setYear] = useState<string>("");
-  const [trackNumber, setTrackNumber] = useState<string>("");
-  const [discNumber, setDiscNumber] = useState<string>("");
-  const [coverUrl, setCoverUrl] = useState<string>("");
-  const [status, setStatus] = useState<UploadStatus>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [files, setFiles] = useState<FileUploadItem[]>([]);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const selectedLibraryName = useMemo(() => {
-    return libraries.find((lib) => lib.id === libraryId)?.name ?? "";
-  }, [libraries, libraryId]);
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0] ?? null;
-    setFile(selectedFile);
+    const selectedFiles = Array.from(event.target.files ?? []);
+    
+    if (selectedFiles.length === 0) return;
 
-    if (selectedFile && title.trim().length === 0) {
-      const defaultTitle = selectedFile.name.replace(/\.[^.]+$/, "");
-      setTitle(defaultTitle);
+    const newFiles: FileUploadItem[] = selectedFiles.map((file) => ({
+      file,
+      status: "pending" as const,
+    }));
+
+    setFiles((prev) => [...prev, ...newFiles]);
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearAllFiles = () => {
+    setFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
-  const resetForm = () => {
-    setFile(null);
-    setTitle("");
-    setArtist("");
-    setAlbum("");
-    setAlbumArtist("");
-    setGenre("");
-    setComposer("");
-    setYear("");
-    setTrackNumber("");
-    setDiscNumber("");
-    setCoverUrl("");
+  const uploadFile = async (item: FileUploadItem, index: number): Promise<void> => {
+    try {
+      // Update status to uploading
+      setFiles((prev) =>
+        prev.map((f, i) =>
+          i === index ? { ...f, status: "uploading" as const } : f
+        )
+      );
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      const { file } = item;
+
+      // 1. Calculate file hash
+      logger.info("Calculating file hash...", { fileName: file.name });
+      const hash = await calculateFileHash(file);
+      logger.info("File hash calculated", { hash, fileName: file.name });
+
+      // 2. Prepare upload data
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("hash", hash);
+      formData.append("libraryId", libraryId);
+
+      // 3. Upload to backend (metadata will be extracted automatically)
+      const result = await apiClient.upload<{
+        success: boolean;
+        data?: {
+          song?: {
+            title?: string;
+            file?: { duration?: number; bitrate?: number };
+          };
+        };
+        error?: string;
+      }>(API_ENDPOINTS.upload.file, formData);
+
+      if (!result?.success) {
+        const errorMessage = result?.error ?? I18n.error.uploadFailed;
+        throw new Error(errorMessage);
+      }
+
+      const songTitle = result.data?.song?.title ?? file.name;
+
+      // Update status to success
+      setFiles((prev) =>
+        prev.map((f, i) =>
+          i === index
+            ? { ...f, status: "success" as const, songTitle }
+            : f
+        )
+      );
+
+      logger.info("File uploaded successfully", { fileName: file.name, songTitle });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : I18n.error.uploadErrorGeneric;
+      
+      // Update status to error
+      setFiles((prev) =>
+        prev.map((f, i) =>
+          i === index
+            ? { ...f, status: "error" as const, error: errorMessage }
+            : f
+        )
+      );
+
+      logger.error("Upload failed", { fileName: item.file.name, error });
     }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!file) {
-      setStatus({ type: "error", message: I18n.error.noAudioFileSelected });
+    if (files.length === 0) {
+      toast({
+        title: I18n.error.title,
+        description: I18n.error.noAudioFileSelected,
+        variant: "destructive",
+      });
       return;
     }
 
     if (!libraryId) {
-      setStatus({ type: "error", message: I18n.error.noLibrarySelected });
+      toast({
+        title: I18n.error.title,
+        description: I18n.error.noLibrarySelected,
+        variant: "destructive",
+      });
       return;
     }
 
     try {
-      setSubmitting(true);
-      setStatus(null);
+      setUploading(true);
 
-      // 1. 计算文件 hash
-      logger.info("Calculating file hash...");
-      const hash = await calculateFileHash(file);
-      logger.info("File hash calculated", { hash });
+      // Upload files sequentially to avoid overwhelming the server
+      for (let i = 0; i < files.length; i++) {
+        const item = files[i];
+        if (item.status === "pending" || item.status === "error") {
+          await uploadFile(item, i);
+        }
+      }
 
-      // 2. 准备上传数据
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("hash", hash); // 传递 hash 给后端
-      formData.append("libraryId", libraryId);
+      const successCount = files.filter((f) => f.status === "success").length;
+      const errorCount = files.filter((f) => f.status === "error").length;
 
-      if (title.trim()) formData.append("title", title.trim());
-      if (artist.trim()) formData.append("artist", artist.trim());
-      if (album.trim()) formData.append("album", album.trim());
-      if (albumArtist.trim())
-        formData.append("albumArtist", albumArtist.trim());
-      if (genre.trim()) formData.append("genre", genre.trim());
-      if (composer.trim()) formData.append("composer", composer.trim());
-      if (year.trim()) formData.append("year", year.trim());
-      if (trackNumber.trim())
-        formData.append("trackNumber", trackNumber.trim());
-      if (discNumber.trim()) formData.append("discNumber", discNumber.trim());
-      if (coverUrl.trim()) formData.append("coverUrl", coverUrl.trim());
+      if (successCount > 0) {
+        toast({
+          title: I18n.success.title,
+          description: `${I18n.upload.form.successUploadedCount}${successCount}${I18n.upload.form.successUploadedSuffix}`,
+        });
 
-      // 3. 上传到后端
-      const result = await apiClient.upload<{ 
-        success: boolean; 
-        data?: { 
-          song?: { 
-            title?: string; 
-            file?: { duration?: number; bitrate?: number } 
-          } 
-        };
-        error?: string;
-      }>(API_ENDPOINTS.upload.file, formData);
+        // Refresh libraries data
+        if (onUploadSuccess) {
+          await onUploadSuccess();
+        }
+      }
 
-      if (!result?.success) {
-        const message = result?.error ?? I18n.error.uploadFailed;
-        setStatus({ type: "error", message });
+      if (errorCount > 0) {
         toast({
           title: I18n.error.title,
-          description: message,
+          description: `${errorCount}${I18n.upload.form.errorUploadedSuffix}`,
           variant: "destructive",
         });
-        return;
       }
-
-      const fallbackTitle = title.trim().length > 0 ? title.trim() : file.name;
-      const songTitle: string = result.data?.song?.title ?? fallbackTitle;
-      const duration: number | null = result.data?.song?.file?.duration ?? null;
-      const bitrate: number | null = result.data?.song?.file?.bitrate ?? null;
-
-      const successMessage = `${I18n.upload.form.successPrefix}${songTitle}${
-        I18n.upload.form.successSuffix
-      }${selectedLibraryName || I18n.upload.form.successFallbackLibrary}`;
-
-      setStatus({
-        type: "success",
-        message: successMessage,
-        details: {
-          songTitle,
-          libraryName: selectedLibraryName || "",
-          duration,
-          bitrate,
-        },
-      });
-
-      toast({
-        title: I18n.success.title,
-        description: successMessage,
-      });
-
-      resetForm();
-      
-      // 刷新 libraries 数据
-      if (onUploadSuccess) {
-        await onUploadSuccess();
-      }
-    } catch (error) {
-      logger.error("Upload failed", error);
-      const errorMessage = I18n.error.uploadErrorGeneric;
-      setStatus({ type: "error", message: errorMessage });
-      toast({
-        title: I18n.error.title,
-        description: errorMessage,
-        variant: "destructive",
-      });
     } finally {
-      setSubmitting(false);
+      setUploading(false);
     }
   };
 
-  const isReady = Boolean(file && libraryId);
+  const uploadingCount = files.filter((f) => f.status === "uploading").length;
+  const successCount = files.filter((f) => f.status === "success").length;
+  const errorCount = files.filter((f) => f.status === "error").length;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -205,6 +196,7 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
           value={libraryId}
           onChange={(event) => setLibraryId(event.target.value)}
           className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          disabled={uploading}
         >
           {libraries.length === 0 ? (
             <option value="">{I18n.upload.form.libraryOptionFallback}</option>
@@ -222,158 +214,117 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="file">{I18n.upload.form.selectFileLabel}</Label>
+        <Label htmlFor="file">{I18n.upload.form.selectFilesLabel}</Label>
         <Input
           ref={fileInputRef}
           id="file"
           type="file"
           accept="audio/*"
           onChange={handleFileChange}
-          required
+          multiple
+          disabled={uploading}
         />
         <p className="text-xs text-muted-foreground">
-          {I18n.upload.form.fileHelper}
+          {I18n.upload.form.multiFileHelper}
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="title">{I18n.upload.form.titleLabel}</Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={I18n.upload.form.titlePlaceholder}
-          />
+      {files.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">
+              {I18n.upload.form.selectedFilesTitle} ({files.length})
+            </h3>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFiles}
+              disabled={uploading}
+            >
+              {I18n.upload.form.clearAllButton}
+            </Button>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {files.map((item, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 rounded-lg border bg-card p-3 text-sm"
+              >
+                <div className="flex-shrink-0">
+                  {item.status === "pending" && (
+                    <Music className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  {item.status === "uploading" && (
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                  )}
+                  {item.status === "success" && (
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  )}
+                  {item.status === "error" && (
+                    <XCircle className="h-5 w-5 text-destructive" />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">
+                    {item.songTitle || item.file.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {(item.file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                  {item.error && (
+                    <p className="text-xs text-destructive mt-1">{item.error}</p>
+                  )}
+                </div>
+
+                {item.status === "pending" && !uploading && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(index)}
+                  >
+                    {I18n.upload.form.removeButton}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {(successCount > 0 || errorCount > 0) && (
+            <div className="flex gap-4 text-sm">
+              {successCount > 0 && (
+                <span className="text-green-600">
+                  ✓ {successCount} {I18n.upload.form.successLabel}
+                </span>
+              )}
+              {errorCount > 0 && (
+                <span className="text-destructive">
+                  ✗ {errorCount} {I18n.upload.form.errorLabel}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="artist">{I18n.upload.form.artistLabel}</Label>
-          <Input
-            id="artist"
-            value={artist}
-            onChange={(event) => setArtist(event.target.value)}
-            placeholder={I18n.upload.form.optionalPlaceholder}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="album">{I18n.upload.form.albumLabel}</Label>
-          <Input
-            id="album"
-            value={album}
-            onChange={(event) => setAlbum(event.target.value)}
-            placeholder={I18n.upload.form.optionalPlaceholder}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="albumArtist">
-            {I18n.upload.form.albumArtistLabel}
-          </Label>
-          <Input
-            id="albumArtist"
-            value={albumArtist}
-            onChange={(event) => setAlbumArtist(event.target.value)}
-            placeholder={I18n.upload.form.optionalPlaceholder}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="genre">{I18n.upload.form.genreLabel}</Label>
-          <Input
-            id="genre"
-            value={genre}
-            onChange={(event) => setGenre(event.target.value)}
-            placeholder={I18n.upload.form.optionalPlaceholder}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="composer">{I18n.upload.form.composerLabel}</Label>
-          <Input
-            id="composer"
-            value={composer}
-            onChange={(event) => setComposer(event.target.value)}
-            placeholder={I18n.upload.form.optionalPlaceholder}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="year">{I18n.upload.form.yearLabel}</Label>
-          <Input
-            id="year"
-            value={year}
-            onChange={(event) => setYear(event.target.value)}
-            placeholder={I18n.upload.form.yearPlaceholder}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="trackNumber">
-            {I18n.upload.form.trackNumberLabel}
-          </Label>
-          <Input
-            id="trackNumber"
-            value={trackNumber}
-            onChange={(event) => setTrackNumber(event.target.value)}
-            placeholder={I18n.upload.form.optionalPlaceholder}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="discNumber">{I18n.upload.form.discNumberLabel}</Label>
-          <Input
-            id="discNumber"
-            value={discNumber}
-            onChange={(event) => setDiscNumber(event.target.value)}
-            placeholder={I18n.upload.form.optionalPlaceholder}
-          />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="coverUrl">{I18n.upload.form.coverLabel}</Label>
-          <Textarea
-            id="coverUrl"
-            value={coverUrl}
-            onChange={(event) => setCoverUrl(event.target.value)}
-            placeholder={I18n.upload.form.coverPlaceholder}
-          />
-        </div>
-      </div>
+      )}
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={!isReady || submitting}>
-          {submitting
-            ? I18n.upload.form.uploadingLabel
+        <Button type="submit" disabled={files.length === 0 || !libraryId || uploading}>
+          {uploading
+            ? `${I18n.upload.form.uploadingLabel} (${uploadingCount}/${files.length})`
             : I18n.upload.form.uploadButton}
         </Button>
         <Button
           type="button"
-          variant="ghost"
-          onClick={resetForm}
-          disabled={submitting}
+          variant="outline"
+          onClick={clearAllFiles}
+          disabled={uploading || files.length === 0}
         >
           {I18n.upload.form.resetButton}
         </Button>
       </div>
-
-      {status?.type === "success" ? (
-        <div className="rounded-lg border border-green-500/40 bg-green-50 px-4 py-3 text-sm text-green-900">
-          <p>{status.message}</p>
-          <div className="mt-2 text-xs text-green-800">
-            <p>
-              {I18n.upload.form.successDurationPrefix}
-              {status.details.duration
-                ? `${status.details.duration}${I18n.upload.form.durationUnit}`
-                : I18n.upload.form.successDurationFallback}
-            </p>
-            <p>
-              {I18n.upload.form.successBitratePrefix}
-              {status.details.bitrate
-                ? `${status.details.bitrate}${I18n.upload.form.bitrateUnit}`
-                : I18n.upload.form.successBitrateFallback}
-            </p>
-          </div>
-        </div>
-      ) : null}
-
-      {status?.type === "error" ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {status.message}
-        </div>
-      ) : null}
     </form>
   );
 }

@@ -94,7 +94,9 @@ app.get('/seed', async (c: Context) => {
     const playlistSong = playlist?.songs[0]?.song;
 
     if (playlist && playlistSong) {
-      const audioUrl = `/api/songs/${playlistSong.id}/stream`;
+      // Use full backend URL for audio streaming
+      const apiBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
+      const audioUrl = `${apiBaseUrl}/api/songs/${playlistSong.id}/stream`;
 
       logger.debug(
         {
@@ -154,7 +156,9 @@ app.get('/seed', async (c: Context) => {
     const librarySong = library?.songs[0];
 
     if (library && librarySong) {
-      const audioUrl = `/api/songs/${librarySong.id}/stream`;
+      // Use full backend URL for audio streaming
+      const apiBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
+      const audioUrl = `${apiBaseUrl}/api/songs/${librarySong.id}/stream`;
 
       logger.debug(
         {
@@ -349,7 +353,9 @@ app.get('/progress', async (c: Context) => {
       });
     }
 
-    const audioUrl = `/api/songs/${song.id}/stream`;
+    // Use full backend URL for audio streaming
+    const apiBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
+    const audioUrl = `${apiBaseUrl}/api/songs/${song.id}/stream`;
     const context = mapPlaybackContext(
       progress.contextType,
       progress.contextId,

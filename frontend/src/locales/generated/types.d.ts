@@ -515,8 +515,28 @@ export interface Messages {
       librarySongSuffix: string;
       /** Select audio file */
       selectFileLabel: string;
+      /** Select audio files */
+      selectFilesLabel: string;
       /** Supports MP3, FLAC, WAV, OGG, M4A, AAC, and other common formats. Max size 100 MB per file. */
       fileHelper: string;
+      /** Select one or multiple audio files. Metadata will be extracted automatically from ID3 tags. */
+      multiFileHelper: string;
+      /** Selected files */
+      selectedFilesTitle: string;
+      /** Clear all */
+      clearAllButton: string;
+      /** Remove */
+      removeButton: string;
+      /** Success */
+      successLabel: string;
+      /** Failed */
+      errorLabel: string;
+      /** Successfully uploaded  */
+      successUploadedCount: string;
+      /**  file(s) */
+      successUploadedSuffix: string;
+      /**  file(s) failed to upload */
+      errorUploadedSuffix: string;
       /** Title */
       titleLabel: string;
       /** If left blank, the filename or parsed metadata will be used. */

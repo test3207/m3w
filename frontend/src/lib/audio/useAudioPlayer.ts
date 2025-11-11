@@ -50,11 +50,16 @@ interface PrimePlaybackPayload {
 
 const MAX_PRELOADED_TRACKS = 5;
 
+// Global flag to prevent concurrent initialization in React StrictMode
+let isInitializing = false;
+let initializationPromise: Promise<void> | null = null;
+
 export function useAudioPlayer() {
   const [playerState, setPlayerState] = useState<PlayerState>(() => getAudioPlayer().getState());
   const [queueState, setQueueState] = useState(() => getPlayQueue().getState());
   const resumeProgressRef = useRef<{ trackId: string; position: number } | null>(null);
-  const { prepareTrack, primeTrack: primePreloadedTrack, preloadNextInQueue } = useTrackPreloader(
+  const lastProgressPersistRef = useRef<{ trackId: string; position: number; timestamp: number } | null>(null);
+  const { prepareTrack, preloadNextInQueue } = useTrackPreloader(
     MAX_PRELOADED_TRACKS
   );
 
@@ -62,6 +67,27 @@ export function useAudioPlayer() {
     let isMounted = true;
 
     const loadInitialPlaybackState = async () => {
+      // Prevent concurrent initialization (React StrictMode protection)
+      if (isInitializing) {
+        await initializationPromise;
+        return;
+      }
+
+      isInitializing = true;
+      
+      initializationPromise = (async () => {
+        try {
+          await doLoadInitialPlaybackState();
+        } finally {
+          isInitializing = false;
+          initializationPromise = null;
+        }
+      })();
+
+      await initializationPromise;
+    };
+
+    const doLoadInitialPlaybackState = async () => {
       try {
         const json = await apiClient.get<PlaybackPreferencesResponse>(API_ENDPOINTS.player.preferences);
         if (json?.data) {
@@ -83,6 +109,8 @@ export function useAudioPlayer() {
         try {
           const json = await apiClient.get<PlaybackSeedResponse>(API_ENDPOINTS.player.seed);
           const seed = json?.data;
+          logger.info('Loaded default seed', { hasSeed: !!seed, trackId: seed?.track?.id, context: seed?.context });
+          
           if (!seed?.track) {
             return;
           }
@@ -100,15 +128,108 @@ export function useAudioPlayer() {
             mimeType: seed.track.mimeType ?? undefined,
           };
 
-          queue.setQueue([track], 0);
+          logger.info('Priming track from seed', { 
+            trackId: track.id, 
+            audioUrl: track.audioUrl 
+          });
+
+          // Load full queue based on context
           if (seed.context) {
+            try {
+              let fullTracks: Track[] = [];
+              let currentIndex = 0;
+
+              if (seed.context.type === 'playlist' && seed.context.id) {
+                interface PlaylistSong {
+                  id: string;
+                  title: string;
+                  artist?: string;
+                  album?: string;
+                  coverUrl?: string;
+                  file?: {
+                    duration?: number;
+                    mimeType?: string;
+                  };
+                }
+                const playlistResponse = await apiClient.get<{ success: boolean; data: PlaylistSong[] }>(
+                  API_ENDPOINTS.playlists.songs(seed.context.id)
+                );
+                if (playlistResponse?.data) {
+                  fullTracks = playlistResponse.data.map((song: PlaylistSong) => ({
+                    id: song.id,
+                    title: song.title,
+                    artist: song.artist ?? undefined,
+                    album: song.album ?? undefined,
+                    coverUrl: song.coverUrl ?? undefined,
+                    duration: song.file?.duration ?? undefined,
+                    audioUrl: API_ENDPOINTS.songs.stream(song.id),
+                    mimeType: song.file?.mimeType ?? undefined,
+                  }));
+                  currentIndex = fullTracks.findIndex(t => t.id === track.id);
+                  if (currentIndex === -1) currentIndex = 0;
+                  logger.info('Loaded full playlist queue from seed', { 
+                    playlistId: seed.context.id, 
+                    tracksCount: fullTracks.length,
+                    currentIndex 
+                  });
+                }
+              } else if (seed.context.type === 'library' && seed.context.id) {
+                interface LibrarySong {
+                  id: string;
+                  title: string;
+                  artist?: string;
+                  album?: string;
+                  coverUrl?: string;
+                  file?: {
+                    duration?: number;
+                    mimeType?: string;
+                  };
+                }
+                const libraryResponse = await apiClient.get<{ success: boolean; data: { songs: LibrarySong[] } }>(
+                  API_ENDPOINTS.libraries.songs(seed.context.id)
+                );
+                if (libraryResponse?.data?.songs) {
+                  fullTracks = libraryResponse.data.songs.map((song: LibrarySong) => ({
+                    id: song.id,
+                    title: song.title,
+                    artist: song.artist ?? undefined,
+                    album: song.album ?? undefined,
+                    coverUrl: song.coverUrl ?? undefined,
+                    duration: song.file?.duration ?? undefined,
+                    audioUrl: API_ENDPOINTS.songs.stream(song.id),
+                    mimeType: song.file?.mimeType ?? undefined,
+                  }));
+                  currentIndex = fullTracks.findIndex(t => t.id === track.id);
+                  if (currentIndex === -1) currentIndex = 0;
+                  logger.info('Loaded full library queue from seed', { 
+                    libraryId: seed.context.id, 
+                    tracksCount: fullTracks.length,
+                    currentIndex 
+                  });
+                }
+              }
+
+              if (fullTracks.length > 0) {
+                queue.setQueue(fullTracks, currentIndex);
+              } else {
+                queue.setQueue([track], 0);
+              }
+            } catch (error) {
+              logger.error('Failed to load full queue from seed, using single track', error);
+              queue.setQueue([track], 0);
+            }
+
             getPlayContext().setContext({
               ...seed.context,
               name: seed.context.name ?? '',
             });
+          } else {
+            queue.setQueue([track], 0);
           }
 
-          player.prime(track);
+          // Prepare track with preloader before priming
+          const playableTrack = await prepareTrack(track);
+          player.prime(playableTrack);
 
           if (isMounted) {
             const snapshot = player.getState();
@@ -129,6 +250,8 @@ export function useAudioPlayer() {
       try {
         const json = await apiClient.get<PlaybackProgressResponse>(API_ENDPOINTS.player.progress);
         const progress = json?.data;
+        logger.info('Loaded playback progress', { hasProgress: !!progress, trackId: progress?.track?.id });
+        
         if (!progress?.track) {
           // No progress data, try to load seed
           await loadDefaultSeed();
@@ -149,12 +272,105 @@ export function useAudioPlayer() {
           mimeType: progress.track.mimeType ?? undefined,
         };
 
-        queue.setQueue([track], 0);
+        logger.info('Priming track from progress', { 
+          trackId: track.id, 
+          audioUrl: track.audioUrl,
+          position: progress.position,
+          context: progress.context 
+        });
+
+        // Load full queue based on context
         if (progress.context) {
+          try {
+            let fullTracks: Track[] = [];
+            let currentIndex = 0;
+
+            if (progress.context.type === 'playlist' && progress.context.id) {
+              interface PlaylistSong {
+                id: string;
+                title: string;
+                artist?: string;
+                album?: string;
+                coverUrl?: string;
+                file?: {
+                  duration?: number;
+                  mimeType?: string;
+                };
+              }
+              const playlistResponse = await apiClient.get<{ success: boolean; data: PlaylistSong[] }>(
+                API_ENDPOINTS.playlists.songs(progress.context.id)
+              );
+              if (playlistResponse?.data) {
+                fullTracks = playlistResponse.data.map((song: PlaylistSong) => ({
+                  id: song.id,
+                  title: song.title,
+                  artist: song.artist ?? undefined,
+                  album: song.album ?? undefined,
+                  coverUrl: song.coverUrl ?? undefined,
+                  duration: song.file?.duration ?? undefined,
+                  audioUrl: API_ENDPOINTS.songs.stream(song.id),
+                  mimeType: song.file?.mimeType ?? undefined,
+                }));
+                currentIndex = fullTracks.findIndex(t => t.id === track.id);
+                if (currentIndex === -1) currentIndex = 0;
+                logger.info('Loaded full playlist queue', { 
+                  playlistId: progress.context.id, 
+                  tracksCount: fullTracks.length,
+                  currentIndex 
+                });
+              }
+            } else if (progress.context.type === 'library' && progress.context.id) {
+              interface LibrarySong {
+                id: string;
+                title: string;
+                artist?: string;
+                album?: string;
+                coverUrl?: string;
+                file?: {
+                  duration?: number;
+                  mimeType?: string;
+                };
+              }
+              const libraryResponse = await apiClient.get<{ success: boolean; data: { songs: LibrarySong[] } }>(
+                API_ENDPOINTS.libraries.songs(progress.context.id)
+              );
+              if (libraryResponse?.data?.songs) {
+                fullTracks = libraryResponse.data.songs.map((song: LibrarySong) => ({
+                  id: song.id,
+                  title: song.title,
+                  artist: song.artist ?? undefined,
+                  album: song.album ?? undefined,
+                  coverUrl: song.coverUrl ?? undefined,
+                  duration: song.file?.duration ?? undefined,
+                  audioUrl: API_ENDPOINTS.songs.stream(song.id),
+                  mimeType: song.file?.mimeType ?? undefined,
+                }));
+                currentIndex = fullTracks.findIndex(t => t.id === track.id);
+                if (currentIndex === -1) currentIndex = 0;
+                logger.info('Loaded full library queue', { 
+                  libraryId: progress.context.id, 
+                  tracksCount: fullTracks.length,
+                  currentIndex 
+                });
+              }
+            }
+
+            if (fullTracks.length > 0) {
+              queue.setQueue(fullTracks, currentIndex);
+            } else {
+              queue.setQueue([track], 0);
+            }
+          } catch (error) {
+            logger.error('Failed to load full queue, using single track', error);
+            queue.setQueue([track], 0);
+          }
+
           getPlayContext().setContext({
             ...progress.context,
             name: progress.context.name ?? '',
           });
+        } else {
+          queue.setQueue([track], 0);
         }
 
         resumeProgressRef.current = {
@@ -162,7 +378,9 @@ export function useAudioPlayer() {
           position: progress.position,
         };
 
-        player.prime(track);
+        // Prepare track with preloader before priming
+        const playableTrack = await prepareTrack(track);
+        player.prime(playableTrack);
 
         if (isMounted) {
           const snapshot = player.getState();
@@ -185,6 +403,7 @@ export function useAudioPlayer() {
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -211,12 +430,28 @@ export function useAudioPlayer() {
       Math.min(86_400, Math.round(positionOverride ?? state.currentTime))
     );
 
+    // Debounce: skip if same track and position persisted within last 500ms
+    const now = Date.now();
+    const last = lastProgressPersistRef.current;
+    if (last && 
+        last.trackId === track.id && 
+        last.position === position && 
+        now - last.timestamp < 500) {
+      return;
+    }
+
     const payload = {
       songId: track.id,
       position,
       contextType: context?.type,
       contextId: context?.id,
       contextName: context?.name,
+    };
+
+    lastProgressPersistRef.current = {
+      trackId: track.id,
+      position,
+      timestamp: now,
     };
 
     void apiClient.put(API_ENDPOINTS.player.progress, payload).catch((error: unknown) => {
@@ -298,15 +533,7 @@ export function useAudioPlayer() {
     };
   }, [handleTrackEnd]);
 
-  useEffect(() => {
-    const track = playerState.currentTrack;
-    if (!track) {
-      return;
-    }
-
-    primePreloadedTrack(track);
-  }, [playerState.currentTrack, primePreloadedTrack]);
-
+  // Preload next track when queue changes
   useEffect(() => {
     preloadUpcomingTrack();
   }, [queueState.currentIndex, queueState.tracks, preloadUpcomingTrack]);
@@ -434,7 +661,7 @@ export function useAudioPlayer() {
   }, [persistPreferences]);
 
   const primeFromSeed = useCallback(
-    (payload: PrimePlaybackPayload) => {
+    async (payload: PrimePlaybackPayload) => {
       const queue = getPlayQueue();
       const tracks = payload.queue ?? [payload.track];
       const startIndex = payload.startIndex ?? 0;
@@ -446,13 +673,79 @@ export function useAudioPlayer() {
         getPlayContext().setContext(payload.context);
       }
 
-      getAudioPlayer().prime(payload.track);
-      primePreloadedTrack(payload.track);
+      // Prepare track with preloader before priming
+      const playableTrack = await prepareTrack(payload.track);
+      getAudioPlayer().prime(playableTrack);
       preloadUpcomingTrack();
       setPlayerState(getAudioPlayer().getState());
       persistProgress(0);
     },
-    [persistProgress, primePreloadedTrack, preloadUpcomingTrack]
+    [persistProgress, prepareTrack, preloadUpcomingTrack]
+  );
+
+  /**
+   * Refresh current playlist queue
+   * Used when songs are added/removed from the current playing playlist
+   */
+  const refreshCurrentPlaylistQueue = useCallback(
+    async (playlistId: string) => {
+      const context = getPlayContext().getContext();
+      
+      // Only refresh if we're currently playing from this playlist
+      if (!context || context.type !== 'playlist' || context.id !== playlistId) {
+        return;
+      }
+
+      try {
+        const currentTrack = playerState.currentTrack;
+        if (!currentTrack) return;
+
+        // Fetch updated playlist songs
+        const response = await apiClient.get<{ success: boolean; data: Array<{ id: string; title: string; artist?: string; album?: string; coverUrl?: string; duration?: number; mimeType?: string }> }>(
+          API_ENDPOINTS.playlists.songs(playlistId)
+        );
+
+        if (!response.success || !response.data) {
+          logger.warn('Failed to refresh playlist queue', { playlistId });
+          return;
+        }
+
+        const songs = response.data;
+        const tracks: Track[] = songs.map((song) => ({
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          coverUrl: song.coverUrl,
+          duration: song.duration,
+          audioUrl: API_ENDPOINTS.songs.stream(song.id),
+          mimeType: song.mimeType,
+        }));
+
+        // Find current track index in new queue
+        const currentIndex = tracks.findIndex((t) => t.id === currentTrack.id);
+        
+        if (currentIndex === -1) {
+          // Current track was removed from playlist, keep playing but clear queue
+          logger.info('Current track removed from playlist, keeping playback but clearing context');
+          return;
+        }
+
+        // Update queue with new tracks, preserving current playback
+        const queue = getPlayQueue();
+        queue.setQueue(tracks, currentIndex);
+        setQueueState(queue.getState());
+
+        logger.info('Refreshed playlist queue', { 
+          playlistId, 
+          trackCount: tracks.length,
+          currentIndex 
+        });
+      } catch (error) {
+        logger.error('Failed to refresh playlist queue', { error, playlistId });
+      }
+    },
+    [playerState.currentTrack]
   );
 
   const trackedSongId = playerState.currentTrack?.id;
@@ -463,18 +756,21 @@ export function useAudioPlayer() {
       return;
     }
 
+    // Persist on mount and when track changes
     persistProgress();
 
     if (!isPlaying) {
       return;
     }
 
+    // Auto-save progress every 5 seconds while playing
     const interval = setInterval(() => {
       persistProgress();
     }, 5000);
 
     return () => {
       clearInterval(interval);
+      // Persist one last time on cleanup (debounced to avoid duplicates)
       persistProgress();
     };
   }, [trackedSongId, isPlaying, persistProgress]);
@@ -499,5 +795,6 @@ export function useAudioPlayer() {
     toggleShuffle,
     cycleRepeat,
     primeFromSeed,
+    refreshCurrentPlaylistQueue,
   };
 }

@@ -281,26 +281,16 @@ export class PlayQueue {
    * Generate shuffle order (Fisher-Yates algorithm)
    */
   private generateShuffleOrder(): void {
-    const currentTrack = this.getCurrentTrack();
-    this.shuffleOrder = Array.from({ length: this.tracks.length }, (_, i) => i);
+    // Create array of indices
+    this.shuffleOrder = Array.from({ length: this.originalOrder.length }, (_, i) => i);
 
-    // Keep current track at current position
+    // Standard Fisher-Yates shuffle
     for (let i = this.shuffleOrder.length - 1; i > 0; i--) {
-      if (i === this.currentIndex) continue;
       const j = Math.floor(Math.random() * (i + 1));
-      if (j === this.currentIndex) continue;
       [this.shuffleOrder[i], this.shuffleOrder[j]] = [this.shuffleOrder[j], this.shuffleOrder[i]];
     }
-
-    // Restore current track position
-    if (currentTrack) {
-      const currentId = currentTrack.id;
-      const newIndex = this.shuffleOrder.findIndex(i => this.tracks[i].id === currentId);
-      if (newIndex !== -1 && newIndex !== this.currentIndex) {
-        [this.shuffleOrder[this.currentIndex], this.shuffleOrder[newIndex]] = 
-          [this.shuffleOrder[newIndex], this.shuffleOrder[this.currentIndex]];
-      }
-    }
+    
+    this.applyShuffle();
   }
 
   /**
@@ -308,6 +298,7 @@ export class PlayQueue {
    */
   private applyShuffle(): void {
     const currentTrack = this.getCurrentTrack();
+    
     this.tracks = this.shuffleOrder.map(i => this.originalOrder[i]);
     
     // Update current index

@@ -11,6 +11,7 @@ import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { formatDuration } from "@/lib/utils/format-duration";
 import { PlaylistSongControls } from "@/components/features/playlists/playlist-song-controls";
+import { useAudioPlayer } from "@/lib/audio/useAudioPlayer";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
@@ -22,6 +23,7 @@ export default function PlaylistDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { refreshCurrentPlaylistQueue } = useAudioPlayer();
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -193,6 +195,7 @@ export default function PlaylistDetailPage() {
                           index={index}
                           total={songs.length}
                           onMutate={fetchData}
+                          onPlaylistUpdated={refreshCurrentPlaylistQueue}
                         />
                       }
                     />

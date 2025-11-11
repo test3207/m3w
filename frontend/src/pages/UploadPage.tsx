@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
 import { UploadSongForm } from "@/components/features/upload-song-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +11,14 @@ import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
 import { API_ENDPOINTS } from "@/lib/api/api-config";
+import { LIBRARIES_QUERY_KEY } from "@/hooks/useLibraries";
 import type { Library, LibraryOption } from "@/types/models";
 
 export default function UploadPage() {
   useLocale();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [libraries, setLibraries] = useState<LibraryOption[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,6 +69,9 @@ export default function UploadPage() {
       }));
       
       setLibraries(libraryOptions);
+      
+      // Invalidate TanStack Query cache to update dashboard counts
+      queryClient.invalidateQueries({ queryKey: LIBRARIES_QUERY_KEY });
     } catch (error) {
       logger.error('Failed to refetch libraries', error);
       
