@@ -9,8 +9,8 @@ export interface User {
   name: string | null;
   email: string | null;
   image: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO 8601 string from JSON serialization
+  updatedAt: string; // ISO 8601 string from JSON serialization
 }
 
 // Library types
@@ -19,8 +19,8 @@ export interface Library {
   name: string;
   description: string | null;
   userId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO 8601 string from JSON serialization
+  updatedAt: string; // ISO 8601 string from JSON serialization
 }
 
 export interface LibraryWithCount extends Library {
@@ -45,8 +45,8 @@ export interface Playlist {
   name: string;
   description: string | null;
   userId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO 8601 string from JSON serialization
+  updatedAt: string; // ISO 8601 string from JSON serialization
 }
 
 export interface PlaylistWithCount extends Playlist {
@@ -80,8 +80,8 @@ export interface Song {
   coverUrl: string | null;
   fileId: string;
   libraryId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO 8601 string from JSON serialization
+  updatedAt: string; // ISO 8601 string from JSON serialization
   // Fields from file relation (included when returned by backend)
   file?: {
     id: string;
@@ -146,8 +146,8 @@ export interface FileRecord {
   mimeType: string;
   storageKey: string;
   refCount: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO 8601 string from JSON serialization
+  updatedAt: string; // ISO 8601 string from JSON serialization
 }
 
 // Upload types

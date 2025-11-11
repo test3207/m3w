@@ -170,7 +170,11 @@ app.get('/callback', async (c: Context) => {
     });
 
     // Generate JWT tokens
-    const tokens = generateTokens(user);
+    const tokens = generateTokens({
+      ...user,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    });
 
     // Set HTTP-only cookies for tokens (more secure than URL params)
     const isProduction = process.env.NODE_ENV === 'production';
@@ -257,7 +261,11 @@ app.post('/refresh', async (c: Context) => {
     }
 
     // Generate new tokens
-    const tokens = generateTokens(user);
+    const tokens = generateTokens({
+      ...user,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    });
 
     return c.json({
       success: true,
@@ -342,7 +350,11 @@ app.get('/session', authMiddleware, async (c: Context) => {
     }
 
     // Generate fresh tokens for frontend storage
-    const tokens = generateTokens(user);
+    const tokens = generateTokens({
+      ...user,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    });
 
     return c.json({
       success: true,

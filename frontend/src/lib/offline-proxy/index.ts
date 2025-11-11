@@ -123,8 +123,8 @@ app.post('/libraries', async (c: Context) => {
       ...data,
       description: data.description ?? null,
       userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       _syncStatus: 'pending',
     };
 
@@ -178,7 +178,7 @@ app.patch('/libraries/:id', async (c: Context) => {
     const updated: OfflineLibrary = {
       ...library,
       ...data,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
       _syncStatus: 'pending',
     };
 
@@ -376,8 +376,8 @@ app.post('/playlists', async (c: Context) => {
       ...data,
       description: data.description ?? null,
       userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       _syncStatus: 'pending',
     };
 
@@ -431,7 +431,7 @@ app.patch('/playlists/:id', async (c: Context) => {
     const updated: OfflinePlaylist = {
       ...playlist,
       ...data,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
       _syncStatus: 'pending',
     };
 

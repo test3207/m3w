@@ -52,8 +52,6 @@ export async function syncMetadata(): Promise<SyncResult> {
     await db.libraries.bulkPut(
       libraries.map((lib) => ({
         ...lib,
-        createdAt: new Date(lib.createdAt),
-        updatedAt: new Date(lib.updatedAt),
         _syncStatus: 'synced' as const,
       }))
     );
@@ -66,8 +64,6 @@ export async function syncMetadata(): Promise<SyncResult> {
     await db.playlists.bulkPut(
       playlists.map((playlist) => ({
         ...playlist,
-        createdAt: new Date(playlist.createdAt),
-        updatedAt: new Date(playlist.updatedAt),
         _syncStatus: 'synced' as const,
       }))
     );
@@ -83,8 +79,6 @@ export async function syncMetadata(): Promise<SyncResult> {
         await db.songs.bulkPut(
           songs.map((song) => ({
             ...song,
-            createdAt: new Date(song.createdAt),
-            updatedAt: new Date(song.updatedAt),
             _syncStatus: 'synced' as const,
           }))
         );
@@ -118,8 +112,6 @@ export async function syncMetadata(): Promise<SyncResult> {
         await db.songs.bulkPut(
           songs.map((song) => ({
             ...song,
-            createdAt: new Date(song.createdAt),
-            updatedAt: new Date(song.updatedAt),
             _syncStatus: 'synced' as const,
           }))
         );
