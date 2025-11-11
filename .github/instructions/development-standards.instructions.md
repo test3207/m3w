@@ -61,6 +61,14 @@
 
 ## Git Workflow
 - Branch strategy: `main` for production, `develop` for integration, `feature/*` for new work.
+- **NEVER push directly to `main` branch**. Always create a feature branch and submit a Pull Request.
+- Feature branch naming: `feature/<description>`, `fix/<description>`, `refactor/<description>`.
+- PR workflow:
+  1. Create feature branch from `main` or `develop`
+  2. Make commits following Conventional Commits format
+  3. Push feature branch to remote
+  4. Create Pull Request with clear description
+  5. Wait for review and approval before merging
 - Follow Conventional Commits (for example `feat:`, `fix:`, `docs:`, `refactor:`, `test:`).
 - Only commit or push when explicitly requested; keep the working state ready for commits at all times.
 
