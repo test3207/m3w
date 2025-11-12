@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
-import type { Library, ApiResponse } from '@m3w/shared';
+import { api } from '@/services';
+import type { Library } from '@m3w/shared';
 
 export const LIBRARIES_QUERY_KEY = ['libraries'] as const;
 
@@ -12,8 +11,7 @@ export function useLibraries() {
   return useQuery({
     queryKey: LIBRARIES_QUERY_KEY,
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Library[]>>(API_ENDPOINTS.libraries.list);
-      return response.data ?? []; // Return empty array if data is undefined
+      return await api.main.libraries.list();
     },
     staleTime: 60000, // Consider data fresh for 1 minute
     gcTime: 300000, // Keep in cache for 5 minutes
@@ -27,8 +25,7 @@ export function useLibrary(id: string) {
   return useQuery({
     queryKey: ['library', id] as const,
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Library>>(API_ENDPOINTS.libraries.detail(id));
-      return response.data;
+      return await api.main.libraries.getById(id);
     },
     enabled: !!id, // Only run if ID is provided
     staleTime: 60000,
@@ -43,8 +40,7 @@ export function useCreateLibrary() {
 
   return useMutation({
     mutationFn: async (data: { name: string; description?: string }) => {
-      const response = await apiClient.post<ApiResponse<Library>>(API_ENDPOINTS.libraries.create, data);
-      return response.data!;
+      return await api.main.libraries.create(data);
     },
     onSuccess: (newLibrary) => {
       // Update the libraries cache
@@ -64,8 +60,7 @@ export function useUpdateLibrary() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string; name: string; description?: string }) => {
-      const response = await apiClient.put<ApiResponse<Library>>(API_ENDPOINTS.libraries.update(id), data);
-      return response.data!;
+      return await api.main.libraries.update(id, data);
     },
     onSuccess: (updatedLibrary) => {
       // Update the single library cache
@@ -87,7 +82,7 @@ export function useDeleteLibrary() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete<ApiResponse<void>>(API_ENDPOINTS.libraries.delete(id));
+      await api.main.libraries.delete(id);
       return id;
     },
     onSuccess: (deletedId) => {

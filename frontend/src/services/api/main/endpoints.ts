@@ -1,9 +1,9 @@
 /**
- * API Configuration
+ * Main API Endpoints
  * All endpoints are relative paths. Base URL is configured in apiClient.
  */
 
-export const API_ENDPOINTS = {
+export const MAIN_API_ENDPOINTS = {
   // Auth
   auth: {
     github: '/api/auth/github',

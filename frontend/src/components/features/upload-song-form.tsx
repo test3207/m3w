@@ -8,8 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { calculateFileHash } from "@/lib/utils/hash";
-import { apiClient } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/constants/api-config";
+import { api } from "@/services";
 import type { LibraryOption } from "@/types/models";
 import { CheckCircle2, XCircle, Loader2, Music } from "lucide-react";
 
@@ -73,23 +72,8 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
       const hash = await calculateFileHash(file);
       logger.info("File hash calculated", { hash, fileName: file.name });
 
-      // 2. Prepare upload data
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("hash", hash);
-      formData.append("libraryId", libraryId);
-
-      // 3. Upload to backend (metadata will be extracted automatically)
-      const result = await apiClient.upload<{
-        success: boolean;
-        data?: {
-          song?: {
-            title?: string;
-            file?: { duration?: number; bitrate?: number };
-          };
-        };
-        error?: string;
-      }>(API_ENDPOINTS.upload.file, formData);
+      // 2. Upload to backend (metadata will be extracted automatically)
+      const result = await api.main.upload.uploadFile(libraryId, file, hash);
 
       if (!result?.success) {
         const errorMessage = result?.error ?? I18n.error.uploadFailed;

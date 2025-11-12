@@ -49,6 +49,13 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Independent package.json for each workspace
   - Scripts directory for build tooling (.cjs files)
   - Environment variables properly segregated (backend/.env, frontend/.env)
+- **Frontend API Architecture**
+  - Layered client architecture with clear separation of concerns
+  - `api.main.*` service layer for all business logic (libraries, playlists, songs, upload, player, auth)
+  - `mainApiClient` for JSON API calls with automatic response unwrapping
+  - `streamApiClient` for binary data (audio streams, blobs, files)
+  - Low-level `apiClient` for internal use only (wrapped by higher-level clients)
+  - Complete migration from direct API calls to service layer pattern
 
 ### Active Initiatives (In Progress)
 - **Demo & Evaluation**
@@ -111,6 +118,9 @@ m3w/
 │   │   ├── components/           # UI primitives, features, and layouts
 │   │   ├── hooks/                # React hooks (useAuthRefresh, etc.)
 │   │   ├── lib/                  # Client utilities and services
+│   │   │   ├── api/              # Low-level HTTP client and routing
+│   │   │   │   ├── client.ts     # Base HTTP client (internal use)
+│   │   │   │   └── router.ts     # Request routing (online/offline)
 │   │   │   ├── audio/            # Audio player and queue management
 │   │   │   ├── sync/             # Offline sync service (planned)
 │   │   │   └── logger-client.ts  # Client-side logging
@@ -128,6 +138,22 @@ m3w/
 │   │   │   ├── PlaylistsPage.tsx # Playlist list/create
 │   │   │   ├── PlaylistDetailPage.tsx # Playlist songs management
 │   │   │   └── UploadPage.tsx    # File upload
+│   │   ├── services/             # Service layer
+│   │   │   └── api/              # API clients and resources
+│   │   │       ├── index.ts      # Main export (api.main.*)
+│   │   │       ├── README.md     # API architecture documentation
+│   │   │       └── main/         # Main API service
+│   │   │           ├── client.ts         # JSON API client
+│   │   │           ├── stream-client.ts  # Binary data client
+│   │   │           ├── endpoints.ts      # URL builders
+│   │   │           ├── types.ts          # Shared types
+│   │   │           └── resources/        # API resource services
+│   │   │               ├── auth.ts       # Authentication
+│   │   │               ├── libraries.ts  # Library management
+│   │   │               ├── playlists.ts  # Playlist management
+│   │   │               ├── songs.ts      # Song operations
+│   │   │               ├── upload.ts     # File upload
+│   │   │               └── player.ts     # Playback state
 │   │   ├── stores/               # Zustand state stores
 │   │   │   └── authStore.ts      # Auth state with auto-refresh
 │   │   ├── test/                 # Unit and integration test helpers

@@ -1,15 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
-import { apiClient } from '@/lib/api/client';
+import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
+import type { User as ApiUser } from '@/services/api/main/resources/auth';
 
-export interface User {
-  id: string;
-  name: string | null;
-  email: string | null;
-  image: string | null;
-}
+export type User = ApiUser & {
+  image?: string | null;
+};
 
 export interface AuthTokens {
   accessToken: string;
@@ -73,22 +70,13 @@ export const useAuthStore = create<AuthStore>()(
         }
 
         try {
-          const data = await apiClient.post<{ success: boolean; data: { accessToken: string; refreshToken?: string; expiresAt: number } }>(
-            API_ENDPOINTS.auth.refresh,
-            { refreshToken: tokens.refreshToken }
-          );
-          
-          if (!data.success || !data.data) {
-            logger.error('Token refresh response invalid', { data });
-            get().clearAuth();
-            return false;
-          }
+          const data = await api.main.auth.refreshToken(tokens.refreshToken);
           
           set({
             tokens: {
-              accessToken: data.data.accessToken,
-              refreshToken: data.data.refreshToken || tokens.refreshToken,
-              expiresAt: data.data.expiresAt,
+              accessToken: data.accessToken,
+              refreshToken: data.refreshToken || tokens.refreshToken,
+              expiresAt: data.expiresAt,
             },
           });
 
@@ -122,18 +110,8 @@ export const useAuthStore = create<AuthStore>()(
 
         // Verify token with backend
         try {
-          const data = await apiClient.get<{ success: boolean; data: User }>(API_ENDPOINTS.auth.me, {
-            headers: {
-              Authorization: `Bearer ${tokens.accessToken}`,
-            },
-          });
-          
-          if (!data.success || !data.data) {
-            clearAuth();
-            return;
-          }
-
-          set({ user: data.data, isAuthenticated: true, isLoading: false });
+          const user = await api.main.auth.getMe();
+          set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
           logger.error('Auth check failed', { error });
           clearAuth();

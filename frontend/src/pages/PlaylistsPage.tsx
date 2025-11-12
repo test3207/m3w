@@ -15,15 +15,15 @@ import { useLocale } from "@/locales/use-locale";
 import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/constants/api-config";
-import type { Playlist } from "@/types/models";
+import { ApiError } from "@/lib/api/client";
+import { api } from "@/services";
+import type { Playlist } from "@m3w/shared";
 
 export default function PlaylistsPage() {
   useLocale();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlistsList, setPlaylistsList] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -32,8 +32,8 @@ export default function PlaylistsPage() {
   useEffect(() => {
     async function fetchPlaylists() {
       try {
-        const data = await apiClient.get<{ success: boolean; data: Playlist[] }>(API_ENDPOINTS.playlists.list);
-        setPlaylists(data.data || []);
+        const data = await api.main.playlists.list();
+        setPlaylistsList(data);
       } catch (error) {
         logger.error('Failed to fetch playlists', error);
         
@@ -61,18 +61,14 @@ export default function PlaylistsPage() {
     const formData = new FormData(event.currentTarget);
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
-    const coverUrl = formData.get("coverUrl") as string;
 
     try {
-      const data = await apiClient.post<{ success: boolean; data: Playlist }>(API_ENDPOINTS.playlists.create, {
+      const newPlaylist = await api.main.playlists.create({
         name: name.trim(),
         description: description.trim() || undefined,
-        coverUrl: coverUrl.trim() || undefined,
       });
 
-      if (data.data) {
-        setPlaylists(prev => [...prev, data.data]);
-      }
+      setPlaylistsList(prev => [...prev, newPlaylist]);
 
       formRef.current?.reset();
       toast({
@@ -102,9 +98,9 @@ export default function PlaylistsPage() {
 
     setDeletingId(playlistId);
     try {
-      await apiClient.delete<{ success: boolean; message: string }>(API_ENDPOINTS.playlists.delete(playlistId));
+      await api.main.playlists.delete(playlistId);
 
-      setPlaylists(prev => prev.filter(p => p.id !== playlistId));
+      setPlaylistsList(prev => prev.filter(p => p.id !== playlistId));
       toast({
         title: "Playlist deleted successfully",
       });
@@ -211,7 +207,7 @@ export default function PlaylistsPage() {
               <CardTitle>{I18n.playlist.manager.list.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
-              {playlists.length === 0 ? (
+              {playlistsList.length === 0 ? (
                 <EmptyState
                   icon="📻"
                   title={I18n.playlist.manager.list.emptyTitle}
@@ -219,7 +215,7 @@ export default function PlaylistsPage() {
                 />
               ) : (
                 <ul role="list" className="flex flex-col gap-3">
-                  {playlists.map((playlist) => {
+                  {playlistsList.map((playlist) => {
                     const metadata = [
                       <MetadataItem
                         key="songs"

@@ -8,38 +8,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getAudioPlayer, type PlayerState, type Track } from '@/lib/audio/player';
-import { getPlayQueue, type RepeatMode } from '@/lib/audio/queue';
+import { getPlayQueue, RepeatMode } from '@/lib/audio/queue';
 import { getPlayContext, type PlayContext } from '@/lib/audio/context';
 import { useTrackPreloader } from '@/hooks/useTrackPreloader';
 import { logger } from '@/lib/logger-client';
-import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
-
-interface PlaybackPreferencesResponse {
-  success: boolean;
-  data?: {
-    shuffleEnabled: boolean;
-    repeatMode: RepeatMode;
-  } | null;
-}
-
-interface PlaybackProgressResponse {
-  success: boolean;
-  data?: {
-    track: Track;
-    position: number;
-    context?: PlayContext | null;
-    updatedAt: string;
-  } | null;
-}
-
-interface PlaybackSeedResponse {
-  success: boolean;
-  data?: {
-    track: Track;
-    context: PlayContext;
-  } | null;
-}
+import { api } from '@/services';
+import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
 
 interface PrimePlaybackPayload {
   track: Track;
@@ -67,11 +41,17 @@ export function useAudioPlayer() {
   useEffect(() => {
     const loadPreferences = async () => {
       try {
-        const json = await apiClient.get<PlaybackPreferencesResponse>(API_ENDPOINTS.player.preferences);
-        if (json?.data) {
+        const preferences = await api.main.player.getPreferences();
+        if (preferences) {
           const queue = getPlayQueue();
-          queue.setRepeatMode(json.data.repeatMode);
-          queue.setShuffle(json.data.shuffleEnabled);
+          // Map string repeatMode to enum
+          const repeatModeMap: Record<string, RepeatMode> = {
+            'off': RepeatMode.OFF,
+            'all': RepeatMode.ALL,
+            'one': RepeatMode.ONE,
+          };
+          queue.setRepeatMode(repeatModeMap[preferences.repeatMode] || RepeatMode.OFF);
+          queue.setShuffle(preferences.shuffleEnabled);
           setQueueState(queue.getState());
         }
       } catch (error) {
@@ -110,8 +90,7 @@ export function useAudioPlayer() {
       // Helper function to load default seed
       const loadDefaultSeed = async () => {
         try {
-          const json = await apiClient.get<PlaybackSeedResponse>(API_ENDPOINTS.player.seed);
-          const seed = json?.data;
+          const seed = await api.main.player.getSeed();
           logger.info('Loaded default seed', { hasSeed: !!seed, trackId: seed?.track?.id, context: seed?.context });
           
           if (!seed?.track) {
@@ -143,29 +122,16 @@ export function useAudioPlayer() {
               let currentIndex = 0;
 
               if (seed.context.type === 'playlist' && seed.context.id) {
-                interface PlaylistSong {
-                  id: string;
-                  title: string;
-                  artist?: string;
-                  album?: string;
-                  coverUrl?: string;
-                  file?: {
-                    duration?: number;
-                    mimeType?: string;
-                  };
-                }
-                const playlistResponse = await apiClient.get<{ success: boolean; data: PlaylistSong[] }>(
-                  API_ENDPOINTS.playlists.songs(seed.context.id)
-                );
-                if (playlistResponse?.data) {
-                  fullTracks = playlistResponse.data.map((song: PlaylistSong) => ({
+                const songs = await api.main.playlists.getSongs(seed.context.id);
+                if (songs) {
+                  fullTracks = songs.map((song) => ({
                     id: song.id,
                     title: song.title,
                     artist: song.artist ?? undefined,
                     album: song.album ?? undefined,
                     coverUrl: song.coverUrl ?? undefined,
                     duration: song.file?.duration ?? undefined,
-                    audioUrl: API_ENDPOINTS.songs.stream(song.id),
+                    audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
                     mimeType: song.file?.mimeType ?? undefined,
                   }));
                   currentIndex = fullTracks.findIndex(t => t.id === track.id);
@@ -177,29 +143,16 @@ export function useAudioPlayer() {
                   });
                 }
               } else if (seed.context.type === 'library' && seed.context.id) {
-                interface LibrarySong {
-                  id: string;
-                  title: string;
-                  artist?: string;
-                  album?: string;
-                  coverUrl?: string;
-                  file?: {
-                    duration?: number;
-                    mimeType?: string;
-                  };
-                }
-                const libraryResponse = await apiClient.get<{ success: boolean; data: { songs: LibrarySong[] } }>(
-                  API_ENDPOINTS.libraries.songs(seed.context.id)
-                );
-                if (libraryResponse?.data?.songs) {
-                  fullTracks = libraryResponse.data.songs.map((song: LibrarySong) => ({
+                const songs = await api.main.libraries.getSongs(seed.context.id);
+                if (songs) {
+                  fullTracks = songs.map((song) => ({
                     id: song.id,
                     title: song.title,
                     artist: song.artist ?? undefined,
                     album: song.album ?? undefined,
                     coverUrl: song.coverUrl ?? undefined,
                     duration: song.file?.duration ?? undefined,
-                    audioUrl: API_ENDPOINTS.songs.stream(song.id),
+                    audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
                     mimeType: song.file?.mimeType ?? undefined,
                   }));
                   currentIndex = fullTracks.findIndex(t => t.id === track.id);
@@ -250,8 +203,7 @@ export function useAudioPlayer() {
       };
 
       try {
-        const json = await apiClient.get<PlaybackProgressResponse>(API_ENDPOINTS.player.progress);
-        const progress = json?.data;
+        const progress = await api.main.player.getProgress();
         logger.info('Loaded playback progress', { hasProgress: !!progress, trackId: progress?.track?.id });
         
         if (!progress?.track) {
@@ -288,29 +240,16 @@ export function useAudioPlayer() {
             let currentIndex = 0;
 
             if (progress.context.type === 'playlist' && progress.context.id) {
-              interface PlaylistSong {
-                id: string;
-                title: string;
-                artist?: string;
-                album?: string;
-                coverUrl?: string;
-                file?: {
-                  duration?: number;
-                  mimeType?: string;
-                };
-              }
-              const playlistResponse = await apiClient.get<{ success: boolean; data: PlaylistSong[] }>(
-                API_ENDPOINTS.playlists.songs(progress.context.id)
-              );
-              if (playlistResponse?.data) {
-                fullTracks = playlistResponse.data.map((song: PlaylistSong) => ({
+              const songs = await api.main.playlists.getSongs(progress.context.id);
+              if (songs) {
+                fullTracks = songs.map((song) => ({
                   id: song.id,
                   title: song.title,
                   artist: song.artist ?? undefined,
                   album: song.album ?? undefined,
                   coverUrl: song.coverUrl ?? undefined,
                   duration: song.file?.duration ?? undefined,
-                  audioUrl: API_ENDPOINTS.songs.stream(song.id),
+                  audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
                   mimeType: song.file?.mimeType ?? undefined,
                 }));
                 currentIndex = fullTracks.findIndex(t => t.id === track.id);
@@ -322,29 +261,16 @@ export function useAudioPlayer() {
                 });
               }
             } else if (progress.context.type === 'library' && progress.context.id) {
-              interface LibrarySong {
-                id: string;
-                title: string;
-                artist?: string;
-                album?: string;
-                coverUrl?: string;
-                file?: {
-                  duration?: number;
-                  mimeType?: string;
-                };
-              }
-              const libraryResponse = await apiClient.get<{ success: boolean; data: { songs: LibrarySong[] } }>(
-                API_ENDPOINTS.libraries.songs(progress.context.id)
-              );
-              if (libraryResponse?.data?.songs) {
-                fullTracks = libraryResponse.data.songs.map((song: LibrarySong) => ({
+              const songs = await api.main.libraries.getSongs(progress.context.id);
+              if (songs) {
+                fullTracks = songs.map((song) => ({
                   id: song.id,
                   title: song.title,
                   artist: song.artist ?? undefined,
                   album: song.album ?? undefined,
                   coverUrl: song.coverUrl ?? undefined,
                   duration: song.file?.duration ?? undefined,
-                  audioUrl: API_ENDPOINTS.songs.stream(song.id),
+                  audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
                   mimeType: song.file?.mimeType ?? undefined,
                 }));
                 currentIndex = fullTracks.findIndex(t => t.id === track.id);
@@ -410,7 +336,15 @@ export function useAudioPlayer() {
 
   const persistPreferences = useCallback(
     (preferences: Partial<{ shuffleEnabled: boolean; repeatMode: RepeatMode }>) => {
-      void apiClient.put(API_ENDPOINTS.player.preferences, preferences).catch((error: unknown) => {
+      // Convert RepeatMode enum to string for API
+      const apiPreferences: { shuffleEnabled?: boolean; repeatMode?: 'off' | 'all' | 'one' } = {};
+      if (preferences.shuffleEnabled !== undefined) {
+        apiPreferences.shuffleEnabled = preferences.shuffleEnabled;
+      }
+      if (preferences.repeatMode !== undefined) {
+        apiPreferences.repeatMode = preferences.repeatMode as 'off' | 'all' | 'one';
+      }
+      void api.main.player.updatePreferences(apiPreferences).catch((error: unknown) => {
         logger.error('Failed to persist playback preferences', error);
       });
     },
@@ -444,7 +378,7 @@ export function useAudioPlayer() {
     const payload = {
       songId: track.id,
       position,
-      contextType: context?.type,
+      contextType: (context?.type === 'library' || context?.type === 'playlist') ? context.type : undefined,
       contextId: context?.id,
       contextName: context?.name,
     };
@@ -455,7 +389,7 @@ export function useAudioPlayer() {
       timestamp: now,
     };
 
-    void apiClient.put(API_ENDPOINTS.player.progress, payload).catch((error: unknown) => {
+    void api.main.player.updateProgress(payload).catch((error: unknown) => {
       logger.error('Failed to persist playback progress', error);
     });
   }, []);
@@ -702,25 +636,22 @@ export function useAudioPlayer() {
         if (!currentTrack) return;
 
         // Fetch updated playlist songs
-        const response = await apiClient.get<{ success: boolean; data: Array<{ id: string; title: string; artist?: string; album?: string; coverUrl?: string; duration?: number; mimeType?: string }> }>(
-          API_ENDPOINTS.playlists.songs(playlistId)
-        );
+        const songs = await api.main.playlists.getSongs(playlistId);
 
-        if (!response.success || !response.data) {
+        if (!songs) {
           logger.warn('Failed to refresh playlist queue', { playlistId });
           return;
         }
 
-        const songs = response.data;
         const tracks: Track[] = songs.map((song) => ({
           id: song.id,
           title: song.title,
-          artist: song.artist,
-          album: song.album,
-          coverUrl: song.coverUrl,
-          duration: song.duration,
-          audioUrl: API_ENDPOINTS.songs.stream(song.id),
-          mimeType: song.mimeType,
+          artist: song.artist ?? undefined,
+          album: song.album ?? undefined,
+          coverUrl: song.coverUrl ?? undefined,
+          duration: song.file?.duration ?? undefined,
+          audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
+          mimeType: song.file?.mimeType ?? undefined,
         }));
 
         // Find current track index in new queue

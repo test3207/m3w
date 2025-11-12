@@ -6,29 +6,7 @@ import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import type { PlayContext } from '@/lib/audio/context';
 import type { Track } from '@/lib/audio/player';
 import { logger } from '@/lib/logger-client';
-import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
-
-type SeedContext = PlayContext;
-
-type SeedTrack = {
-  id: string;
-  title: string;
-  artist: string | null;
-  album: string | null;
-  coverUrl: string | null;
-  duration?: number | null;
-  audioUrl: string;
-  mimeType?: string | null;
-};
-
-interface SeedResponse {
-  success: boolean;
-  data: null | {
-    track: SeedTrack;
-    context: SeedContext;
-  };
-}
+import { api } from '@/services';
 
 export function PlaybackInitializer() {
   const { currentTrack, primeFromSeed } = useAudioPlayer();
@@ -44,13 +22,13 @@ export function PlaybackInitializer() {
 
     const bootstrap = async () => {
       try {
-        const payload = await apiClient.get<SeedResponse>(API_ENDPOINTS.player.seed);
+        const payload = await api.main.player.getSeed();
         
-        if (!payload.success || !payload.data || cancelled) {
+        if (!payload || cancelled) {
           return;
         }
 
-        const { track, context } = payload.data;
+        const { track, context } = payload;
         const normalizedTrack: Track = {
           id: track.id,
           title: track.title,
@@ -62,7 +40,13 @@ export function PlaybackInitializer() {
           mimeType: track.mimeType ?? undefined,
         };
 
-        primeFromSeed({ track: normalizedTrack, context });
+        const normalizedContext: PlayContext = {
+          type: context.type,
+          id: context.id,
+          name: context.name ?? '',
+        };
+
+        primeFromSeed({ track: normalizedTrack, context: normalizedContext });
       } catch (error) {
         logger.error('Failed to bootstrap playback', error);
       }

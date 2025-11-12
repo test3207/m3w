@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/constants/api-config";
+import { api } from "@/services";
+import { ApiError } from "@/lib/api/client";
 import { PLAYLISTS_QUERY_KEY } from "@/hooks/usePlaylists";
 import type { PlaylistOption } from "@/types/models";
 
@@ -45,10 +45,7 @@ function AddSongToPlaylistForm({ songId, songTitle, libraryId, playlists, onAddS
     setIsSubmitting(true);
 
     try {
-      await apiClient.post<{ success: boolean; error?: string }>(
-        API_ENDPOINTS.playlists.addSong(selectedPlaylistId),
-        { songId }
-      );
+      await api.main.playlists.addSong(selectedPlaylistId, { songId });
 
       const playlistName = playlists.find((playlist) => playlist.id === selectedPlaylistId)?.name;
 

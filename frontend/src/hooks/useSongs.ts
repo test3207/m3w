@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
-import type { Song, ApiResponse } from '@m3w/shared';
+import { api } from '@/services';
+import { calculateFileHash } from '@/lib/utils/hash';
 
 /**
  * Fetch songs for a specific library
@@ -10,8 +9,7 @@ export function useLibrarySongs(libraryId: string) {
   return useQuery({
     queryKey: ['library-songs', libraryId] as const,
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Song[]>>(API_ENDPOINTS.libraries.songs(libraryId));
-      return response.data ?? [];
+      return await api.main.libraries.getSongs(libraryId);
     },
     enabled: !!libraryId,
     staleTime: 60000,
@@ -25,8 +23,7 @@ export function usePlaylistSongs(playlistId: string) {
   return useQuery({
     queryKey: ['playlist-songs', playlistId] as const,
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Song[]>>(API_ENDPOINTS.playlists.songs(playlistId));
-      return response.data ?? [];
+      return await api.main.playlists.getSongs(playlistId);
     },
     enabled: !!playlistId,
     staleTime: 60000,
@@ -40,8 +37,7 @@ export function useSong(id: string) {
   return useQuery({
     queryKey: ['song', id] as const,
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Song>>(API_ENDPOINTS.songs.detail(id));
-      return response.data;
+      return await api.main.songs.getById(id);
     },
     enabled: !!id,
     staleTime: 300000, // Song metadata is more stable, cache for 5 minutes
@@ -56,11 +52,8 @@ export function useUploadSong() {
 
   return useMutation({
     mutationFn: async ({ libraryId, file }: { libraryId: string; file: File }) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('libraryId', libraryId);
-      const response = await apiClient.upload<ApiResponse<Song>>(API_ENDPOINTS.upload.file, formData);
-      return response.data!;
+      const hash = await calculateFileHash(file);
+      return await api.main.upload.uploadFile(libraryId, file, hash);
     },
     onSuccess: (_, { libraryId }) => {
       // Invalidate library songs to refetch with new song
@@ -78,8 +71,7 @@ export function useUpdateSong() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string; title?: string; artist?: string; album?: string }) => {
-      const response = await apiClient.patch<ApiResponse<Song>>(API_ENDPOINTS.songs.update(id), data);
-      return response.data!;
+      return await api.main.songs.update(id, data);
     },
     onSuccess: (updatedSong) => {
       // Update single song cache
@@ -99,7 +91,7 @@ export function useDeleteSong() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete<ApiResponse<void>>(API_ENDPOINTS.songs.delete(id));
+      await api.main.songs.delete(id);
       return id;
     },
     onSuccess: (deletedId) => {

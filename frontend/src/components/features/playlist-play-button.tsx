@@ -8,9 +8,8 @@ import type { PlayContext } from '@/lib/audio/context';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
-import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
-import type { PlaylistTrackResponse } from '@/types/models';
+import { api } from '@/services';
+import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
 
 interface PlaylistPlayButtonProps {
   playlistId: string;
@@ -26,11 +25,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
     try {
       setIsLoading(true);
 
-      const response = await apiClient.get<{ success: boolean; data: PlaylistTrackResponse[] }>(
-        API_ENDPOINTS.playlists.songs(playlistId)
-      );
-      
-      const tracks = response.data ?? [];
+      const tracks = await api.main.playlists.getSongs(playlistId);
 
       if (tracks.length === 0) {
         logger.warn('Playlist has no tracks', { playlistId });
@@ -46,9 +41,9 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
           artist: track.artist ?? undefined,
           album: track.album ?? undefined,
           coverUrl: track.coverUrl ?? undefined,
-          duration: track.duration ?? undefined,
-          audioUrl: API_ENDPOINTS.songs.stream(track.id),
-          mimeType: track.mimeType ?? undefined,
+          duration: track.file?.duration ?? undefined,
+          audioUrl: MAIN_API_ENDPOINTS.songs.stream(track.id),
+          mimeType: track.file?.mimeType ?? undefined,
         });
       }
 

@@ -18,8 +18,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
 import { logger } from '@/lib/logger-client';
-import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
+import { api } from '@/services';
 import { LIBRARIES_QUERY_KEY } from '@/hooks/useLibraries';
 import { PLAYLISTS_QUERY_KEY } from '@/hooks/usePlaylists';
 
@@ -46,14 +45,8 @@ export function DeleteSongButton({
     if (open && playlistCount === null) {
       // Fetch playlist count when dialog opens
       try {
-        const response = await apiClient.get<{
-          success: boolean;
-          data: { count: number };
-        }>(API_ENDPOINTS.songs.playlistCount(songId));
-        
-        if (response.success && response.data) {
-          setPlaylistCount(response.data.count);
-        }
+        const count = await api.main.songs.getPlaylistCount(songId);
+        setPlaylistCount(count);
       } catch (error) {
         logger.error('Failed to fetch playlist count', error);
         // Continue anyway, just don't show the count
@@ -65,7 +58,7 @@ export function DeleteSongButton({
     try {
       setIsDeleting(true);
 
-      await apiClient.delete(API_ENDPOINTS.songs.delete(songId));
+      await api.main.songs.delete(songId);
 
       toast({
         title: I18n.success.title,

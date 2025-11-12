@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/constants/api-config";
+import { api } from "@/services";
+import { ApiError } from "@/lib/api/client";
 import { PLAYLISTS_QUERY_KEY } from "@/hooks/usePlaylists";
 
 interface PlaylistSongControlsProps {
@@ -28,10 +28,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
     setIsPending(true);
     
     try {
-      await apiClient.post<{ success: boolean; message: string }>(
-        API_ENDPOINTS.playlists.reorderSongs(playlistId),
-        { songId, direction }
-      );
+      await api.main.playlists.reorderSong(playlistId, { songId, direction });
 
       toast({
         title: I18n.playlist.controls.toastMoveSuccessTitle,
@@ -66,9 +63,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
     setIsPending(true);
 
     try {
-      await apiClient.delete<{ success: boolean; message: string }>(
-        API_ENDPOINTS.playlists.removeSong(playlistId, songId)
-      );
+      await api.main.playlists.removeSong(playlistId, songId);
 
       toast({
         title: I18n.playlist.controls.toastRemoveSuccessTitle,

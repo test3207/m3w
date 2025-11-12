@@ -15,15 +15,15 @@ import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/constants/api-config";
-import type { Library } from "@/types/models";
+import { ApiError } from "@/lib/api/client";
+import { api } from "@/services";
+import type { Library } from "@m3w/shared";
 
 export default function LibrariesPage() {
   useLocale();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [libraries, setLibraries] = useState<Library[]>([]);
+  const [librariesList, setLibrariesList] = useState<Library[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -31,8 +31,8 @@ export default function LibrariesPage() {
   useEffect(() => {
     async function fetchLibraries() {
       try {
-        const data = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
-        setLibraries(data.data || []);
+        const data = await api.main.libraries.list();
+        setLibrariesList(data);
       } catch (error) {
         logger.error('Failed to fetch libraries', error);
         
@@ -62,14 +62,12 @@ export default function LibrariesPage() {
     const description = formData.get("description") as string;
 
     try {
-      const data = await apiClient.post<{ success: boolean; data: Library }>(API_ENDPOINTS.libraries.create, {
+      const newLibrary = await api.main.libraries.create({
         name: name.trim(),
         description: description.trim() || undefined,
       });
 
-      if (data.data) {
-        setLibraries(prev => [...prev, data.data]);
-      }
+      setLibrariesList(prev => [...prev, newLibrary]);
       
       formRef.current?.reset();
       toast({
@@ -166,7 +164,7 @@ export default function LibrariesPage() {
               <CardTitle>{I18n.library.manager.list.title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto">
-              {libraries.length === 0 ? (
+              {librariesList.length === 0 ? (
                 <EmptyState
                   icon="📚"
                   title={I18n.library.manager.list.emptyTitle}
@@ -181,7 +179,7 @@ export default function LibrariesPage() {
                 />
               ) : (
                 <ul role="list" className="flex flex-col gap-2">
-                  {libraries.map((library) => (
+                  {librariesList.map((library) => (
                     <li key={library.id}>
                       <ListItem
                         title={library.name}
@@ -215,7 +213,7 @@ export default function LibrariesPage() {
                             <DeleteLibraryButton
                               libraryId={library.id}
                               libraryName={library.name}
-                              onDeleted={() => setLibraries(prev => prev.filter(l => l.id !== library.id))}
+                              onDeleted={() => setLibrariesList(prev => prev.filter(l => l.id !== library.id))}
                             />
                           </HStack>
                         }

@@ -16,8 +16,7 @@ import { toast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
-import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
+import { api } from '@/services';
 
 interface DeleteLibraryButtonProps {
   libraryId: string;
@@ -34,7 +33,7 @@ export function DeleteLibraryButton({ libraryId, libraryName, onDeleted }: Delet
     setIsPending(true);
     
     try {
-      await apiClient.delete(API_ENDPOINTS.libraries.delete(libraryId));
+      await api.main.libraries.delete(libraryId);
 
       toast({
         title: I18n.library.manager.list.toastDeleteSuccessTitle,
