@@ -79,6 +79,11 @@
     "greetingWithName": "Hello {0}, welcome back!",
     "dateRange": "From {0} to {1}"
   },
+  "networkStatus": {
+    "online": "Online",
+    "offline": "Offline",
+    "syncing": "Syncing"
+  },
   "dashboard": {
     "title": "M3W Dashboard",
     "welcome": {

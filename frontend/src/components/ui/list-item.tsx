@@ -86,7 +86,11 @@ interface MetadataItemProps {
   variant?: "default" | "secondary" | "outline";
 }
 
-export function MetadataItem({ label, value, variant = "secondary" }: MetadataItemProps) {
+export function MetadataItem({
+  label,
+  value,
+  variant = "secondary",
+}: MetadataItemProps) {
   return (
     <Badge variant={variant} className="text-xs">
       {label}: {value}

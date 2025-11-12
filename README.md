@@ -233,6 +233,15 @@ m3w/
 │   ├── public/                   # Static assets (favicon, PWA icons)
 │   ├── src/
 │   │   ├── components/           # UI components (features, layouts, ui)
+│   │   │   ├── features/         # Feature-specific components
+│   │   │   │   ├── dashboard/    # Dashboard cards and initializers
+│   │   │   │   ├── network/      # Network status indicator
+│   │   │   │   ├── player/       # Mini player and playback controls
+│   │   │   │   ├── pwa/          # PWA prompts and utilities
+│   │   │   │   └── upload/       # Upload form and file handling
+│   │   │   ├── layouts/          # Layout components (navbar, shell)
+│   │   │   ├── providers/        # Context providers (auth, protected route)
+│   │   │   └── ui/               # shadcn/ui base components
 │   │   ├── hooks/                # React hooks (useAuthRefresh, etc.)
 │   │   ├── lib/                  # Client utilities and services
 │   │   │   ├── api/              # Low-level HTTP client

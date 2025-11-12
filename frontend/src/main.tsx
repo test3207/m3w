@@ -24,12 +24,12 @@ const UploadPage = lazy(() => import('./pages/UploadPage'));
 // Import UI components (keep these eager loaded as they're used globally)
 import { Toaster } from './components/ui/toaster';
 import { PageLoader } from './components/ui/page-loader';
-import { ProtectedRoute } from './components/ProtectedRoute';
+import { ProtectedRoute } from './components/providers/protected-route';
 import { ReloadPrompt } from './components/features/pwa/reload-prompt';
 import { InstallPrompt } from './components/features/pwa/install-prompt';
-import { NetworkStatusIndicator } from './components/features/network-status-indicator';
-import { DashboardLayout } from './components/layouts/DashboardLayout';
-import { AuthProvider } from './components/providers/AuthProvider';
+import { NetworkStatusIndicator } from './components/features/network/network-status-indicator';
+import { DashboardLayout } from './components/layouts/dashboard-layout';
+import { AuthProvider } from './components/providers/auth-provider';
 
 // Create QueryClient instance
 const queryClient = new QueryClient({

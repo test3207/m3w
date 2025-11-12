@@ -161,6 +161,14 @@ export interface Messages {
     /** From {0} to {1} */
     dateRange: string;
   };
+  networkStatus: {
+    /** Online */
+    online: string;
+    /** Offline */
+    offline: string;
+    /** Syncing */
+    syncing: string;
+  };
   dashboard: {
     /** M3W Dashboard */
     title: string;
