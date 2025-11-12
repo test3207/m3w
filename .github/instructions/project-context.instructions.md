@@ -63,6 +63,11 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - `streamApiClient` for binary data (audio streams, blobs, files)
   - Low-level `apiClient` for internal use only (wrapped by higher-level clients)
   - Complete migration from direct API calls to service layer pattern
+- **Network Status Monitoring**
+  - Integrated network status indicator in dashboard navbar
+  - Dual-layer detection: physical network (navigator.onLine) + backend API reachability
+  - Custom event system for real-time connectivity updates
+  - i18n support for status labels (online/offline/syncing)
 
 ### Active Initiatives (In Progress)
 - **Demo & Evaluation**
@@ -125,6 +130,15 @@ m3w/
 ├── frontend/                     # Vite frontend (React SPA)
 │   ├── src/
 │   │   ├── components/           # UI primitives, features, and layouts
+│   │   │   ├── features/         # Feature-specific components
+│   │   │   │   ├── dashboard/    # Dashboard cards and initializers
+│   │   │   │   ├── network/      # Network status indicator
+│   │   │   │   ├── player/       # Mini player and playback controls
+│   │   │   │   ├── pwa/          # PWA prompts and utilities
+│   │   │   │   └── upload/       # Upload form and file handling
+│   │   │   ├── layouts/          # Layout components (navbar, shell)
+│   │   │   ├── providers/        # Context providers (auth, etc.)
+│   │   │   └── ui/               # shadcn/ui base components
 │   │   ├── hooks/                # React hooks (useAuthRefresh, etc.)
 │   │   ├── lib/                  # Client utilities and services
 │   │   │   ├── api/              # Low-level HTTP client and routing
