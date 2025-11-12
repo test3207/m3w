@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 
-import { useAudioPlayer } from '@/lib/audio/useAudioPlayer';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import type { PlayContext } from '@/lib/audio/context';
 import type { Track } from '@/lib/audio/player';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api/api-config';
+import { API_ENDPOINTS } from '@/lib/constants/api-config';
 
 type SeedContext = PlayContext;
 

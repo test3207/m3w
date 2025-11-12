@@ -7,7 +7,7 @@ import { I18n } from '@/locales/i18n';
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger-client";
 import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/api/api-config";
+import { API_ENDPOINTS } from "@/lib/constants/api-config";
 import { PLAYLISTS_QUERY_KEY } from "@/hooks/usePlaylists";
 
 interface PlaylistSongControlsProps {

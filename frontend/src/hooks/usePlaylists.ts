@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api/api-config';
+import { API_ENDPOINTS } from '@/lib/constants/api-config';
 import type { Playlist, ApiResponse } from '@m3w/shared';
 
 export const PLAYLISTS_QUERY_KEY = ['playlists'] as const;

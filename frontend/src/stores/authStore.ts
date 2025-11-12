@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { API_ENDPOINTS } from '@/lib/api/api-config';
+import { API_ENDPOINTS } from '@/lib/constants/api-config';
 import { apiClient } from '@/lib/api/client';
 import { logger } from '@/lib/logger-client';
 

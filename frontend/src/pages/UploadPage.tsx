@@ -10,7 +10,7 @@ import { useLocale } from '@/locales/use-locale';
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/api/api-config";
+import { API_ENDPOINTS } from "@/lib/constants/api-config";
 import { LIBRARIES_QUERY_KEY } from "@/hooks/useLibraries";
 import type { Library, LibraryOption } from "@/types/models";
 

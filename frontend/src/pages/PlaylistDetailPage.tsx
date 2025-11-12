@@ -11,11 +11,11 @@ import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { formatDuration } from "@/lib/utils/format-duration";
 import { PlaylistSongControls } from "@/components/features/playlists/playlist-song-controls";
-import { useAudioPlayer } from "@/lib/audio/useAudioPlayer";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/api/api-config";
+import { API_ENDPOINTS } from "@/lib/constants/api-config";
 import type { Playlist, Song } from "@/types/models";
 
 export default function PlaylistDetailPage() {

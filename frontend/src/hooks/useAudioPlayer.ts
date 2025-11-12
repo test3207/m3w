@@ -10,10 +10,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { getAudioPlayer, type PlayerState, type Track } from '@/lib/audio/player';
 import { getPlayQueue, type RepeatMode } from '@/lib/audio/queue';
 import { getPlayContext, type PlayContext } from '@/lib/audio/context';
-import { useTrackPreloader } from '@/lib/audio/useTrackPreloader';
+import { useTrackPreloader } from '@/hooks/useTrackPreloader';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api/api-config';
+import { API_ENDPOINTS } from '@/lib/constants/api-config';
 
 interface PlaybackPreferencesResponse {
   success: boolean;

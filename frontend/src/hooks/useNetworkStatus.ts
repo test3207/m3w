@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getSyncQueueSize } from '../db/schema';
+import { getSyncQueueSize } from '../lib/db/schema';
 
 export function useNetworkStatus() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);

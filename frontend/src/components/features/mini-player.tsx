@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useAudioPlayer } from '@/lib/audio/useAudioPlayer';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { Button } from '@/components/ui/button';
 import { HStack, VStack } from '@/components/ui/stack';
 import { Repeat, Repeat1, Shuffle } from 'lucide-react';

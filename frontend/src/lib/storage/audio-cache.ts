@@ -10,7 +10,7 @@
 
 import { getStorageStatus, hasEnoughQuota } from './quota-manager';
 import { db } from '../db/schema';
-import { API_ENDPOINTS } from '../api/api-config';
+import { API_ENDPOINTS } from '../constants/api-config';
 import { apiClient } from '../api/client';
 import { logger } from '../logger-client';
 

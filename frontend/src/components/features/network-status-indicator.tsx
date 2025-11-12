@@ -4,7 +4,7 @@
  */
 
 import { Badge } from '@/components/ui/badge';
-import { useNetworkStatus } from '@/lib/hooks/use-network-status';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export function NetworkStatusIndicator() {
   const { isOnline, pendingSyncs } = useNetworkStatus();
