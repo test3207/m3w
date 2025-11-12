@@ -5,11 +5,9 @@
  * to IndexedDB for offline use. Runs on app startup, periodically, and after PWA install.
  */
 
-import { apiClient } from '../api/client';
-import { API_ENDPOINTS } from '../constants/api-config';
+import { api } from '@/services';
 import { db } from '../db/schema';
 import { logger } from '../logger-client';
-import type { Library, Playlist, Song } from '@m3w/shared';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const SYNC_STORAGE_KEY = 'm3w_last_sync_timestamp';
@@ -46,8 +44,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     logger.info('Starting metadata sync');
 
     // Fetch all libraries
-    const librariesResponse = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
-    const libraries = librariesResponse.data;
+    const libraries = await api.main.libraries.list();
     
     await db.libraries.bulkPut(
       libraries.map((lib) => ({
@@ -58,8 +55,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     logger.info('Libraries synced', { count: libraries.length });
 
     // Fetch all playlists
-    const playlistsResponse = await apiClient.get<{ success: boolean; data: Playlist[] }>(API_ENDPOINTS.playlists.list);
-    const playlists = playlistsResponse.data;
+    const playlists = await api.main.playlists.list();
     
     await db.playlists.bulkPut(
       playlists.map((playlist) => ({
@@ -73,8 +69,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     let totalSongs = 0;
     for (const library of libraries) {
       try {
-        const songsResponse = await apiClient.get<{ success: boolean; data: Song[] }>(API_ENDPOINTS.libraries.songs(library.id));
-        const songs = songsResponse.data;
+        const songs = await api.main.libraries.getSongs(library.id);
         
         await db.songs.bulkPut(
           songs.map((song) => ({
@@ -93,8 +88,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     let totalPlaylistSongs = 0;
     for (const playlist of playlists) {
       try {
-        const playlistSongsResponse = await apiClient.get<{ success: boolean; data: Array<Song & { order?: number }> }>(API_ENDPOINTS.playlists.songs(playlist.id));
-        const songs = playlistSongsResponse.data;
+        const songs = await api.main.playlists.getSongs(playlist.id);
         
         // Store playlist-song relationships with order
         await db.playlistSongs.bulkPut(
@@ -102,7 +96,7 @@ export async function syncMetadata(): Promise<SyncResult> {
             id: `${playlist.id}_${song.id}`,
             playlistId: playlist.id,
             songId: song.id,
-            order: song.order ?? index,
+            order: index, // Use index since Song doesn't have order field
             addedAt: new Date(),
             _syncStatus: 'synced' as const,
           }))

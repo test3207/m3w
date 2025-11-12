@@ -19,7 +19,17 @@ export interface ApiRequestOptions extends RequestInit {
 }
 
 /**
- * API client for making HTTP requests with consistent error handling
+ * Low-level API client for making HTTP requests with consistent error handling
+ * 
+ * ⚠️ This is a low-level client. Most business logic should use higher-level clients:
+ * - For JSON API calls: Use `mainApiClient` from @/services/api/main/client
+ * - For binary/stream data: Use `streamApiClient` from @/services/api/stream/client
+ * 
+ * This client handles:
+ * - Building URLs with base URL and query parameters
+ * - Setting common headers (Content-Type, Authorization via router)
+ * - Error handling and logging
+ * - Support for both JSON and non-JSON responses
  */
 class ApiClient {
   private baseURL: string;
@@ -193,6 +203,13 @@ class ApiClient {
   }
 }
 
+/**
+ * Low-level API client instance
+ * 
+ * ⚠️ Prefer using higher-level clients:
+ * - `mainApiClient` for JSON API calls
+ * - `streamApiClient` for binary/stream data
+ */
 // Use VITE_API_URL from environment for base URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 export const apiClient = new ApiClient(API_BASE_URL);

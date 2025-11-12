@@ -15,9 +15,10 @@ import { DeleteSongButton } from "@/components/features/libraries/delete-song-bu
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/constants/api-config";
-import type { Song, Library, PlaylistOption } from "@/types/models";
+import { api } from "@/services";
+import { ApiError } from "@/lib/api/client";
+import type { PlaylistOption } from "@/types/models";
+import type { Library, Song } from "@m3w/shared";
 
 export default function LibraryDetailPage() {
   useLocale();
@@ -28,7 +29,7 @@ export default function LibraryDetailPage() {
 
   const [library, setLibrary] = useState<Library | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
-  const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
+  const [playlistsList, setPlaylistsList] = useState<PlaylistOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -36,14 +37,14 @@ export default function LibraryDetailPage() {
     
     try {
       const [libraryData, songsData, playlistsData] = await Promise.all([
-        apiClient.get<{ success: boolean; data: Library }>(API_ENDPOINTS.libraries.detail(id)),
-        apiClient.get<{ success: boolean; data: Song[] }>(API_ENDPOINTS.libraries.songs(id)),
-        apiClient.get<{ success: boolean; data: PlaylistOption[] }>(API_ENDPOINTS.playlists.list),
+        api.main.libraries.getById(id),
+        api.main.libraries.getSongs(id),
+        api.main.playlists.list(),
       ]);
 
-      setLibrary(libraryData.data);
-      setSongs(songsData.data || []);
-      setPlaylists(playlistsData.data || []);
+      setLibrary(libraryData);
+      setSongs(songsData);
+      setPlaylistsList(playlistsData.map((p) => ({ id: p.id, name: p.name })));
     } catch (error) {
       logger.error('Failed to fetch library details', error);
       
@@ -98,7 +99,7 @@ export default function LibraryDetailPage() {
     );
   }
 
-  const playlistOptions = playlists.map((playlist) => ({ id: playlist.id, name: playlist.name }));
+  const playlistOptions = playlistsList.map((playlist) => ({ id: playlist.id, name: playlist.name }));
 
   return (
     <AdaptiveLayout
@@ -198,7 +199,7 @@ export default function LibraryDetailPage() {
               </ul>
             )}
 
-            {playlists.length === 0 ? (
+            {playlistsList.length === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">
                 {I18n.library.detail.noPlaylistsHelper}{" "}
                 <Link

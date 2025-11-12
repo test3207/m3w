@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import type { Track } from '@/lib/audio/player';
 import { logger } from '@/lib/logger-client';
-import { apiClient } from '@/lib/api/client';
+import { streamApiClient } from '@/services/api/main/stream-client';
 
 const MAX_PRELOADED_TRACKS = 5;
 
@@ -51,8 +51,8 @@ export function useTrackPreloader(limit: number = MAX_PRELOADED_TRACKS) {
 
       const preloadPromise: Promise<PreloadResult> = (async () => {
         try {
-          // Fetch audio through API client (handles auth and offline routing)
-          const response = await apiClient.get<Response>(track.audioUrl);
+          // Fetch audio through stream API client (handles auth and offline routing)
+          const response = await streamApiClient.get(track.audioUrl);
           
           if (!response.ok) {
             throw new Error(`Failed to fetch audio: ${response.status}`);

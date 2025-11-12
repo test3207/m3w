@@ -125,6 +125,7 @@ app.post('/libraries', async (c: Context) => {
       userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      _count: { songs: 0 },
       _syncStatus: 'pending',
     };
 
@@ -378,6 +379,7 @@ app.post('/playlists', async (c: Context) => {
       userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      _count: { songs: 0 },
       _syncStatus: 'pending',
     };
 

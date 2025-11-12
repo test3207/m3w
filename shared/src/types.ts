@@ -21,13 +21,14 @@ export interface Library {
   userId: string;
   createdAt: string; // ISO 8601 string from JSON serialization
   updatedAt: string; // ISO 8601 string from JSON serialization
-}
-
-export interface LibraryWithCount extends Library {
   _count: {
     songs: number;
   };
 }
+
+// Deprecated: Use Library directly as backend always includes _count
+/** @deprecated Backend always returns _count, use Library instead */
+export interface LibraryWithCount extends Library {}
 
 export interface CreateLibraryInput {
   name: string;
@@ -47,13 +48,14 @@ export interface Playlist {
   userId: string;
   createdAt: string; // ISO 8601 string from JSON serialization
   updatedAt: string; // ISO 8601 string from JSON serialization
-}
-
-export interface PlaylistWithCount extends Playlist {
   _count: {
     songs: number;
   };
 }
+
+// Deprecated: Use Playlist directly as backend always includes _count
+/** @deprecated Backend always returns _count, use Playlist instead */
+export interface PlaylistWithCount extends Playlist {}
 
 export interface CreatePlaylistInput {
   name: string;
@@ -82,7 +84,7 @@ export interface Song {
   libraryId: string;
   createdAt: string; // ISO 8601 string from JSON serialization
   updatedAt: string; // ISO 8601 string from JSON serialization
-  // Fields from file relation (included when returned by backend)
+  // Optional relations (included when queried with include)
   file?: {
     id: string;
     hash: string;
@@ -93,6 +95,10 @@ export interface Song {
     bitrate: number | null;
     sampleRate: number | null;
     channels: number | null;
+  };
+  library?: {
+    id: string;
+    name: string;
   };
 }
 

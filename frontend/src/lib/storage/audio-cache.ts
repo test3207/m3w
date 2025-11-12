@@ -10,8 +10,8 @@
 
 import { getStorageStatus, hasEnoughQuota } from './quota-manager';
 import { db } from '../db/schema';
-import { API_ENDPOINTS } from '../constants/api-config';
-import { apiClient } from '../api/client';
+import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
+import { streamApiClient } from '../../services/api/main/stream-client';
 import { logger } from '../logger-client';
 
 const AUDIO_CACHE_NAME = 'm3w-audio-cache-v1';
@@ -84,8 +84,8 @@ export async function cacheSong(
       status: 'downloading',
     });
 
-    // Fetch the audio file using apiClient (returns Response for non-JSON)
-    const response = await apiClient.get<Response>(API_ENDPOINTS.songs.stream(songId));
+    // Fetch the audio file using stream API client (returns Response for binary data)
+    const response = await streamApiClient.get(MAIN_API_ENDPOINTS.songs.stream(songId));
     if (!response.ok) {
       throw new Error(`Failed to fetch audio: ${response.statusText}`);
     }
@@ -95,7 +95,7 @@ export async function cacheSong(
 
     // Cache the response
     const cache = await getAudioCache();
-    await cache.put(API_ENDPOINTS.songs.stream(songId), responseClone);
+    await cache.put(MAIN_API_ENDPOINTS.songs.stream(songId), responseClone);
 
     onProgress?.({
       songId,
@@ -148,7 +148,7 @@ export async function cacheSongs(
 export async function isSongCached(songId: string): Promise<boolean> {
   try {
     const cache = await getAudioCache();
-    const response = await cache.match(API_ENDPOINTS.songs.stream(songId));
+    const response = await cache.match(MAIN_API_ENDPOINTS.songs.stream(songId));
     return response !== undefined;
   } catch (error) {
     logger.error('Error checking cache', { songId, error });
@@ -162,7 +162,7 @@ export async function isSongCached(songId: string): Promise<boolean> {
 export async function removeCachedSong(songId: string): Promise<boolean> {
   try {
     const cache = await getAudioCache();
-    const deleted = await cache.delete(API_ENDPOINTS.songs.stream(songId));
+    const deleted = await cache.delete(MAIN_API_ENDPOINTS.songs.stream(songId));
     
     if (deleted) {
       logger.info('Removed cached song', { songId });

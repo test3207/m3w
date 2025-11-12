@@ -235,8 +235,17 @@ m3w/
 │   │   ├── components/           # UI components (features, layouts, ui)
 │   │   ├── hooks/                # React hooks (useAuthRefresh, etc.)
 │   │   ├── lib/                  # Client utilities and services
+│   │   │   ├── api/              # Low-level HTTP client
+│   │   │   ├── audio/            # Audio player and queue management
+│   │   │   └── logger-client.ts  # Client-side logging
 │   │   ├── locales/              # i18n message catalogs
 │   │   ├── pages/                # React Router page components
+│   │   ├── services/             # Service layer (API clients)
+│   │   │   └── api/              # API service with layered architecture
+│   │   │       └── main/         # Main API client layer
+│   │   │           ├── client.ts         # JSON API client
+│   │   │           ├── stream-client.ts  # Binary data client
+│   │   │           └── resources/        # API resource services
 │   │   ├── stores/               # Zustand state stores
 │   │   └── main.tsx              # Vite entry point
 │   ├── .env                      # Frontend environment variables (git-ignored)
@@ -511,8 +520,10 @@ See `.github/copilot-instructions.md` for architecture details and deployment st
 
 ## Additional Documentation
 
+- [Frontend API Client Architecture](./frontend/src/services/api/README.md) - Layered API client design and usage patterns
 - [Podman Setup Guide](./docs/PODMAN.md) - Detailed Podman installation and usage
 - [China Registry Configuration](./docs/CHINA_REGISTRY.md) - Proxy and mirror setup for China users
+- [i18n System Guide](./.github/instructions/i18n-system.instructions.md) - Internationalization implementation details
 
 ## License
 

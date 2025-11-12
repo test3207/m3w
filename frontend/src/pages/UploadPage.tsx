@@ -9,33 +9,32 @@ import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/constants/api-config";
+import { api } from "@/services";
+import { ApiError } from "@/lib/api/client";
 import { LIBRARIES_QUERY_KEY } from "@/hooks/useLibraries";
-import type { Library, LibraryOption } from "@/types/models";
+import type { LibraryOption } from "@/types/models";
 
 export default function UploadPage() {
   useLocale();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [libraries, setLibraries] = useState<LibraryOption[]>([]);
+  const [librariesList, setLibrariesList] = useState<LibraryOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchLibraries = async () => {
       try {
-        const data = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
-        const libs: Library[] = data.data || [];
+        const data = await api.main.libraries.list();
         
-        const libraryOptions = libs.map((library) => ({
+        const libraryOptions = data.map((library) => ({
           id: library.id,
           name: library.name,
           description: library.description ?? null,
           songCount: library._count?.songs ?? 0,
         }));
         
-        setLibraries(libraryOptions);
+        setLibrariesList(libraryOptions);
       } catch (error) {
         logger.error('Failed to fetch libraries', error);
         
@@ -58,17 +57,16 @@ export default function UploadPage() {
 
   const refetchLibraries = async () => {
     try {
-      const data = await apiClient.get<{ success: boolean; data: Library[] }>(API_ENDPOINTS.libraries.list);
-      const libs: Library[] = data.data || [];
+      const data = await api.main.libraries.list();
       
-      const libraryOptions = libs.map((library) => ({
+      const libraryOptions = data.map((library) => ({
         id: library.id,
         name: library.name,
         description: library.description ?? null,
-        songCount: library._count?.songs ?? 0,
+        songCount: library._count.songs,
       }));
       
-      setLibraries(libraryOptions);
+      setLibrariesList(libraryOptions);
       
       // Invalidate TanStack Query cache to update dashboard counts
       queryClient.invalidateQueries({ queryKey: LIBRARIES_QUERY_KEY });
@@ -120,12 +118,12 @@ export default function UploadPage() {
             <CardTitle>{I18n.upload.page.cardTitle}</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto">
-            {libraries.length === 0 ? (
+            {librariesList.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {I18n.upload.page.emptyState}
               </p>
             ) : (
-              <UploadSongForm libraries={libraries} onUploadSuccess={refetchLibraries} />
+              <UploadSongForm libraries={librariesList} onUploadSuccess={refetchLibraries} />
             )}
           </CardContent>
         </Card>

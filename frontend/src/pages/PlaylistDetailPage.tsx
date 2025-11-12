@@ -14,9 +14,9 @@ import { PlaylistSongControls } from "@/components/features/playlists/playlist-s
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { apiClient, ApiError } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/constants/api-config";
-import type { Playlist, Song } from "@/types/models";
+import { api } from "@/services";
+import { ApiError } from "@/lib/api/client";
+import type { Playlist, Song } from "@m3w/shared";
 
 export default function PlaylistDetailPage() {
   useLocale();
@@ -34,12 +34,12 @@ export default function PlaylistDetailPage() {
 
     try {
       const [playlistData, songsData] = await Promise.all([
-        apiClient.get<{ success: boolean; data: Playlist }>(API_ENDPOINTS.playlists.detail(id)),
-        apiClient.get<{ success: boolean; data: Song[] }>(API_ENDPOINTS.playlists.songs(id)),
+        api.main.playlists.getById(id),
+        api.main.playlists.getSongs(id),
       ]);
 
-      setPlaylist(playlistData.data);
-      setSongs(songsData.data || []);
+      setPlaylist(playlistData);
+      setSongs(songsData);
     } catch (error) {
       logger.error('Failed to fetch playlist', error);
       

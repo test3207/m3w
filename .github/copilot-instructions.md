@@ -3,7 +3,7 @@
 ## Metadata
 
 **Created**: 2025-11-06  
-**Last Updated**: 2025-11-10
+**Last Updated**: 2025-11-12
 
 ## Mission Snapshot
 
@@ -11,6 +11,7 @@
 - Immediate roadmap covers upload deduplication, playlist management, offline caching polish, and the first user-testing deployment.
 - Core stack: Vite 5 + React 19 (frontend), Hono 4 + Node.js (backend), Prisma/PostgreSQL, MinIO, Redis (reserved), shadcn/ui, Tailwind CSS v4, PWA (planned), Dexie IndexedDB (planned).
 - Internationalization: Custom Proxy-based i18n system with full type safety and reactive language switching.
+- Frontend API: Unified service layer with type-safe clients (see project-context for details).
 
 ## Quick Reference (Hard Rules)
 
@@ -48,6 +49,7 @@
 
 - Keep business logic inside `backend/src/lib/services`; API routes stay thin wrappers.
 - API routes return `{ status, message, data? }` for consistent error handling; client components convert these into toasts.
+- Frontend API calls use `api.main.*` service layer (JSON) or `streamApiClient` (binary data); never use `apiClient` directly in business logic.
 - Trigger toasts only from the client layer; never emit them directly inside API handlers.
 - All user-facing text must use the i18n system (`I18n.category.key`); never hardcode strings.
 - Client components using i18n must call `useLocale()` to respond to language changes; API routes only need `I18n` import.
@@ -60,6 +62,7 @@
 - API response pattern: [server-action-pattern.instructions.md](./instructions/server-action-pattern.instructions.md)
 - UI feedback workflow: [ui-feedback-workflow.instructions.md](./instructions/ui-feedback-workflow.instructions.md)
 - i18n system: [i18n-system.instructions.md](./instructions/i18n-system.instructions.md)
+- Frontend API client architecture: [frontend/src/services/api/README.md](../frontend/src/services/api/README.md)
 - Vite Documentation: <https://vitejs.dev/>
 - React Router Documentation: <https://reactrouter.com/>
 - Hono Documentation: <https://hono.dev/>
@@ -67,5 +70,5 @@
 - Tailwind CSS: <https://tailwindcss.com/docs>
 - TypeScript Handbook: <https://www.typescriptlang.org/docs/>
 
-**Document Version**: v3.0  
-**Last Updated**: 2025-11-10
+**Document Version**: v3.1  
+**Last Updated**: 2025-11-12

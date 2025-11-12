@@ -10,8 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { logger } from '@/lib/logger-client';
-import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/constants/api-config';
+import { api } from '@/services';
 
 interface DashboardUserMenuProps {
   name?: string | null;
@@ -31,7 +30,7 @@ export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps
 
   async function handleSignOut() {
     try {
-      await apiClient.post(API_ENDPOINTS.auth.signout);
+      await api.main.auth.signout();
       navigate('/');
     } catch (error) {
       logger.error('Sign out failed', error);
