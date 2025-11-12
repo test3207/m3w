@@ -2,17 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
+import type { AuthTokens } from '@m3w/shared';
 import type { User as ApiUser } from '@/services/api/main/resources/auth';
 
 export type User = ApiUser & {
   image?: string | null;
 };
-
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken?: string;
-  expiresAt: number; // Unix timestamp
-}
 
 interface AuthState {
   user: User | null;

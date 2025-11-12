@@ -32,6 +32,13 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
 - Toast feedback system unified via `use-toast` store and wired into playlist and library dashboard actions
 - Audio streaming via API proxy with Range request support (MinIO access internalized)
 - Internationalization (i18n) system with custom Proxy-based architecture, build tooling, and reactive language switching
+- **PWA Integration**
+  - Service Worker with Workbox for offline caching
+  - IndexedDB via Dexie for offline data storage
+  - Audio file caching with progress tracking
+  - Metadata sync queue for offline mutations
+  - Storage quota monitoring and management
+  - Offline-capable router with fallback to IndexedDB proxy
 - **Vite Migration Complete**
   - All pages migrated: Dashboard, Libraries, Playlists, Upload, Detail pages
   - React Router 6 implementation with dynamic routes
@@ -77,8 +84,10 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Enhanced user profile management
   - Redis integration for caching
   - Testing expansion (Playwright end-to-end, coverage targets)
-- **Offline & Client Experience**
-  - Full PWA integration with offline-first playback and caching flows
+- **PWA Enhancements**
+  - Background sync for offline mutations
+  - Push notifications for sync status
+  - Advanced cache strategies and eviction policies
 - **Observability & Operations**
   - Observability stack with Elasticsearch, Logstash, and Kibana for future production monitoring
 

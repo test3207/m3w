@@ -1,7 +1,19 @@
 /**
  * API Contracts for M3W project
- * Defines route definitions with offline capability flags
- * Used by backend, frontend offline proxy, and Service Worker
+ * 
+ * Defines route definitions with offline capability flags to ensure:
+ * 1. Backend and offline-proxy implement the same API surface
+ * 2. Router knows which routes can fallback to IndexedDB when offline
+ * 3. Clear documentation of which operations work without network
+ * 
+ * Used by:
+ * - frontend/src/lib/api/router.ts - Route requests between backend and offline proxy
+ * - frontend/src/lib/offline-proxy/index.ts - Implements offline-capable routes
+ * 
+ * Contract enforcement:
+ * - Route paths and methods must match between backend and offline-proxy
+ * - Zod schemas in shared/src/schemas.ts ensure request/response consistency
+ * - TypeScript types in shared/src/types.ts enforce data structure compatibility
  */
 
 export interface RouteDefinition {

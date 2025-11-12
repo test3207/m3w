@@ -17,7 +17,7 @@
 
 ## Testing and Type Safety
 - Favor complete objects or factory helpers in tests to satisfy type constraints instead of chaining `as unknown as`.
-- Introduce named aliases (for example `LibraryWithCount`) for composite shapes to keep intent clear.
+- Introduce named type aliases for composite shapes to keep intent clear.
 - Align mock return values with their interfaces; if a gap is unavoidable, use a single `as` with a clarifying comment.
 - Extend shared fixtures in `frontend/src/test/fixtures/metadata.ts` and `backend/src/test/fixtures/prisma.ts` before creating new mock data sources.
 
@@ -31,7 +31,7 @@
 - Container environments use `.env.docker` with `host.containers.internal` to access host services; local development uses `.env` with `localhost`.
 - When the production container joins the docker-compose network (`m3w_default`), use container service names (`m3w-postgres`, `m3w-redis`, `m3w-minio`) instead of `host.containers.internal`.
 - Authentication uses JWT tokens with GitHub OAuth; no session database.
-- Offline-first architecture planned with IndexedDB via Dexie and Service Worker for PWA.
+- PWA with offline-first architecture using IndexedDB via Dexie and Service Worker with Workbox.
 - User feedback flows through the toast store defined in `frontend/src/components/ui/use-toast.ts` with a single `<Toaster />` in `frontend/src/main.tsx`.
 
 ## TypeScript Standards

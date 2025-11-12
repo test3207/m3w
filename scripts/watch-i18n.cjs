@@ -29,7 +29,8 @@ function rebuild() {
   isBuilding = true;
   console.log('🔨 Detected change, rebuilding i18n...');
   
-  exec('node scripts/build-i18n.cjs', (error, stdout, stderr) => {
+  const buildScript = path.join(__dirname, 'build-i18n.cjs');
+  exec(`node "${buildScript}"`, (error, stdout, stderr) => {
     if (error) {
       console.error('❌ Build failed:', error);
       console.error(stderr);

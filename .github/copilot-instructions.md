@@ -42,7 +42,7 @@
 ## Core Context Highlights
 
 - **Architecture**: Separated frontend/backend with Vite SPA frontend and Hono REST API backend, Prisma for PostgreSQL, MinIO for deduplicated audio storage, Redis earmarked for caching.
-- **Primary domains**: Library management, playlist authoring and ordering, upload deduplication with metadata extraction, offline playback (planned) via IndexedDB and Service Worker.
+- **Primary domains**: Library management, playlist authoring and ordering, upload deduplication with metadata extraction, offline playback via IndexedDB and Service Worker.
 - **Current phase**: Vite migration complete, development environment operational. Next milestones include PWA integration, richer user profile data, Redis-backed caching, stronger automated testing, and CI/CD rollout.
 
 ## Working Agreements

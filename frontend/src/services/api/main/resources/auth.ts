@@ -4,6 +4,10 @@
 
 import { mainApiClient } from '../client';
 import { MAIN_API_ENDPOINTS } from '../endpoints';
+import type { AuthTokens } from '@m3w/shared';
+
+// Re-export shared types for convenience
+export type { AuthTokens };
 
 export interface User {
   id: string;
@@ -12,11 +16,6 @@ export interface User {
   avatarUrl?: string;
   githubId: string;
   createdAt: string;
-}
-
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
 }
 
 export interface RefreshTokenResponse {
