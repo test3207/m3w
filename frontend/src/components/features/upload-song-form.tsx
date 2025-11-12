@@ -9,7 +9,7 @@ import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { apiClient } from "@/lib/api/client";
-import { API_ENDPOINTS } from "@/lib/api/api-config";
+import { API_ENDPOINTS } from "@/lib/constants/api-config";
 import type { LibraryOption } from "@/types/models";
 import { CheckCircle2, XCircle, Loader2, Music } from "lucide-react";
 

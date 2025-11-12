@@ -1,13 +1,13 @@
 /**
- * PWA Registration Hook
+ * Service Worker Registration Hook
  * Registers service worker and handles updates
  */
 
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { logger } from '../logger-client';
+import { logger } from '@/lib/logger-client';
 
-export function usePWA() {
+export function useServiceWorker() {
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],

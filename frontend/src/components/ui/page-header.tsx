@@ -1,6 +1,6 @@
 import * as React from "react";
 import { VStack } from "./stack";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 interface PageHeaderProps extends React.HTMLAttributes<HTMLElement> {
   /**

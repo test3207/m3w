@@ -1,7 +1,7 @@
 import * as React from "react";
 import { HStack, VStack } from "./stack";
 import { Badge } from "./badge";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 interface ListItemProps extends React.HTMLAttributes<HTMLElement> {
   /**

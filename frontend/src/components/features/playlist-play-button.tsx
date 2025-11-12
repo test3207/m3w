@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useAudioPlayer } from '@/lib/audio/useAudioPlayer';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import type { Track } from '@/lib/audio/player';
 import type { PlayContext } from '@/lib/audio/context';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api/api-config';
+import { API_ENDPOINTS } from '@/lib/constants/api-config';
 import type { PlaylistTrackResponse } from '@/types/models';
 
 interface PlaylistPlayButtonProps {

@@ -19,7 +19,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
 import { logger } from '@/lib/logger-client';
 import { apiClient } from '@/lib/api/client';
-import { API_ENDPOINTS } from '@/lib/api/api-config';
+import { API_ENDPOINTS } from '@/lib/constants/api-config';
 import { LIBRARIES_QUERY_KEY } from '@/hooks/useLibraries';
 import { PLAYLISTS_QUERY_KEY } from '@/hooks/usePlaylists';
 

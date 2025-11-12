@@ -5,10 +5,10 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { usePWA } from '@/lib/pwa/use-pwa';
+import { useServiceWorker } from '@/hooks/useServiceWorker';
 
 export function ReloadPrompt() {
-  const { offlineReady, needRefresh, updateServiceWorker, close } = usePWA();
+  const { offlineReady, needRefresh, updateServiceWorker, close } = useServiceWorker();
 
   if (!offlineReady && !needRefresh) {
     return null;

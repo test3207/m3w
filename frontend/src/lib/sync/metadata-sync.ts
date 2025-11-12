@@ -6,7 +6,7 @@
  */
 
 import { apiClient } from '../api/client';
-import { API_ENDPOINTS } from '../api/api-config';
+import { API_ENDPOINTS } from '../constants/api-config';
 import { db } from '../db/schema';
 import { logger } from '../logger-client';
 import type { Library, Playlist, Song } from '@m3w/shared';
