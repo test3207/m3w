@@ -17,7 +17,15 @@ interface ContainerProps extends React.HTMLAttributes<HTMLElement> {
   /**
    * Semantic HTML element
    */
-  as?: "div" | "section" | "article" | "main" | "aside" | "header" | "footer" | "nav";
+  as?:
+    | "div"
+    | "section"
+    | "article"
+    | "main"
+    | "aside"
+    | "header"
+    | "footer"
+    | "nav";
 }
 
 const maxWidthMap = {
@@ -45,7 +53,7 @@ const paddingMap = {
 export const Container = React.forwardRef<HTMLElement, ContainerProps>(
   (
     {
-  maxWidth = "responsive",
+      maxWidth = "responsive",
       centered = true,
       padding = "md",
       as: Component = "div",

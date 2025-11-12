@@ -74,10 +74,15 @@
     "deletingLabel": "删除中...",
     "uploadingLabel": "上传中...",
     "savingLabel": "保存中...",
-    "confirmDeletePlaylist": "确定要删除此播放列表吗？",
-    "itemsCount": "共 {0} 项",
-    "greetingWithName": "你好 {0}，欢迎回来！",
+    "confirmDeletePlaylist": "确定要删除此播放列表吗?",
+    "itemsCount": "{0} 项",
+    "greetingWithName": "你好 {0},欢迎回来!",
     "dateRange": "从 {0} 到 {1}"
+  },
+  "networkStatus": {
+    "online": "在线",
+    "offline": "离线",
+    "syncing": "同步中"
   },
   "dashboard": {
     "title": "M3W 控制台",

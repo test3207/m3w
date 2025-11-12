@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { logger } from '@/lib/logger-client';
 import { api } from '@/services';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 interface DashboardUserMenuProps {
   name?: string | null;
@@ -19,6 +21,7 @@ interface DashboardUserMenuProps {
 }
 
 export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps) {
+  useLocale();
   const navigate = useNavigate();
   const displayName = name ?? email;
   const initials = (name || email)
@@ -43,7 +46,7 @@ export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden">
             <Menu className="h-5 w-5" />
-            <span className="sr-only">Open user menu</span>
+            <span className="sr-only">{I18n.dashboard.navbar.signOut}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60 space-y-1 md:hidden">
@@ -61,7 +64,7 @@ export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps
           <DropdownMenuItem asChild>
             <button onClick={handleSignOut} className="flex w-full items-center gap-2 text-left">
               <LogOut className="h-4 w-4" />
-              <span>Sign out</span>
+              <span suppressHydrationWarning>{I18n.dashboard.navbar.signOut}</span>
             </button>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -79,11 +82,11 @@ export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps
           </div>
         </div>
         <Button onClick={handleSignOut} size="sm" variant="outline" className="hidden lg:inline-flex">
-          Sign out
+          <span suppressHydrationWarning>{I18n.dashboard.navbar.signOut}</span>
         </Button>
         <Button onClick={handleSignOut} size="icon" variant="ghost" className="lg:hidden">
           <LogOut className="h-5 w-5" />
-          <span className="sr-only">Sign out</span>
+          <span className="sr-only" suppressHydrationWarning>{I18n.dashboard.navbar.signOut}</span>
         </Button>
       </div>
     </div>

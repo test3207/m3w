@@ -161,7 +161,7 @@ const response = await mainApiClient.get('/api/songs/123/stream');
 
 ## File Structure
 
-```
+```Text
 src/
 ├── lib/
 │   └── api/

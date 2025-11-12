@@ -7,6 +7,7 @@ import { useLocale } from "@/locales/use-locale";
 import { Sparkles } from "lucide-react";
 import { DashboardUserMenu } from "./dashboard-user-menu";
 import { LanguageSwitcher } from "./language-switcher";
+import { NetworkStatusIndicator } from "@/components/features/network/network-status-indicator";
 import { useAuthStore } from "@/stores/authStore";
 
 export function DashboardNavbar() {
@@ -45,6 +46,7 @@ export function DashboardNavbar() {
               <Sparkles className="h-4 w-4 text-primary" />
               <span suppressHydrationWarning>{I18n.dashboard.badgeProductionReady}</span>
             </div>
+            <NetworkStatusIndicator />
           </div>
 
           <div className="flex items-center gap-2">

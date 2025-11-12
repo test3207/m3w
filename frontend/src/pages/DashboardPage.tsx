@@ -9,7 +9,7 @@ import {
   LibrariesCard,
   PlaylistsCard,
   StorageCard,
-} from "@/components/features/dashboard-cards";
+} from "@/components/features/dashboard/dashboard-cards";
 import { useLibraries } from "@/hooks/useLibraries";
 import { usePlaylists } from "@/hooks/usePlaylists";
 import { HttpStatusCode } from "@/lib/constants/http-status";

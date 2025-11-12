@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { DashboardLayoutShell } from './dashboard-layout-shell';
 import { DashboardNavbar } from './dashboard-navbar';
-import { MiniPlayer } from '@/components/features/mini-player';
+import { MiniPlayer } from '@/components/features/player/mini-player';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

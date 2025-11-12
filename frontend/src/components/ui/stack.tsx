@@ -25,7 +25,15 @@ interface StackProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
    * Whether to render as semantic element
    */
-  as?: "div" | "section" | "article" | "nav" | "header" | "footer" | "main" | "aside";
+  as?:
+    | "div"
+    | "section"
+    | "article"
+    | "nav"
+    | "header"
+    | "footer"
+    | "main"
+    | "aside";
 }
 
 const gapMap = {
@@ -100,17 +108,19 @@ Stack.displayName = "Stack";
 /**
  * HStack - Horizontal stack shorthand
  */
-export const HStack = React.forwardRef<HTMLDivElement, Omit<StackProps, "direction">>(
-  (props, ref) => <Stack ref={ref} direction="horizontal" {...props} />
-);
+export const HStack = React.forwardRef<
+  HTMLDivElement,
+  Omit<StackProps, "direction">
+>((props, ref) => <Stack ref={ref} direction="horizontal" {...props} />);
 
 HStack.displayName = "HStack";
 
 /**
  * VStack - Vertical stack shorthand
  */
-export const VStack = React.forwardRef<HTMLDivElement, Omit<StackProps, "direction">>(
-  (props, ref) => <Stack ref={ref} direction="vertical" {...props} />
-);
+export const VStack = React.forwardRef<
+  HTMLDivElement,
+  Omit<StackProps, "direction">
+>((props, ref) => <Stack ref={ref} direction="vertical" {...props} />);
 
 VStack.displayName = "VStack";

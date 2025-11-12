@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
-import { UploadSongForm } from "@/components/features/upload-song-form";
+import { UploadSongForm } from "@/components/features/upload/upload-song-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { I18n } from '@/locales/i18n';

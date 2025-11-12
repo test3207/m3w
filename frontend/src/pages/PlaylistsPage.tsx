@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListItem, MetadataItem } from "@/components/ui/list-item";
 import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
-import { PlaylistPlayButton } from "@/components/features/playlist-play-button";
+import { PlaylistPlayButton } from "@/components/features/player/playlist-play-button";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { ApiError } from "@/lib/api/client";

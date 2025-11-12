@@ -40,7 +40,7 @@ export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
       >
         <VStack gap="md" align="center">
           {icon && <div className="text-4xl text-muted-foreground">{icon}</div>}
-          
+
           <VStack gap="xs" align="center">
             <h3 className="text-lg font-semibold">{title}</h3>
             {description && (

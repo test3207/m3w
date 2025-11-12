@@ -2,12 +2,15 @@ import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/stores/authStore';
 import { Card, CardContent } from '@/components/ui/card';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  useLocale();
   const { isAuthenticated, isLoading, checkAuth } = useAuth();
   const location = useLocation();
 
@@ -20,7 +23,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       <div className="flex items-center justify-center min-h-screen">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground" suppressHydrationWarning>
+              {I18n.common.loadingLabel}
+            </p>
           </CardContent>
         </Card>
       </div>

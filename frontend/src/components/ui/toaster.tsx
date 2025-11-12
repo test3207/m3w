@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Toast,
   ToastClose,
@@ -28,7 +26,9 @@ function Toaster() {
           >
             <div className="grid gap-1">
               {title ? <ToastTitle>{title}</ToastTitle> : null}
-              {description ? <ToastDescription>{description}</ToastDescription> : null}
+              {description ? (
+                <ToastDescription>{description}</ToastDescription>
+              ) : null}
             </div>
             {action}
             <ToastClose />
