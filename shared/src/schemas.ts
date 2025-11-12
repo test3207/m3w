@@ -16,6 +16,10 @@ export const updateLibrarySchema = z.object({
   description: z.string().max(1000).optional().nullable(),
 });
 
+export const libraryIdSchema = z.object({
+  id: z.string().min(1, 'Invalid library ID'),
+});
+
 // Playlist schemas
 export const createPlaylistSchema = z.object({
   name: z.string().min(1, 'Playlist name is required').max(255),
@@ -25,6 +29,10 @@ export const createPlaylistSchema = z.object({
 export const updatePlaylistSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(1000).optional().nullable(),
+});
+
+export const playlistIdSchema = z.object({
+  id: z.string().min(1, 'Invalid playlist ID'),
 });
 
 // Song schemas
@@ -41,7 +49,20 @@ export const updateSongSchema = z.object({
   coverUrl: z.string().url().optional().nullable(),
 });
 
+export const songIdSchema = z.object({
+  id: z.string().min(1, 'Invalid song ID'),
+});
+
 // Playlist-Song operations
+export const addSongToPlaylistSchema = z.object({
+  songId: z.string().min(1, 'Invalid song ID'),
+  position: z.number().int().nonnegative().optional(),
+});
+
+export const removeSongFromPlaylistSchema = z.object({
+  songId: z.string().min(1, 'Invalid song ID'),
+});
+
 export const reorderPlaylistSongSchema = z.object({
   songId: z.string().min(1, 'Invalid song ID'),
   direction: z.enum(['up', 'down'], {
@@ -49,9 +70,7 @@ export const reorderPlaylistSongSchema = z.object({
   }),
 });
 
-// Schemas removed (unused):
-// - libraryIdSchema, playlistIdSchema, songIdSchema
-// - createSongSchema, addSongToPlaylistSchema, removeSongFromPlaylistSchema
-// - uploadSongMetadataSchema, paginationSchema
+// Schemas removed (unused by backend):
+// - createSongSchema, uploadSongMetadataSchema, paginationSchema
 // - loginSchema, refreshTokenSchema
 // These can be added back when needed for specific features
