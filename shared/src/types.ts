@@ -26,10 +26,6 @@ export interface Library {
   };
 }
 
-// Deprecated: Use Library directly as backend always includes _count
-/** @deprecated Backend always returns _count, use Library instead */
-export interface LibraryWithCount extends Library {}
-
 export interface CreateLibraryInput {
   name: string;
   description?: string | null;
@@ -52,10 +48,6 @@ export interface Playlist {
     songs: number;
   };
 }
-
-// Deprecated: Use Playlist directly as backend always includes _count
-/** @deprecated Backend always returns _count, use Playlist instead */
-export interface PlaylistWithCount extends Playlist {}
 
 export interface CreatePlaylistInput {
   name: string;
@@ -102,21 +94,6 @@ export interface Song {
   };
 }
 
-export interface CreateSongInput {
-  title: string;
-  artist?: string | null;
-  album?: string | null;
-  albumArtist?: string | null;
-  year?: number | null;
-  genre?: string | null;
-  trackNumber?: number | null;
-  discNumber?: number | null;
-  composer?: string | null;
-  coverUrl?: string | null;
-  fileId: string;
-  libraryId: string;
-}
-
 export interface UpdateSongInput {
   title?: string;
   artist?: string | null;
@@ -130,51 +107,23 @@ export interface UpdateSongInput {
   coverUrl?: string | null;
 }
 
-// Playlist-Song association
-export interface PlaylistSong {
-  id: string;
-  playlistId: string;
-  songId: string;
-  position: number;
-  addedAt: Date;
-}
-
+// Playlist-Song operations
 export interface AddSongToPlaylistInput {
   songId: string;
   position?: number;
 }
 
-// File types
-export interface FileRecord {
-  id: string;
-  hash: string;
-  size: number;
-  mimeType: string;
-  storageKey: string;
-  refCount: number;
-  createdAt: string; // ISO 8601 string from JSON serialization
-  updatedAt: string; // ISO 8601 string from JSON serialization
-}
+// File types (Prisma model used in backend)
+// Keeping minimal interface for reference, backend uses Prisma model directly
 
-// Upload types
-export interface UploadSongInput {
-  file: File | Blob;
-  libraryId: string;
-  title?: string;
-  artist?: string;
-  album?: string;
-}
+// Upload types (to be implemented)
+// export interface UploadSongInput { ... }
 
 // Authentication types
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
-}
-
-export interface LoginResponse {
-  user: User;
-  tokens: AuthTokens;
 }
 
 // API Response wrapper

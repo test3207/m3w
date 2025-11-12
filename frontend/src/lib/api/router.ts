@@ -6,7 +6,7 @@
  */
 
 import offlineProxy from '../offline-proxy';
-import { userDataRoutes, adminRoutes } from '@m3w/shared';
+import { isOfflineCapable } from '@m3w/shared';
 import { logger } from '../logger-client';
 
 // Backend API base URL
@@ -24,40 +24,6 @@ function getAuthToken(): string | null {
   } catch {
     return null;
   }
-}
-
-// Check if a route is offline-capable
-function isOfflineCapable(path: string, method: string): boolean {
-  // Check user data routes
-  for (const route of userDataRoutes) {
-    if (matchRoute(path, route.path) && route.method === method) {
-      return route.offlineCapable;
-    }
-  }
-
-  // Check admin routes
-  for (const route of adminRoutes) {
-    if (matchRoute(path, route.path) && route.method === method) {
-      return route.offlineCapable;
-    }
-  }
-
-  // Default: not offline-capable
-  return false;
-}
-
-// Simple route matcher (supports :id params)
-function matchRoute(requestPath: string, routePattern: string): boolean {
-  const requestParts = requestPath.split('/').filter(Boolean);
-  const patternParts = routePattern.split('/').filter(Boolean);
-
-  if (requestParts.length !== patternParts.length) {
-    return false;
-  }
-
-  return patternParts.every((part, i) => {
-    return part.startsWith(':') || part === requestParts[i];
-  });
 }
 
 // API Router

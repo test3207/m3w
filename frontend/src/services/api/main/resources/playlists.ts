@@ -4,14 +4,16 @@
 
 import { mainApiClient } from '../client';
 import { MAIN_API_ENDPOINTS } from '../endpoints';
-import type { Playlist, Song, CreatePlaylistInput, UpdatePlaylistInput } from '@m3w/shared';
+import type { 
+  Playlist, 
+  Song, 
+  CreatePlaylistInput, 
+  UpdatePlaylistInput,
+  AddSongToPlaylistInput 
+} from '@m3w/shared';
 
 // Re-export shared types for convenience
-export type { CreatePlaylistInput, UpdatePlaylistInput };
-
-export interface AddSongToPlaylistInput {
-  songId: string;
-}
+export type { CreatePlaylistInput, UpdatePlaylistInput, AddSongToPlaylistInput };
 
 export interface ReorderSongInput {
   songId: string;

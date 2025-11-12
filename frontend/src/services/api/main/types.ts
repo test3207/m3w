@@ -2,12 +2,10 @@
  * Main API Response Types
  */
 
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
+import type { ApiResponse } from '@m3w/shared';
+
+// Re-export shared type for convenience
+export type { ApiResponse };
 
 export interface ApiPaginatedResponse<T> extends ApiResponse<T> {
   pagination?: {

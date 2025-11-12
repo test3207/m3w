@@ -254,7 +254,7 @@ m3w/
 │   └── package.json              # Frontend dependencies
 ├── shared/                       # Shared types and schemas
 │   ├── src/
-│   │   ├── api-contracts.ts      # API endpoint definitions
+│   │   ├── api-contracts.ts      # API route contracts with offline capability flags
 │   │   ├── schemas.ts            # Zod validation schemas
 │   │   └── types.ts              # TypeScript type definitions
 │   └── package.json              # Shared package dependencies
@@ -521,6 +521,7 @@ See `.github/copilot-instructions.md` for architecture details and deployment st
 ## Additional Documentation
 
 - [Frontend API Client Architecture](./frontend/src/services/api/README.md) - Layered API client design and usage patterns
+- [LAN Access Configuration](./docs/LAN_ACCESS.md) - Expose services to local network for testing on multiple devices
 - [Podman Setup Guide](./docs/PODMAN.md) - Detailed Podman installation and usage
 - [China Registry Configuration](./docs/CHINA_REGISTRY.md) - Proxy and mirror setup for China users
 - [i18n System Guide](./.github/instructions/i18n-system.instructions.md) - Internationalization implementation details
