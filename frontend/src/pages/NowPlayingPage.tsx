@@ -15,7 +15,7 @@ export default function NowPlayingPage() {
 
   if (!currentSong) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex h-full items-center justify-center p-4">
         <div className="text-center">
           <Play className="mx-auto h-16 w-16 text-muted-foreground/50" />
           <h2 className="mt-4 text-xl font-semibold">没有正在播放的歌曲</h2>
@@ -28,7 +28,7 @@ export default function NowPlayingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col p-4">
+    <div className="flex h-full flex-col p-4">
       <div className="flex-1">
         <h1 className="text-2xl font-bold mb-4">正在播放</h1>
 

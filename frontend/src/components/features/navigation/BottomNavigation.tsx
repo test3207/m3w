@@ -1,18 +1,13 @@
 /**
  * Bottom Navigation Component
- * Mobile-first navigation bar with 4 tabs
+ * Mobile-first navigation bar with 3 tabs
  */
 
-import { PlayCircle, Library, ListMusic, Settings } from 'lucide-react';
+import { Library, ListMusic, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  {
-    icon: PlayCircle,
-    label: '正在播放',
-    path: '/now-playing',
-  },
   {
     icon: Library,
     label: '音乐库',

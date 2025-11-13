@@ -9,7 +9,7 @@ import { useLibraryStore } from '@/stores/libraryStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { usePlaylistStore } from '@/stores/playlistStore';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Play, ListPlus, ArrowUpDown, MoreVertical, Trash2 } from 'lucide-react';
+import { Play, ListPlus, ArrowUpDown, MoreVertical, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
@@ -175,19 +175,9 @@ export default function LibraryDetailPage() {
   }
 
   return (
-    <div className="min-h-screen p-4">
+    <div className="h-full overflow-y-auto p-4">
       {/* Header */}
       <div className="mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mb-2"
-          onClick={() => navigate('/libraries')}
-        >
-          <ChevronLeft className="mr-1 h-4 w-4" />
-          返回
-        </Button>
-
         <h1 className="text-2xl font-bold flex items-center gap-2">
           {getLibraryDisplayName(currentLibrary)}
           {isDefaultLibrary(currentLibrary) && (

@@ -78,9 +78,9 @@ export function FullPlayer() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-background">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-4 shrink-0">
         <Button variant="ghost" size="icon" onClick={handleClose}>
           <ChevronDown className="h-6 w-6" />
         </Button>
@@ -93,8 +93,8 @@ export function FullPlayer() {
       </div>
 
       {/* Album Cover */}
-      <div className="flex justify-center px-8 py-8">
-        <div className="aspect-square w-full max-w-sm overflow-hidden rounded-lg shadow-2xl">
+      <div className="flex justify-center px-8 py-4 shrink-0">
+        <div className="aspect-square w-full max-w-[280px] overflow-hidden rounded-lg shadow-2xl">
           {currentSong.coverUrl ? (
             <img
               src={currentSong.coverUrl}
@@ -110,7 +110,7 @@ export function FullPlayer() {
       </div>
 
       {/* Song Info */}
-      <div className="px-8 py-4 text-center">
+      <div className="px-8 py-4 text-center shrink-0">
         <h1 className="text-2xl font-bold truncate">{currentSong.title}</h1>
         <p className="text-lg text-muted-foreground truncate mt-2">
           {currentSong.artist}
@@ -122,82 +122,98 @@ export function FullPlayer() {
         )}
       </div>
 
-      {/* Progress Bar */}
-      <div className="px-8 py-4">
-        <div
-          className="h-1 w-full cursor-pointer rounded-full bg-secondary"
-          onClick={handleProgressClick}
-        >
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-          <span>{formatDuration(currentTime)}</span>
-          <span>{formatDuration(duration)}</span>
-        </div>
-      </div>
+      {/* Spacer - pushes controls to bottom */}
+      <div className="flex-1 min-h-0" />
 
-      {/* Controls */}
-      <div className="px-8 py-6">
-        {/* Secondary Controls */}
-        <div className="mb-6 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleShuffle}
-            className={isShuffled ? 'text-primary' : ''}
+      {/* Controls Section - anchored to bottom */}
+      <div className="px-8 pb-8 pt-4 shrink-0 space-y-6">
+        {/* Progress Bar */}
+        <div>
+          <div
+            className="h-1.5 w-full cursor-pointer rounded-full bg-secondary hover:h-2 transition-all"
+            onClick={handleProgressClick}
           >
-            <Shuffle className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Heart className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleRepeat}
-            className={repeatMode !== 'off' ? 'text-primary' : ''}
-          >
-            <Repeat className="h-5 w-5" />
-            {repeatMode === 'one' && (
-              <span className="absolute text-xs font-bold">1</span>
-            )}
-          </Button>
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+            <span>{formatDuration(currentTime)}</span>
+            <span>{formatDuration(duration)}</span>
+          </div>
         </div>
 
         {/* Primary Controls */}
-        <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center justify-center gap-6">
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
             onClick={previous}
-            className="h-12 w-12"
+            className="h-14 w-14 rounded-full border-2"
           >
-            <SkipBack className="h-8 w-8" />
+            <SkipBack className="h-6 w-6" />
           </Button>
 
           <Button
             variant="default"
             size="icon"
             onClick={togglePlayPause}
-            className="h-16 w-16 rounded-full"
+            className="h-20 w-20 rounded-full shadow-lg"
           >
             {isPlaying ? (
-              <Pause className="h-8 w-8" />
+              <Pause className="h-10 w-10" />
             ) : (
-              <Play className="h-8 w-8 translate-x-0.5" />
+              <Play className="h-10 w-10 translate-x-0.5" />
             )}
           </Button>
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
             onClick={next}
-            className="h-12 w-12"
+            className="h-14 w-14 rounded-full border-2"
           >
-            <SkipForward className="h-8 w-8" />
+            <SkipForward className="h-6 w-6" />
+          </Button>
+        </div>
+
+        {/* Secondary Controls */}
+        <div className="flex items-center justify-around px-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleShuffle}
+            className={isShuffled ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'hover:bg-accent'}
+          >
+            <Shuffle className="h-5 w-5 mr-1.5" />
+            <span className="text-xs">随机</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="hover:bg-accent"
+          >
+            <Heart className="h-5 w-5 mr-1.5" />
+            <span className="text-xs">喜欢</span>
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleRepeat}
+            className={repeatMode !== 'off' ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'hover:bg-accent'}
+          >
+            <div className="relative">
+              <Repeat className="h-5 w-5 mr-1.5" />
+              {repeatMode === 'one' && (
+                <span className="absolute -top-1 -right-1 text-[10px] font-bold">1</span>
+              )}
+            </div>
+            <span className="text-xs">
+              {repeatMode === 'off' ? '循环' : repeatMode === 'all' ? '列表' : '单曲'}
+            </span>
           </Button>
         </div>
       </div>

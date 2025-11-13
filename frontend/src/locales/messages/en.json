@@ -1,4 +1,7 @@
 {
+  "app": {
+    "name": "M3W Music"
+  },
   "defaults": {
     "library": {
       "name": "Default Library",

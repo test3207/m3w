@@ -7,6 +7,10 @@
  */
 
 export interface Messages {
+  app: {
+    /** M3W Music */
+    name: string;
+  };
   defaults: {
     library: {
       /** Default Library */

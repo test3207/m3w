@@ -1,4 +1,7 @@
 {
+  "app": {
+    "name": "M3W Music"
+  },
   "defaults": {
     "library": {
       "name": "默认音乐库",

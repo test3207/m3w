@@ -99,7 +99,10 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
 
 ### Planned Initiatives (Upcoming)
 - **UI/UX Improvements** (High Priority)
-  - Fix global layout vertical scrollbar issue (constrain to viewport height)
+  - ~~Fix global layout vertical scrollbar issue~~ ✅ **RESOLVED** (2025-11-13)
+    - Implemented MobileHeader component with status indicators
+    - Main container uses precise calc() for height distribution
+    - All pages use h-full with internal scrolling, no global scrollbar
   - Redesign library and playlist card styles (reduce image size, increase information density)
   - Reconsider "Now Playing" page value (overlaps with full-screen player functionality)
   - Refactor full-screen player layout (anchor controls to bottom, improve button recognition)

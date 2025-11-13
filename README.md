@@ -345,11 +345,13 @@ m3w/
 
 ### 🔧 Known Issues & Follow-up Tasks
 
-**1. Layout Issues** (High Priority)
+**1. ~~Layout Issues~~** ✅ **RESOLVED** (2025-11-13)
 
-- **Problem**: Global layout shows vertical scrollbar despite sufficient space
-- **Root Cause**: Likely navigation bar height calculation causing overflow
-- **Action Needed**: Constrain main layout to viewport height, adjust bottom padding calculations
+- **Resolution**: Implemented proper height calculation for main container
+  - Main container now uses `calc(100vh - header - nav - player)` for precise height
+  - Added MobileHeader component for unified status indicators
+  - All pages changed from `min-h-screen` to `h-full` with internal scrolling
+  - No global scrollbar, content scrolls within page boundaries
 
 **2. Library/Playlist Card Design** (High Priority)
 

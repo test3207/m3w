@@ -72,14 +72,14 @@ export default function LibrariesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <p className="text-muted-foreground">加载中...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-4">
+    <div className="h-full overflow-y-auto p-4">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -148,29 +148,30 @@ export default function LibrariesPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-col gap-3">
           {libraries.map((library) => (
             <Link key={library.id} to={`/libraries/${library.id}`}>
               <Card className="overflow-hidden transition-colors hover:bg-accent cursor-pointer">
-                {/* Cover Image */}
-                <div className="aspect-square w-full bg-muted">
-                  {library.coverUrl ? (
-                    <img
-                      src={library.coverUrl}
-                      alt={getLibraryDisplayName(library)}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Music className="h-16 w-16 text-muted-foreground/30" />
-                    </div>
-                  )}
-                </div>
-
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 overflow-hidden">
-                      <h3 className="truncate font-semibold flex items-center gap-2">
+                  <div className="flex items-start gap-4">
+                    {/* Cover Image - 96px */}
+                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
+                      {library.coverUrl ? (
+                        <img
+                          src={library.coverUrl}
+                          alt={getLibraryDisplayName(library)}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Music className="h-10 w-10 text-muted-foreground/30" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metadata */}
+                    <div className="flex flex-1 flex-col justify-center gap-1 overflow-hidden">
+                      <h3 className="truncate font-semibold text-base flex items-center gap-2">
                         {getLibraryDisplayName(library)}
                         {isDefaultLibrary(library) && (
                           <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded whitespace-nowrap">
@@ -180,6 +181,9 @@ export default function LibrariesPage() {
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {library._count?.songs || 0} 首歌曲
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        创建于 {new Date(library.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })}
                       </p>
                     </div>
                   </div>

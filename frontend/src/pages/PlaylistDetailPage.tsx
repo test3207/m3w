@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Music, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { Play, Music, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { I18n } from '@/locales/i18n';
@@ -16,6 +16,7 @@ import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
 import { useToast } from '@/components/ui/use-toast';
 import { eventBus, EVENTS } from '@/lib/events';
+import { cn } from '@/lib/utils';
 import type { Song as SharedSong } from '@m3w/shared';
 
 export default function PlaylistDetailPage() {
@@ -25,7 +26,7 @@ export default function PlaylistDetailPage() {
   const { toast } = useToast();
 
   const { currentPlaylist, setCurrentPlaylist, reorderPlaylistSongs, removeSongFromPlaylist } = usePlaylistStore();
-  const { playFromPlaylist } = usePlayerStore();
+  const { playFromPlaylist, currentSong, queueSource, queueSourceId } = usePlayerStore();
 
   const [songs, setSongs] = useState<SharedSong[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,15 +201,6 @@ export default function PlaylistDetailPage() {
       {/* Header */}
       <div className="border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="container flex h-14 items-center gap-3 px-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/playlists')}
-            className="shrink-0"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold truncate">
               {currentPlaylist.name}
@@ -255,80 +247,104 @@ export default function PlaylistDetailPage() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {songs.map((song, index) => (
-                <Card
-                  key={song.id}
-                  className="overflow-hidden transition-colors hover:bg-accent/50"
-                >
-                  <div className="flex items-center gap-3 p-3">
-                    {/* Album Cover */}
-                    <button
-                      onClick={() => handlePlaySong(index)}
-                      className="relative shrink-0 w-12 h-12 rounded bg-muted overflow-hidden group"
-                    >
-                      {song.coverUrl ? (
-                        <img
-                          src={song.coverUrl}
-                          alt={song.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center w-full h-full">
-                          <Music className="h-5 w-5 text-muted-foreground" />
+              {songs.map((song, index) => {
+                // Check if this song is currently playing from this playlist
+                const isCurrentlyPlaying = 
+                  currentSong?.id === song.id && 
+                  queueSource === 'playlist' && 
+                  queueSourceId === id;
+
+                return (
+                  <Card
+                    key={song.id}
+                    className={cn(
+                      "overflow-hidden transition-colors",
+                      isCurrentlyPlaying 
+                        ? "bg-primary/10 border-primary/50 hover:bg-primary/15" 
+                        : "hover:bg-accent/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 p-3">
+                      {/* Album Cover */}
+                      <button
+                        onClick={() => handlePlaySong(index)}
+                        className="relative shrink-0 w-12 h-12 rounded bg-muted overflow-hidden group"
+                      >
+                        {song.coverUrl ? (
+                          <img
+                            src={song.coverUrl}
+                            alt={song.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-full">
+                            <Music className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className={cn(
+                          "absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity",
+                          isCurrentlyPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}>
+                          <Play className={cn(
+                            "h-5 w-5",
+                            isCurrentlyPlaying ? "text-primary" : "text-white"
+                          )} />
                         </div>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Play className="h-5 w-5 text-white" />
+                      </button>
+
+                      {/* Song Info */}
+                      <button
+                        onClick={() => handlePlaySong(index)}
+                        className="flex-1 min-w-0 text-left"
+                      >
+                        <p className={cn(
+                          "font-medium truncate",
+                          isCurrentlyPlaying && "text-primary"
+                        )}>
+                          {song.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {song.artist}
+                          {song.album && ` • ${song.album}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDuration(song.file?.duration || 0)}
+                        </p>
+                      </button>
+
+                      {/* Controls */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleMoveUp(index)}
+                          disabled={index === 0}
+                          className="h-8 w-8"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleMoveDown(index)}
+                          disabled={index === songs.length - 1}
+                          className="h-8 w-8"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemove(song.id, song.title)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </button>
-
-                    {/* Song Info */}
-                    <button
-                      onClick={() => handlePlaySong(index)}
-                      className="flex-1 min-w-0 text-left"
-                    >
-                      <p className="font-medium truncate">{song.title}</p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {song.artist}
-                        {song.album && ` • ${song.album}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDuration(song.file?.duration || 0)}
-                      </p>
-                    </button>
-
-                    {/* Controls */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleMoveUp(index)}
-                        disabled={index === 0}
-                        className="h-8 w-8"
-                      >
-                        <ChevronUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleMoveDown(index)}
-                        disabled={index === songs.length - 1}
-                        className="h-8 w-8"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemove(song.id, song.title)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

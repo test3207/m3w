@@ -1,10 +1,11 @@
 /**
  * Mobile Layout Component
- * Main layout for mobile-first design with bottom navigation and mini player
+ * Main layout for mobile-first design with header, bottom navigation and mini player
  */
 
 import { useEffect } from 'react';
 import { usePlayerStore } from '@/stores/playerStore';
+import { MobileHeader } from '@/components/layouts/MobileHeader';
 import { BottomNavigation } from '@/components/features/navigation/BottomNavigation';
 import { MiniPlayer, FullPlayer, PlayQueueDrawer } from '@/components/features/player';
 import { FloatingActionButton } from '@/components/features/navigation/FloatingActionButton';
@@ -37,13 +38,20 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   }, [currentSong?.id, currentTime, isPlaying]);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Main content area */}
-      <main className="flex-1 overflow-auto pb-16 md:pb-20">
-        {/* Add extra padding if mini player is showing */}
-        <div className={hasSong ? 'pb-20' : ''}>
-          {children}
-        </div>
+    <div className="flex h-screen flex-col overflow-hidden">
+      {/* Top Header with status indicators (56px) */}
+      <MobileHeader />
+
+      {/* Main content area - fixed height excluding header and bottom elements */}
+      <main 
+        className="overflow-hidden"
+        style={{
+          height: hasSong 
+            ? 'calc(100vh - 56px - 64px - 72px)' // viewport - header - bottom nav - mini player
+            : 'calc(100vh - 56px - 64px)' // viewport - header - bottom nav
+        }}
+      >
+        {children}
       </main>
 
       {/* Mini Player (floating above bottom nav) */}
