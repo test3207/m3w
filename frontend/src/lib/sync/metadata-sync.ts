@@ -45,7 +45,7 @@ export async function syncMetadata(): Promise<SyncResult> {
 
     // Fetch all libraries
     const libraries = await api.main.libraries.list();
-    
+
     await db.libraries.bulkPut(
       libraries.map((lib) => ({
         ...lib,
@@ -56,7 +56,7 @@ export async function syncMetadata(): Promise<SyncResult> {
 
     // Fetch all playlists
     const playlists = await api.main.playlists.list();
-    
+
     await db.playlists.bulkPut(
       playlists.map((playlist) => ({
         ...playlist,
@@ -70,7 +70,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     for (const library of libraries) {
       try {
         const songs = await api.main.libraries.getSongs(library.id);
-        
+
         await db.songs.bulkPut(
           songs.map((song) => ({
             ...song,
@@ -89,7 +89,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     for (const playlist of playlists) {
       try {
         const songs = await api.main.playlists.getSongs(playlist.id);
-        
+
         // Store playlist-song relationships with order
         await db.playlistSongs.bulkPut(
           songs.map((song, index) => ({

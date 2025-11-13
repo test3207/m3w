@@ -54,18 +54,18 @@ describe('PlayQueue', () => {
   });
 
   it('loops to the beginning when repeat all is enabled', () => {
-  queue.setQueue(tracks, 0);
-  queue.jumpTo(tracks[2].id);
-  queue.setRepeatMode(RepeatMode.ALL);
+    queue.setQueue(tracks, 0);
+    queue.jumpTo(tracks[2].id);
+    queue.setRepeatMode(RepeatMode.ALL);
 
     expect(queue.next()).toEqual(tracks[0]);
     expect(queue.getState().currentIndex).toBe(0);
   });
 
   it('keeps the same track when repeat one is enabled', () => {
-  queue.setQueue(tracks, 0);
-  queue.jumpTo(tracks[1].id);
-  queue.setRepeatMode(RepeatMode.ONE);
+    queue.setQueue(tracks, 0);
+    queue.jumpTo(tracks[1].id);
+    queue.setRepeatMode(RepeatMode.ONE);
 
     expect(queue.next()).toEqual(tracks[1]);
     expect(queue.getState().currentIndex).toBe(1);

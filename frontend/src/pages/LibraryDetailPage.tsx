@@ -3,28 +3,34 @@
  * Display songs in a library with playback controls
  */
 
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useLibraryStore } from '@/stores/libraryStore';
-import { usePlayerStore } from '@/stores/playerStore';
-import { usePlaylistStore } from '@/stores/playlistStore';
-import { Button } from '@/components/ui/button';
-import { Play, ListPlus, ArrowUpDown, MoreVertical, Trash2 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
-import { api } from '@/services';
-import { eventBus, EVENTS } from '@/lib/events';
-import { getLibraryDisplayName } from '@/lib/utils/defaults';
-import { isDefaultLibrary } from '@m3w/shared';
-import type { Song as SharedSong, SongSortOption } from '@m3w/shared';
-import type { Song } from '@/types/models';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useLibraryStore } from "@/stores/libraryStore";
+import { usePlayerStore } from "@/stores/playerStore";
+import { usePlaylistStore } from "@/stores/playlistStore";
+import { Button } from "@/components/ui/button";
+import {
+  Play,
+  ListPlus,
+  ArrowUpDown,
+  MoreVertical,
+  Trash2,
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
+import { api } from "@/services";
+import { eventBus, EVENTS } from "@/lib/events";
+import { getLibraryDisplayName } from "@/lib/utils/defaults";
+import { isDefaultLibrary } from "@m3w/shared";
+import type { Song as SharedSong, SongSortOption } from "@m3w/shared";
+import type { Song } from "@/types/models";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 
 // Convert shared Song to frontend Song (now same type, just pass through)
 function convertSong(song: SharedSong): Song {
@@ -38,9 +44,10 @@ export default function LibraryDetailPage() {
   const { toast } = useToast();
 
   const [songs, setSongs] = useState<Song[]>([]);
-  const [sortOption, setSortOption] = useState<SongSortOption>('date-desc');
+  const [sortOption, setSortOption] = useState<SongSortOption>("date-desc");
 
-  const { currentLibrary, isLoading, fetchLibraryById, fetchLibraries } = useLibraryStore();
+  const { currentLibrary, isLoading, fetchLibraryById, fetchLibraries } =
+    useLibraryStore();
   const playFromLibrary = usePlayerStore((state) => state.playFromLibrary);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
 
@@ -48,7 +55,7 @@ export default function LibraryDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       if (!id) {
-        navigate('/libraries');
+        navigate("/libraries");
         return;
       }
 
@@ -57,11 +64,11 @@ export default function LibraryDetailPage() {
         const library = await fetchLibraryById(id);
         if (!library) {
           toast({
-            variant: 'destructive',
+            variant: "destructive",
             title: I18n.common.loadingLabel,
             description: I18n.error.libraryNotFound,
           });
-          navigate('/libraries');
+          navigate("/libraries");
           return;
         }
 
@@ -70,11 +77,12 @@ export default function LibraryDetailPage() {
         setSongs(songsData.map(convertSong));
       } catch (error) {
         toast({
-          variant: 'destructive',
+          variant: "destructive",
           title: I18n.common.errorLabel,
-          description: error instanceof Error ? error.message : I18n.error.genericTryAgain,
+          description:
+            error instanceof Error ? error.message : I18n.error.genericTryAgain,
         });
-        navigate('/libraries');
+        navigate("/libraries");
       }
     };
 
@@ -90,7 +98,7 @@ export default function LibraryDetailPage() {
           setSongs(songsData.map(convertSong));
         } catch (error) {
           // Silent fail - user will see stale data
-          console.error('Failed to refresh songs:', error);
+          console.error("Failed to refresh songs:", error);
         }
       };
       void refetchSongs();
@@ -104,7 +112,10 @@ export default function LibraryDetailPage() {
     void playFromLibrary(currentLibrary.id, displayName, songs, 0);
     toast({
       title: I18n.playback.startPlayingTitle,
-      description: I18n.playback.startPlayingDescription.replace('{0}', displayName),
+      description: I18n.playback.startPlayingDescription.replace(
+        "{0}",
+        displayName
+      ),
     });
   };
 
@@ -116,52 +127,57 @@ export default function LibraryDetailPage() {
 
   const handleDeleteSong = async (songId: string, songTitle: string) => {
     if (!id) return;
-    
+
     try {
-      console.log('[LibraryDetailPage] Deleting song:', songId, 'from library:', id);
+      console.log(
+        "[LibraryDetailPage] Deleting song:",
+        songId,
+        "from library:",
+        id
+      );
       // Pass libraryId to ensure we only delete from THIS library
       await api.main.songs.delete(songId, id);
-      
+
       // Remove from local state
-      setSongs(songs.filter(s => s.id !== songId));
-      
+      setSongs(songs.filter((s) => s.id !== songId));
+
       // Refresh current library to update count
-      console.log('[LibraryDetailPage] Refreshing current library');
+      console.log("[LibraryDetailPage] Refreshing current library");
       await fetchLibraryById(id);
-      
+
       // Refresh libraries list (for UploadPage and other pages)
-      console.log('[LibraryDetailPage] Refreshing all libraries');
+      console.log("[LibraryDetailPage] Refreshing all libraries");
       await fetchLibraries();
-      
+
       // Refresh playlists (song may have been removed from playlists by cascade)
-      console.log('[LibraryDetailPage] Refreshing playlists');
+      console.log("[LibraryDetailPage] Refreshing playlists");
       await fetchPlaylists();
-      console.log('[LibraryDetailPage] Delete complete');
-      
+      console.log("[LibraryDetailPage] Delete complete");
+
       // Emit event to notify other components
       eventBus.emit(EVENTS.SONG_DELETED);
-      
+
       toast({
-        title: '删除成功',
-        description: `已从音乐库中删除"${songTitle}"`,
+        title: I18n.library.detail.deleteSong.successTitle,
+        description: I18n.library.detail.deleteSong.successDescription.replace('{0}', songTitle),
       });
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: '删除失败',
-        description: error instanceof Error ? error.message : '未知错误',
+        variant: "destructive",
+        title: I18n.library.detail.deleteSong.errorTitle,
+        description: error instanceof Error ? error.message : I18n.library.detail.deleteSong.unknownError,
       });
     }
   };
 
   const getSortLabel = (option: SongSortOption): string => {
     const labels: Record<SongSortOption, string> = {
-      'date-desc': I18n.library.detail.sortDateDesc,
-      'date-asc': I18n.library.detail.sortDateAsc,
-      'title-asc': I18n.library.detail.sortTitleAsc,
-      'title-desc': I18n.library.detail.sortTitleDesc,
-      'artist-asc': I18n.library.detail.sortArtistAsc,
-      'album-asc': I18n.library.detail.sortAlbumAsc,
+      "date-desc": I18n.library.detail.sortDateDesc,
+      "date-asc": I18n.library.detail.sortDateAsc,
+      "title-asc": I18n.library.detail.sortTitleAsc,
+      "title-desc": I18n.library.detail.sortTitleDesc,
+      "artist-asc": I18n.library.detail.sortArtistAsc,
+      "album-asc": I18n.library.detail.sortAlbumAsc,
     };
     return labels[option];
   };
@@ -169,7 +185,9 @@ export default function LibraryDetailPage() {
   if (isLoading || !currentLibrary) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">{I18n.library.detail.loadingLabel}</p>
+        <p className="text-muted-foreground">
+          {I18n.library.detail.loadingLabel}
+        </p>
       </div>
     );
   }
@@ -209,28 +227,28 @@ export default function LibraryDetailPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setSortOption('date-desc')}>
-              {sortOption === 'date-desc' && '✓ '}
+            <DropdownMenuItem onClick={() => setSortOption("date-desc")}>
+              {sortOption === "date-desc" && "✓ "}
               添加时间 (最新)
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption('date-asc')}>
-              {sortOption === 'date-asc' && '✓ '}
+            <DropdownMenuItem onClick={() => setSortOption("date-asc")}>
+              {sortOption === "date-asc" && "✓ "}
               添加时间 (最旧)
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption('title-asc')}>
-              {sortOption === 'title-asc' && '✓ '}
+            <DropdownMenuItem onClick={() => setSortOption("title-asc")}>
+              {sortOption === "title-asc" && "✓ "}
               标题 A-Z
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption('title-desc')}>
-              {sortOption === 'title-desc' && '✓ '}
+            <DropdownMenuItem onClick={() => setSortOption("title-desc")}>
+              {sortOption === "title-desc" && "✓ "}
               标题 Z-A
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption('artist-asc')}>
-              {sortOption === 'artist-asc' && '✓ '}
+            <DropdownMenuItem onClick={() => setSortOption("artist-asc")}>
+              {sortOption === "artist-asc" && "✓ "}
               歌手 A-Z
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption('album-asc')}>
-              {sortOption === 'album-asc' && '✓ '}
+            <DropdownMenuItem onClick={() => setSortOption("album-asc")}>
+              {sortOption === "album-asc" && "✓ "}
               专辑 A-Z
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -293,7 +311,7 @@ export default function LibraryDetailPage() {
                 {song.file?.duration && (
                   <div className="shrink-0 text-sm text-muted-foreground">
                     {Math.floor(song.file.duration / 60)}:
-                    {(song.file.duration % 60).toString().padStart(2, '0')}
+                    {(song.file.duration % 60).toString().padStart(2, "0")}
                   </div>
                 )}
               </div>

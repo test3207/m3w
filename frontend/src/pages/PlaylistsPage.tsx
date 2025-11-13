@@ -3,17 +3,19 @@
  * Display and manage user's playlists
  */
 
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { usePlaylistStore } from '@/stores/playlistStore';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { ListMusic, Plus, Music } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { eventBus, EVENTS } from '@/lib/events';
-import { getPlaylistDisplayName, getPlaylistBadge } from '@/lib/utils/defaults';
-import { isFavoritesPlaylist } from '@m3w/shared';
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { usePlaylistStore } from "@/stores/playlistStore";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ListMusic, Plus, Music } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { eventBus, EVENTS } from "@/lib/events";
+import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
+import { isFavoritesPlaylist } from "@m3w/shared";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
 import {
   Dialog,
   DialogContent,
@@ -22,13 +24,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 export default function PlaylistsPage() {
+  useLocale();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   const playlists = usePlaylistStore((state) => state.playlists);
@@ -43,12 +46,18 @@ export default function PlaylistsPage() {
   // Listen for external song changes (delete/upload) that may affect playlists
   useEffect(() => {
     const refetchPlaylists = () => {
-      console.log('[PlaylistsPage] Event triggered, refetching playlists');
+      console.log("[PlaylistsPage] Event triggered, refetching playlists");
       fetchPlaylists();
     };
 
-    const unsubscribeDelete = eventBus.on(EVENTS.SONG_DELETED, refetchPlaylists);
-    const unsubscribeUpload = eventBus.on(EVENTS.SONG_UPLOADED, refetchPlaylists);
+    const unsubscribeDelete = eventBus.on(
+      EVENTS.SONG_DELETED,
+      refetchPlaylists
+    );
+    const unsubscribeUpload = eventBus.on(
+      EVENTS.SONG_UPLOADED,
+      refetchPlaylists
+    );
 
     return () => {
       unsubscribeDelete();
@@ -59,8 +68,8 @@ export default function PlaylistsPage() {
   const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) {
       toast({
-        variant: 'destructive',
-        title: '请输入播放列表名称',
+        variant: "destructive",
+        title: I18n.playlists.create.promptName,
       });
       return;
     }
@@ -69,16 +78,16 @@ export default function PlaylistsPage() {
     try {
       await createPlaylist(newPlaylistName.trim());
       toast({
-        title: '创建成功',
-        description: `播放列表"${newPlaylistName}"已创建`,
+        title: I18n.playlists.create.successTitle,
+        description: I18n.playlists.create.successDescription.replace('{0}', newPlaylistName),
       });
-      setNewPlaylistName('');
+      setNewPlaylistName("");
       setIsDialogOpen(false);
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: '创建失败',
-        description: error instanceof Error ? error.message : '未知错误',
+        variant: "destructive",
+        title: I18n.playlists.create.errorTitle,
+        description: error instanceof Error ? error.message : I18n.playlists.create.unknownError,
       });
     } finally {
       setIsCreating(false);
@@ -88,7 +97,7 @@ export default function PlaylistsPage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">加载中...</p>
+        <p className="text-muted-foreground">{I18n.common.loadingLabel}</p>
       </div>
     );
   }
@@ -98,9 +107,9 @@ export default function PlaylistsPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">播放列表</h1>
+          <h1 className="text-2xl font-bold">{I18n.playlists.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {playlists.length} 个播放列表
+            {I18n.playlists.count.replace('{0}', String(playlists.length))}
           </p>
         </div>
 
@@ -112,21 +121,19 @@ export default function PlaylistsPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>创建新播放列表</DialogTitle>
-              <DialogDescription>
-                创建一个自定义播放列表
-              </DialogDescription>
+              <DialogTitle>{I18n.playlists.create.dialogTitle}</DialogTitle>
+              <DialogDescription>{I18n.playlists.create.dialogDescription}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">播放列表名称</Label>
+                <Label htmlFor="name">{I18n.playlists.create.nameLabel}</Label>
                 <Input
                   id="name"
-                  placeholder="例如：深夜驾车、运动音乐"
+                  placeholder={I18n.playlists.create.namePlaceholder}
                   value={newPlaylistName}
                   onChange={(e) => setNewPlaylistName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       handleCreatePlaylist();
                     }
                   }}
@@ -138,13 +145,13 @@ export default function PlaylistsPage() {
                 variant="outline"
                 onClick={() => {
                   setIsDialogOpen(false);
-                  setNewPlaylistName('');
+                  setNewPlaylistName("");
                 }}
               >
-                取消
+                {I18n.playlists.create.cancel}
               </Button>
               <Button onClick={handleCreatePlaylist} disabled={isCreating}>
-                {isCreating ? '创建中...' : '创建'}
+                {isCreating ? I18n.playlists.create.submitting : I18n.playlists.create.submit}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -156,9 +163,9 @@ export default function PlaylistsPage() {
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="text-center">
             <ListMusic className="mx-auto h-16 w-16 text-muted-foreground/50" />
-            <h2 className="mt-4 text-xl font-semibold">还没有播放列表</h2>
+            <h2 className="mt-4 text-xl font-semibold">{I18n.playlists.empty.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              点击右上角 "+" 创建你的第一个播放列表
+              {I18n.playlists.empty.description}
             </p>
           </div>
         </div>
@@ -195,10 +202,13 @@ export default function PlaylistsPage() {
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {playlist.songIds?.length || 0} 首歌曲
+                        {I18n.playlists.card.songsCount.replace('{0}', String(playlist.songIds?.length || 0))}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        创建于 {new Date(playlist.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        {I18n.playlists.card.createdAt.replace('{0}', new Date(playlist.createdAt).toLocaleDateString(
+                          "zh-CN",
+                          { year: "numeric", month: "short", day: "numeric" }
+                        ))}
                       </p>
                     </div>
                   </div>

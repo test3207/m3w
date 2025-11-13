@@ -15,7 +15,7 @@ export function useServiceWorker() {
   } = useRegisterSW({
     onRegistered(r) {
       logger.info('Service Worker registered', { registration: !!r });
-      
+
       // Check for updates every hour
       if (r) {
         setInterval(() => {

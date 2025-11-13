@@ -30,7 +30,7 @@ function getAuthToken(): string | null {
     // Zustand persist uses 'auth-storage' as the key name
     const authStore = localStorage.getItem('auth-storage');
     if (!authStore) return null;
-    
+
     const parsed = JSON.parse(authStore);
     return parsed.state?.tokens?.accessToken || null;
   } catch {
@@ -77,10 +77,10 @@ export async function routeRequest(
   try {
     // Build full backend URL from path
     // path may contain query params, so use it directly if it starts with /
-    const fullUrl = path.startsWith('http') 
-      ? path 
+    const fullUrl = path.startsWith('http')
+      ? path
       : `${API_BASE_URL}${path}`;
-    
+
     const response = await fetch(fullUrl, {
       ...init,
       credentials: 'include',
@@ -105,7 +105,7 @@ export async function routeRequest(
   } catch (error) {
     // Mark backend as unreachable on connection error
     emitNetworkStatus(false);
-    
+
     // Network error: fallback to offline proxy if possible
     if (offlineCapable) {
       logger.warn('Backend unreachable, using offline proxy', { path, error });

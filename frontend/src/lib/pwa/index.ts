@@ -34,7 +34,7 @@ export async function initializePWA(): Promise<void> {
 
   // Step 2: Get current status
   const storageStatus = await getStorageStatus();
-  logger.info('Storage status', { 
+  logger.info('Storage status', {
     isPWAInstalled: storageStatus.isPWAInstalled,
     isPersisted: storageStatus.isPersisted,
     canCache: storageStatus.canCache,
@@ -83,10 +83,10 @@ export async function handlePWAInstall(): Promise<void> {
 
   // Request persistent storage
   const persisted = await requestPersistentStorage();
-  
+
   if (persisted) {
     logger.info('Persistent storage granted');
-    
+
     // Trigger initial metadata sync
     if (navigator.onLine) {
       logger.info('Starting initial metadata sync');

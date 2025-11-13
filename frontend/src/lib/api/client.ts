@@ -45,10 +45,10 @@ class ApiClient {
     // Remove leading slash from endpoint to allow proper concatenation
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
     const baseWithSlash = this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
-    
+
     // Build full URL with backend base URL
     const url = new URL(cleanEndpoint, baseWithSlash);
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.append(key, String(value));
@@ -76,11 +76,11 @@ class ApiClient {
       if (!(fetchOptions.body instanceof FormData) && typeof headers === 'object' && !Array.isArray(headers)) {
         (headers as Record<string, string>)['Content-Type'] = 'application/json';
       }
-      
+
       // Extract pathname and search params for routeRequest (it will build full URL internally)
       const urlObj = new URL(url);
       const path = urlObj.pathname + urlObj.search; // Include query params!
-      
+
       const response = await routeRequest(path, {
         ...fetchOptions,
         headers,
@@ -191,7 +191,7 @@ class ApiClient {
    */
   async upload<T>(endpoint: string, formData: FormData, options?: ApiRequestOptions): Promise<T> {
     const { headers, ...restOptions } = options || {};
-    
+
     return this.request<T>(endpoint, {
       ...restOptions,
       method: 'POST',

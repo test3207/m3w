@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Music } from 'lucide-react';
-import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
-import { LanguageSwitcher } from '@/components/layouts/language-switcher';
+import { Music } from "lucide-react";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
+import { LanguageSwitcher } from "@/components/layouts/language-switcher";
 
 export default function HomePage() {
   useLocale();
@@ -37,7 +37,10 @@ export default function HomePage() {
             </div>
 
             {/* Title */}
-            <h1 className="mb-3 text-3xl font-bold tracking-tight" suppressHydrationWarning>
+            <h1
+              className="mb-3 text-3xl font-bold tracking-tight"
+              suppressHydrationWarning
+            >
               {I18n.home.title}
             </h1>
 
@@ -48,7 +51,9 @@ export default function HomePage() {
 
             {/* CTA */}
             <Button asChild size="lg" className="w-full sm:w-auto">
-              <Link to="/signin" suppressHydrationWarning>{I18n.home.getStarted}</Link>
+              <Link to="/signin" suppressHydrationWarning>
+                {I18n.home.getStarted}
+              </Link>
             </Button>
           </div>
         </div>

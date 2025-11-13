@@ -216,6 +216,16 @@ export interface Messages {
     greetingWithName: string;
     /** From {0} to {1} */
     dateRange: string;
+    timeAgo: {
+      /** Just now */
+      justNow: string;
+      /** {0} minutes ago */
+      minutesAgo: string;
+      /** {0} hours ago */
+      hoursAgo: string;
+      /** {0} days ago */
+      daysAgo: string;
+    };
   };
   networkStatus: {
     /** Online */
@@ -391,6 +401,18 @@ export interface Messages {
       sortAlbumAsc: string;
       /** Loading... */
       loadingLabel: string;
+      deleteSong: {
+        /** Delete Song */
+        button: string;
+        /** Deleted successfully */
+        successTitle: string;
+        /** Removed "{0}" from library */
+        successDescription: string;
+        /** Deletion failed */
+        errorTitle: string;
+        /** Unknown error */
+        unknownError: string;
+      };
     };
     addToPlaylist: {
       /** Add to playlist */
@@ -411,22 +433,6 @@ export interface Messages {
       toastErrorDescription: string;
       /** Select a playlist first. */
       selectPlaylistFirst: string;
-    };
-    deleteSong: {
-      /** Delete song */
-      buttonLabel: string;
-      /** Delete song from library? */
-      dialogTitle: string;
-      /** This will permanently remove the song from this library. This action cannot be undone. */
-      dialogDescription: string;
-      /** ⚠️ This song is used in  */
-      playlistWarningPrefix: string;
-      /**  playlist(s). Removing it will also remove it from those playlists. */
-      playlistWarningSuffix: string;
-      /** Deleted song:  */
-      successPrefix: string;
-      /**  */
-      successSuffix: string;
     };
   };
   playlist: {
@@ -576,6 +582,38 @@ export interface Messages {
       /** Shuffle: Off */
       shuffleOff: string;
     };
+    playQueue: {
+      /** Play Queue */
+      title: string;
+      /** Play Queue */
+      fallbackSource: string;
+      /** Removed from queue */
+      removeFromQueueTitle: string;
+      /** Queue cleared */
+      clearQueueTitle: string;
+      /** Enter playlist name */
+      savePlaylistInputPlaceholder: string;
+      /** Please enter playlist name */
+      savePlaylistErrorEmptyName: string;
+      /** Saved successfully */
+      savePlaylistSuccessTitle: string;
+      /** Playlist "{0}" has been created */
+      savePlaylistSuccessDescription: string;
+      /** Save failed */
+      savePlaylistErrorTitle: string;
+      /** Unable to save playlist */
+      savePlaylistErrorDescription: string;
+      /** Unknown error */
+      savePlaylistErrorUnknown: string;
+      /** Clear Queue */
+      clearQueueButton: string;
+      /** Save as Playlist */
+      saveAsPlaylistButton: string;
+      /** Saving... */
+      savingButton: string;
+      /** Save */
+      saveButton: string;
+    };
   };
   upload: {
     page: {
@@ -682,5 +720,197 @@ export interface Messages {
     startPlayingDescription: string;
     /** Playing from library */
     playFromLibraryDescription: string;
+  };
+  settings: {
+    /** Settings */
+    title: string;
+    /** Please sign in */
+    pleaseSignIn: string;
+    profile: {
+      /** Personal Information */
+      title: string;
+      /** Your account information */
+      description: string;
+      /** Username: */
+      username: string;
+      /** Username not set */
+      usernameNotSet: string;
+      /** Email: */
+      email: string;
+      /** Login Method: */
+      loginMethod: string;
+    };
+    account: {
+      /** Account Actions */
+      title: string;
+      /** Sign out or manage your account */
+      description: string;
+      /** Sign Out */
+      signOut: string;
+    };
+    toast: {
+      /** Signed out successfully */
+      signOutSuccess: string;
+      /** You have been signed out successfully */
+      signOutDescription: string;
+    };
+  };
+  libraries: {
+    /** Libraries */
+    title: string;
+    /** {0} libraries */
+    count: string;
+    create: {
+      /** Create New Library */
+      dialogTitle: string;
+      /** Create a new collection for your music */
+      dialogDescription: string;
+      /** Library Name */
+      nameLabel: string;
+      /** e.g. My Music, Work Music */
+      namePlaceholder: string;
+      /** Cancel */
+      cancel: string;
+      /** Create */
+      submit: string;
+      /** Creating... */
+      submitting: string;
+      /** Please enter library name */
+      promptName: string;
+      /** Created successfully */
+      successTitle: string;
+      /** Library "{0}" has been created */
+      successDescription: string;
+      /** Creation failed */
+      errorTitle: string;
+      /** Unknown error */
+      unknownError: string;
+    };
+    empty: {
+      /** No libraries yet */
+      title: string;
+      /** Click the "+" button in the top right to create your first library */
+      description: string;
+    };
+    card: {
+      /** {0} songs */
+      songsCount: string;
+      /** Created on {0} */
+      createdAt: string;
+    };
+    detail: {
+      /** {0} songs */
+      songsCount: string;
+      /** Play All */
+      playAll: string;
+      sort: {
+        /** Sort by: {0} */
+        label: string;
+        /** Date Added (Newest) */
+        dateDesc: string;
+        /** Date Added (Oldest) */
+        dateAsc: string;
+        /** Title A-Z */
+        titleAsc: string;
+        /** Title Z-A */
+        titleDesc: string;
+        /** Artist A-Z */
+        artistAsc: string;
+        /** Album A-Z */
+        albumAsc: string;
+      };
+      empty: {
+        /** No songs yet */
+        title: string;
+        /** Click the "+" button in the bottom right to upload songs to this library */
+        description: string;
+      };
+      deleteSong: {
+        /** Delete Song */
+        button: string;
+        /** Deleted successfully */
+        successTitle: string;
+        /** Removed "{0}" from library */
+        successDescription: string;
+        /** Deletion failed */
+        errorTitle: string;
+        /** Unknown error */
+        unknownError: string;
+      };
+    };
+  };
+  playlists: {
+    /** Playlists */
+    title: string;
+    /** {0} playlists */
+    count: string;
+    create: {
+      /** Create New Playlist */
+      dialogTitle: string;
+      /** Create a custom playlist */
+      dialogDescription: string;
+      /** Playlist Name */
+      nameLabel: string;
+      /** e.g. Night Drive, Workout Music */
+      namePlaceholder: string;
+      /** Cancel */
+      cancel: string;
+      /** Create */
+      submit: string;
+      /** Creating... */
+      submitting: string;
+      /** Please enter playlist name */
+      promptName: string;
+      /** Created successfully */
+      successTitle: string;
+      /** Playlist "{0}" has been created */
+      successDescription: string;
+      /** Creation failed */
+      errorTitle: string;
+      /** Unknown error */
+      unknownError: string;
+    };
+    empty: {
+      /** No playlists yet */
+      title: string;
+      /** Click the "+" button in the top right to create your first playlist */
+      description: string;
+    };
+    card: {
+      /** {0} songs */
+      songsCount: string;
+      /** Created on {0} */
+      createdAt: string;
+    };
+    detail: {
+      /** Playlist not found */
+      notFound: string;
+      /** {0} songs */
+      songsCount: string;
+      /** Play All */
+      playAll: string;
+      /** Now Playing: {0} */
+      nowPlaying: string;
+      empty: {
+        /** Playlist is empty */
+        title: string;
+        /** Add songs from your libraries to this playlist */
+        description: string;
+        /** Browse Libraries */
+        browseButton: string;
+      };
+      moveSong: {
+        /** Song moved */
+        successTitle: string;
+        /** Move failed */
+        errorTitle: string;
+      };
+      removeSong: {
+        /** Removed: {0} */
+        successTitle: string;
+        /** Removal failed */
+        errorTitle: string;
+      };
+    };
   };
 }

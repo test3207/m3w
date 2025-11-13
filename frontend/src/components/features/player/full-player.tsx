@@ -17,6 +17,8 @@ import {
   Repeat,
   Shuffle,
 } from 'lucide-react';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 // Utility function for duration formatting
 function formatDuration(seconds: number): string {
@@ -36,6 +38,8 @@ function formatDuration(seconds: number): string {
 }
 
 export function FullPlayer() {
+  useLocale();
+  
   const isOpen = useUIStore((state) => state.isFullPlayerOpen);
   const closeFullPlayer = useUIStore((state) => state.closeFullPlayer);
   const openPlayQueueDrawer = useUIStore((state) => state.openPlayQueueDrawer);
@@ -91,7 +95,7 @@ export function FullPlayer() {
           <ChevronDown className="h-6 w-6" />
         </Button>
         <div className="text-sm text-muted-foreground">
-          {queueSourceName || '播放队列'}
+          {queueSourceName || I18n.player.playQueue.fallbackSource}
         </div>
         <Button variant="ghost" size="icon" onClick={handleOpenQueue}>
           <ListMusic className="h-5 w-5" />
@@ -218,7 +222,7 @@ export function FullPlayer() {
               )}
             </div>
             <span className="text-xs">
-              {repeatMode === 'off' ? '关闭' : repeatMode === 'all' ? '循环' : '单曲'}
+              {repeatMode === 'off' ? I18n.player.repeat.off : repeatMode === 'all' ? I18n.player.repeat.all : I18n.player.repeat.one}
             </span>
           </Button>
         </div>

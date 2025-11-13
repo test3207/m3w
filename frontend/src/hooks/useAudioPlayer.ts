@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Audio Player React Hook
  * 
@@ -73,7 +71,7 @@ export function useAudioPlayer() {
       }
 
       isInitializing = true;
-      
+
       initializationPromise = (async () => {
         try {
           await doLoadInitialPlaybackState();
@@ -92,7 +90,7 @@ export function useAudioPlayer() {
         try {
           const seed = await api.main.player.getSeed();
           logger.info('Loaded default seed', { hasSeed: !!seed, trackId: seed?.track?.id, context: seed?.context });
-          
+
           if (!seed?.track) {
             return;
           }
@@ -110,9 +108,9 @@ export function useAudioPlayer() {
             mimeType: seed.track.mimeType ?? undefined,
           };
 
-          logger.info('Priming track from seed', { 
-            trackId: track.id, 
-            audioUrl: track.audioUrl 
+          logger.info('Priming track from seed', {
+            trackId: track.id,
+            audioUrl: track.audioUrl
           });
 
           // Load full queue based on context
@@ -136,10 +134,10 @@ export function useAudioPlayer() {
                   }));
                   currentIndex = fullTracks.findIndex(t => t.id === track.id);
                   if (currentIndex === -1) currentIndex = 0;
-                  logger.info('Loaded full playlist queue from seed', { 
-                    playlistId: seed.context.id, 
+                  logger.info('Loaded full playlist queue from seed', {
+                    playlistId: seed.context.id,
                     tracksCount: fullTracks.length,
-                    currentIndex 
+                    currentIndex
                   });
                 }
               } else if (seed.context.type === 'library' && seed.context.id) {
@@ -157,10 +155,10 @@ export function useAudioPlayer() {
                   }));
                   currentIndex = fullTracks.findIndex(t => t.id === track.id);
                   if (currentIndex === -1) currentIndex = 0;
-                  logger.info('Loaded full library queue from seed', { 
-                    libraryId: seed.context.id, 
+                  logger.info('Loaded full library queue from seed', {
+                    libraryId: seed.context.id,
                     tracksCount: fullTracks.length,
-                    currentIndex 
+                    currentIndex
                   });
                 }
               }
@@ -205,7 +203,7 @@ export function useAudioPlayer() {
       try {
         const progress = await api.main.player.getProgress();
         logger.info('Loaded playback progress', { hasProgress: !!progress, trackId: progress?.track?.id });
-        
+
         if (!progress?.track) {
           // No progress data, try to load seed
           await loadDefaultSeed();
@@ -226,11 +224,11 @@ export function useAudioPlayer() {
           mimeType: progress.track.mimeType ?? undefined,
         };
 
-        logger.info('Priming track from progress', { 
-          trackId: track.id, 
+        logger.info('Priming track from progress', {
+          trackId: track.id,
           audioUrl: track.audioUrl,
           position: progress.position,
-          context: progress.context 
+          context: progress.context
         });
 
         // Load full queue based on context
@@ -254,10 +252,10 @@ export function useAudioPlayer() {
                 }));
                 currentIndex = fullTracks.findIndex(t => t.id === track.id);
                 if (currentIndex === -1) currentIndex = 0;
-                logger.info('Loaded full playlist queue', { 
-                  playlistId: progress.context.id, 
+                logger.info('Loaded full playlist queue', {
+                  playlistId: progress.context.id,
                   tracksCount: fullTracks.length,
-                  currentIndex 
+                  currentIndex
                 });
               }
             } else if (progress.context.type === 'library' && progress.context.id) {
@@ -275,10 +273,10 @@ export function useAudioPlayer() {
                 }));
                 currentIndex = fullTracks.findIndex(t => t.id === track.id);
                 if (currentIndex === -1) currentIndex = 0;
-                logger.info('Loaded full library queue', { 
-                  libraryId: progress.context.id, 
+                logger.info('Loaded full library queue', {
+                  libraryId: progress.context.id,
                   tracksCount: fullTracks.length,
-                  currentIndex 
+                  currentIndex
                 });
               }
             }
@@ -368,10 +366,10 @@ export function useAudioPlayer() {
     // Debounce: skip if same track and position persisted within last 500ms
     const now = Date.now();
     const last = lastProgressPersistRef.current;
-    if (last && 
-        last.trackId === track.id && 
-        last.position === position && 
-        now - last.timestamp < 500) {
+    if (last &&
+      last.trackId === track.id &&
+      last.position === position &&
+      now - last.timestamp < 500) {
       return;
     }
 
@@ -533,10 +531,10 @@ export function useAudioPlayer() {
     const queue = getPlayQueue();
     const currentState = queue.getState();
     logger.info('Current queue state', currentState);
-    
+
     const nextTrack = queue.next();
     logger.info('Next track', { nextTrack });
-    
+
     if (nextTrack) {
       await playWithPreload(nextTrack);
     } else {
@@ -625,7 +623,7 @@ export function useAudioPlayer() {
   const refreshCurrentPlaylistQueue = useCallback(
     async (playlistId: string) => {
       const context = getPlayContext().getContext();
-      
+
       // Only refresh if we're currently playing from this playlist
       if (!context || context.type !== 'playlist' || context.id !== playlistId) {
         return;
@@ -656,7 +654,7 @@ export function useAudioPlayer() {
 
         // Find current track index in new queue
         const currentIndex = tracks.findIndex((t) => t.id === currentTrack.id);
-        
+
         if (currentIndex === -1) {
           // Current track was removed from playlist, keep playing but clear queue
           logger.info('Current track removed from playlist, keeping playback but clearing context');
@@ -668,10 +666,10 @@ export function useAudioPlayer() {
         queue.setQueue(tracks, currentIndex);
         setQueueState(queue.getState());
 
-        logger.info('Refreshed playlist queue', { 
-          playlistId, 
+        logger.info('Refreshed playlist queue', {
+          playlistId,
           trackCount: tracks.length,
-          currentIndex 
+          currentIndex
         });
       } catch (error) {
         logger.error('Failed to refresh playlist queue', { error, playlistId });

@@ -130,20 +130,20 @@ class AudioPlayer {
       audioUrl: track.audioUrl,
       duration: track.duration,
     });
-    
+
     // Always unload and create new Howl instance to ensure fresh event listeners
     this.unloadHowl();
     this.currentTrack = track;
-    
+
     logger.info('🎵 Creating Howl instance...');
     this.howl = this.createHowl(track);
-    
+
     logger.info('🎵 Calling howl.play()...', {
       howlState: this.howl.state(),
       howlPlaying: this.howl.playing(),
     });
     this.howl.play();
-    
+
     logger.info('🎵 howl.play() called, waiting for onplay event');
   }
 
@@ -151,13 +151,13 @@ class AudioPlayer {
    * Prime player with a track without auto-playing
    */
   prime(track: Track): void {
-    logger.info('Priming player', { 
-      trackId: track.id, 
+    logger.info('Priming player', {
+      trackId: track.id,
       audioUrl: track.audioUrl,
       hasExistingHowl: !!this.howl,
-      isSameTrack: this.currentTrack?.id === track.id 
+      isSameTrack: this.currentTrack?.id === track.id
     });
-    
+
     if (this.currentTrack?.id === track.id && this.howl) {
       this.emit('load');
       return;
@@ -402,12 +402,12 @@ class AudioPlayer {
         // Suppress errors if we're in dev mode and the player hasn't been actively used
         const isDev = import.meta.env.DEV;
         const hasUserInteraction = this.howl?.playing() || false;
-        
+
         if (isDev && !hasUserInteraction && !this.currentTrack) {
           logger.info('Audio load error suppressed (likely dev environment or page load)', { err: error });
           return;
         }
-        
+
         // Only log errors for actual playback attempts
         if (hasUserInteraction || !isDev) {
           logger.error('Audio load error', { err: error });
@@ -416,7 +416,7 @@ class AudioPlayer {
       },
       onplayerror: (_id, error) => {
         logger.error('🎵 Howl onplayerror fired', { error });
-        
+
         const trackContext = this.currentTrack ? { trackId: this.currentTrack.id } : {};
         const logPayload = {
           ...(error ? { err: error } : {}),
