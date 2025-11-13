@@ -2,6 +2,8 @@
  * Format utility functions
  */
 
+import { I18n } from '@/locales/i18n';
+
 /**
  * Format duration in seconds to MM:SS or HH:MM:SS
  */
@@ -49,12 +51,12 @@ export function formatRelativeTime(date: Date | string): string {
   if (diffDays > 7) {
     return targetDate.toLocaleDateString();
   } else if (diffDays > 0) {
-    return `${diffDays}天前`;
+    return I18n.common.timeAgo.daysAgo.replace('{0}', String(diffDays));
   } else if (diffHours > 0) {
-    return `${diffHours}小时前`;
+    return I18n.common.timeAgo.hoursAgo.replace('{0}', String(diffHours));
   } else if (diffMins > 0) {
-    return `${diffMins}分钟前`;
+    return I18n.common.timeAgo.minutesAgo.replace('{0}', String(diffMins));
   } else {
-    return '刚刚';
+    return I18n.common.timeAgo.justNow;
   }
 }

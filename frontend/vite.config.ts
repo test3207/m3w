@@ -58,10 +58,10 @@ export default defineConfig({
           },
           // Cache API GET requests with NetworkFirst strategy
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/') && 
-              (url.pathname.includes('/songs') || 
-               url.pathname.includes('/libraries') || 
-               url.pathname.includes('/playlists')),
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/') &&
+              (url.pathname.includes('/songs') ||
+                url.pathname.includes('/libraries') ||
+                url.pathname.includes('/playlists')),
             handler: 'NetworkFirst',
             method: 'GET',
             options: {

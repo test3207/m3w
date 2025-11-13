@@ -4,10 +4,10 @@
 
 import { mainApiClient } from '../client';
 import { MAIN_API_ENDPOINTS } from '../endpoints';
-import type { 
-  Playlist, 
-  Song, 
-  CreatePlaylistInput, 
+import type {
+  Playlist,
+  Song,
+  CreatePlaylistInput,
   UpdatePlaylistInput,
   AddSongToPlaylistInput,
   ReorderPlaylistSongsInput

@@ -5,6 +5,7 @@ import type { Song } from '@/types/models';
 import { getAudioPlayer, type Track } from '@/lib/audio/player';
 import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
 import { streamApiClient } from '@/services/api/main/stream-client';
+import { I18n } from '@/locales/i18n';
 
 export type RepeatMode = 'off' | 'one' | 'all';
 export type QueueSource = 'library' | 'playlist' | 'all' | null;
@@ -275,7 +276,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
     // Create or update library's "Play All" playlist
     try {
-      const playlistName = `${libraryName} - 播放全部`;
+      const playlistName = `${libraryName} - ${I18n.libraries.detail.playAll}`;
       const songIds = songs.map(s => s.id);
       
       // Try to find existing playlist for this library

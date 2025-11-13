@@ -18,8 +18,11 @@ import { formatDuration } from '@/lib/utils/format';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 export function PlayQueueDrawer() {
+  useLocale();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [playlistName, setPlaylistName] = useState('');
@@ -44,7 +47,7 @@ export function PlayQueueDrawer() {
     e.stopPropagation();
     removeFromQueue(index);
     toast({
-      title: '已从队列移除',
+      title: I18n.player.playQueue.removeFromQueueTitle,
     });
   };
 
@@ -52,7 +55,7 @@ export function PlayQueueDrawer() {
     clearQueue();
     closePlayQueueDrawer();
     toast({
-      title: '队列已清空',
+      title: I18n.player.playQueue.clearQueueTitle,
     });
   };
 
@@ -60,7 +63,7 @@ export function PlayQueueDrawer() {
     if (!playlistName.trim()) {
       toast({
         variant: 'destructive',
-        title: '请输入播放列表名称',
+        title: I18n.player.playQueue.savePlaylistErrorEmptyName,
       });
       return;
     }
@@ -70,23 +73,23 @@ export function PlayQueueDrawer() {
       const success = await saveQueueAsPlaylist(playlistName);
       if (success) {
         toast({
-          title: '保存成功',
-          description: `播放列表"${playlistName}"已创建`,
+          title: I18n.player.playQueue.savePlaylistSuccessTitle,
+          description: I18n.player.playQueue.savePlaylistSuccessDescription.replace('{0}', playlistName),
         });
         setPlaylistName('');
         setShowSaveInput(false);
       } else {
         toast({
           variant: 'destructive',
-          title: '保存失败',
-          description: '无法保存播放列表',
+          title: I18n.player.playQueue.savePlaylistErrorTitle,
+          description: I18n.player.playQueue.savePlaylistErrorDescription,
         });
       }
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: '保存失败',
-        description: error instanceof Error ? error.message : '未知错误',
+        title: I18n.player.playQueue.savePlaylistErrorTitle,
+        description: error instanceof Error ? error.message : I18n.player.playQueue.savePlaylistErrorUnknown,
       });
     } finally {
       setIsSaving(false);
@@ -132,7 +135,7 @@ export function PlayQueueDrawer() {
           ) : (
             <div className="flex w-full gap-2">
               <Input
-                placeholder="输入播放列表名称"
+                placeholder={I18n.player.playQueue.savePlaylistInputPlaceholder}
                 value={playlistName}
                 onChange={(e) => setPlaylistName(e.target.value)}
                 onKeyDown={(e) => {
@@ -149,7 +152,7 @@ export function PlayQueueDrawer() {
                 onClick={handleSaveAsPlaylist}
                 disabled={isSaving || !playlistName.trim()}
               >
-                {isSaving ? '保存中...' : '保存'}
+                {isSaving ? I18n.player.playQueue.savingButton : I18n.player.playQueue.saveButton}
               </Button>
               <Button
                 variant="ghost"

@@ -66,7 +66,7 @@ export const useAuthStore = create<AuthStore>()(
 
         try {
           const data = await api.main.auth.refreshToken(tokens.refreshToken);
-          
+
           set({
             tokens: {
               accessToken: data.accessToken,

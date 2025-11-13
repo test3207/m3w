@@ -593,7 +593,7 @@ app.post('/playlists/:id/songs', async (c: Context) => {
       .where('playlistId')
       .equals(id)
       .toArray();
-    
+
     const maxOrder = existingSongs.length > 0
       ? Math.max(...existingSongs.map((ps) => ps.order))
       : 0;

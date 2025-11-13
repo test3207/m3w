@@ -29,6 +29,7 @@ import { UploadSongForm } from '@/components/features/upload/upload-song-form';
 import { logger } from '@/lib/logger-client';
 import { eventBus, EVENTS } from '@/lib/events';
 import type { LibraryOption } from '@/types/models';
+import { isDefaultLibrary } from '@m3w/shared';
 
 export function UploadDrawer() {
   useLocale();
@@ -49,10 +50,10 @@ export function UploadDrawer() {
 
   // Get default library ID
   const defaultLibraryId = useMemo(() => {
-    if (libraryOptions.length === 0) return '';
-    const defaultLibrary = libraryOptions.find((lib) => lib.name === '默认音乐库');
-    return defaultLibrary?.id || libraryOptions[0].id;
-  }, [libraryOptions]);
+    if (libraries.length === 0) return '';
+    const defaultLibrary = libraries.find(isDefaultLibrary);
+    return defaultLibrary?.id || libraries[0].id;
+  }, [libraries]);
 
   const [selectedLibraryId, setSelectedLibraryId] = useState<string>('');
   
@@ -134,7 +135,7 @@ export function UploadDrawer() {
                   onValueChange={setSelectedLibraryId}
                 >
                   <SelectTrigger id="library-select">
-                    <SelectValue placeholder="选择一个音乐库" />
+                    <SelectValue placeholder={I18n.upload.form.selectLibraryPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {libraryOptions.map((library) => (

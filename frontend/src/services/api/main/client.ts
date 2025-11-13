@@ -12,11 +12,11 @@ export class MainApiClient {
    */
   async get<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await apiClient.get<ApiResponse<T>>(endpoint, options);
-    
+
     if (!response.success) {
       throw new Error(response.error || response.message || 'Request failed');
     }
-    
+
     return response.data as T;
   }
 
@@ -25,11 +25,11 @@ export class MainApiClient {
    */
   async post<T>(endpoint: string, body?: unknown, options?: RequestInit): Promise<T> {
     const response = await apiClient.post<ApiResponse<T>>(endpoint, body, options);
-    
+
     if (!response.success) {
       throw new Error(response.error || response.message || 'Request failed');
     }
-    
+
     return response.data as T;
   }
 
@@ -38,11 +38,11 @@ export class MainApiClient {
    */
   async put<T>(endpoint: string, body?: unknown, options?: RequestInit): Promise<T> {
     const response = await apiClient.put<ApiResponse<T>>(endpoint, body, options);
-    
+
     if (!response.success) {
       throw new Error(response.error || response.message || 'Request failed');
     }
-    
+
     return response.data as T;
   }
 
@@ -51,11 +51,11 @@ export class MainApiClient {
    */
   async patch<T>(endpoint: string, body?: unknown, options?: RequestInit): Promise<T> {
     const response = await apiClient.patch<ApiResponse<T>>(endpoint, body, options);
-    
+
     if (!response.success) {
       throw new Error(response.error || response.message || 'Request failed');
     }
-    
+
     return response.data as T;
   }
 
@@ -64,11 +64,11 @@ export class MainApiClient {
    */
   async delete<T = void>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await apiClient.delete<ApiResponse<T>>(endpoint, options);
-    
+
     if (!response.success) {
       throw new Error(response.error || response.message || 'Request failed');
     }
-    
+
     return response.data as T;
   }
 
@@ -77,11 +77,11 @@ export class MainApiClient {
    */
   async upload<T>(endpoint: string, formData: FormData, options?: RequestInit): Promise<T> {
     const response = await apiClient.upload<ApiResponse<T>>(endpoint, formData, options);
-    
+
     if (!response.success) {
       throw new Error(response.error || response.message || 'Upload failed');
     }
-    
+
     return response.data as T;
   }
 }

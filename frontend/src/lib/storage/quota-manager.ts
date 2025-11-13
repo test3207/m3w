@@ -16,15 +16,15 @@ import { logger } from '../logger-client';
 export function isPWAInstalled(): boolean {
   // Check if running in standalone mode (iOS Safari)
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  
+
   // Check if running in standalone mode (Android Chrome)
   const isStandaloneNavigator = ('standalone' in window.navigator) && (window.navigator as { standalone?: boolean }).standalone;
-  
+
   // Check if launched from home screen
   const isLaunchedFromHomeScreen = window.matchMedia('(display-mode: standalone)').matches ||
-                                     window.matchMedia('(display-mode: fullscreen)').matches ||
-                                     window.matchMedia('(display-mode: minimal-ui)').matches;
-  
+    window.matchMedia('(display-mode: fullscreen)').matches ||
+    window.matchMedia('(display-mode: minimal-ui)').matches;
+
   return isStandalone || isStandaloneNavigator || isLaunchedFromHomeScreen;
 }
 
@@ -192,7 +192,7 @@ export async function initializeStorage(): Promise<void> {
   if (status.isPWAInstalled && !status.isPersisted) {
     logger.info('Requesting persistent storage');
     const granted = await requestPersistentStorage();
-    
+
     if (granted) {
       logger.info('Persistent storage granted');
     } else {

@@ -13,6 +13,8 @@ import { Library, Plus, Music } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getLibraryDisplayName, getLibraryBadge } from '@/lib/utils/defaults';
 import { isDefaultLibrary } from '@m3w/shared';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 
 export default function LibrariesPage() {
+  useLocale();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newLibraryName, setNewLibraryName] = useState('');
@@ -45,7 +48,7 @@ export default function LibrariesPage() {
     if (!newLibraryName.trim()) {
       toast({
         variant: 'destructive',
-        title: '请输入音乐库名称',
+        title: I18n.libraries.create.promptName,
       });
       return;
     }
@@ -54,16 +57,16 @@ export default function LibrariesPage() {
     try {
       await createLibrary(newLibraryName.trim());
       toast({
-        title: '创建成功',
-        description: `音乐库"${newLibraryName}"已创建`,
+        title: I18n.libraries.create.successTitle,
+        description: I18n.libraries.create.successDescription.replace('{0}', newLibraryName),
       });
       setNewLibraryName('');
       setIsDialogOpen(false);
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: '创建失败',
-        description: error instanceof Error ? error.message : '未知错误',
+        title: I18n.libraries.create.errorTitle,
+        description: error instanceof Error ? error.message : I18n.libraries.create.unknownError,
       });
     } finally {
       setIsCreating(false);
@@ -73,7 +76,7 @@ export default function LibrariesPage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">加载中...</p>
+        <p className="text-muted-foreground">{I18n.common.loadingLabel}</p>
       </div>
     );
   }
@@ -83,9 +86,9 @@ export default function LibrariesPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">音乐库</h1>
+          <h1 className="text-2xl font-bold">{I18n.libraries.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {libraries.length} 个音乐库
+            {I18n.libraries.count.replace('{0}', String(libraries.length))}
           </p>
         </div>
 
@@ -97,17 +100,17 @@ export default function LibrariesPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>创建新音乐库</DialogTitle>
+              <DialogTitle>{I18n.libraries.create.dialogTitle}</DialogTitle>
               <DialogDescription>
-                为你的音乐创建一个新的收藏集
+                {I18n.libraries.create.dialogDescription}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">音乐库名称</Label>
+                <Label htmlFor="name">{I18n.libraries.create.nameLabel}</Label>
                 <Input
                   id="name"
-                  placeholder="例如：我的音乐、工作音乐"
+                  placeholder={I18n.libraries.create.namePlaceholder}
                   value={newLibraryName}
                   onChange={(e) => setNewLibraryName(e.target.value)}
                   onKeyDown={(e) => {
@@ -126,10 +129,10 @@ export default function LibrariesPage() {
                   setNewLibraryName('');
                 }}
               >
-                取消
+                {I18n.libraries.create.cancel}
               </Button>
               <Button onClick={handleCreateLibrary} disabled={isCreating}>
-                {isCreating ? '创建中...' : '创建'}
+                {isCreating ? I18n.libraries.create.submitting : I18n.libraries.create.submit}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -141,9 +144,9 @@ export default function LibrariesPage() {
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="text-center">
             <Library className="mx-auto h-16 w-16 text-muted-foreground/50" />
-            <h2 className="mt-4 text-xl font-semibold">还没有音乐库</h2>
+            <h2 className="mt-4 text-xl font-semibold">{I18n.libraries.empty.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              点击右上角 "+" 创建你的第一个音乐库
+              {I18n.libraries.empty.description}
             </p>
           </div>
         </div>
@@ -180,10 +183,10 @@ export default function LibrariesPage() {
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {library._count?.songs || 0} 首歌曲
+                        {I18n.libraries.card.songsCount.replace('{0}', String(library._count?.songs || 0))}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        创建于 {new Date(library.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        {I18n.libraries.card.createdAt.replace('{0}', new Date(library.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' }))}
                       </p>
                     </div>
                   </div>

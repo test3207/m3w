@@ -53,7 +53,7 @@ export function useTrackPreloader(limit: number = MAX_PRELOADED_TRACKS) {
         try {
           // Fetch audio through stream API client (handles auth and offline routing)
           const response = await streamApiClient.get(track.audioUrl);
-          
+
           if (!response.ok) {
             throw new Error(`Failed to fetch audio: ${response.status}`);
           }

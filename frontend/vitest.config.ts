@@ -14,64 +14,64 @@ export default mergeConfig(
   }),
   defineVitestConfig({
     test: {
-    environment: 'node', // Use node for non-React tests
-    globals: true,
-    setupFiles: ['./vitest.setup.ts'],
-    exclude: [
-      // Default excludes
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/cypress/**',
-      '**/.{idea,git,cache,output,temp}/**',
-      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
-    ],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      environment: 'node', // Use node for non-React tests
+      globals: true,
+      setupFiles: ['./vitest.setup.ts'],
       exclude: [
-        // Dependencies and build outputs
-        'node_modules/**',
-        'out/**',
-        'build/**',
-        
-        // Config files
-        'vitest.config.ts',
-        'vitest.setup.ts',
-        'postcss.config.js',
-        'tailwind.config.ts',
-        '**/*.config.*',
-        
-        // Type definitions
-        '**/*.d.ts',
-        'src/types/**',
-        
-        // Database
-        'prisma/**',
-        'src/lib/db/prisma.ts', // Prisma client singleton
-        
-        // Test files
-        '**/*.test.ts',
-        '**/*.test.tsx',
-        '**/*.spec.ts',
-        '**/*.spec.tsx',
-        'src/test/**',
-        
-        // Generated files
-        'src/generated/**',
-        
-        // Entry points (covered by E2E)
-        'src/app/layout.tsx',
-        'src/app/page.tsx',
-        'src/middleware.ts',
-        
-        // UI components (should have E2E coverage)
-        'src/components/ui/**',
-        'src/components/layouts/**',
-        
-        // Auth config (integration tested)
-        'src/lib/auth/config.ts',
+        // Default excludes
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/cypress/**',
+        '**/.{idea,git,cache,output,temp}/**',
+        '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
       ],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'json', 'html', 'lcov'],
+        exclude: [
+          // Dependencies and build outputs
+          'node_modules/**',
+          'out/**',
+          'build/**',
+
+          // Config files
+          'vitest.config.ts',
+          'vitest.setup.ts',
+          'postcss.config.js',
+          'tailwind.config.ts',
+          '**/*.config.*',
+
+          // Type definitions
+          '**/*.d.ts',
+          'src/types/**',
+
+          // Database
+          'prisma/**',
+          'src/lib/db/prisma.ts', // Prisma client singleton
+
+          // Test files
+          '**/*.test.ts',
+          '**/*.test.tsx',
+          '**/*.spec.ts',
+          '**/*.spec.tsx',
+          'src/test/**',
+
+          // Generated files
+          'src/generated/**',
+
+          // Entry points (covered by E2E)
+          'src/app/layout.tsx',
+          'src/app/page.tsx',
+          'src/middleware.ts',
+
+          // UI components (should have E2E coverage)
+          'src/components/ui/**',
+          'src/components/layouts/**',
+
+          // Auth config (integration tested)
+          'src/lib/auth/config.ts',
+        ],
+      },
     },
-  },
   })
 );

@@ -113,7 +113,13 @@
     "confirmDeletePlaylist": "确定要删除此播放列表吗?",
     "itemsCount": "{0} 项",
     "greetingWithName": "你好 {0},欢迎回来!",
-    "dateRange": "从 {0} 到 {1}"
+    "dateRange": "从 {0} 到 {1}",
+    "timeAgo": {
+      "justNow": "刚刚",
+      "minutesAgo": "{0}分钟前",
+      "hoursAgo": "{0}小时前",
+      "daysAgo": "{0}天前"
+    }
   },
   "networkStatus": {
     "online": "在线",
@@ -213,7 +219,14 @@
       "sortTitleDesc": "标题 Z-A",
       "sortArtistAsc": "歌手 A-Z",
       "sortAlbumAsc": "专辑 A-Z",
-      "loadingLabel": "加载中..."
+      "loadingLabel": "加载中...",
+      "deleteSong": {
+        "button": "Delete Song",
+        "successTitle": "Deleted successfully",
+        "successDescription": "Removed \"{0}\" from library",
+        "errorTitle": "Deletion failed",
+        "unknownError": "Unknown error"
+      }
     },
     "addToPlaylist": {
       "label": "添加到播放列表",
@@ -225,15 +238,6 @@
       "toastErrorTitle": "无法添加歌曲",
       "toastErrorDescription": "请重试。",
       "selectPlaylistFirst": "请先选择播放列表。"
-    },
-    "deleteSong": {
-      "buttonLabel": "删除歌曲",
-      "dialogTitle": "从音乐库删除歌曲？",
-      "dialogDescription": "这将从此音乐库永久删除该歌曲。此操作无法撤销。",
-      "playlistWarningPrefix": "⚠️ 此歌曲在 ",
-      "playlistWarningSuffix": " 个播放列表中使用。删除它也会将其从这些播放列表中移除。",
-      "successPrefix": "已删除歌曲：",
-      "successSuffix": ""
     }
   },
   "playlist": {
@@ -318,6 +322,23 @@
       "repeatTrack": "循环：单曲",
       "shuffleOn": "随机：开启",
       "shuffleOff": "随机：关闭"
+    },
+    "playQueue": {
+      "title": "播放队列",
+      "fallbackSource": "播放队列",
+      "removeFromQueueTitle": "已从队列移除",
+      "clearQueueTitle": "队列已清空",
+      "savePlaylistInputPlaceholder": "输入播放列表名称",
+      "savePlaylistErrorEmptyName": "请输入播放列表名称",
+      "savePlaylistSuccessTitle": "保存成功",
+      "savePlaylistSuccessDescription": "播放列表\"{0}\"已创建",
+      "savePlaylistErrorTitle": "保存失败",
+      "savePlaylistErrorDescription": "无法保存播放列表",
+      "savePlaylistErrorUnknown": "未知错误",
+      "clearQueueButton": "清空队列",
+      "saveAsPlaylistButton": "保存为播放列表",
+      "savingButton": "保存中...",
+      "saveButton": "保存"
     }
   },
   "upload": {
@@ -376,5 +397,121 @@
     "startPlayingTitle": "开始播放",
     "startPlayingDescription": "播放\"{0}\"中的全部歌曲",
     "playFromLibraryDescription": "从音乐库播放"
+  },
+  "settings": {
+    "title": "设置",
+    "pleaseSignIn": "请先登录",
+    "profile": {
+      "title": "个人信息",
+      "description": "您的账户信息",
+      "username": "用户名：",
+      "usernameNotSet": "未设置用户名",
+      "email": "邮箱：",
+      "loginMethod": "登录方式："
+    },
+    "account": {
+      "title": "账户操作",
+      "description": "退出登录或管理您的账户",
+      "signOut": "退出登录"
+    },
+    "toast": {
+      "signOutSuccess": "已退出登录",
+      "signOutDescription": "您已成功退出登录"
+    }
+  },
+  "libraries": {
+    "title": "音乐库",
+    "count": "{0} 个音乐库",
+    "create": {
+      "dialogTitle": "创建新音乐库",
+      "dialogDescription": "为你的音乐创建一个新的收藏集",
+      "nameLabel": "音乐库名称",
+      "namePlaceholder": "例如：我的音乐、工作音乐",
+      "cancel": "取消",
+      "submit": "创建",
+      "submitting": "创建中...",
+      "promptName": "请输入音乐库名称",
+      "successTitle": "创建成功",
+      "successDescription": "音乐库\"{0}\"已创建",
+      "errorTitle": "创建失败",
+      "unknownError": "未知错误"
+    },
+    "empty": {
+      "title": "还没有音乐库",
+      "description": "点击右上角 \"+\" 创建你的第一个音乐库"
+    },
+    "card": {
+      "songsCount": "{0} 首歌曲",
+      "createdAt": "创建于 {0}"
+    },
+    "detail": {
+      "songsCount": "{0} 首歌曲",
+      "playAll": "播放全部",
+      "sort": {
+        "label": "排序方式: {0}",
+        "dateDesc": "添加时间 (最新)",
+        "dateAsc": "添加时间 (最旧)",
+        "titleAsc": "标题 A-Z",
+        "titleDesc": "标题 Z-A",
+        "artistAsc": "歌手 A-Z",
+        "albumAsc": "专辑 A-Z"
+      },
+      "empty": {
+        "title": "还没有歌曲",
+        "description": "点击右下角 \"+\" 上传歌曲到这个音乐库"
+      },
+      "deleteSong": {
+        "button": "删除歌曲",
+        "successTitle": "删除成功",
+        "successDescription": "已从音乐库中删除\"{0}\"",
+        "errorTitle": "删除失败",
+        "unknownError": "未知错误"
+      }
+    }
+  },
+  "playlists": {
+    "title": "播放列表",
+    "count": "{0} 个播放列表",
+    "create": {
+      "dialogTitle": "创建新播放列表",
+      "dialogDescription": "创建一个自定义播放列表",
+      "nameLabel": "播放列表名称",
+      "namePlaceholder": "例如：深夜驾车、运动音乐",
+      "cancel": "取消",
+      "submit": "创建",
+      "submitting": "创建中...",
+      "promptName": "请输入播放列表名称",
+      "successTitle": "创建成功",
+      "successDescription": "播放列表\"{0}\"已创建",
+      "errorTitle": "创建失败",
+      "unknownError": "未知错误"
+    },
+    "empty": {
+      "title": "还没有播放列表",
+      "description": "点击右上角 \"+\" 创建你的第一个播放列表"
+    },
+    "card": {
+      "songsCount": "{0} 首歌曲",
+      "createdAt": "创建于 {0}"
+    },
+    "detail": {
+      "notFound": "播放列表不存在",
+      "songsCount": "{0} 首歌曲",
+      "playAll": "播放全部",
+      "nowPlaying": "正在播放：{0}",
+      "empty": {
+        "title": "播放列表为空",
+        "description": "从音乐库添加歌曲到此播放列表",
+        "browseButton": "浏览音乐库"
+      },
+      "moveSong": {
+        "successTitle": "已移动歌曲",
+        "errorTitle": "移动失败"
+      },
+      "removeSong": {
+        "successTitle": "已移除：{0}",
+        "errorTitle": "移除失败"
+      }
+    }
   }
 }

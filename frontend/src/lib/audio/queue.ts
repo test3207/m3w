@@ -35,7 +35,7 @@ export class PlayQueue {
     this.tracks = [...tracks];
     this.originalOrder = [...tracks];
     this.currentIndex = startIndex;
-    
+
     if (this.shuffleEnabled) {
       this.generateShuffleOrder();
     }
@@ -289,7 +289,7 @@ export class PlayQueue {
       const j = Math.floor(Math.random() * (i + 1));
       [this.shuffleOrder[i], this.shuffleOrder[j]] = [this.shuffleOrder[j], this.shuffleOrder[i]];
     }
-    
+
     this.applyShuffle();
   }
 
@@ -298,9 +298,9 @@ export class PlayQueue {
    */
   private applyShuffle(): void {
     const currentTrack = this.getCurrentTrack();
-    
+
     this.tracks = this.shuffleOrder.map(i => this.originalOrder[i]);
-    
+
     // Update current index
     if (currentTrack) {
       this.currentIndex = this.tracks.findIndex(t => t.id === currentTrack.id);

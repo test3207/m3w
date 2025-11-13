@@ -52,7 +52,7 @@ export function useAuthRefresh() {
 
         try {
           const success = await refreshToken();
-          
+
           if (success) {
             logger.info('Token refreshed successfully');
             // Show success toast (optional, can be commented out if too noisy)
@@ -62,7 +62,7 @@ export function useAuthRefresh() {
             // });
           } else {
             logger.warn('Token refresh failed - user may need to re-authenticate');
-            
+
             // Only show toast once every 10 minutes to avoid spam
             if (now - lastFailureToastRef.current > 10 * 60 * 1000) {
               toast({

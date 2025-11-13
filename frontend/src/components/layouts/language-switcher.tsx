@@ -1,5 +1,3 @@
-'use client';
-
 import { Languages } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getLocale, setLocale, getAvailableLocales, onLocaleChange } from '@/locales/i18n';

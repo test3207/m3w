@@ -107,7 +107,7 @@ export async function cacheSong(
     logger.info('Song cached successfully', { songId, title: song.title });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+
     onProgress?.({
       songId,
       title: song.title,
@@ -163,11 +163,11 @@ export async function removeCachedSong(songId: string): Promise<boolean> {
   try {
     const cache = await getAudioCache();
     const deleted = await cache.delete(MAIN_API_ENDPOINTS.songs.stream(songId));
-    
+
     if (deleted) {
       logger.info('Removed cached song', { songId });
     }
-    
+
     return deleted;
   } catch (error) {
     logger.error('Failed to remove cached song', { songId, error });
@@ -182,7 +182,7 @@ export async function getCachedSongs(): Promise<string[]> {
   try {
     const cache = await getAudioCache();
     const requests = await cache.keys();
-    
+
     // Extract song IDs from URLs like /api/songs/{id}/stream
     const songIds = requests
       .map((request) => {
@@ -190,7 +190,7 @@ export async function getCachedSongs(): Promise<string[]> {
         return match ? match[1] : null;
       })
       .filter((id): id is string => id !== null);
-    
+
     return songIds;
   } catch (error) {
     logger.error('Failed to get cached songs', { error });
@@ -205,15 +205,15 @@ export async function getCacheStats(): Promise<CacheStats> {
   try {
     const cache = await getAudioCache();
     const requests = await cache.keys();
-    
+
     const songs = await Promise.all(
       requests.map(async (request) => {
         const response = await cache.match(request);
         const size = response ? parseInt(response.headers.get('content-length') || '0', 10) : 0;
-        
+
         const match = request.url.match(/\/songs\/([^/]+)\/stream/);
         const songId = match ? match[1] : 'unknown';
-        
+
         return {
           songId,
           url: request.url,
@@ -222,9 +222,9 @@ export async function getCacheStats(): Promise<CacheStats> {
         };
       })
     );
-    
+
     const totalSize = songs.reduce((sum, song) => sum + song.size, 0);
-    
+
     return {
       totalCached: songs.length,
       totalSize,
@@ -302,13 +302,13 @@ export async function evictOldestCachedSongs(count: number): Promise<void> {
   logger.info('Evicting oldest cached songs', { count });
 
   const stats = await getCacheStats();
-  
+
   // Sort by cachedAt (oldest first)
   const sortedSongs = stats.songs.sort((a, b) => a.cachedAt - b.cachedAt);
-  
+
   // Remove oldest songs
   const toRemove = sortedSongs.slice(0, count);
-  
+
   for (const song of toRemove) {
     await removeCachedSong(song.songId);
   }
@@ -319,7 +319,7 @@ export async function evictOldestCachedSongs(count: number): Promise<void> {
  */
 export async function checkAndEvictIfNeeded(): Promise<void> {
   const hasQuota = await hasEnoughQuota(MIN_FREE_QUOTA);
-  
+
   if (!hasQuota) {
     logger.warn('Low storage quota, evicting cached songs');
     await evictOldestCachedSongs(10); // Remove 10 oldest songs

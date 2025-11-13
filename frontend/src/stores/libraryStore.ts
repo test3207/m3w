@@ -21,15 +21,15 @@ interface LibraryActions {
   fetchLibraries: () => Promise<void>;
   fetchLibraryById: (id: string) => Promise<Library | null>;
   setCurrentLibrary: (library: Library | null) => void;
-  
+
   // CRUD operations
   createLibrary: (name: string) => Promise<Library | null>;
   deleteLibrary: (id: string) => Promise<boolean>;
-  
+
   // Computed getters
   getDefaultLibrary: () => Library | null;
   canDeleteLibrary: (id: string) => boolean;
-  
+
   // Reset
   reset: () => void;
 }
@@ -53,11 +53,11 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     try {
       const libraries = await api.main.libraries.list();
       console.log('[LibraryStore] Fetched libraries:', libraries.length);
-      
+
       // Update libraries and refresh currentLibrary if it exists
       set((state) => {
         let updatedCurrentLibrary = state.currentLibrary;
-        
+
         // If there's a currentLibrary, update it with fresh data from the list
         if (state.currentLibrary) {
           const freshLibrary = libraries.find(lib => lib.id === state.currentLibrary?.id);
@@ -65,7 +65,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
             updatedCurrentLibrary = freshLibrary;
           }
         }
-        
+
         console.log('[LibraryStore] Setting new libraries array');
         return {
           libraries,
@@ -73,7 +73,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
           isLoading: false,
         };
       });
-      
+
       logger.info(`Fetched ${libraries.length} libraries`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch libraries';
@@ -88,7 +88,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     try {
       const library = await api.main.libraries.getById(id);
       set({ currentLibrary: library, isLoading: false });
-      
+
       logger.info(`Fetched library: ${library.name}`, { libraryId: id });
       return library;
     } catch (error) {
@@ -109,14 +109,14 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const newLibrary = await api.main.libraries.create({ name });
-      
+
       // Add to list and set as current
       set((state) => ({
         libraries: [...state.libraries, newLibrary],
         currentLibrary: newLibrary,
         isLoading: false,
       }));
-      
+
       logger.info(`Created library: ${name}`, { libraryId: newLibrary.id });
       return newLibrary;
     } catch (error) {
@@ -130,7 +130,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   // Delete library
   deleteLibrary: async (id: string) => {
     const { canDeleteLibrary } = get();
-    
+
     // Check if library can be deleted
     if (!canDeleteLibrary(id)) {
       logger.warn('Cannot delete default library', { libraryId: id });
@@ -141,14 +141,14 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await api.main.libraries.delete(id);
-      
+
       // Remove from list and clear current if it was deleted
       set((state) => ({
         libraries: state.libraries.filter((lib) => lib.id !== id),
         currentLibrary: state.currentLibrary?.id === id ? null : state.currentLibrary,
         isLoading: false,
       }));
-      
+
       logger.info(`Deleted library`, { libraryId: id });
       return true;
     } catch (error) {

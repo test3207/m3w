@@ -3,21 +3,21 @@
  * Displays playlist songs with playback and reordering
  */
 
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Play, Music, ChevronUp, ChevronDown, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
-import { usePlaylistStore } from '@/stores/playlistStore';
-import { usePlayerStore } from '@/stores/playerStore';
-import { api } from '@/services';
-import { logger } from '@/lib/logger-client';
-import { useToast } from '@/components/ui/use-toast';
-import { eventBus, EVENTS } from '@/lib/events';
-import { cn } from '@/lib/utils';
-import type { Song as SharedSong } from '@m3w/shared';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Play, Music, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
+import { usePlaylistStore } from "@/stores/playlistStore";
+import { usePlayerStore } from "@/stores/playerStore";
+import { api } from "@/services";
+import { logger } from "@/lib/logger-client";
+import { useToast } from "@/components/ui/use-toast";
+import { eventBus, EVENTS } from "@/lib/events";
+import { cn } from "@/lib/utils";
+import type { Song as SharedSong } from "@m3w/shared";
 
 export default function PlaylistDetailPage() {
   useLocale();
@@ -25,8 +25,14 @@ export default function PlaylistDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { currentPlaylist, setCurrentPlaylist, reorderPlaylistSongs, removeSongFromPlaylist } = usePlaylistStore();
-  const { playFromPlaylist, currentSong, queueSource, queueSourceId } = usePlayerStore();
+  const {
+    currentPlaylist,
+    setCurrentPlaylist,
+    reorderPlaylistSongs,
+    removeSongFromPlaylist,
+  } = usePlaylistStore();
+  const { playFromPlaylist, currentSong, queueSource, queueSourceId } =
+    usePlayerStore();
 
   const [songs, setSongs] = useState<SharedSong[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +40,7 @@ export default function PlaylistDetailPage() {
   // Fetch playlist data
   useEffect(() => {
     if (!id) {
-      navigate('/playlists');
+      navigate("/playlists");
       return;
     }
 
@@ -49,12 +55,12 @@ export default function PlaylistDetailPage() {
         setCurrentPlaylist(playlistData);
         setSongs(songsData);
       } catch (error) {
-        logger.error('Failed to fetch playlist', { error, playlistId: id });
+        logger.error("Failed to fetch playlist", { error, playlistId: id });
         toast({
-          variant: 'destructive',
+          variant: "destructive",
           title: I18n.error.failedToGetPlaylists,
         });
-        navigate('/playlists');
+        navigate("/playlists");
       } finally {
         setLoading(false);
       }
@@ -69,12 +75,14 @@ export default function PlaylistDetailPage() {
 
     const refetchSongs = async () => {
       try {
-        console.log('[PlaylistDetailPage] Event triggered, refetching songs');
+        console.log("[PlaylistDetailPage] Event triggered, refetching songs");
         const songsData = await api.main.playlists.getSongs(id);
         setSongs(songsData);
-        console.log('[PlaylistDetailPage] Songs refreshed due to external changes');
+        console.log(
+          "[PlaylistDetailPage] Songs refreshed due to external changes"
+        );
       } catch (error) {
-        console.error('[PlaylistDetailPage] Failed to refresh songs:', error);
+        console.error("[PlaylistDetailPage] Failed to refresh songs:", error);
       }
     };
 
@@ -109,21 +117,26 @@ export default function PlaylistDetailPage() {
     if (index === 0 || !currentPlaylist) return;
 
     const newSongIds = [...currentPlaylist.songIds];
-    [newSongIds[index - 1], newSongIds[index]] = [newSongIds[index], newSongIds[index - 1]];
+    [newSongIds[index - 1], newSongIds[index]] = [
+      newSongIds[index],
+      newSongIds[index - 1],
+    ];
 
     const success = await reorderPlaylistSongs(currentPlaylist.id, newSongIds);
     if (success) {
       // Re-fetch to sync UI
-      const updatedSongs = await api.main.playlists.getSongs(currentPlaylist.id);
+      const updatedSongs = await api.main.playlists.getSongs(
+        currentPlaylist.id
+      );
       setSongs(updatedSongs);
-      
+
       toast({
-        title: '已移动歌曲',
+        title: I18n.playlists.detail.moveSong.successTitle,
       });
     } else {
       toast({
-        variant: 'destructive',
-        title: '移动失败',
+        variant: "destructive",
+        title: I18n.playlists.detail.moveSong.errorTitle,
       });
     }
   };
@@ -133,21 +146,26 @@ export default function PlaylistDetailPage() {
     if (index === songs.length - 1 || !currentPlaylist) return;
 
     const newSongIds = [...currentPlaylist.songIds];
-    [newSongIds[index], newSongIds[index + 1]] = [newSongIds[index + 1], newSongIds[index]];
+    [newSongIds[index], newSongIds[index + 1]] = [
+      newSongIds[index + 1],
+      newSongIds[index],
+    ];
 
     const success = await reorderPlaylistSongs(currentPlaylist.id, newSongIds);
     if (success) {
       // Re-fetch to sync UI
-      const updatedSongs = await api.main.playlists.getSongs(currentPlaylist.id);
+      const updatedSongs = await api.main.playlists.getSongs(
+        currentPlaylist.id
+      );
       setSongs(updatedSongs);
-      
+
       toast({
-        title: '已移动歌曲',
+        title: I18n.playlists.detail.moveSong.successTitle,
       });
     } else {
       toast({
-        variant: 'destructive',
-        title: '移动失败',
+        variant: "destructive",
+        title: I18n.playlists.detail.moveSong.errorTitle,
       });
     }
   };
@@ -160,24 +178,24 @@ export default function PlaylistDetailPage() {
     if (success) {
       // Update local state
       setSongs((prev) => prev.filter((s) => s.id !== songId));
-      
+
       toast({
-        title: `已移除：${songTitle}`,
+        title: I18n.playlists.detail.removeSong.successTitle.replace('{0}', songTitle),
       });
     } else {
       toast({
-        variant: 'destructive',
-        title: '移除失败',
+        variant: "destructive",
+        title: I18n.playlists.detail.removeSong.errorTitle,
       });
     }
   };
 
   // Format duration
   const formatDuration = (seconds: number): string => {
-    if (seconds === 0 || !seconds) return '--:--';
+    if (seconds === 0 || !seconds) return "--:--";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (loading) {
@@ -239,7 +257,7 @@ export default function PlaylistDetailPage() {
                 </div>
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/libraries')}
+                  onClick={() => navigate("/libraries")}
                 >
                   浏览音乐库
                 </Button>
@@ -249,9 +267,9 @@ export default function PlaylistDetailPage() {
             <div className="space-y-2">
               {songs.map((song, index) => {
                 // Check if this song is currently playing from this playlist
-                const isCurrentlyPlaying = 
-                  currentSong?.id === song.id && 
-                  queueSource === 'playlist' && 
+                const isCurrentlyPlaying =
+                  currentSong?.id === song.id &&
+                  queueSource === "playlist" &&
                   queueSourceId === id;
 
                 return (
@@ -259,8 +277,8 @@ export default function PlaylistDetailPage() {
                     key={song.id}
                     className={cn(
                       "overflow-hidden transition-colors",
-                      isCurrentlyPlaying 
-                        ? "bg-primary/10 border-primary/50 hover:bg-primary/15" 
+                      isCurrentlyPlaying
+                        ? "bg-primary/10 border-primary/50 hover:bg-primary/15"
                         : "hover:bg-accent/50"
                     )}
                   >
@@ -281,14 +299,20 @@ export default function PlaylistDetailPage() {
                             <Music className="h-5 w-5 text-muted-foreground" />
                           </div>
                         )}
-                        <div className={cn(
-                          "absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity",
-                          isCurrentlyPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                        )}>
-                          <Play className={cn(
-                            "h-5 w-5",
-                            isCurrentlyPlaying ? "text-primary" : "text-white"
-                          )} />
+                        <div
+                          className={cn(
+                            "absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity",
+                            isCurrentlyPlaying
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100"
+                          )}
+                        >
+                          <Play
+                            className={cn(
+                              "h-5 w-5",
+                              isCurrentlyPlaying ? "text-primary" : "text-white"
+                            )}
+                          />
                         </div>
                       </button>
 
@@ -297,10 +321,12 @@ export default function PlaylistDetailPage() {
                         onClick={() => handlePlaySong(index)}
                         className="flex-1 min-w-0 text-left"
                       >
-                        <p className={cn(
-                          "font-medium truncate",
-                          isCurrentlyPlaying && "text-primary"
-                        )}>
+                        <p
+                          className={cn(
+                            "font-medium truncate",
+                            isCurrentlyPlaying && "text-primary"
+                          )}
+                        >
                           {song.title}
                         </p>
                         <p className="text-sm text-muted-foreground truncate">

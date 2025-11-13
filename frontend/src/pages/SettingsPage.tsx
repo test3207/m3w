@@ -3,15 +3,22 @@
  * User settings and preferences
  */
 
-import { useNavigate } from 'react-router-dom';
-import { LogOut, User as UserIcon, Mail, Github } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { useAuthStore } from '@/stores/authStore';
-import { useToast } from '@/components/ui/use-toast';
-import { useLocale } from '@/locales/use-locale';
+import { useNavigate } from "react-router-dom";
+import { LogOut, User as UserIcon, Mail, Github } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { useAuthStore } from "@/stores/authStore";
+import { useToast } from "@/components/ui/use-toast";
+import { useLocale } from "@/locales/use-locale";
+import { I18n } from "@/locales/i18n";
 
 export default function SettingsPage() {
   useLocale();
@@ -22,19 +29,21 @@ export default function SettingsPage() {
   const handleLogout = () => {
     clearAuth();
     toast({
-      title: '已退出登录',
-      description: '您已成功退出登录',
+      title: I18n.settings.toast.signOutSuccess,
+      description: I18n.settings.toast.signOutDescription,
     });
-    navigate('/');
+    navigate("/");
   };
 
   if (!user) {
     return (
       <div className="min-h-screen p-4">
-        <h1 className="text-2xl font-bold mb-4">设置</h1>
+        <h1 className="text-2xl font-bold mb-4">{I18n.settings.title}</h1>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">请先登录</p>
+            <p className="text-center text-muted-foreground">
+              {I18n.settings.pleaseSignIn}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -44,34 +53,43 @@ export default function SettingsPage() {
   // Get user initials for avatar fallback
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
 
   return (
     <div className="h-full overflow-y-auto p-4 pb-24">
-      <h1 className="text-2xl font-bold mb-6">设置</h1>
+      <h1 className="text-2xl font-bold mb-6">{I18n.settings.title}</h1>
 
       {/* User Profile Section */}
       <Card className="mb-4">
         <CardHeader>
-          <CardTitle>个人信息</CardTitle>
-          <CardDescription>您的账户信息</CardDescription>
+          <CardTitle>{I18n.settings.profile.title}</CardTitle>
+          <CardDescription>{I18n.settings.profile.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Avatar and Name */}
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
+              <AvatarImage
+                src={user.image || undefined}
+                alt={user.name || "User"}
+              />
               <AvatarFallback className="text-lg">
-                {user.name ? getInitials(user.name) : <UserIcon className="h-8 w-8" />}
+                {user.name ? (
+                  getInitials(user.name)
+                ) : (
+                  <UserIcon className="h-8 w-8" />
+                )}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold">{user.name || '未设置用户名'}</h3>
+              <h3 className="text-lg font-semibold">
+                {user.name || I18n.settings.profile.usernameNotSet}
+              </h3>
               {user.email && (
                 <p className="text-sm text-muted-foreground">{user.email}</p>
               )}
@@ -85,7 +103,9 @@ export default function SettingsPage() {
             {user.name && (
               <div className="flex items-center gap-3 text-sm">
                 <UserIcon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">用户名：</span>
+                <span className="text-muted-foreground">
+                  {I18n.settings.profile.username}
+                </span>
                 <span className="font-medium">{user.name}</span>
               </div>
             )}
@@ -93,14 +113,18 @@ export default function SettingsPage() {
             {user.email && (
               <div className="flex items-center gap-3 text-sm">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">邮箱：</span>
+                <span className="text-muted-foreground">
+                  {I18n.settings.profile.email}
+                </span>
                 <span className="font-medium">{user.email}</span>
               </div>
             )}
 
             <div className="flex items-center gap-3 text-sm">
               <Github className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">登录方式：</span>
+              <span className="text-muted-foreground">
+                {I18n.settings.profile.loginMethod}
+              </span>
               <span className="font-medium">GitHub</span>
             </div>
           </div>
@@ -110,8 +134,8 @@ export default function SettingsPage() {
       {/* Logout Section */}
       <Card>
         <CardHeader>
-          <CardTitle>账户操作</CardTitle>
-          <CardDescription>退出登录或管理您的账户</CardDescription>
+          <CardTitle>{I18n.settings.account.title}</CardTitle>
+          <CardDescription>{I18n.settings.account.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button
@@ -120,7 +144,7 @@ export default function SettingsPage() {
             onClick={handleLogout}
           >
             <LogOut className="mr-2 h-4 w-4" />
-            退出登录
+            {I18n.settings.account.signOut}
           </Button>
         </CardContent>
       </Card>

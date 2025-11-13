@@ -24,7 +24,7 @@ export const songs = {
     if (params.q) searchParams.set('q', params.q);
     if (params.libraryId) searchParams.set('libraryId', params.libraryId);
     if (params.sort) searchParams.set('sort', params.sort);
-    
+
     const url = `${MAIN_API_ENDPOINTS.songs.search}?${searchParams.toString()}`;
     return mainApiClient.get<Song[]>(url);
   },

@@ -20,20 +20,20 @@ interface PlaylistActions {
   // Fetch operations
   fetchPlaylists: () => Promise<void>;
   setCurrentPlaylist: (playlist: Playlist | null) => void;
-  
+
   // CRUD operations
   createPlaylist: (name: string) => Promise<Playlist | null>;
   deletePlaylist: (id: string) => Promise<boolean>;
-  
+
   // Song management
   addSongToPlaylist: (playlistId: string, songId: string) => Promise<boolean>;
   removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<boolean>;
   reorderPlaylistSongs: (playlistId: string, songIds: string[]) => Promise<boolean>;
-  
+
   // Computed getters
   getFavoritesPlaylist: () => Playlist | null;
   canDeletePlaylist: (id: string) => boolean;
-  
+
   // Reset
   reset: () => void;
 }
@@ -58,7 +58,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       const playlists = await api.main.playlists.list();
       console.log('[PlaylistStore] Fetched playlists:', playlists.length);
       set({ playlists, isLoading: false });
-      
+
       logger.info(`Fetched ${playlists.length} playlists`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch playlists';
@@ -77,14 +77,14 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const newPlaylist = await api.main.playlists.create({ name });
-      
+
       // Add to list and set as current
       set((state) => ({
         playlists: [...state.playlists, newPlaylist],
         currentPlaylist: newPlaylist,
         isLoading: false,
       }));
-      
+
       logger.info(`Created playlist: ${name}`, { playlistId: newPlaylist.id });
       return newPlaylist;
     } catch (error) {
@@ -98,7 +98,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   // Delete playlist
   deletePlaylist: async (id: string) => {
     const { canDeletePlaylist } = get();
-    
+
     // Check if playlist can be deleted
     if (!canDeletePlaylist(id)) {
       logger.warn('Cannot delete default playlist', { playlistId: id });
@@ -109,14 +109,14 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await api.main.playlists.delete(id);
-      
+
       // Remove from list and clear current if it was deleted
       set((state) => ({
         playlists: state.playlists.filter((pl) => pl.id !== id),
         currentPlaylist: state.currentPlaylist?.id === id ? null : state.currentPlaylist,
         isLoading: false,
       }));
-      
+
       logger.info(`Deleted playlist`, { playlistId: id });
       return true;
     } catch (error) {
@@ -132,7 +132,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await api.main.playlists.addSong(playlistId, { songId });
-      
+
       // Update playlist songIds in state
       set((state) => ({
         playlists: state.playlists.map((pl) =>
@@ -142,7 +142,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         ),
         isLoading: false,
       }));
-      
+
       logger.info('Added song to playlist', { playlistId, songId });
       return true;
     } catch (error) {
@@ -158,7 +158,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await api.main.playlists.removeSong(playlistId, songId);
-      
+
       // Update playlist songIds in state
       set((state) => ({
         playlists: state.playlists.map((pl) =>
@@ -168,7 +168,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         ),
         isLoading: false,
       }));
-      
+
       logger.info('Removed song from playlist', { playlistId, songId });
       return true;
     } catch (error) {
@@ -184,7 +184,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await api.main.playlists.reorderSongs(playlistId, { songIds });
-      
+
       // Update playlist songIds in state
       set((state) => ({
         playlists: state.playlists.map((pl) =>
@@ -192,7 +192,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         ),
         isLoading: false,
       }));
-      
+
       logger.info('Reordered playlist songs', { playlistId, songCount: songIds.length });
       return true;
     } catch (error) {
