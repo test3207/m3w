@@ -57,55 +57,36 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
   };
 
   const uploadFile = async (item: FileUploadItem, index: number): Promise<void> => {
-    try {
-      // Update status to uploading
-      setFiles((prev) =>
-        prev.map((f, i) =>
-          i === index ? { ...f, status: "uploading" as const } : f
-        )
-      );
+    // Update status to uploading
+    setFiles((prev) =>
+      prev.map((f, i) =>
+        i === index ? { ...f, status: "uploading" as const } : f
+      )
+    );
 
-      const { file } = item;
+    const { file } = item;
 
-      // 1. Calculate file hash
-      logger.info("Calculating file hash...", { fileName: file.name });
-      const hash = await calculateFileHash(file);
-      logger.info("File hash calculated", { hash, fileName: file.name });
+    // 1. Calculate file hash
+    logger.info("Calculating file hash...", { fileName: file.name });
+    const hash = await calculateFileHash(file);
+    logger.info("File hash calculated", { hash, fileName: file.name });
 
-      // 2. Upload to backend (metadata will be extracted automatically)
-      const result = await api.main.upload.uploadFile(libraryId, file, hash);
+    // 2. Upload to backend (metadata will be extracted automatically)
+    const data = await api.main.upload.uploadFile(libraryId, file, hash);
 
-      if (!result?.success) {
-        const errorMessage = result?.error ?? I18n.error.uploadFailed;
-        throw new Error(errorMessage);
-      }
+    const songTitle = data.song.title || file.name;
 
-      const songTitle = result.data?.song?.title ?? file.name;
+    // Update status to success
+    setFiles((prev) =>
+      prev.map((f, i) =>
+        i === index
+          ? { ...f, status: "success" as const, songTitle }
+          : f
+      )
+    );
 
-      // Update status to success
-      setFiles((prev) =>
-        prev.map((f, i) =>
-          i === index
-            ? { ...f, status: "success" as const, songTitle }
-            : f
-        )
-      );
-
-      logger.info("File uploaded successfully", { fileName: file.name, songTitle });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : I18n.error.uploadErrorGeneric;
-      
-      // Update status to error
-      setFiles((prev) =>
-        prev.map((f, i) =>
-          i === index
-            ? { ...f, status: "error" as const, error: errorMessage }
-            : f
-        )
-      );
-
-      logger.error("Upload failed", { fileName: item.file.name, error });
-    }
+    console.log('[UploadSongForm] File upload success, set status to success:', { fileName: file.name, songTitle, index });
+    logger.info("File uploaded successfully", { fileName: file.name, songTitle });
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -132,27 +113,42 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
     try {
       setUploading(true);
 
+      // Track success/error counts during upload
+      let successCount = 0;
+      let errorCount = 0;
+
       // Upload files sequentially to avoid overwhelming the server
       for (let i = 0; i < files.length; i++) {
         const item = files[i];
         if (item.status === "pending" || item.status === "error") {
-          await uploadFile(item, i);
+          try {
+            await uploadFile(item, i);
+            successCount++;
+          } catch (err) {
+            errorCount++;
+            // Update status to error
+            const errorMessage = err instanceof Error ? err.message : I18n.error.uploadErrorGeneric;
+            setFiles((prev) =>
+              prev.map((f, idx) =>
+                idx === i
+                  ? { ...f, status: "error" as const, error: errorMessage }
+                  : f
+              )
+            );
+            logger.error("Upload failed", { fileName: item.file.name, error: err });
+          }
+        } else if (item.status === "success") {
+          successCount++;
         }
       }
 
-      const successCount = files.filter((f) => f.status === "success").length;
-      const errorCount = files.filter((f) => f.status === "error").length;
+      console.log('[UploadSongForm] Upload complete:', { successCount, errorCount, hasCallback: !!onUploadSuccess });
 
       if (successCount > 0) {
         toast({
           title: I18n.success.title,
           description: `${I18n.upload.form.successUploadedCount}${successCount}${I18n.upload.form.successUploadedSuffix}`,
         });
-
-        // Refresh libraries data
-        if (onUploadSuccess) {
-          await onUploadSuccess();
-        }
       }
 
       if (errorCount > 0) {
@@ -161,6 +157,13 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
           description: `${errorCount}${I18n.upload.form.errorUploadedSuffix}`,
           variant: "destructive",
         });
+      }
+
+      // Refresh libraries data after showing toast
+      if (successCount > 0 && onUploadSuccess) {
+        console.log('[UploadSongForm] Calling onUploadSuccess');
+        await onUploadSuccess();
+        console.log('[UploadSongForm] onUploadSuccess completed');
       }
     } finally {
       setUploading(false);

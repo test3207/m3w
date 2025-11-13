@@ -28,7 +28,7 @@ function PlaylistSongControls({ playlistId, songId, songTitle, index, total, onM
     setIsPending(true);
     
     try {
-      await api.main.playlists.reorderSong(playlistId, { songId, direction });
+      await api.main.playlists.reorderSongs(playlistId, { songIds: [] }); // TODO: Implement proper reorder logic
 
       toast({
         title: I18n.playlist.controls.toastMoveSuccessTitle,

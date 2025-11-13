@@ -4,20 +4,31 @@
 
 import { mainApiClient } from '../client';
 import { MAIN_API_ENDPOINTS } from '../endpoints';
-import type { Song } from '@/types/models';
+import type { Song, SongSearchParams } from '@m3w/shared';
+import type { UpdateSongInput } from '@m3w/shared';
 
-export interface UpdateSongInput {
-  title?: string;
-  artist?: string;
-  album?: string;
-  coverUrl?: string;
-}
+// Re-export shared types
+export type { UpdateSongInput, SongSearchParams };
 
 export interface PlaylistCountResponse {
   count: number;
 }
 
 export const songs = {
+  /**
+   * Search songs across all or specific library
+   * @param params - { q: string, libraryId?: string, sort?: SongSortOption }
+   */
+  search: async (params: SongSearchParams): Promise<Song[]> => {
+    const searchParams = new URLSearchParams();
+    if (params.q) searchParams.set('q', params.q);
+    if (params.libraryId) searchParams.set('libraryId', params.libraryId);
+    if (params.sort) searchParams.set('sort', params.sort);
+    
+    const url = `${MAIN_API_ENDPOINTS.songs.search}?${searchParams.toString()}`;
+    return mainApiClient.get<Song[]>(url);
+  },
+
   /**
    * Get song by ID
    */
@@ -50,9 +61,11 @@ export const songs = {
   },
 
   /**
-   * Delete song
+   * Delete song from library
+   * @param id - Song ID
+   * @param libraryId - Library ID (required to prevent cross-library deletion)
    */
-  delete: async (id: string): Promise<void> => {
-    return mainApiClient.delete(MAIN_API_ENDPOINTS.songs.delete(id));
+  delete: async (id: string, libraryId: string): Promise<void> => {
+    return mainApiClient.delete(MAIN_API_ENDPOINTS.songs.delete(id, libraryId));
   },
 };

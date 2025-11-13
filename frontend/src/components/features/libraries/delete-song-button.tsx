@@ -25,12 +25,14 @@ import { PLAYLISTS_QUERY_KEY } from '@/hooks/usePlaylists';
 interface DeleteSongButtonProps {
   songId: string;
   songTitle: string;
+  libraryId: string;
   onDeleteSuccess?: () => void | Promise<void>;
 }
 
 export function DeleteSongButton({
   songId,
   songTitle,
+  libraryId,
   onDeleteSuccess,
 }: DeleteSongButtonProps) {
   const { toast } = useToast();
@@ -58,7 +60,7 @@ export function DeleteSongButton({
     try {
       setIsDeleting(true);
 
-      await api.main.songs.delete(songId);
+      await api.main.songs.delete(songId, libraryId);
 
       toast({
         title: I18n.success.title,

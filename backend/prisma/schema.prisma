@@ -105,15 +105,21 @@ model Library {
   name        String
   description String?
   
+  // Default Library flags (for frontend refactor)
+  isDefault   Boolean  @default(false)  // Mark default library (auto-created)
+  canDelete   Boolean  @default(true)   // Prevent deletion of default library
+  
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   songs       Song[]
+  playAllPlaylist Playlist? @relation("LibraryPlayAllPlaylist")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
   @@index([userId])
+  @@index([userId, isDefault])
   @@map("libraries")
 }
 
@@ -183,6 +189,15 @@ model Playlist {
   description String?
   coverUrl    String?
   
+  // Song order management (frontend refactor)
+  songIds     String[] @default([])      // Maintain song order
+  isDefault   Boolean  @default(false)   // Mark favorites playlist (auto-created)
+  canDelete   Boolean  @default(true)    // Prevent deletion of default playlist
+  
+  // Link to library for "Play All" generated playlists
+  linkedLibraryId String? @unique
+  linkedLibrary   Library? @relation("LibraryPlayAllPlaylist", fields: [linkedLibraryId], references: [id], onDelete: Cascade)
+  
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
@@ -192,6 +207,7 @@ model Playlist {
   updatedAt   DateTime @updatedAt
   
   @@index([userId])
+  @@index([userId, isDefault])
   @@map("playlists")
 }
 

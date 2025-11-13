@@ -19,6 +19,9 @@ export interface Library {
   name: string;
   description: string | null;
   userId: string;
+  isDefault: boolean;  // Mark default library (auto-created)
+  canDelete: boolean;  // Prevent deletion of default library
+  coverUrl?: string | null;  // Last added song's cover (computed)
   createdAt: string; // ISO 8601 string from JSON serialization
   updatedAt: string; // ISO 8601 string from JSON serialization
   _count: {
@@ -42,6 +45,10 @@ export interface Playlist {
   name: string;
   description: string | null;
   userId: string;
+  songIds: string[];  // Maintain song order (frontend manages)
+  isDefault: boolean; // Mark favorites playlist (auto-created)
+  canDelete: boolean; // Prevent deletion of default playlist
+  coverUrl?: string | null;  // Cover from first 4 songs (computed)
   createdAt: string; // ISO 8601 string from JSON serialization
   updatedAt: string; // ISO 8601 string from JSON serialization
   _count: {
@@ -92,6 +99,7 @@ export interface Song {
     id: string;
     name: string;
   };
+  libraryName?: string;  // For Playlist song list display
 }
 
 export interface UpdateSongInput {
@@ -111,6 +119,25 @@ export interface UpdateSongInput {
 export interface AddSongToPlaylistInput {
   songId: string;
   position?: number;
+}
+
+export interface ReorderPlaylistSongsInput {
+  songIds: string[];  // New order of song IDs
+}
+
+// Sorting and filtering
+export type SongSortOption = 
+  | 'date-desc'      // Date added (newest first) - DEFAULT
+  | 'date-asc'       // Date added (oldest first)
+  | 'title-asc'      // Title A-Z (Pinyin for Chinese)
+  | 'title-desc'     // Title Z-A
+  | 'artist-asc'     // Artist A-Z
+  | 'album-asc';     // Album A-Z
+
+export interface SongSearchParams {
+  q?: string;          // Search query
+  libraryId?: string;  // Filter by Library
+  sort?: SongSortOption;
 }
 
 // File types (Prisma model used in backend)

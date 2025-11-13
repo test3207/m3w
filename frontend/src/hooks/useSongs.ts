@@ -91,7 +91,8 @@ export function useDeleteSong() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await api.main.songs.delete(id);
+      // TODO: Add libraryId parameter - this needs to be passed from the caller
+      throw new Error('useSongs.deleteSong requires libraryId parameter - use direct API call instead');
       return id;
     },
     onSuccess: (deletedId) => {

@@ -34,6 +34,50 @@ interface GitHubEmail {
   visibility: string | null;
 }
 
+/**
+ * Create default resources for first-time users
+ * - Default Library: "默认音乐库" (cannot be deleted)
+ * - Favorites Playlist: "我喜欢的音乐" (cannot be deleted)
+ */
+async function createDefaultResources(userId: string) {
+  try {
+    // Create default library (unique ID per user via cuid())
+    const defaultLibrary = await prisma.library.create({
+      data: {
+        name: 'Default Library', // Frontend displays i18n translation via getLibraryDisplayName()
+        userId,
+        isDefault: true,
+        canDelete: false,
+      },
+    });
+
+    // Create favorites playlist (unique ID per user via cuid())
+    const favoritesPlaylist = await prisma.playlist.create({
+      data: {
+        name: 'Favorites', // Frontend displays i18n translation via getPlaylistDisplayName()
+        userId,
+        songIds: [],
+        isDefault: true,
+        canDelete: false,
+      },
+    });
+
+    logger.info(
+      {
+        userId,
+        defaultLibraryId: defaultLibrary.id,
+        favoritesPlaylistId: favoritesPlaylist.id,
+      },
+      'Default resources created for new user'
+    );
+
+    return { defaultLibrary, favoritesPlaylist };
+  } catch (error) {
+    logger.error({ error, userId }, 'Failed to create default resources');
+    throw error;
+  }
+}
+
 // GET /api/auth/github - Redirect to GitHub OAuth
 app.get('/github', (c: Context) => {
   const state = Math.random().toString(36).substring(7);
@@ -137,6 +181,7 @@ app.get('/callback', async (c: Context) => {
       where: { email },
     });
 
+    let isNewUser = false;
     if (!user) {
       user = await prisma.user.create({
         data: {
@@ -146,7 +191,13 @@ app.get('/callback', async (c: Context) => {
         },
       });
 
+      isNewUser = true;
       logger.info({ userId: user.id, email }, 'New user registered via GitHub');
+    }
+
+    // Create default resources for first-time users
+    if (isNewUser) {
+      await createDefaultResources(user.id);
     }
 
     // Create or update account record

@@ -1,4 +1,17 @@
 {
+  "app": {
+    "name": "M3W Music"
+  },
+  "defaults": {
+    "library": {
+      "name": "默认音乐库",
+      "badge": "默认"
+    },
+    "playlist": {
+      "name": "我喜欢的音乐",
+      "badge": "收藏"
+    }
+  },
   "error": {
     "title": "错误",
     "unauthorized": "未授权",
@@ -170,7 +183,14 @@
       "songAlbumLabel": "专辑",
       "songDurationLabel": "时长",
       "noPlaylistsHelper": "先创建一个播放列表以开始添加歌曲。",
-      "goToPlaylistsLink": "前往播放列表"
+      "goToPlaylistsLink": "前往播放列表",
+      "sortDateDesc": "添加时间 (最新)",
+      "sortDateAsc": "添加时间 (最旧)",
+      "sortTitleAsc": "标题 A-Z",
+      "sortTitleDesc": "标题 Z-A",
+      "sortArtistAsc": "歌手 A-Z",
+      "sortAlbumAsc": "专辑 A-Z",
+      "loadingLabel": "加载中..."
     },
     "addToPlaylist": {
       "label": "添加到播放列表",
@@ -328,5 +348,10 @@
       "durationUnit": " 秒",
       "bitrateUnit": " kbps"
     }
+  },
+  "playback": {
+    "startPlayingTitle": "开始播放",
+    "startPlayingDescription": "播放\"{0}\"中的全部歌曲",
+    "playFromLibraryDescription": "从音乐库播放"
   }
 }

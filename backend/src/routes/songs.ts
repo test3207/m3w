@@ -5,17 +5,158 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
+import pinyin from 'pinyin';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 import { updateSongSchema, songIdSchema } from '@m3w/shared';
 import type { Context } from 'hono';
+import type { SongSortOption } from '@m3w/shared';
 
 const app = new Hono();
 
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
+
+/**
+ * Helper function: Convert text to Pinyin for sorting
+ * Used for Chinese character support in alphabetical sorting
+ */
+function getPinyinSort(text: string): string {
+  // Convert Chinese characters to Pinyin, flatten array, and join
+  const pinyinArray = pinyin(text, { style: pinyin.STYLE_NORMAL });
+  return pinyinArray.flat().join('').toLowerCase();
+}
+
+/**
+ * Helper function: Sort songs by given option
+ * Supports date, title, artist, and album sorting with Pinyin support for Chinese
+ */
+function sortSongs<T extends { title: string; artist: string | null; album: string | null; createdAt: Date }>(
+  songs: T[],
+  sortOption: SongSortOption
+): T[] {
+  const sorted = [...songs];
+
+  switch (sortOption) {
+    case 'title-asc':
+      return sorted.sort((a, b) => {
+        const aTitle = getPinyinSort(a.title);
+        const bTitle = getPinyinSort(b.title);
+        return aTitle.localeCompare(bTitle);
+      });
+
+    case 'title-desc':
+      return sorted.sort((a, b) => {
+        const aTitle = getPinyinSort(a.title);
+        const bTitle = getPinyinSort(b.title);
+        return bTitle.localeCompare(aTitle);
+      });
+
+    case 'artist-asc':
+      return sorted.sort((a, b) => {
+        const aArtist = getPinyinSort(a.artist || '');
+        const bArtist = getPinyinSort(b.artist || '');
+        return aArtist.localeCompare(bArtist);
+      });
+
+    case 'album-asc':
+      return sorted.sort((a, b) => {
+        const aAlbum = getPinyinSort(a.album || '');
+        const bAlbum = getPinyinSort(b.album || '');
+        return aAlbum.localeCompare(bAlbum);
+      });
+
+    case 'date-asc':
+      return sorted.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+    case 'date-desc':
+    default:
+      return sorted.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+}
+
+// GET /api/songs/search - Search songs across all or specific library
+app.get('/search', async (c: Context) => {
+  try {
+    const userId = getUserId(c);
+    const q = c.req.query('q') || '';
+    const libraryId = c.req.query('libraryId');
+    const sort = (c.req.query('sort') as SongSortOption) || 'date-desc';
+
+    // Build where clause
+    const whereClause = {
+      library: {
+        userId,
+        ...(libraryId ? { id: libraryId } : {}),
+      },
+      OR: q
+        ? [
+            { title: { contains: q, mode: 'insensitive' as const } },
+            { artist: { contains: q, mode: 'insensitive' as const } },
+            { album: { contains: q, mode: 'insensitive' as const } },
+          ]
+        : undefined,
+    };
+
+    // Fetch songs with library info
+    const songs = await prisma.song.findMany({
+      where: whereClause,
+      include: {
+        file: true,
+        library: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Apply sorting
+    const sortedSongs = sortSongs(songs, sort);
+
+    // Transform to include libraryName
+    const transformedSongs = sortedSongs.map((song) => ({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      duration: song.file.duration,
+      coverUrl: song.coverUrl,
+      streamUrl: `/api/songs/${song.id}/stream`,
+      libraryId: song.libraryId,
+      libraryName: song.library?.name || '',
+      createdAt: song.createdAt,
+    }));
+
+    logger.debug(
+      {
+        userId,
+        query: q,
+        libraryId,
+        sort,
+        resultCount: transformedSongs.length,
+      },
+      'Songs search completed'
+    );
+
+    return c.json({
+      success: true,
+      data: transformedSongs,
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to search songs');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to search songs',
+      },
+      500
+    );
+  }
+});
 
 // GET /api/songs/:id - Get song by ID
 app.get('/:id', async (c: Context) => {
@@ -127,82 +268,6 @@ app.patch('/:id', async (c: Context) => {
       {
         success: false,
         error: 'Failed to update song',
-      },
-      500
-    );
-  }
-});
-
-// DELETE /api/songs/:id - Delete song
-app.delete('/:id', async (c: Context) => {
-  try {
-    const { id } = songIdSchema.parse({ id: c.req.param('id') });
-    const userId = getUserId(c);
-
-    // Verify ownership
-    const existing = await prisma.song.findFirst({
-      where: {
-        id,
-        library: {
-          userId,
-        },
-      },
-      include: {
-        file: true,
-      },
-    });
-
-    if (!existing) {
-      return c.json(
-        {
-          success: false,
-          error: 'Song not found',
-        },
-        404
-      );
-    }
-
-    // Delete song (cascade will remove from playlists)
-    await prisma.song.delete({
-      where: { id },
-    });
-
-    // Decrement file reference count
-    if (existing.fileId) {
-      await prisma.file.update({
-        where: { id: existing.fileId },
-        data: {
-          refCount: {
-            decrement: 1,
-          },
-        },
-      });
-
-      // TODO: Implement garbage collection for files with refCount === 0
-      // Should be done in a background job, not inline
-    }
-
-    return c.json({
-      success: true,
-      message: 'Song deleted successfully',
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return c.json(
-        {
-          success: false,
-          error: 'Invalid song ID',
-          details: error.issues,
-        },
-        400
-      );
-    }
-
-    logger.error({ error }, 'Failed to delete song');
-    return c.json(
-      {
-        success: false,
-        error: 'Failed to delete song',
       },
       500
     );
@@ -463,11 +528,23 @@ app.delete('/:id', async (c: Context) => {
   try {
     const { id } = songIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
+    const libraryId = c.req.query('libraryId'); // Get libraryId from query param
 
-    // Check if song belongs to user's library
+    if (!libraryId) {
+      return c.json(
+        {
+          success: false,
+          error: 'libraryId is required',
+        },
+        400
+      );
+    }
+
+    // Check if song belongs to user's library AND the specified library
     const song = await prisma.song.findFirst({
       where: {
         id,
+        libraryId, // Must match the specified library
         library: {
           userId,
         },
@@ -481,7 +558,7 @@ app.delete('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Song not found',
+          error: 'Song not found in this library',
         },
         404
       );
@@ -520,7 +597,7 @@ app.delete('/:id', async (c: Context) => {
       }
     }
 
-    logger.info({ songId: id, userId }, 'Song deleted');
+    logger.info({ songId: id, libraryId, userId }, 'Song deleted from library');
 
     return c.json({
       success: true,

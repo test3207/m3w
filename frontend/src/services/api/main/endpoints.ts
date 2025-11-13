@@ -35,11 +35,12 @@ export const MAIN_API_ENDPOINTS = {
   },
   // Songs
   songs: {
+    search: '/api/songs/search',
     detail: (id: string) => `/api/songs/${id}`,
     update: (id: string) => `/api/songs/${id}`,
     stream: (id: string) => `/api/songs/${id}/stream`,
     playlistCount: (id: string) => `/api/songs/${id}/playlist-count`,
-    delete: (id: string) => `/api/songs/${id}`,
+    delete: (id: string, libraryId: string) => `/api/songs/${id}?libraryId=${libraryId}`,
   },
   // Upload
   upload: {

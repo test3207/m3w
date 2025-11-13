@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { SongSortOption } from '@m3w/shared';
 
 interface UIState {
-  // Sidebar
+  // Sidebar (desktop)
   isSidebarOpen: boolean;
   isSidebarCollapsed: boolean;
 
@@ -10,6 +11,15 @@ interface UIState {
   isUploadModalOpen: boolean;
   isCreateLibraryModalOpen: boolean;
   isCreatePlaylistModalOpen: boolean;
+
+  // Mobile UI
+  isUploadDrawerOpen: boolean;
+  isPlayQueueDrawerOpen: boolean;
+  isFullPlayerOpen: boolean;
+  isAddToPlaylistSheetOpen: boolean;
+
+  // Sorting
+  currentSortOption: SongSortOption;
 
   // Theme
   theme: 'light' | 'dark' | 'system';
@@ -33,6 +43,19 @@ interface UIActions {
   openCreatePlaylistModal: () => void;
   closeCreatePlaylistModal: () => void;
 
+  // Mobile UI
+  openUploadDrawer: () => void;
+  closeUploadDrawer: () => void;
+  openPlayQueueDrawer: () => void;
+  closePlayQueueDrawer: () => void;
+  openFullPlayer: () => void;
+  closeFullPlayer: () => void;
+  openAddToPlaylistSheet: () => void;
+  closeAddToPlaylistSheet: () => void;
+
+  // Sorting
+  setSortOption: (option: SongSortOption) => void;
+
   // Theme
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
 
@@ -51,6 +74,11 @@ export const useUIStore = create<UIStore>()(
       isUploadModalOpen: false,
       isCreateLibraryModalOpen: false,
       isCreatePlaylistModalOpen: false,
+      isUploadDrawerOpen: false,
+      isPlayQueueDrawerOpen: false,
+      isFullPlayerOpen: false,
+      isAddToPlaylistSheetOpen: false,
+      currentSortOption: 'date-desc',
       theme: 'system',
       language: 'en',
 
@@ -74,6 +102,22 @@ export const useUIStore = create<UIStore>()(
 
       openCreatePlaylistModal: () => set({ isCreatePlaylistModalOpen: true }),
       closeCreatePlaylistModal: () => set({ isCreatePlaylistModalOpen: false }),
+
+      // Mobile UI actions
+      openUploadDrawer: () => set({ isUploadDrawerOpen: true }),
+      closeUploadDrawer: () => set({ isUploadDrawerOpen: false }),
+
+      openPlayQueueDrawer: () => set({ isPlayQueueDrawerOpen: true }),
+      closePlayQueueDrawer: () => set({ isPlayQueueDrawerOpen: false }),
+
+      openFullPlayer: () => set({ isFullPlayerOpen: true }),
+      closeFullPlayer: () => set({ isFullPlayerOpen: false }),
+
+      openAddToPlaylistSheet: () => set({ isAddToPlaylistSheetOpen: true }),
+      closeAddToPlaylistSheet: () => set({ isAddToPlaylistSheetOpen: false }),
+
+      // Sorting actions
+      setSortOption: (option) => set({ currentSortOption: option }),
 
       // Theme actions
       setTheme: (theme) => {

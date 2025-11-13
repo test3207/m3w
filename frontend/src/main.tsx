@@ -14,11 +14,11 @@ import { syncService } from './lib/sync/service';
 const HomePage = lazy(() => import('./pages/HomePage'));
 const SignInPage = lazy(() => import('./pages/SignInPage'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const LibrariesPage = lazy(() => import('./pages/LibrariesPage'));
 const LibraryDetailPage = lazy(() => import('./pages/LibraryDetailPage'));
 const PlaylistsPage = lazy(() => import('./pages/PlaylistsPage'));
 const PlaylistDetailPage = lazy(() => import('./pages/PlaylistDetailPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const UploadPage = lazy(() => import('./pages/UploadPage'));
 
 // Import UI components (keep these eager loaded as they're used globally)
@@ -27,8 +27,7 @@ import { PageLoader } from './components/ui/page-loader';
 import { ProtectedRoute } from './components/providers/protected-route';
 import { ReloadPrompt } from './components/features/pwa/reload-prompt';
 import { InstallPrompt } from './components/features/pwa/install-prompt';
-import { NetworkStatusIndicator } from './components/features/network/network-status-indicator';
-import { DashboardLayout } from './components/layouts/dashboard-layout';
+import { MobileLayout } from './components/layouts/MobileLayout';
 import { AuthProvider } from './components/providers/auth-provider';
 
 // Create QueryClient instance
@@ -55,73 +54,77 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<HomePage />} />
               <Route path="/signin" element={<SignInPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+              {/* Protected routes with mobile layout */}
               <Route
-                path="/dashboard"
+                path="/libraries"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <DashboardPage />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/libraries"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
+                    <MobileLayout>
                       <LibrariesPage />
-                    </DashboardLayout>
+                    </MobileLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/dashboard/libraries/:id"
+                path="/libraries/:id"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
+                    <MobileLayout>
                       <LibraryDetailPage />
-                    </DashboardLayout>
+                    </MobileLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/dashboard/playlists"
+                path="/playlists"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
+                    <MobileLayout>
                       <PlaylistsPage />
-                    </DashboardLayout>
+                    </MobileLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/dashboard/playlists/:id"
+                path="/playlists/:id"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
+                    <MobileLayout>
                       <PlaylistDetailPage />
-                    </DashboardLayout>
+                    </MobileLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/dashboard/upload"
+                path="/settings"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
+                    <MobileLayout>
+                      <SettingsPage />
+                    </MobileLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Legacy upload page - will be converted to drawer */}
+              <Route
+                path="/upload"
+                element={
+                  <ProtectedRoute>
+                    <MobileLayout>
                       <UploadPage />
-                    </DashboardLayout>
+                    </MobileLayout>
                   </ProtectedRoute>
                 }
               />
             </Routes>
           </Suspense>
           <Toaster />
-          <NetworkStatusIndicator />
           <ReloadPrompt />
           <InstallPrompt />
         </BrowserRouter>

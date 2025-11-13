@@ -9,6 +9,11 @@
  * - Computed fields like _count for aggregations
  */
 
+import type { Song } from '@m3w/shared';
+
+// Re-export shared types for convenience
+export type { Song };
+
 /**
  * User model
  * Backend: prisma/schema.prisma -> model User
@@ -41,36 +46,6 @@ export interface Library {
  */
 export interface LibraryWithSongs extends Library {
   songs: Song[];
-}
-
-/**
- * Song model
- * Backend: prisma/schema.prisma -> model Song
- */
-export interface Song {
-  id: string;
-  title: string;
-  artist: string | null;
-  album: string | null;
-  albumArtist: string | null;
-  genre: string | null;
-  year: number | null;
-  trackNumber: number | null;
-  discNumber: number | null;
-  duration: number | null;
-  coverArtUrl: string | null;
-  libraryId: string;
-  fileId: string;
-  createdAt: string;
-  updatedAt: string;
-  file?: {
-    id: string;
-    duration: number | null;
-  } | null;
-  library?: {
-    id: string;
-    name: string;
-  } | null;
 }
 
 /**

@@ -1,231 +1,198 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
-import { PageHeader } from "@/components/ui/page-header";
-import { HStack } from "@/components/ui/stack";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { DeleteLibraryButton } from "@/components/features/libraries/delete-library-button";
-import { I18n } from "@/locales/i18n";
-import { useLocale } from "@/locales/use-locale";
-import { logger } from "@/lib/logger-client";
-import { useToast } from "@/components/ui/use-toast";
-import { ApiError } from "@/lib/api/client";
-import { api } from "@/services";
-import type { Library } from "@m3w/shared";
+/**
+ * Libraries Page (Mobile-First)
+ * Display and manage user's music libraries
+ */
+
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useLibraryStore } from '@/stores/libraryStore';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Library, Plus, Music } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { getLibraryDisplayName, getLibraryBadge } from '@/lib/utils/defaults';
+import { isDefaultLibrary } from '@m3w/shared';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 export default function LibrariesPage() {
-  useLocale();
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [librariesList, setLibrariesList] = useState<Library[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newLibraryName, setNewLibraryName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
+  const libraries = useLibraryStore((state) => state.libraries);
+  const isLoading = useLibraryStore((state) => state.isLoading);
+  const fetchLibraries = useLibraryStore((state) => state.fetchLibraries);
+  const createLibrary = useLibraryStore((state) => state.createLibrary);
+
+  // Fetch libraries on mount
   useEffect(() => {
-    async function fetchLibraries() {
-      try {
-        const data = await api.main.libraries.list();
-        setLibrariesList(data);
-      } catch (error) {
-        logger.error('Failed to fetch libraries', error);
-        
-        if (error instanceof ApiError && error.status === 401) {
-          navigate('/signin');
-          return;
-        }
-        
-        toast({
-          variant: "destructive",
-          title: I18n.error.failedToRetrieveLibraries,
-        });
-      } finally {
-        setLoading(false);
-      }
+    void fetchLibraries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  const handleCreateLibrary = async () => {
+    if (!newLibraryName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '请输入音乐库名称',
+      });
+      return;
     }
 
-    fetchLibraries();
-  }, [navigate, toast]);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitting(true);
-
-    const formData = new FormData(event.currentTarget);
-    const name = formData.get("name") as string;
-    const description = formData.get("description") as string;
-
+    setIsCreating(true);
     try {
-      const newLibrary = await api.main.libraries.create({
-        name: name.trim(),
-        description: description.trim() || undefined,
-      });
-
-      setLibrariesList(prev => [...prev, newLibrary]);
-      
-      formRef.current?.reset();
+      await createLibrary(newLibraryName.trim());
       toast({
-        title: "Library created successfully",
+        title: '创建成功',
+        description: `音乐库"${newLibraryName}"已创建`,
       });
+      setNewLibraryName('');
+      setIsDialogOpen(false);
     } catch (error) {
-      logger.error('Failed to create library', error);
-      
-      if (error instanceof ApiError && error.status === 401) {
-        navigate('/signin');
-        return;
-      }
-      
       toast({
-        variant: "destructive",
-        title: I18n.error.failedToCreateLibrary,
+        variant: 'destructive',
+        title: '创建失败',
+        description: error instanceof Error ? error.message : '未知错误',
       });
     } finally {
-      setSubmitting(false);
+      setIsCreating(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
+      <div className="flex h-full items-center justify-center">
+        <p className="text-muted-foreground">加载中...</p>
       </div>
     );
   }
 
   return (
-    <AdaptiveLayout
-      gap={16}
-      className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8"
-    >
-      <AdaptiveSection
-        id="libraries-header"
-        baseSize={180}
-        minSize={130}
-        className="pt-4"
-      >
-        <div className="flex h-full flex-col justify-end">
-          <PageHeader
-            title={I18n.library.manager.pageTitle}
-            description={I18n.library.manager.pageDescription}
-          />
+    <div className="h-full overflow-y-auto p-4">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">音乐库</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {libraries.length} 个音乐库
+          </p>
         </div>
-      </AdaptiveSection>
 
-      <AdaptiveSection
-        id="libraries-content"
-        baseSize={540}
-        minSize={320}
-        className="pb-4"
-      >
-        <div className="grid h-full gap-6 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <Card className="flex h-full flex-col overflow-hidden">
-            <CardHeader>
-              <CardTitle>{I18n.library.manager.form.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">{I18n.library.manager.form.nameLabel}</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    placeholder={I18n.library.manager.form.namePlaceholder}
-                    required
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">{I18n.library.manager.form.descriptionLabel}</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder={I18n.library.manager.form.descriptionPlaceholder}
-                    rows={3}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? I18n.common.creatingLabel : I18n.library.manager.form.submitLabel}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className="flex h-full flex-col overflow-hidden">
-            <CardHeader>
-              <CardTitle>{I18n.library.manager.list.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              {librariesList.length === 0 ? (
-                <EmptyState
-                  icon="📚"
-                  title={I18n.library.manager.list.emptyTitle}
-                  description={I18n.library.manager.list.emptyDescription}
-                  action={
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to="/dashboard/upload">
-                        {I18n.library.manager.list.emptyActionLabel}
-                      </Link>
-                    </Button>
-                  }
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="icon" variant="outline">
+              <Plus className="h-5 w-5" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>创建新音乐库</DialogTitle>
+              <DialogDescription>
+                为你的音乐创建一个新的收藏集
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">音乐库名称</Label>
+                <Input
+                  id="name"
+                  placeholder="例如：我的音乐、工作音乐"
+                  value={newLibraryName}
+                  onChange={(e) => setNewLibraryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCreateLibrary();
+                    }
+                  }}
                 />
-              ) : (
-                <ul role="list" className="flex flex-col gap-2">
-                  {librariesList.map((library) => (
-                    <li key={library.id}>
-                      <ListItem
-                        title={library.name}
-                        description={library.description || undefined}
-                        metadata={
-                          <>
-                            <MetadataItem
-                              label={I18n.library.manager.list.metadataSongsLabel}
-                              value={library._count?.songs ?? 0}
-                              variant="secondary"
-                            />
-                            <MetadataItem
-                              label={I18n.library.manager.list.metadataCreatedLabel}
-                              value={new Date(library.createdAt).toLocaleDateString()}
-                              variant="outline"
-                            />
-                            <MetadataItem
-                              label={I18n.library.manager.list.metadataUpdatedLabel}
-                              value={new Date(library.updatedAt).toLocaleDateString()}
-                              variant="outline"
-                            />
-                          </>
-                        }
-                        actions={
-                          <HStack gap="xs">
-                            <Button variant="outline" size="sm" asChild>
-                              <Link to={`/dashboard/libraries/${library.id}`}>
-                                {I18n.library.manager.list.manageSongsCta}
-                              </Link>
-                            </Button>
-                            <DeleteLibraryButton
-                              libraryId={library.id}
-                              libraryName={library.name}
-                              onDeleted={() => setLibrariesList(prev => prev.filter(l => l.id !== library.id))}
-                            />
-                          </HStack>
-                        }
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  setNewLibraryName('');
+                }}
+              >
+                取消
+              </Button>
+              <Button onClick={handleCreateLibrary} disabled={isCreating}>
+                {isCreating ? '创建中...' : '创建'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Libraries Grid */}
+      {libraries.length === 0 ? (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="text-center">
+            <Library className="mx-auto h-16 w-16 text-muted-foreground/50" />
+            <h2 className="mt-4 text-xl font-semibold">还没有音乐库</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              点击右上角 "+" 创建你的第一个音乐库
+            </p>
+          </div>
         </div>
-      </AdaptiveSection>
-    </AdaptiveLayout>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {libraries.map((library) => (
+            <Link key={library.id} to={`/libraries/${library.id}`}>
+              <Card className="overflow-hidden transition-colors hover:bg-accent cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    {/* Cover Image - 96px */}
+                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
+                      {library.coverUrl ? (
+                        <img
+                          src={library.coverUrl}
+                          alt={getLibraryDisplayName(library)}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Music className="h-10 w-10 text-muted-foreground/30" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metadata */}
+                    <div className="flex flex-1 flex-col justify-center gap-1 overflow-hidden">
+                      <h3 className="truncate font-semibold text-base flex items-center gap-2">
+                        {getLibraryDisplayName(library)}
+                        {isDefaultLibrary(library) && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded whitespace-nowrap">
+                            {getLibraryBadge(library)}
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {library._count?.songs || 0} 首歌曲
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        创建于 {new Date(library.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
