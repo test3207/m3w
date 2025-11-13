@@ -1,0 +1,43 @@
+# Git attributes for line ending normalization
+# https://git-scm.com/docs/gitattributes
+
+# Auto-detect text files and normalize line endings to LF on checkin,
+# but respect working directory line endings on checkout
+* text=auto
+
+# Explicitly declare text files with LF line endings
+*.md text eol=lf
+*.json text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.cjs text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+
+# Auto-generated i18n files must use LF for cross-platform consistency
+frontend/src/locales/generated/*.d.ts text eol=lf
+frontend/src/locales/messages/*.json text eol=lf
+
+# Windows-specific files
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
