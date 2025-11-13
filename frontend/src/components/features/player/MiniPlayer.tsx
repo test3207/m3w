@@ -25,9 +25,9 @@ export function MiniPlayer() {
       <div className="flex h-18 items-center gap-3 px-4 py-2">
         {/* Album Cover */}
         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
-          {currentSong.coverArtUrl ? (
+          {currentSong.coverUrl ? (
             <img
-              src={currentSong.coverArtUrl}
+              src={currentSong.coverUrl}
               alt={currentSong.title}
               className="h-full w-full object-cover"
             />

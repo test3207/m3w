@@ -17,28 +17,6 @@ import { logger } from '@/lib/logger-client';
 import { useToast } from '@/components/ui/use-toast';
 import { eventBus, EVENTS } from '@/lib/events';
 import type { Song as SharedSong } from '@m3w/shared';
-import type { Song } from '@/types/models';
-
-// Convert shared Song to frontend Song
-function convertSong(sharedSong: SharedSong): Song {
-  return {
-    id: sharedSong.id,
-    title: sharedSong.title,
-    artist: sharedSong.artist,
-    album: sharedSong.album || null,
-    albumArtist: null,
-    genre: null,
-    year: null,
-    trackNumber: null,
-    discNumber: null,
-    duration: sharedSong.file?.duration || null,
-    coverArtUrl: sharedSong.coverUrl || null,
-    libraryId: sharedSong.libraryId,
-    fileId: sharedSong.fileId,
-    createdAt: sharedSong.createdAt,
-    updatedAt: sharedSong.updatedAt,
-  };
-}
 
 export default function PlaylistDetailPage() {
   useLocale();
@@ -49,7 +27,7 @@ export default function PlaylistDetailPage() {
   const { currentPlaylist, setCurrentPlaylist, reorderPlaylistSongs, removeSongFromPlaylist } = usePlaylistStore();
   const { playFromPlaylist } = usePlayerStore();
 
-  const [songs, setSongs] = useState<Song[]>([]);
+  const [songs, setSongs] = useState<SharedSong[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch playlist data
@@ -68,7 +46,7 @@ export default function PlaylistDetailPage() {
         ]);
 
         setCurrentPlaylist(playlistData);
-        setSongs(songsData.map(convertSong));
+        setSongs(songsData);
       } catch (error) {
         logger.error('Failed to fetch playlist', { error, playlistId: id });
         toast({
@@ -92,7 +70,7 @@ export default function PlaylistDetailPage() {
       try {
         console.log('[PlaylistDetailPage] Event triggered, refetching songs');
         const songsData = await api.main.playlists.getSongs(id);
-        setSongs(songsData.map(convertSong));
+        setSongs(songsData);
         console.log('[PlaylistDetailPage] Songs refreshed due to external changes');
       } catch (error) {
         console.error('[PlaylistDetailPage] Failed to refresh songs:', error);
@@ -136,7 +114,7 @@ export default function PlaylistDetailPage() {
     if (success) {
       // Re-fetch to sync UI
       const updatedSongs = await api.main.playlists.getSongs(currentPlaylist.id);
-      setSongs(updatedSongs.map(convertSong));
+      setSongs(updatedSongs);
       
       toast({
         title: '已移动歌曲',
@@ -160,7 +138,7 @@ export default function PlaylistDetailPage() {
     if (success) {
       // Re-fetch to sync UI
       const updatedSongs = await api.main.playlists.getSongs(currentPlaylist.id);
-      setSongs(updatedSongs.map(convertSong));
+      setSongs(updatedSongs);
       
       toast({
         title: '已移动歌曲',
@@ -288,9 +266,9 @@ export default function PlaylistDetailPage() {
                       onClick={() => handlePlaySong(index)}
                       className="relative shrink-0 w-12 h-12 rounded bg-muted overflow-hidden group"
                     >
-                      {song.coverArtUrl ? (
+                      {song.coverUrl ? (
                         <img
-                          src={song.coverArtUrl}
+                          src={song.coverUrl}
                           alt={song.title}
                           className="w-full h-full object-cover"
                         />
@@ -315,7 +293,7 @@ export default function PlaylistDetailPage() {
                         {song.album && ` • ${song.album}`}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDuration(song.duration || 0)}
+                        {formatDuration(song.file?.duration || 0)}
                       </p>
                     </button>
 

@@ -40,7 +40,7 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Storage quota monitoring and management
   - Offline-capable router with fallback to IndexedDB proxy
 - **Vite Migration Complete**
-  - All pages migrated: Dashboard, Libraries, Playlists, Upload, Detail pages
+  - All pages migrated: Dashboard, Libraries, Playlists, Upload, Detail pages, Settings
   - React Router 6 implementation with dynamic routes
   - TanStack Query for data fetching
   - All Next.js imports removed
@@ -50,6 +50,7 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - GitHub OAuth flow
   - Auto token refresh (triggers at 1 hour remaining, checks every 5 minutes)
   - Session persistence with Zustand store
+  - Settings page with user profile display and logout functionality
 - **Monorepo Structure**
   - Frontend and backend separated into distinct directories
   - Shared package for common types and schemas
@@ -68,6 +69,17 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Dual-layer detection: physical network (navigator.onLine) + backend API reachability
   - Custom event system for real-time connectivity updates
   - i18n support for status labels (online/offline/syncing)
+- **Type System Unification**
+  - Removed duplicate frontend Song type, imported from @m3w/shared
+  - Unified coverUrl property (replaced coverArtUrl references)
+  - Duration field accessed via song.file?.duration (optional file relation)
+  - All 8 TypeScript errors resolved
+- **Audio Playback System**
+  - Howler.js integration with proper MIME type detection
+  - Audio preload strategy using blob URLs for authentication
+  - Playback progress persistence (resume from last position)
+  - Auto-save progress with 2-second debounce
+  - Full queue restoration from context (library/playlist)
 
 ### Active Initiatives (In Progress)
 - **Demo & Evaluation**
@@ -84,7 +96,13 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
     - Production deployment with observability & platform integrations
       - Kubernetes deployment configurations
       - Alignment of infrastructure tooling (Kubernetes, PostgreSQL, ELK, etc.) with the observability stack for production readiness
+
 ### Planned Initiatives (Upcoming)
+- **UI/UX Improvements** (High Priority)
+  - Fix global layout vertical scrollbar issue (constrain to viewport height)
+  - Redesign library and playlist card styles (reduce image size, increase information density)
+  - Reconsider "Now Playing" page value (overlaps with full-screen player functionality)
+  - Refactor full-screen player layout (anchor controls to bottom, improve button recognition)
 - **Core Product Enhancements**
   - Enhanced user profile management
   - Redis integration for caching
@@ -375,6 +393,55 @@ Key points:
 - Metadata extraction occurs on both client and server, giving priority to user edits.
 
 Refer to `prisma/schema.prisma` for the schema definition.
+
+### Default Resources Strategy
+
+**Design Decision**: Use `isDefault` boolean flag to identify default resources.
+
+When a user first signs in, the system auto-creates:
+- **Default Library**: `isDefault: true`, `canDelete: false`, name = "Default Library"
+- **Favorites Playlist**: `isDefault: true`, `canDelete: false`, name = "Favorites"
+
+**Key Benefits**:
+- **Unique IDs per User**: Each user gets unique cuid() generated IDs, avoiding multi-user conflicts
+- **Simple Flag Check**: Use `isDefault` boolean to identify default resources
+- **Database Best Practice**: Standard UUID primary keys, no special ID patterns
+- **Type Safety**: Helper functions `isDefaultLibrary()` and `isFavoritesPlaylist()` in `@m3w/shared/constants`
+- **i18n Display**: Frontend uses `getLibraryDisplayName()` and `getPlaylistDisplayName()` to show localized names instead of database names
+- **Scalable**: Can easily add more default types (e.g., "work library") by adding more flags
+
+**Implementation**:
+```typescript
+// Backend creation (auth.ts)
+const defaultLibrary = await prisma.library.create({
+  data: {
+    name: 'Default Library',  // Frontend displays i18n translation
+    userId,
+    isDefault: true,
+    canDelete: false,
+  },
+});
+
+// Frontend display (LibrariesPage.tsx)
+import { getLibraryDisplayName } from '@/lib/utils/defaults';
+<h3>{getLibraryDisplayName(library)}</h3>  // Shows i18n translated name
+
+// Frontend check (stores)
+import { isDefaultLibrary } from '@m3w/shared';
+const defaultLib = libraries.find(isDefaultLibrary);
+```
+
+**Helper Functions** (in `shared/src/constants.ts`):
+- `isDefaultLibrary(library)` - Check if a Library is the default one
+- `isFavoritesPlaylist(playlist)` - Check if a Playlist is the favorites one
+- Frontend: `getLibraryDisplayName()`, `getPlaylistDisplayName()` - Get localized names
+- Frontend: `getLibraryBadge()`, `getPlaylistBadge()` - Get status badges
+- Frontend: `canDeleteLibrary()`, `canDeletePlaylist()` - Check deletion permissions
+
+**Database Indexing**:
+- Primary key on `id` (standard cuid())
+- Composite indexes on `(userId, isDefault)` optimize queries for default resources
+- Partial indexes (where `isDefault = true`) reduce index size for common lookups
 
 ### Authentication Strategy
 - Provider: GitHub OAuth

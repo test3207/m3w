@@ -41,20 +41,20 @@ interface GitHubEmail {
  */
 async function createDefaultResources(userId: string) {
   try {
-    // Create default library
+    // Create default library (unique ID per user via cuid())
     const defaultLibrary = await prisma.library.create({
       data: {
-        name: '默认音乐库',
+        name: 'Default Library', // Frontend displays i18n translation via getLibraryDisplayName()
         userId,
         isDefault: true,
         canDelete: false,
       },
     });
 
-    // Create favorites playlist
+    // Create favorites playlist (unique ID per user via cuid())
     const favoritesPlaylist = await prisma.playlist.create({
       data: {
-        name: '我喜欢的音乐',
+        name: 'Favorites', // Frontend displays i18n translation via getPlaylistDisplayName()
         userId,
         songIds: [],
         isDefault: true,

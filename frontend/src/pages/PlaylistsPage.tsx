@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { ListMusic, Plus, Music } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { eventBus, EVENTS } from '@/lib/events';
+import { getPlaylistDisplayName, getPlaylistBadge } from '@/lib/utils/defaults';
+import { isFavoritesPlaylist } from '@m3w/shared';
 import {
   Dialog,
   DialogContent,
@@ -170,7 +172,7 @@ export default function PlaylistsPage() {
                   {playlist.coverUrl ? (
                     <img
                       src={playlist.coverUrl}
-                      alt={playlist.name}
+                      alt={getPlaylistDisplayName(playlist)}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -183,11 +185,11 @@ export default function PlaylistsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 overflow-hidden">
-                      <h3 className="truncate font-semibold">
-                        {playlist.name}
-                        {playlist.isDefault && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            (默认)
+                      <h3 className="truncate font-semibold flex items-center gap-2">
+                        {getPlaylistDisplayName(playlist)}
+                        {isFavoritesPlaylist(playlist) && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded whitespace-nowrap">
+                            {getPlaylistBadge(playlist)}
                           </span>
                         )}
                       </h3>

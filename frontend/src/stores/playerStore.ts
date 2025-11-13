@@ -9,6 +9,10 @@ import { streamApiClient } from '@/services/api/main/stream-client';
 export type RepeatMode = 'off' | 'one' | 'all';
 export type QueueSource = 'library' | 'playlist' | 'all' | null;
 
+// Debounce helper for progress saving
+let progressSaveTimeout: NodeJS.Timeout | null = null;
+const PROGRESS_SAVE_DEBOUNCE_MS = 2000;
+
 // Helper: Prefetch audio and create object URL
 async function prefetchAudioBlob(audioUrl: string): Promise<string | null> {
   try {
@@ -37,10 +41,10 @@ function songToTrack(song: Song): Track {
     title: song.title,
     artist: song.artist || undefined,
     album: song.album || undefined,
-    coverUrl: song.coverArtUrl || undefined,
-    duration: song.duration || undefined,
+    coverUrl: song.coverUrl || undefined,
+    duration: song.file?.duration || undefined,
     audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-    mimeType: 'audio/mpeg', // Default, could be enhanced with actual file type
+    mimeType: song.file?.mimeType || undefined,
   };
 }
 
@@ -102,6 +106,10 @@ interface PlayerActions {
   // Progress
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
+  
+  // Initialization & Persistence
+  loadPlaybackProgress: () => Promise<void>;
+  savePlaybackProgress: () => void;
 }
 
 type PlayerStore = PlayerState & PlayerActions;
@@ -526,5 +534,197 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   setCurrentTime: (time) => set({ currentTime: time }),
 
   setDuration: (duration) => set({ duration }),
+
+  // Initialization & Persistence
+  loadPlaybackProgress: async () => {
+    try {
+      logger.info('Loading playback progress...');
+      const progress = await api.main.player.getProgress();
+      
+      if (!progress?.track) {
+        logger.info('No playback progress found, trying seed...');
+        // Try to load default seed as fallback
+        try {
+          const seed = await api.main.player.getSeed();
+          if (seed?.track) {
+            const song: Song = {
+              id: seed.track.id,
+              title: seed.track.title,
+              artist: seed.track.artist ?? null,
+              album: seed.track.album ?? null,
+              albumArtist: null,
+              genre: null,
+              year: null,
+              trackNumber: null,
+              discNumber: null,
+              composer: null,
+              coverUrl: seed.track.coverUrl ?? null,
+              libraryId: '', // Not available from seed
+              fileId: '', // Not needed for playback
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            
+            set({
+              currentSong: song,
+              queue: [song],
+              currentIndex: 0,
+              queueSource: seed.context.type as QueueSource,
+              queueSourceId: seed.context.id,
+              queueSourceName: seed.context.name,
+            });
+            
+            logger.info('Loaded default seed', { songId: song.id, title: song.title });
+          }
+        } catch (seedError) {
+          logger.warn('Failed to load default seed', seedError);
+        }
+        return;
+      }
+
+      logger.info('Found playback progress', { 
+        trackId: progress.track.id, 
+        position: progress.position,
+        context: progress.context 
+      });
+
+      // Convert API track to Song
+      const song: Song = {
+        id: progress.track.id,
+        title: progress.track.title,
+        artist: progress.track.artist ?? null,
+        album: progress.track.album ?? null,
+        albumArtist: null,
+        genre: null,
+        year: null,
+        trackNumber: null,
+        discNumber: null,
+        composer: null,
+        coverUrl: progress.track.coverUrl ?? null,
+        libraryId: '', // Not available from progress
+        fileId: '', // Not needed for playback
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        // Include file info for proper audio format detection
+        file: progress.track.mimeType || progress.track.duration ? {
+          id: '',
+          hash: '',
+          path: '',
+          size: 0,
+          mimeType: progress.track.mimeType ?? 'audio/mpeg',
+          duration: progress.track.duration ?? null,
+          bitrate: null,
+          sampleRate: null,
+          channels: null,
+        } : undefined,
+      };
+
+      // Load full queue based on context
+      let fullQueue: Song[] = [song];
+      let startIndex = 0;
+
+      if (progress.context) {
+        try {
+          if (progress.context.type === 'playlist' && progress.context.id) {
+            const songs = await api.main.playlists.getSongs(progress.context.id);
+            if (songs && songs.length > 0) {
+              fullQueue = songs; // Songs from API already match Song type
+              startIndex = fullQueue.findIndex(s => s.id === song.id);
+              if (startIndex === -1) startIndex = 0;
+              logger.info('Loaded playlist queue', { 
+                playlistId: progress.context.id, 
+                songCount: fullQueue.length,
+                startIndex 
+              });
+            }
+          } else if (progress.context.type === 'library' && progress.context.id) {
+            const songs = await api.main.libraries.getSongs(progress.context.id);
+            if (songs && songs.length > 0) {
+              fullQueue = songs; // Songs from API already match Song type
+              startIndex = fullQueue.findIndex(s => s.id === song.id);
+              if (startIndex === -1) startIndex = 0;
+              logger.info('Loaded library queue', { 
+                libraryId: progress.context.id, 
+                songCount: fullQueue.length,
+                startIndex 
+              });
+            }
+          }
+        } catch (queueError) {
+          logger.warn('Failed to load full queue, using single track', queueError);
+        }
+      }
+
+      // Update store state
+      set({
+        currentSong: song,
+        queue: fullQueue,
+        currentIndex: startIndex,
+        queueSource: progress.context?.type as QueueSource ?? null,
+        queueSourceId: progress.context?.id ?? null,
+        queueSourceName: progress.context?.name ?? null,
+        currentTime: progress.position,
+        isPlaying: false, // Don't auto-play
+      });
+
+      // Preload audio and prime player with object URL (same as normal playback)
+      const audioUrl = MAIN_API_ENDPOINTS.songs.stream(song.id);
+      const objectUrl = await prefetchAudioBlob(audioUrl);
+      
+      if (objectUrl) {
+        const track = songToTrack(song);
+        track.resolvedUrl = objectUrl; // Use preloaded blob URL
+        audioPlayer.prime(track);
+        audioPlayer.seek(progress.position);
+        
+        logger.info('Restored playback state with preloaded audio', { 
+          songId: song.id, 
+          position: progress.position,
+          queueLength: fullQueue.length 
+        });
+      } else {
+        logger.warn('Failed to preload audio for resume, using direct stream');
+        const track = songToTrack(song);
+        audioPlayer.prime(track);
+        audioPlayer.seek(progress.position);
+      }
+    } catch (error) {
+      logger.error('Failed to load playback progress', error);
+    }
+  },
+
+  savePlaybackProgress: () => {
+    const { currentSong, currentTime, queueSource, queueSourceId, queueSourceName } = get();
+    
+    if (!currentSong) {
+      return;
+    }
+
+    // Debounce save to avoid excessive API calls
+    if (progressSaveTimeout) {
+      clearTimeout(progressSaveTimeout);
+    }
+
+    progressSaveTimeout = setTimeout(() => {
+      const contextType = (queueSource === 'library' || queueSource === 'playlist') 
+        ? queueSource 
+        : undefined;
+
+      api.main.player.updateProgress({
+        songId: currentSong.id,
+        position: Math.round(currentTime),
+        contextType,
+        contextId: queueSourceId ?? undefined,
+        contextName: queueSourceName ?? undefined,
+      }).catch((error) => {
+        logger.error('Failed to save playback progress', error);
+      });
+
+      logger.info('Saved playback progress', { 
+        songId: currentSong.id, 
+        position: Math.round(currentTime) 
+      });
+    }, PROGRESS_SAVE_DEBOUNCE_MS);
+  },
   };
 });

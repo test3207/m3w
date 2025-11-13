@@ -1,4 +1,14 @@
 {
+  "defaults": {
+    "library": {
+      "name": "默认音乐库",
+      "badge": "默认"
+    },
+    "playlist": {
+      "name": "我喜欢的音乐",
+      "badge": "收藏"
+    }
+  },
   "error": {
     "title": "错误",
     "unauthorized": "未授权",

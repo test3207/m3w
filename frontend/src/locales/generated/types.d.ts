@@ -7,6 +7,20 @@
  */
 
 export interface Messages {
+  defaults: {
+    library: {
+      /** Default Library */
+      name: string;
+      /** Default */
+      badge: string;
+    };
+    playlist: {
+      /** My Favorites */
+      name: string;
+      /** Favorites */
+      badge: string;
+    };
+  };
   error: {
     /** Error */
     title: string;

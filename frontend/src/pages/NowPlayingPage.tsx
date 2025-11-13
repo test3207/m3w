@@ -40,9 +40,9 @@ export default function NowPlayingPage() {
           <div className="flex items-center gap-4">
             {/* Album Cover */}
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md bg-muted">
-              {currentSong.coverArtUrl ? (
+              {currentSong.coverUrl ? (
                 <img
-                  src={currentSong.coverArtUrl}
+                  src={currentSong.coverUrl}
                   alt={currentSong.title}
                   className="h-full w-full object-cover"
                 />

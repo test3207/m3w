@@ -11,6 +11,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Library, Plus, Music } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { getLibraryDisplayName, getLibraryBadge } from '@/lib/utils/defaults';
+import { isDefaultLibrary } from '@m3w/shared';
 import {
   Dialog,
   DialogContent,
@@ -155,7 +157,7 @@ export default function LibrariesPage() {
                   {library.coverUrl ? (
                     <img
                       src={library.coverUrl}
-                      alt={library.name}
+                      alt={getLibraryDisplayName(library)}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -168,11 +170,11 @@ export default function LibrariesPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 overflow-hidden">
-                      <h3 className="truncate font-semibold">
-                        {library.name}
-                        {library.isDefault && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            (默认)
+                      <h3 className="truncate font-semibold flex items-center gap-2">
+                        {getLibraryDisplayName(library)}
+                        {isDefaultLibrary(library) && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded whitespace-nowrap">
+                            {getLibraryBadge(library)}
                           </span>
                         )}
                       </h3>

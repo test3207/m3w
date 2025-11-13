@@ -95,9 +95,9 @@ export function FullPlayer() {
       {/* Album Cover */}
       <div className="flex justify-center px-8 py-8">
         <div className="aspect-square w-full max-w-sm overflow-hidden rounded-lg shadow-2xl">
-          {currentSong.coverArtUrl ? (
+          {currentSong.coverUrl ? (
             <img
-              src={currentSong.coverArtUrl}
+              src={currentSong.coverUrl}
               alt={currentSong.title}
               className="h-full w-full object-cover"
             />

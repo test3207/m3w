@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
+import { isDefaultLibrary } from '@m3w/shared';
 import type { Library } from '@m3w/shared';
 
 interface LibraryState {
@@ -158,17 +159,20 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     }
   },
 
-  // Get default library
+  // Get default library (optimized with ID check)
   getDefaultLibrary: () => {
     const { libraries } = get();
-    return libraries.find((lib) => lib.isDefault) || null;
+    return libraries.find((lib) => isDefaultLibrary(lib)) || null;
   },
 
-  // Check if library can be deleted
+  // Check if library can be deleted (check isDefault flag)
   canDeleteLibrary: (id: string) => {
     const { libraries } = get();
     const library = libraries.find((lib) => lib.id === id);
-    return library?.canDelete ?? false;
+    if (!library) return false;
+    // Default library cannot be deleted
+    if (isDefaultLibrary(library)) return false;
+    return library.canDelete ?? false;
   },
 
   // Reset store

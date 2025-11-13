@@ -15,6 +15,8 @@ import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { api } from '@/services';
 import { eventBus, EVENTS } from '@/lib/events';
+import { getLibraryDisplayName } from '@/lib/utils/defaults';
+import { isDefaultLibrary } from '@m3w/shared';
 import type { Song as SharedSong, SongSortOption } from '@m3w/shared';
 import type { Song } from '@/types/models';
 import {
@@ -24,27 +26,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// Convert shared Song to frontend Song
+// Convert shared Song to frontend Song (now same type, just pass through)
 function convertSong(song: SharedSong): Song {
-  return {
-    id: song.id,
-    title: song.title,
-    artist: song.artist,
-    album: song.album,
-    albumArtist: song.albumArtist,
-    genre: song.genre,
-    year: song.year,
-    trackNumber: song.trackNumber,
-    discNumber: song.discNumber,
-    duration: song.file?.duration || null,
-    coverArtUrl: song.coverUrl,
-    libraryId: song.libraryId,
-    fileId: song.fileId,
-    createdAt: song.createdAt,
-    updatedAt: song.updatedAt,
-    file: song.file,
-    library: song.library,
-  };
+  return song;
 }
 
 export default function LibraryDetailPage() {
@@ -116,16 +100,18 @@ export default function LibraryDetailPage() {
 
   const handlePlayAll = () => {
     if (songs.length === 0 || !currentLibrary) return;
-    void playFromLibrary(currentLibrary.id, currentLibrary.name, songs, 0);
+    const displayName = getLibraryDisplayName(currentLibrary);
+    void playFromLibrary(currentLibrary.id, displayName, songs, 0);
     toast({
       title: I18n.playback.startPlayingTitle,
-      description: I18n.playback.startPlayingDescription.replace('{0}', currentLibrary.name),
+      description: I18n.playback.startPlayingDescription.replace('{0}', displayName),
     });
   };
 
   const handlePlaySong = (index: number) => {
     if (!currentLibrary) return;
-    void playFromLibrary(currentLibrary.id, currentLibrary.name, songs, index);
+    const displayName = getLibraryDisplayName(currentLibrary);
+    void playFromLibrary(currentLibrary.id, displayName, songs, index);
   };
 
   const handleDeleteSong = async (songId: string, songTitle: string) => {
@@ -202,10 +188,16 @@ export default function LibraryDetailPage() {
           返回
         </Button>
 
-        <h1 className="text-2xl font-bold">{currentLibrary.name}</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          {getLibraryDisplayName(currentLibrary)}
+          {isDefaultLibrary(currentLibrary) && (
+            <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
+              {I18n.defaults.library.badge}
+            </span>
+          )}
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {songs.length} 首歌曲
-          {currentLibrary.isDefault && ' • 默认音乐库'}
         </p>
       </div>
 
@@ -285,9 +277,9 @@ export default function LibraryDetailPage() {
               >
                 {/* Album Cover */}
                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                  {song.coverArtUrl ? (
+                  {song.coverUrl ? (
                     <img
-                      src={song.coverArtUrl}
+                      src={song.coverUrl}
                       alt={song.title}
                       className="h-full w-full object-cover"
                     />
@@ -308,10 +300,10 @@ export default function LibraryDetailPage() {
                 </div>
 
                 {/* Duration */}
-                {song.duration && (
+                {song.file?.duration && (
                   <div className="shrink-0 text-sm text-muted-foreground">
-                    {Math.floor(song.duration / 60)}:
-                    {(song.duration % 60).toString().padStart(2, '0')}
+                    {Math.floor(song.file.duration / 60)}:
+                    {(song.file.duration % 60).toString().padStart(2, '0')}
                   </div>
                 )}
               </div>

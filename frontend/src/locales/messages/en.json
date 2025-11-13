@@ -1,4 +1,14 @@
 {
+  "defaults": {
+    "library": {
+      "name": "Default Library",
+      "badge": "Default"
+    },
+    "playlist": {
+      "name": "My Favorites",
+      "badge": "Favorites"
+    }
+  },
   "error": {
     "title": "Error",
     "unauthorized": "Unauthorized",

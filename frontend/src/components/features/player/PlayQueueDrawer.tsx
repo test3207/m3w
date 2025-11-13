@@ -187,9 +187,9 @@ export function PlayQueueDrawer() {
 
                 {/* Album Cover */}
                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                  {song.coverArtUrl ? (
+                  {song.coverUrl ? (
                     <img
-                      src={song.coverArtUrl}
+                      src={song.coverUrl}
                       alt={song.title}
                       className="h-full w-full object-cover"
                     />
@@ -214,9 +214,9 @@ export function PlayQueueDrawer() {
                 </div>
 
                 {/* Duration */}
-                {song.duration && (
+                {song.file?.duration && (
                   <div className="shrink-0 text-sm text-muted-foreground">
-                    {formatDuration(song.duration)}
+                    {formatDuration(song.file.duration)}
                   </div>
                 )}
 

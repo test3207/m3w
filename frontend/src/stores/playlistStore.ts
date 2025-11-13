@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
+import { isFavoritesPlaylist } from '@m3w/shared';
 import type { Playlist } from '@m3w/shared';
 
 interface PlaylistState {
@@ -202,17 +203,20 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     }
   },
 
-  // Get favorites playlist
+  // Get favorites playlist (check isDefault flag)
   getFavoritesPlaylist: () => {
     const { playlists } = get();
-    return playlists.find((pl) => pl.isDefault) || null;
+    return playlists.find((pl) => isFavoritesPlaylist(pl)) || null;
   },
 
-  // Check if playlist can be deleted
+  // Check if playlist can be deleted (check isDefault flag)
   canDeletePlaylist: (id: string) => {
     const { playlists } = get();
     const playlist = playlists.find((pl) => pl.id === id);
-    return playlist?.canDelete ?? false;
+    if (!playlist) return false;
+    // Favorites playlist cannot be deleted
+    if (isFavoritesPlaylist(playlist)) return false;
+    return playlist.canDelete ?? false;
   },
 
   // Reset store

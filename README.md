@@ -330,6 +330,56 @@ m3w/
 - Extract shared fixtures once the same test data appears twice to avoid missing fields
 - Reusable factories live in `src/test/fixtures/metadata.ts` and `src/test/fixtures/prisma.ts`
 
+## Current Status & Known Issues
+
+### ✅ Completed Features (v0.1.0)
+
+- Full mobile-first architecture with Vite + React 19 + Hono 4
+- GitHub OAuth authentication with JWT tokens
+- Library and playlist management
+- Audio playback with Howler.js and blob URL preloading
+- Playback progress persistence and resume
+- Settings page with user profile and logout
+- Type system unification (using @m3w/shared)
+- PWA integration with offline capabilities
+
+### 🔧 Known Issues & Follow-up Tasks
+
+**1. Layout Issues** (High Priority)
+
+- **Problem**: Global layout shows vertical scrollbar despite sufficient space
+- **Root Cause**: Likely navigation bar height calculation causing overflow
+- **Action Needed**: Constrain main layout to viewport height, adjust bottom padding calculations
+
+**2. Library/Playlist Card Design** (High Priority)
+
+- **Problem**: Cover images are too large, resulting in low information density
+- **Current**: Large images dominate the card, minimal metadata shown
+- **Action Needed**: Redesign card layout to reduce image size and display more song information
+
+**3. "Now Playing" Page Value** (Medium Priority)
+
+- **Problem**: Functional overlap with full-screen player
+- **Current**: Both pages show similar information with low value differentiation
+- **Action Needed**: Reevaluate the purpose of "Now Playing" page vs. full-screen player
+
+**4. Full-Screen Player UI** (High Priority)
+
+- **Problem A**: Controls positioned too high, should anchor to bottom edge
+- **Problem B**: Button recognition is low, unclear what each control does
+- **Action Needed**:
+  - Anchor control panel to bottom of screen
+  - Improve button styling and iconography for better recognition
+  - Add visual hierarchy to separate primary actions from secondary
+
+### 📋 Backlog
+
+- Enhanced user profile management (edit name, email)
+- Redis integration for caching
+- Testing expansion (Playwright E2E tests)
+- PWA background sync for offline mutations
+- Push notifications for sync status
+
 ## Internationalization (i18n)
 
 M3W uses a custom Proxy-based i18n system with full type safety.
