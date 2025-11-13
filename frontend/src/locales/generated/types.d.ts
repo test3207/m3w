@@ -11,6 +11,40 @@ export interface Messages {
     /** M3W Music */
     name: string;
   };
+  home: {
+    /** Your Music, Your Way */
+    title: string;
+    /** Self-hosted music player with offline support and complete library ownership. */
+    description: string;
+    /** Get Started */
+    getStarted: string;
+    footer: {
+      /** Open Source • Self-Hosted • Privacy-First */
+      tagline: string;
+    };
+  };
+  signin: {
+    /** Back */
+    back: string;
+    /** Welcome to M3W */
+    title: string;
+    /** Sign in with your GitHub account to continue */
+    description: string;
+    /** Sign in with GitHub */
+    button: string;
+    /** Processing... */
+    processing: string;
+    /** By signing in, you agree to our Terms of Service and Privacy Policy. */
+    terms: string;
+  };
+  navigation: {
+    /** Libraries */
+    libraries: string;
+    /** Playlists */
+    playlists: string;
+    /** Settings */
+    settings: string;
+  };
   defaults: {
     library: {
       /** Default Library */
@@ -74,6 +108,8 @@ export interface Messages {
     playlistNotFound: string;
     /** Playlist not found or unauthorized */
     playlistNotFoundOrUnauthorized: string;
+    /** The page you are looking for does not exist */
+    pageNotFound: string;
     /** Invalid song order */
     invalidSongOrder: string;
     /** Failed to reorder playlist songs */
@@ -150,6 +186,8 @@ export interface Messages {
     loadingLabel: string;
     /** Not found */
     notFoundLabel: string;
+    /** Redirecting in */
+    redirecting: string;
     /** Error */
     errorLabel: string;
     /** Try again */

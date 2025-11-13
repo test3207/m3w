@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "@/lib/utils/cn";
+import { cn } from "@/lib/utils";
 
 interface StackProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
@@ -7,36 +7,28 @@ interface StackProps extends React.HTMLAttributes<HTMLDivElement> {
    */
   direction?: "horizontal" | "vertical";
   /**
-   * Spacing between items (Tailwind gap values)
+   * Spacing between children
    */
   gap?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
   /**
-   * Alignment of items along the main axis
+   * Alignment of children along the cross axis
    */
   align?: "start" | "center" | "end" | "stretch" | "baseline";
   /**
-   * Alignment of items along the cross axis
+   * Justification of children along the main axis
    */
   justify?: "start" | "center" | "end" | "between" | "around" | "evenly";
   /**
-   * Whether items should wrap
+   * Whether children should wrap
    */
   wrap?: boolean;
   /**
-   * Whether to render as semantic element
+   * Whether to fill available space
    */
-  as?:
-    | "div"
-    | "section"
-    | "article"
-    | "nav"
-    | "header"
-    | "footer"
-    | "main"
-    | "aside";
+  fill?: boolean;
 }
 
-const gapMap = {
+const gapClasses = {
   none: "gap-0",
   xs: "gap-1",
   sm: "gap-2",
@@ -45,7 +37,7 @@ const gapMap = {
   xl: "gap-8",
 };
 
-const alignMap = {
+const alignClasses = {
   start: "items-start",
   center: "items-center",
   end: "items-end",
@@ -53,7 +45,7 @@ const alignMap = {
   baseline: "items-baseline",
 };
 
-const justifyMap = {
+const justifyClasses = {
   start: "justify-start",
   center: "justify-center",
   end: "justify-end",
@@ -64,7 +56,6 @@ const justifyMap = {
 
 /**
  * Stack component - provides flexible box layout similar to FluentUI Stack
- * Improves accessibility by reducing div soup and providing semantic options
  */
 export const Stack = React.forwardRef<HTMLDivElement, StackProps>(
   (
@@ -74,31 +65,30 @@ export const Stack = React.forwardRef<HTMLDivElement, StackProps>(
       align = "stretch",
       justify = "start",
       wrap = false,
-      as: Component = "div",
+      fill = false,
       className,
       children,
       ...props
     },
     ref
   ) => {
-    const directionClass = direction === "horizontal" ? "flex-row" : "flex-col";
-
     return (
-      <Component
+      <div
         ref={ref}
         className={cn(
           "flex",
-          directionClass,
-          gapMap[gap],
-          alignMap[align],
-          justifyMap[justify],
+          direction === "horizontal" ? "flex-row" : "flex-col",
+          gapClasses[gap],
+          alignClasses[align],
+          justifyClasses[justify],
           wrap && "flex-wrap",
+          fill && (direction === "horizontal" ? "w-full" : "h-full"),
           className
         )}
         {...props}
       >
         {children}
-      </Component>
+      </div>
     );
   }
 );

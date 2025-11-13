@@ -14,13 +14,13 @@ import { api } from '@/services';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 
-interface DashboardUserMenuProps {
+interface MobileUserMenuProps {
   name?: string | null;
   email: string;
   image?: string | null;
 }
 
-export function DashboardUserMenu({ name, email, image }: DashboardUserMenuProps) {
+export function MobileUserMenu({ name, email, image }: MobileUserMenuProps) {
   useLocale();
   const navigate = useNavigate();
   const displayName = name ?? email;

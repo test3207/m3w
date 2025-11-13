@@ -2,6 +2,6 @@
  * Player components exports
  */
 
-export { MiniPlayer } from './MiniPlayer';
-export { FullPlayer } from './FullPlayer';
-export { PlayQueueDrawer } from './PlayQueueDrawer';
+export { MiniPlayer } from './mini-player';
+export { FullPlayer } from './full-player';
+export { PlayQueueDrawer } from './play-queue-drawer';

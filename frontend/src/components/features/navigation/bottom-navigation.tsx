@@ -5,27 +5,31 @@
 
 import { Library, ListMusic, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+
 import { cn } from '@/lib/utils';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 const NAV_ITEMS = [
   {
     icon: Library,
-    label: '音乐库',
+    labelKey: 'libraries' as const,
     path: '/libraries',
   },
   {
     icon: ListMusic,
-    label: '播放列表',
+    labelKey: 'playlists' as const,
     path: '/playlists',
   },
   {
     icon: Settings,
-    label: '设置',
+    labelKey: 'settings' as const,
     path: '/settings',
   },
 ];
 
 export function BottomNavigation() {
+  useLocale(); // Subscribe to locale changes
   const location = useLocation();
 
   return (
@@ -46,7 +50,9 @@ export function BottomNavigation() {
               )}
             >
               <Icon className={cn('h-5 w-5', isActive && 'fill-current')} />
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-xs font-medium" suppressHydrationWarning>
+                {I18n.navigation[item.labelKey]}
+              </span>
             </Link>
           );
         })}

@@ -1,156 +1,75 @@
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Music } from 'lucide-react';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
+import { LanguageSwitcher } from '@/components/layouts/language-switcher';
 
 export default function HomePage() {
+  useLocale();
+
   return (
-    <div className="min-h-screen bg-linear-to-br from-background to-muted">
+    <div className="flex min-h-screen flex-col">
+      {/* Header */}
+      <header className="border-b">
+        <div className="container flex h-16 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+              M3W
+            </div>
+            <span className="text-lg font-semibold" suppressHydrationWarning>
+              {I18n.app.name}
+            </span>
+          </div>
+          <LanguageSwitcher />
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <div className="container mx-auto px-4 py-16 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto">
-          <Badge className="mb-4" variant="secondary">
-            Vite • React • TypeScript • Tailwind CSS
-          </Badge>
-          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-6">
-            M3W
-          </h1>
-          <p className="text-xl sm:text-2xl text-muted-foreground mb-8">
-            Production-Grade Full-Stack Web Application
-          </p>
-          <p className="text-base text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Built with Vite, React Router, TanStack Query, and shadcn/ui.
-            Self-hosted ready with Podman/Docker and Kubernetes support.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg">
-              <Link to="/signin">Sign In with GitHub</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link to="/libraries">View Dashboard</Link>
+      <main className="flex flex-1 items-center justify-center">
+        <div className="container px-4">
+          <div className="mx-auto max-w-lg text-center">
+            {/* Icon */}
+            <div className="mb-6 flex justify-center">
+              <div className="rounded-full bg-primary/10 p-4">
+                <Music className="h-12 w-12 text-primary" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h1 className="mb-3 text-3xl font-bold tracking-tight" suppressHydrationWarning>
+              {I18n.home.title}
+            </h1>
+
+            {/* Description */}
+            <p className="mb-8 text-muted-foreground" suppressHydrationWarning>
+              {I18n.home.description}
+            </p>
+
+            {/* CTA */}
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link to="/signin" suppressHydrationWarning>{I18n.home.getStarted}</Link>
             </Button>
           </div>
         </div>
+      </main>
 
-        {/* Features Grid */}
-        <div className="mt-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">🚀</span>
-                Modern Stack
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Vite with React, React Server Components, and
-                TypeScript strict mode.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">🔐</span>
-                Secure Auth
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                GitHub OAuth integration with JWT, database sessions, and CSRF
-                protection.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">💾</span>
-                Type-Safe DB
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Prisma ORM with PostgreSQL 16, auto-generated types, and
-                migrations.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">🎨</span>
-                Beautiful UI
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                shadcn/ui components with Radix UI primitives and Tailwind CSS
-                v4.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">�</span>
-                Container Ready
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Podman/Docker support with official Docker Hub images.
-                Kubernetes deployment configs included.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span className="text-2xl">�</span>
-                China Friendly
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Docker Hub defaults, proxy configuration guides, and
-                cross-platform setup scripts.
-              </CardDescription>
-            </CardContent>
-          </Card>
+      {/* Footer */}
+      <footer className="border-t py-6">
+        <div className="container px-4 text-center text-sm text-muted-foreground">
+          <p className="mb-1" suppressHydrationWarning>
+            {I18n.home.footer.tagline}
+          </p>
+          <a
+            href="https://github.com/test3207/m3w"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
+            github.com/test3207/m3w
+          </a>
         </div>
-
-        {/* Tech Stack */}
-        <div className="mt-16 text-center">
-          <h2 className="text-2xl font-bold mb-6">Technology Stack</h2>
-          <div className="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto">
-            <Badge variant="secondary">Vite</Badge>
-            <Badge variant="secondary">React 19</Badge>
-            <Badge variant="secondary">TypeScript 5</Badge>
-            <Badge variant="secondary">Tailwind CSS v4</Badge>
-            <Badge variant="secondary">shadcn/ui</Badge>
-            <Badge variant="secondary">Hono</Badge>
-            <Badge variant="secondary">Prisma</Badge>
-            <Badge variant="secondary">PostgreSQL 16</Badge>
-            <Badge variant="secondary">Redis 7</Badge>
-            <Badge variant="secondary">Podman</Badge>
-            <Badge variant="secondary">Kubernetes</Badge>
-            <Badge variant="secondary">ESLint 9</Badge>
-            <Badge variant="secondary">Pino</Badge>
-          </div>
-        </div>
-      </div>
+      </footer>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,10 +9,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { ArrowLeft } from 'lucide-react';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export default function SignInPage() {
+  useLocale();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -32,15 +37,28 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background to-muted p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-2">
-          <CardTitle className="text-3xl font-bold">Welcome to M3W</CardTitle>
-          <CardDescription className="text-base">
-            Sign in with your GitHub account to continue
-          </CardDescription>
-        </CardHeader>
+      <div className="w-full max-w-md">
+        {/* Back Button */}
+        <div className="mb-4">
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              <span suppressHydrationWarning>{I18n.signin.back}</span>
+            </Link>
+          </Button>
+        </div>
 
-        <CardContent>
+        <Card>
+          <CardHeader className="text-center space-y-2">
+            <CardTitle className="text-3xl font-bold" suppressHydrationWarning>
+              {I18n.signin.title}
+            </CardTitle>
+            <CardDescription className="text-base" suppressHydrationWarning>
+              {I18n.signin.description}
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
           <Button 
             onClick={handleGitHubSignIn}
             disabled={isLoading}
@@ -58,17 +76,19 @@ export default function SignInPage() {
                 clipRule="evenodd"
               />
             </svg>
-            {isLoading ? 'Processing...' : 'Sign in with GitHub'}
+            <span suppressHydrationWarning>
+              {isLoading ? I18n.signin.processing : I18n.signin.button}
+            </span>
           </Button>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              By signing in, you agree to our Terms of Service and Privacy
-              Policy.
+            <p className="text-sm text-muted-foreground" suppressHydrationWarning>
+              {I18n.signin.terms}
             </p>
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

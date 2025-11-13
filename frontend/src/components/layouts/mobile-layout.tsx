@@ -5,11 +5,11 @@
 
 import { useEffect } from 'react';
 import { usePlayerStore } from '@/stores/playerStore';
-import { MobileHeader } from '@/components/layouts/MobileHeader';
-import { BottomNavigation } from '@/components/features/navigation/BottomNavigation';
+import { MobileHeader } from '@/components/layouts/mobile-header';
+import { BottomNavigation } from '@/components/features/navigation/bottom-navigation';
 import { MiniPlayer, FullPlayer, PlayQueueDrawer } from '@/components/features/player';
-import { FloatingActionButton } from '@/components/features/navigation/FloatingActionButton';
-import { UploadDrawer } from '@/components/features/upload/UploadDrawer';
+import { FloatingActionButton } from '@/components/features/navigation/floating-action-button';
+import { UploadDrawer } from '@/components/features/upload/upload-drawer';
 
 interface MobileLayoutProps {
   children: React.ReactNode;
