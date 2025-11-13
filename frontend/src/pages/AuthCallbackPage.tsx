@@ -46,7 +46,7 @@ export default function AuthCallbackPage() {
                 refreshToken: tokenData.data.refreshToken,
                 expiresAt: tokenData.data.expiresAt,
               });
-              navigate('/now-playing');
+              navigate('/libraries');
             } else {
               logger.error('Failed to get session', { tokenData });
               navigate('/signin?error=session_failed');
