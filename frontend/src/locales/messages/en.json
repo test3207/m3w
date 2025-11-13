@@ -2,6 +2,27 @@
   "app": {
     "name": "M3W Music"
   },
+  "home": {
+    "title": "Your Music, Your Way",
+    "description": "Self-hosted music player with offline support and complete library ownership.",
+    "getStarted": "Get Started",
+    "footer": {
+      "tagline": "Open Source • Self-Hosted • Privacy-First"
+    }
+  },
+  "signin": {
+    "back": "Back",
+    "title": "Welcome to M3W",
+    "description": "Sign in with your GitHub account to continue",
+    "button": "Sign in with GitHub",
+    "processing": "Processing...",
+    "terms": "By signing in, you agree to our Terms of Service and Privacy Policy."
+  },
+  "navigation": {
+    "libraries": "Libraries",
+    "playlists": "Playlists",
+    "settings": "Settings"
+  },
   "defaults": {
     "library": {
       "name": "Default Library",
@@ -37,6 +58,7 @@
     "failedToDeletePlaylist": "Failed to delete playlist",
     "playlistNotFound": "Playlist not found",
     "playlistNotFoundOrUnauthorized": "Playlist not found or unauthorized",
+    "pageNotFound": "The page you are looking for does not exist",
     "invalidSongOrder": "Invalid song order",
     "failedToReorderSongs": "Failed to reorder playlist songs",
     "failedToSeedPlayback": "Failed to seed playback",
@@ -77,6 +99,7 @@
     "viewLinkLabel": "View",
     "loadingLabel": "Loading...",
     "notFoundLabel": "Not found",
+    "redirecting": "Redirecting in",
     "errorLabel": "Error",
     "tryAgainLabel": "Try again",
     "confirmLabel": "Confirm",

@@ -1,14 +1,17 @@
 /**
  * Mobile Header Component
- * Top header bar with status indicators (network, PWA, etc.)
+ * Top header bar with logo and language switcher
  */
 
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
-import { NetworkStatusIndicator } from '@/components/features/network/network-status-indicator';
+import { LanguageSwitcher } from './language-switcher';
+import { useAuthStore } from '@/stores/authStore';
+import { MobileUserMenu } from './mobile-user-menu';
 
 export function MobileHeader() {
   useLocale(); // Subscribe to locale changes
+  const user = useAuthStore((state) => state.user);
   
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -23,10 +26,16 @@ export function MobileHeader() {
           </h1>
         </div>
 
-        {/* Right side - status indicators */}
+        {/* Right side - language switcher and user menu */}
         <div className="flex items-center gap-2">
-          <NetworkStatusIndicator />
-          {/* Future: PWA install prompt, update notification, etc. */}
+          <LanguageSwitcher />
+          {user && (
+            <MobileUserMenu
+              name={user.name}
+              email={user.email || ""}
+              image={user.image}
+            />
+          )}
         </div>
       </div>
     </header>

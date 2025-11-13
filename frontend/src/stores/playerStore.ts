@@ -324,6 +324,16 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   },
 
   playFromPlaylist: async (playlistId, playlistName, songs, startIndex = 0) => {
+    const currentRepeatMode = get().repeatMode;
+    
+    logger.info('playFromPlaylist called', { 
+      playlistId, 
+      playlistName, 
+      songCount: songs.length, 
+      startIndex,
+      currentRepeatMode 
+    });
+    
     const currentSong = songs[startIndex];
     if (!currentSong) {
       logger.warn('No song at start index', { startIndex, songCount: songs.length });
@@ -346,6 +356,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       queueSourceId: playlistId,
       queueSourceName: playlistName,
       isPlaying: true,
+      // Preserve repeatMode and isShuffled
+      repeatMode: currentRepeatMode,
     });
     
     logger.info('Playing from playlist', { 
@@ -384,20 +396,42 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
   // Navigation
   next: async () => {
-    const { queue, currentIndex, repeatMode } = get();
+    const state = get();
+    const { queue, currentIndex, repeatMode } = state;
 
-    if (queue.length === 0) return;
+    logger.info('Next button clicked - full state', { 
+      queueLength: queue.length, 
+      currentIndex, 
+      repeatMode,
+      isShuffled: state.isShuffled,
+      isLastSong: currentIndex === queue.length - 1,
+      fullState: {
+        repeatMode: state.repeatMode,
+        isPlaying: state.isPlaying,
+        queueSource: state.queueSource,
+      }
+    });
+
+    if (queue.length === 0) {
+      logger.warn('Queue is empty, cannot play next');
+      return;
+    }
 
     let nextIndex: number;
 
-    if (repeatMode === 'one') {
-      nextIndex = currentIndex;
-    } else if (currentIndex < queue.length - 1) {
+    // Note: repeatMode only affects automatic playback (on track end)
+    // Manual "next" button should always skip to next track
+    if (currentIndex < queue.length - 1) {
+      // Play next song in queue
       nextIndex = currentIndex + 1;
-    } else if (repeatMode === 'all') {
+      logger.info('Playing next song in queue', { nextIndex });
+    } else if (repeatMode === 'all' || repeatMode === 'one') {
+      // Loop back to first song (both 'all' and 'one' modes loop the queue)
       nextIndex = 0;
+      logger.info('Looping back to first song', { repeatMode });
     } else {
-      // End of queue
+      // End of queue, no repeat
+      logger.info('End of queue reached, stopping playback', { repeatMode });
       set({ isPlaying: false });
       return;
     }
@@ -415,7 +449,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         currentTime: 0,
         isPlaying: true,
       });
-      logger.info('Playing next song', { index: nextIndex, title: nextSong.title });
+      logger.info('Playing next song', { 
+        index: nextIndex, 
+        title: nextSong.title,
+        repeatMode,
+        isLoopBack: nextIndex === 0 && currentIndex === queue.length - 1 
+      });
     }
   },
 
@@ -498,7 +537,16 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       const modes: RepeatMode[] = ['off', 'all', 'one'];
       const currentIndex = modes.indexOf(state.repeatMode);
       const nextIndex = (currentIndex + 1) % modes.length;
-      return { repeatMode: modes[nextIndex] };
+      const nextMode = modes[nextIndex];
+      
+      logger.info('Toggle repeat mode', { 
+        from: state.repeatMode, 
+        to: nextMode,
+        currentIndex,
+        nextIndex
+      });
+      
+      return { repeatMode: nextMode };
     }),
 
   toggleShuffle: () =>

@@ -2,6 +2,27 @@
   "app": {
     "name": "M3W Music"
   },
+  "home": {
+    "title": "你的音乐，随心而动",
+    "description": "自托管音乐播放器，支持离线播放，完全拥有你的音乐库。",
+    "getStarted": "开始使用",
+    "footer": {
+      "tagline": "开源 • 自托管 • 隐私优先"
+    }
+  },
+  "signin": {
+    "back": "返回",
+    "title": "欢迎来到 M3W",
+    "description": "使用 GitHub 账号登录以继续",
+    "button": "使用 GitHub 登录",
+    "processing": "处理中...",
+    "terms": "登录即表示您同意我们的服务条款和隐私政策。"
+  },
+  "navigation": {
+    "libraries": "音乐库",
+    "playlists": "播放列表",
+    "settings": "设置"
+  },
   "defaults": {
     "library": {
       "name": "默认音乐库",
@@ -37,6 +58,7 @@
     "failedToDeletePlaylist": "删除播放列表失败",
     "playlistNotFound": "播放列表不存在",
     "playlistNotFoundOrUnauthorized": "播放列表不存在或未授权",
+    "pageNotFound": "您访问的页面不存在",
     "invalidSongOrder": "无效的歌曲顺序",
     "failedToReorderSongs": "调整播放列表歌曲顺序失败",
     "failedToSeedPlayback": "初始化播放失败",
@@ -77,6 +99,7 @@
     "viewLinkLabel": "查看",
     "loadingLabel": "加载中...",
     "notFoundLabel": "未找到",
+    "redirecting": "即将跳转",
     "errorLabel": "错误",
     "tryAgainLabel": "重试",
     "confirmLabel": "确认",

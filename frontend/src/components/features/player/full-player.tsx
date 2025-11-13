@@ -55,6 +55,12 @@ export function FullPlayer() {
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const toggleRepeat = usePlayerStore((state) => state.toggleRepeat);
 
+  // Debug: Log current repeatMode when next button is clicked
+  const handleNext = () => {
+    console.log('[FullPlayer] Next button clicked, current repeatMode:', repeatMode);
+    next();
+  };
+
   if (!isOpen || !currentSong) {
     return null;
   }
@@ -171,7 +177,7 @@ export function FullPlayer() {
           <Button
             variant="outline"
             size="icon"
-            onClick={next}
+            onClick={handleNext}
             className="h-14 w-14 rounded-full border-2"
           >
             <SkipForward className="h-6 w-6" />
@@ -212,7 +218,7 @@ export function FullPlayer() {
               )}
             </div>
             <span className="text-xs">
-              {repeatMode === 'off' ? '循环' : repeatMode === 'all' ? '列表' : '单曲'}
+              {repeatMode === 'off' ? '关闭' : repeatMode === 'all' ? '循环' : '单曲'}
             </span>
           </Button>
         </div>

@@ -19,7 +19,7 @@ const LibraryDetailPage = lazy(() => import('./pages/LibraryDetailPage'));
 const PlaylistsPage = lazy(() => import('./pages/PlaylistsPage'));
 const PlaylistDetailPage = lazy(() => import('./pages/PlaylistDetailPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const UploadPage = lazy(() => import('./pages/UploadPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 // Import UI components (keep these eager loaded as they're used globally)
 import { Toaster } from './components/ui/toaster';
@@ -27,7 +27,7 @@ import { PageLoader } from './components/ui/page-loader';
 import { ProtectedRoute } from './components/providers/protected-route';
 import { ReloadPrompt } from './components/features/pwa/reload-prompt';
 import { InstallPrompt } from './components/features/pwa/install-prompt';
-import { MobileLayout } from './components/layouts/MobileLayout';
+import { MobileLayout } from './components/layouts/mobile-layout';
 import { AuthProvider } from './components/providers/auth-provider';
 
 // Create QueryClient instance
@@ -111,17 +111,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 }
               />
 
-              {/* Legacy upload page - will be converted to drawer */}
-              <Route
-                path="/upload"
-                element={
-                  <ProtectedRoute>
-                    <MobileLayout>
-                      <UploadPage />
-                    </MobileLayout>
-                  </ProtectedRoute>
-                }
-              />
+              {/* 404 catch-all route */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
           <Toaster />
