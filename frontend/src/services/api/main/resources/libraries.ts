@@ -4,7 +4,7 @@
 
 import { mainApiClient } from '../client';
 import { MAIN_API_ENDPOINTS } from '../endpoints';
-import type { Library, Song, CreateLibraryInput, UpdateLibraryInput } from '@m3w/shared';
+import type { Library, Song, CreateLibraryInput, UpdateLibraryInput, SongSortOption } from '@m3w/shared';
 
 // Re-export shared types for convenience
 export type { CreateLibraryInput, UpdateLibraryInput };
@@ -12,6 +12,7 @@ export type { CreateLibraryInput, UpdateLibraryInput };
 export const libraries = {
   /**
    * List all libraries
+   * Returns libraries with new fields: coverUrl, isDefault, canDelete
    */
   list: async (): Promise<Library[]> => {
     return mainApiClient.get<Library[]>(MAIN_API_ENDPOINTS.libraries.list);
@@ -25,10 +26,15 @@ export const libraries = {
   },
 
   /**
-   * Get songs in library
+   * Get songs in library with optional sorting
+   * @param id - Library ID
+   * @param sort - Sort option (date-desc, date-asc, title-asc, title-desc, artist-asc, album-asc)
    */
-  getSongs: async (id: string): Promise<Song[]> => {
-    return mainApiClient.get<Song[]>(MAIN_API_ENDPOINTS.libraries.songs(id));
+  getSongs: async (id: string, sort?: SongSortOption): Promise<Song[]> => {
+    const url = sort
+      ? `${MAIN_API_ENDPOINTS.libraries.songs(id)}?sort=${sort}`
+      : MAIN_API_ENDPOINTS.libraries.songs(id);
+    return mainApiClient.get<Song[]>(url);
   },
 
   /**
@@ -47,6 +53,7 @@ export const libraries = {
 
   /**
    * Delete library
+   * Note: Cannot delete default library (canDelete === false)
    */
   delete: async (id: string): Promise<void> => {
     return mainApiClient.delete(MAIN_API_ENDPOINTS.libraries.delete(id));

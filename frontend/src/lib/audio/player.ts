@@ -124,11 +124,27 @@ class AudioPlayer {
    * Load and play a track
    */
   async play(track: Track): Promise<void> {
+    logger.info('🎵 AudioPlayer.play() called', {
+      trackId: track.id,
+      title: track.title,
+      audioUrl: track.audioUrl,
+      duration: track.duration,
+    });
+    
     // Always unload and create new Howl instance to ensure fresh event listeners
     this.unloadHowl();
     this.currentTrack = track;
+    
+    logger.info('🎵 Creating Howl instance...');
     this.howl = this.createHowl(track);
+    
+    logger.info('🎵 Calling howl.play()...', {
+      howlState: this.howl.state(),
+      howlPlaying: this.howl.playing(),
+    });
     this.howl.play();
+    
+    logger.info('🎵 howl.play() called, waiting for onplay event');
   }
 
   /**
@@ -326,12 +342,20 @@ class AudioPlayer {
     const sourceUrl = track.resolvedUrl ?? track.audioUrl;
     const format = resolveAudioFormat(track);
 
+    logger.info('🎵 Creating Howl with config', {
+      sourceUrl,
+      format,
+      html5: true,
+      preload: true,
+    });
+
     return new Howl({
       src: [sourceUrl],
       ...(format ? { format } : {}),
       html5: true,
       preload: true,
       onload: () => {
+        logger.info('🎵 Howl onload fired');
         if (this.pendingSeek !== null && this.howl) {
           try {
             this.howl.seek(this.pendingSeek);
@@ -343,6 +367,7 @@ class AudioPlayer {
         this.emit('load');
       },
       onplay: () => {
+        logger.info('🎵 Howl onplay fired');
         this.isRecovering = false;
         if (this.pendingSeek !== null && this.howl) {
           const target = this.pendingSeek;
@@ -357,17 +382,22 @@ class AudioPlayer {
         this.emit('play');
       },
       onpause: () => {
+        logger.info('🎵 Howl onpause fired');
         this.stopProgressUpdate();
         this.emit('pause');
       },
       onend: () => {
+        logger.info('🎵 Howl onend fired');
         this.stopProgressUpdate();
         this.emit('end');
       },
       onseek: () => {
+        logger.info('🎵 Howl onseek fired');
         this.emit('seek');
       },
       onloaderror: (_id, error) => {
+        logger.error('🎵 Howl onloaderror fired', { error });
+
         // In development, hot reload or initial page load can cause stale audio URLs
         // Suppress errors if we're in dev mode and the player hasn't been actively used
         const isDev = import.meta.env.DEV;
@@ -385,6 +415,8 @@ class AudioPlayer {
         }
       },
       onplayerror: (_id, error) => {
+        logger.error('🎵 Howl onplayerror fired', { error });
+        
         const trackContext = this.currentTrack ? { trackId: this.currentTrack.id } : {};
         const logPayload = {
           ...(error ? { err: error } : {}),

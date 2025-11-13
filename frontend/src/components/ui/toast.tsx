@@ -14,7 +14,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed bottom-0 right-0 z-100 flex max-h-screen w-full max-w-sm flex-col gap-2 p-4 outline-none md:bottom-4 md:right-4",
+      "fixed top-0 left-1/2 -translate-x-1/2 z-100 flex max-h-screen w-full max-w-sm flex-col gap-2 p-4 outline-none md:top-4",
       className
     )}
     {...props}
@@ -50,9 +50,9 @@ const Toast = React.forwardRef<
     className={cn(
       toastVariants({ variant }),
       "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80",
-      "data-[state=open]:slide-in-from-bottom-full data-[state=open]:sm:slide-in-from-bottom-24 data-[state=closed]:slide-out-to-right-full",
-      "data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x) data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:transition-all",
-      "data-[swipe=end]:animate-out data-[swipe=end]:slide-out-to-right-full",
+      "data-[state=open]:slide-in-from-top-full data-[state=closed]:slide-out-to-top-full",
+      "data-[swipe=move]:translate-y-(--radix-toast-swipe-move-y) data-[swipe=cancel]:translate-y-0 data-[swipe=cancel]:transition-all",
+      "data-[swipe=end]:animate-out data-[swipe=end]:slide-out-to-top-full",
       className
     )}
     {...props}

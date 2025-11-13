@@ -1,280 +1,207 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { PageHeader } from "@/components/ui/page-header";
-import { HStack } from "@/components/ui/stack";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { I18n } from "@/locales/i18n";
-import { useLocale } from "@/locales/use-locale";
-import { PlaylistPlayButton } from "@/components/features/player/playlist-play-button";
-import { logger } from "@/lib/logger-client";
-import { useToast } from "@/components/ui/use-toast";
-import { ApiError } from "@/lib/api/client";
-import { api } from "@/services";
-import type { Playlist } from "@m3w/shared";
+/**
+ * Playlists Page (Mobile-First)
+ * Display and manage user's playlists
+ */
+
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { usePlaylistStore } from '@/stores/playlistStore';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { ListMusic, Plus, Music } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { eventBus, EVENTS } from '@/lib/events';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 export default function PlaylistsPage() {
-  useLocale();
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [playlistsList, setPlaylistsList] = useState<Playlist[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const playlists = usePlaylistStore((state) => state.playlists);
+  const isLoading = usePlaylistStore((state) => state.isLoading);
+  const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
+  const createPlaylist = usePlaylistStore((state) => state.createPlaylist);
 
   useEffect(() => {
-    async function fetchPlaylists() {
-      try {
-        const data = await api.main.playlists.list();
-        setPlaylistsList(data);
-      } catch (error) {
-        logger.error('Failed to fetch playlists', error);
-        
-        if (error instanceof ApiError && error.status === 401) {
-          navigate('/signin');
-          return;
-        }
-        
-        toast({
-          variant: "destructive",
-          title: I18n.error.failedToGetPlaylists,
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchPlaylists();
-  }, [navigate, toast]);
+  }, [fetchPlaylists]);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitting(true);
+  // Listen for external song changes (delete/upload) that may affect playlists
+  useEffect(() => {
+    const refetchPlaylists = () => {
+      console.log('[PlaylistsPage] Event triggered, refetching playlists');
+      fetchPlaylists();
+    };
 
-    const formData = new FormData(event.currentTarget);
-    const name = formData.get("name") as string;
-    const description = formData.get("description") as string;
+    const unsubscribeDelete = eventBus.on(EVENTS.SONG_DELETED, refetchPlaylists);
+    const unsubscribeUpload = eventBus.on(EVENTS.SONG_UPLOADED, refetchPlaylists);
 
-    try {
-      const newPlaylist = await api.main.playlists.create({
-        name: name.trim(),
-        description: description.trim() || undefined,
-      });
+    return () => {
+      unsubscribeDelete();
+      unsubscribeUpload();
+    };
+  }, [fetchPlaylists]);
 
-      setPlaylistsList(prev => [...prev, newPlaylist]);
-
-      formRef.current?.reset();
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylistName.trim()) {
       toast({
-        title: "Playlist created successfully",
+        variant: 'destructive',
+        title: '请输入播放列表名称',
       });
-    } catch (error) {
-      logger.error('Failed to create playlist', error);
-      
-      if (error instanceof ApiError && error.status === 401) {
-        navigate('/signin');
-        return;
-      }
-      
-      toast({
-        variant: "destructive",
-        title: I18n.error.failedToCreatePlaylist,
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (playlistId: string) => {
-    if (!confirm(I18n.common.confirmDeletePlaylist)) {
       return;
     }
 
-    setDeletingId(playlistId);
+    setIsCreating(true);
     try {
-      await api.main.playlists.delete(playlistId);
-
-      setPlaylistsList(prev => prev.filter(p => p.id !== playlistId));
+      await createPlaylist(newPlaylistName.trim());
       toast({
-        title: "Playlist deleted successfully",
+        title: '创建成功',
+        description: `播放列表"${newPlaylistName}"已创建`,
       });
+      setNewPlaylistName('');
+      setIsDialogOpen(false);
     } catch (error) {
-      logger.error('Failed to delete playlist', error);
-      
-      if (error instanceof ApiError && error.status === 401) {
-        navigate('/signin');
-        return;
-      }
-      
       toast({
-        variant: "destructive",
-        title: I18n.error.failedToDeletePlaylist,
+        variant: 'destructive',
+        title: '创建失败',
+        description: error instanceof Error ? error.message : '未知错误',
       });
     } finally {
-      setDeletingId(null);
+      setIsCreating(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">加载中...</p>
       </div>
     );
   }
 
   return (
-    <AdaptiveLayout
-      gap={16}
-      className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8"
-    >
-      <AdaptiveSection
-        id="playlists-header"
-        baseSize={200}
-        minSize={150}
-        className="pt-4"
-      >
-        <div className="flex h-full flex-col justify-end">
-          <PageHeader
-            title={I18n.playlist.manager.pageTitle}
-            description={I18n.playlist.manager.pageDescription}
-          />
+    <div className="min-h-screen p-4">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">播放列表</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {playlists.length} 个播放列表
+          </p>
         </div>
-      </AdaptiveSection>
 
-      <AdaptiveSection
-        id="playlists-content"
-        baseSize={560}
-        minSize={340}
-        className="pb-4"
-      >
-        <div className="grid h-full gap-6 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <Card className="flex h-full flex-col overflow-hidden">
-            <CardHeader>
-              <CardTitle>{I18n.playlist.manager.form.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">{I18n.playlist.manager.form.nameLabel}</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    required
-                    maxLength={100}
-                    placeholder={I18n.playlist.manager.form.namePlaceholder}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">{I18n.playlist.manager.form.descriptionLabel}</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    maxLength={500}
-                    placeholder={I18n.playlist.manager.form.descriptionPlaceholder}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="coverUrl">{I18n.playlist.manager.form.coverLabel}</Label>
-                  <Input
-                    id="coverUrl"
-                    name="coverUrl"
-                    type="url"
-                    placeholder={I18n.playlist.manager.form.coverPlaceholder}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? I18n.common.creatingLabel : I18n.playlist.manager.form.submitLabel}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className="flex h-full flex-col overflow-hidden">
-            <CardHeader>
-              <CardTitle>{I18n.playlist.manager.list.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              {playlistsList.length === 0 ? (
-                <EmptyState
-                  icon="📻"
-                  title={I18n.playlist.manager.list.emptyTitle}
-                  description={I18n.playlist.manager.list.emptyDescription}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="icon" variant="outline">
+              <Plus className="h-5 w-5" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>创建新播放列表</DialogTitle>
+              <DialogDescription>
+                创建一个自定义播放列表
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">播放列表名称</Label>
+                <Input
+                  id="name"
+                  placeholder="例如：深夜驾车、运动音乐"
+                  value={newPlaylistName}
+                  onChange={(e) => setNewPlaylistName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCreatePlaylist();
+                    }
+                  }}
                 />
-              ) : (
-                <ul role="list" className="flex flex-col gap-3">
-                  {playlistsList.map((playlist) => {
-                    const metadata = [
-                      <MetadataItem
-                        key="songs"
-                        label={I18n.playlist.manager.list.metadataSongsLabel}
-                        value={playlist._count?.songs ?? 0}
-                        variant="outline"
-                      />,
-                    ];
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  setNewPlaylistName('');
+                }}
+              >
+                取消
+              </Button>
+              <Button onClick={handleCreatePlaylist} disabled={isCreating}>
+                {isCreating ? '创建中...' : '创建'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-                    metadata.push(
-                      <span key="created" className="text-xs text-muted-foreground">
-                        {I18n.playlist.manager.list.metadataCreatedLabel}: {" "}
-                        {new Date(playlist.createdAt).toLocaleDateString()}
-                      </span>,
-                      <span key="updated" className="text-xs text-muted-foreground">
-                        {I18n.playlist.manager.list.metadataUpdatedLabel}: {" "}
-                        {new Date(playlist.updatedAt).toLocaleDateString()}
-                      </span>
-                    );
-
-                    return (
-                      <li key={playlist.id}>
-                        <ListItem
-                          title={playlist.name}
-                          description={playlist.description || undefined}
-                          metadata={metadata}
-                          actions={
-                            <HStack gap="xs">
-                              <Button variant="outline" size="sm" asChild>
-                                <Link to={`/dashboard/playlists/${playlist.id}`}>
-                                  {I18n.playlist.manager.list.manageSongsCta}
-                                </Link>
-                              </Button>
-                              <PlaylistPlayButton
-                                playlistId={playlist.id}
-                                playlistName={playlist.name}
-                              />
-
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDelete(playlist.id)}
-                                disabled={deletingId === playlist.id}
-                              >
-                                {deletingId === playlist.id ? I18n.common.deletingLabel : I18n.playlist.manager.list.deleteButton}
-                              </Button>
-                            </HStack>
-                          }
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+      {/* Playlists Grid */}
+      {playlists.length === 0 ? (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="text-center">
+            <ListMusic className="mx-auto h-16 w-16 text-muted-foreground/50" />
+            <h2 className="mt-4 text-xl font-semibold">还没有播放列表</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              点击右上角 "+" 创建你的第一个播放列表
+            </p>
+          </div>
         </div>
-      </AdaptiveSection>
-    </AdaptiveLayout>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {playlists.map((playlist) => (
+            <Link key={playlist.id} to={`/playlists/${playlist.id}`}>
+              <Card className="overflow-hidden transition-colors hover:bg-accent cursor-pointer">
+                {/* Cover Image */}
+                <div className="aspect-square w-full bg-muted">
+                  {playlist.coverUrl ? (
+                    <img
+                      src={playlist.coverUrl}
+                      alt={playlist.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Music className="h-16 w-16 text-muted-foreground/30" />
+                    </div>
+                  )}
+                </div>
+
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 overflow-hidden">
+                      <h3 className="truncate font-semibold">
+                        {playlist.name}
+                        {playlist.isDefault && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            (默认)
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {playlist.songIds?.length || 0} 首歌曲
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

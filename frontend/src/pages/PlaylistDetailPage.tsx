@@ -1,211 +1,360 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
-import { AdaptiveLayout, AdaptiveSection } from "@/components/layouts/adaptive-layout";
-import { PageHeader } from "@/components/ui/page-header";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ListItem, MetadataItem } from "@/components/ui/list-item";
-import { HStack } from "@/components/ui/stack";
+/**
+ * PlaylistDetailPage (Mobile-First)
+ * Displays playlist songs with playback and reordering
+ */
+
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Play, Music, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
-import { formatDuration } from "@/lib/utils/format-duration";
-import { PlaylistSongControls } from "@/components/features/playlists/playlist-song-controls";
-import { useAudioPlayer } from "@/hooks/useAudioPlayer";
-import { logger } from "@/lib/logger-client";
-import { useToast } from "@/components/ui/use-toast";
-import { api } from "@/services";
-import { ApiError } from "@/lib/api/client";
-import type { Playlist, Song } from "@m3w/shared";
+import { usePlaylistStore } from '@/stores/playlistStore';
+import { usePlayerStore } from '@/stores/playerStore';
+import { api } from '@/services';
+import { logger } from '@/lib/logger-client';
+import { useToast } from '@/components/ui/use-toast';
+import { eventBus, EVENTS } from '@/lib/events';
+import type { Song as SharedSong } from '@m3w/shared';
+import type { Song } from '@/types/models';
+
+// Convert shared Song to frontend Song
+function convertSong(sharedSong: SharedSong): Song {
+  return {
+    id: sharedSong.id,
+    title: sharedSong.title,
+    artist: sharedSong.artist,
+    album: sharedSong.album || null,
+    albumArtist: null,
+    genre: null,
+    year: null,
+    trackNumber: null,
+    discNumber: null,
+    duration: sharedSong.file?.duration || null,
+    coverArtUrl: sharedSong.coverUrl || null,
+    libraryId: sharedSong.libraryId,
+    fileId: sharedSong.fileId,
+    createdAt: sharedSong.createdAt,
+    updatedAt: sharedSong.updatedAt,
+  };
+}
 
 export default function PlaylistDetailPage() {
   useLocale();
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const { refreshCurrentPlaylistQueue } = useAudioPlayer();
 
-  const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const { currentPlaylist, setCurrentPlaylist, reorderPlaylistSongs, removeSongFromPlaylist } = usePlaylistStore();
+  const { playFromPlaylist } = usePlayerStore();
+
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  // Fetch playlist data
+  useEffect(() => {
+    if (!id) {
+      navigate('/playlists');
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [playlistData, songsData] = await Promise.all([
+          api.main.playlists.getById(id),
+          api.main.playlists.getSongs(id),
+        ]);
+
+        setCurrentPlaylist(playlistData);
+        setSongs(songsData.map(convertSong));
+      } catch (error) {
+        logger.error('Failed to fetch playlist', { error, playlistId: id });
+        toast({
+          variant: 'destructive',
+          title: I18n.error.failedToGetPlaylists,
+        });
+        navigate('/playlists');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id, setCurrentPlaylist, navigate, toast]);
+
+  // Listen for external song changes (delete/upload)
+  useEffect(() => {
     if (!id) return;
 
-    try {
-      const [playlistData, songsData] = await Promise.all([
-        api.main.playlists.getById(id),
-        api.main.playlists.getSongs(id),
-      ]);
-
-      setPlaylist(playlistData);
-      setSongs(songsData);
-    } catch (error) {
-      logger.error('Failed to fetch playlist', error);
-      
-      if (error instanceof ApiError) {
-        if (error.status === 401) {
-          navigate('/signin');
-          return;
-        }
-        
-        if (error.status === 404) {
-          toast({
-            variant: "destructive",
-            title: I18n.error.playlistNotFoundOrUnauthorized,
-          });
-          navigate('/dashboard/playlists');
-          return;
-        }
-        
-        toast({
-          variant: "destructive",
-          title: I18n.error.failedToGetPlaylists,
-          description: error.message,
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: I18n.error.genericTryAgain,
-        });
+    const refetchSongs = async () => {
+      try {
+        console.log('[PlaylistDetailPage] Event triggered, refetching songs');
+        const songsData = await api.main.playlists.getSongs(id);
+        setSongs(songsData.map(convertSong));
+        console.log('[PlaylistDetailPage] Songs refreshed due to external changes');
+      } catch (error) {
+        console.error('[PlaylistDetailPage] Failed to refresh songs:', error);
       }
-    } finally {
-      setLoading(false);
+    };
+
+    const unsubscribeDelete = eventBus.on(EVENTS.SONG_DELETED, refetchSongs);
+    const unsubscribeUpload = eventBus.on(EVENTS.SONG_UPLOADED, refetchSongs);
+
+    return () => {
+      unsubscribeDelete();
+      unsubscribeUpload();
+    };
+  }, [id]);
+
+  // Handle play all
+  const handlePlayAll = () => {
+    if (!currentPlaylist || songs.length === 0) return;
+
+    playFromPlaylist(currentPlaylist.id, currentPlaylist.name, songs, 0);
+    toast({
+      title: `正在播放：${currentPlaylist.name}`,
+    });
+  };
+
+  // Handle play single song
+  const handlePlaySong = (index: number) => {
+    if (!currentPlaylist) return;
+
+    playFromPlaylist(currentPlaylist.id, currentPlaylist.name, songs, index);
+  };
+
+  // Handle move song up
+  const handleMoveUp = async (index: number) => {
+    if (index === 0 || !currentPlaylist) return;
+
+    const newSongIds = [...currentPlaylist.songIds];
+    [newSongIds[index - 1], newSongIds[index]] = [newSongIds[index], newSongIds[index - 1]];
+
+    const success = await reorderPlaylistSongs(currentPlaylist.id, newSongIds);
+    if (success) {
+      // Re-fetch to sync UI
+      const updatedSongs = await api.main.playlists.getSongs(currentPlaylist.id);
+      setSongs(updatedSongs.map(convertSong));
+      
+      toast({
+        title: '已移动歌曲',
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: '移动失败',
+      });
     }
   };
 
-  useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  // Handle move song down
+  const handleMoveDown = async (index: number) => {
+    if (index === songs.length - 1 || !currentPlaylist) return;
+
+    const newSongIds = [...currentPlaylist.songIds];
+    [newSongIds[index], newSongIds[index + 1]] = [newSongIds[index + 1], newSongIds[index]];
+
+    const success = await reorderPlaylistSongs(currentPlaylist.id, newSongIds);
+    if (success) {
+      // Re-fetch to sync UI
+      const updatedSongs = await api.main.playlists.getSongs(currentPlaylist.id);
+      setSongs(updatedSongs.map(convertSong));
+      
+      toast({
+        title: '已移动歌曲',
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: '移动失败',
+      });
+    }
+  };
+
+  // Handle remove song
+  const handleRemove = async (songId: string, songTitle: string) => {
+    if (!currentPlaylist) return;
+
+    const success = await removeSongFromPlaylist(currentPlaylist.id, songId);
+    if (success) {
+      // Update local state
+      setSongs((prev) => prev.filter((s) => s.id !== songId));
+      
+      toast({
+        title: `已移除：${songTitle}`,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: '移除失败',
+      });
+    }
+  };
+
+  // Format duration
+  const formatDuration = (seconds: number): string => {
+    if (seconds === 0 || !seconds) return '--:--';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{I18n.common.loadingLabel}</div>
+      <div className="flex h-full items-center justify-center">
+        <p className="text-muted-foreground">{I18n.common.loadingLabel}</p>
       </div>
     );
   }
 
-  if (!playlist) {
+  if (!currentPlaylist) {
     return (
-      <div className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8 pt-8">
-        <div className="text-center text-muted-foreground">{I18n.common.notFoundLabel}</div>
+      <div className="flex h-full items-center justify-center">
+        <p className="text-muted-foreground">播放列表不存在</p>
       </div>
     );
   }
-
-  const totalDuration = songs.reduce((sum, song) => sum + (song.file?.duration ?? 0), 0);
 
   return (
-    <AdaptiveLayout
-      gap={16}
-      className="mx-auto w-full max-w-screen-2xl px-4 xs:px-5 md:px-6 lg:px-8"
-    >
-      <AdaptiveSection
-        id="playlist-detail-header"
-        baseSize={200}
-        minSize={150}
-        className="pt-4"
-      >
-        <div className="flex h-full flex-col justify-end gap-3">
-          <Button variant="ghost" size="sm" className="w-fit" asChild>
-            <Link to="/dashboard/playlists">{I18n.playlist.detail.backToPlaylists}</Link>
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <div className="border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+        <div className="container flex h-14 items-center gap-3 px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/playlists')}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
           </Button>
+          
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-semibold truncate">
+              {currentPlaylist.name}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {songs.length} 首歌曲
+            </p>
+          </div>
 
-          <PageHeader
-            title={`${I18n.playlist.detail.titlePrefix}${playlist.name}`}
-            description={I18n.playlist.detail.description}
-          />
+          {songs.length > 0 && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handlePlayAll}
+              className="shrink-0"
+            >
+              <Play className="h-4 w-4 mr-1.5" />
+              播放全部
+            </Button>
+          )}
         </div>
-      </AdaptiveSection>
+      </div>
 
-      <AdaptiveSection
-        id="playlist-detail-content"
-        baseSize={560}
-        minSize={340}
-        className="pb-4"
-      >
-        <Card className="flex h-full flex-col overflow-hidden">
-          <CardHeader>
-            <HStack justify="between" align="center">
-              <div className="flex flex-col gap-1">
-                <CardTitle>{I18n.playlist.detail.songListTitle}</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {I18n.playlist.detail.playlistDurationLabel}: {formatDuration(totalDuration)}
-                </p>
+      {/* Song List */}
+      <div className="flex-1 overflow-auto">
+        <div className="container px-4 py-4">
+          {songs.length === 0 ? (
+            <Card className="p-8">
+              <div className="flex flex-col items-center justify-center gap-4 text-center">
+                <Music className="h-12 w-12 text-muted-foreground/50" />
+                <div>
+                  <h3 className="font-semibold mb-1">播放列表为空</h3>
+                  <p className="text-sm text-muted-foreground">
+                    从音乐库添加歌曲到此播放列表
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/libraries')}
+                >
+                  浏览音乐库
+                </Button>
               </div>
-
-              <MetadataItem
-                label={I18n.playlist.detail.songCountLabel}
-                value={songs.length}
-                variant="secondary"
-              />
-            </HStack>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-auto">
-            {songs.length === 0 ? (
-                <EmptyState
-                  icon="📻"
-                  title={I18n.playlist.detail.songListEmpty}
-                  description={I18n.playlist.detail.addedFromLibraryHelper}
-                  action={
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to="/dashboard/libraries">
-                        {I18n.playlist.detail.manageLibrariesCta}
-                      </Link>
-                    </Button>
-                  }
-                />
-            ) : (
-              <ul role="list" className="flex flex-col gap-3">
-                {songs.map((song, index) => (
-                  <li key={song.id}>
-                    <ListItem
-                      title={song.title}
-                      description={song.artist || undefined}
-                      metadata={
-                        <HStack as="div" gap="xs" wrap>
-                          {song.library ? (
-                            <MetadataItem
-                              label={I18n.playlist.detail.songLibraryLabel}
-                              value={song.library.name}
-                              variant="default"
-                            />
-                          ) : null}
-                          {song.album ? (
-                            <MetadataItem
-                              label={I18n.playlist.detail.songAlbumLabel}
-                              value={song.album}
-                              variant="outline"
-                            />
-                          ) : null}
-                          <MetadataItem
-                            label={I18n.playlist.detail.songDurationLabel}
-                            value={formatDuration(song.file?.duration ?? null)}
-                            variant="secondary"
-                          />
-                        </HStack>
-                      }
-                      actions={
-                        <PlaylistSongControls
-                          playlistId={playlist.id}
-                          songId={song.id}
-                          songTitle={song.title}
-                          index={index}
-                          total={songs.length}
-                          onMutate={fetchData}
-                          onPlaylistUpdated={refreshCurrentPlaylistQueue}
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {songs.map((song, index) => (
+                <Card
+                  key={song.id}
+                  className="overflow-hidden transition-colors hover:bg-accent/50"
+                >
+                  <div className="flex items-center gap-3 p-3">
+                    {/* Album Cover */}
+                    <button
+                      onClick={() => handlePlaySong(index)}
+                      className="relative shrink-0 w-12 h-12 rounded bg-muted overflow-hidden group"
+                    >
+                      {song.coverArtUrl ? (
+                        <img
+                          src={song.coverArtUrl}
+                          alt={song.title}
+                          className="w-full h-full object-cover"
                         />
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </AdaptiveSection>
-    </AdaptiveLayout>
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-full">
+                          <Music className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Play className="h-5 w-5 text-white" />
+                      </div>
+                    </button>
+
+                    {/* Song Info */}
+                    <button
+                      onClick={() => handlePlaySong(index)}
+                      className="flex-1 min-w-0 text-left"
+                    >
+                      <p className="font-medium truncate">{song.title}</p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {song.artist}
+                        {song.album && ` • ${song.album}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDuration(song.duration || 0)}
+                      </p>
+                    </button>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleMoveUp(index)}
+                        disabled={index === 0}
+                        className="h-8 w-8"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleMoveDown(index)}
+                        disabled={index === songs.length - 1}
+                        className="h-8 w-8"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemove(song.id, song.title)}
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

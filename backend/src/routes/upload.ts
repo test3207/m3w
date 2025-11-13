@@ -189,7 +189,30 @@ app.post('/', async (c: Context) => {
     if (formData.get('trackNumber')) userMetadata.trackNumber = parseInt(formData.get('trackNumber') as string, 10);
     if (formData.get('discNumber')) userMetadata.discNumber = parseInt(formData.get('discNumber') as string, 10);
 
-    // 9. Create Song record and increment refCount
+    // 9. Check if song already exists in this library
+    const existingSong = await prisma.song.findFirst({
+      where: {
+        libraryId,
+        fileId: fileRecord!.id,
+      },
+      include: {
+        file: true,
+      },
+    });
+
+    if (existingSong) {
+      logger.info({ songId: existingSong.id, libraryId }, 'Song already exists in this library');
+      return c.json(
+        {
+          success: false,
+          error: 'This song already exists in the selected library',
+          details: `"${existingSong.title}" is already in this library`,
+        },
+        409 // Conflict
+      );
+    }
+
+    // 10. Create Song record and increment refCount
     const song = await prisma.$transaction(async (tx) => {
       // Create song
       const newSong = await tx.song.create({

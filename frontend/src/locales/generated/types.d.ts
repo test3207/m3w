@@ -321,6 +321,20 @@ export interface Messages {
       noPlaylistsHelper: string;
       /** Go to playlists */
       goToPlaylistsLink: string;
+      /** Date Added (Newest) */
+      sortDateDesc: string;
+      /** Date Added (Oldest) */
+      sortDateAsc: string;
+      /** Title A-Z */
+      sortTitleAsc: string;
+      /** Title Z-A */
+      sortTitleDesc: string;
+      /** Artist A-Z */
+      sortArtistAsc: string;
+      /** Album A-Z */
+      sortAlbumAsc: string;
+      /** Loading... */
+      loadingLabel: string;
     };
     addToPlaylist: {
       /** Add to playlist */
@@ -604,5 +618,13 @@ export interface Messages {
       /**  kbps */
       bitrateUnit: string;
     };
+  };
+  playback: {
+    /** Now Playing */
+    startPlayingTitle: string;
+    /** Playing all songs from "{0}" */
+    startPlayingDescription: string;
+    /** Playing from library */
+    playFromLibraryDescription: string;
   };
 }

@@ -9,9 +9,10 @@ import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
-import { api } from "@/services";
 import { ApiError } from "@/lib/api/client";
 import { LIBRARIES_QUERY_KEY } from "@/hooks/useLibraries";
+import { useLibraryStore } from "@/stores/libraryStore";
+import { usePlaylistStore } from "@/stores/playlistStore";
 import type { LibraryOption } from "@/types/models";
 
 export default function UploadPage() {
@@ -19,22 +20,16 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { libraries, fetchLibraries } = useLibraryStore();
+  const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
   const [librariesList, setLibrariesList] = useState<LibraryOption[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Initial load
   useEffect(() => {
-    const fetchLibraries = async () => {
+    const loadLibraries = async () => {
       try {
-        const data = await api.main.libraries.list();
-        
-        const libraryOptions = data.map((library) => ({
-          id: library.id,
-          name: library.name,
-          description: library.description ?? null,
-          songCount: library._count?.songs ?? 0,
-        }));
-        
-        setLibrariesList(libraryOptions);
+        await fetchLibraries();
       } catch (error) {
         logger.error('Failed to fetch libraries', error);
         
@@ -52,21 +47,33 @@ export default function UploadPage() {
       }
     };
 
-    fetchLibraries();
-  }, [navigate, toast]);
+    void loadLibraries();
+  }, [navigate, toast, fetchLibraries]);
+
+  // Watch libraries changes (from upload/delete events)
+  useEffect(() => {
+    console.log('[UploadPage] Libraries changed, count:', libraries.length);
+    const libraryOptions = libraries.map((library) => ({
+      id: library.id,
+      name: library.name,
+      description: library.description ?? null,
+      songCount: library._count?.songs ?? 0,
+    }));
+    
+    console.log('[UploadPage] Updated librariesList:', libraryOptions);
+    setLibrariesList(libraryOptions);
+  }, [libraries]); // Re-run when libraries array changes
 
   const refetchLibraries = async () => {
     try {
-      const data = await api.main.libraries.list();
+      console.log('[UploadPage] refetchLibraries called');
+      // Refresh libraries store (updates global state)
+      await fetchLibraries();
+      console.log('[UploadPage] fetchLibraries completed');
       
-      const libraryOptions = data.map((library) => ({
-        id: library.id,
-        name: library.name,
-        description: library.description ?? null,
-        songCount: library._count.songs,
-      }));
-      
-      setLibrariesList(libraryOptions);
+      // Refresh playlists
+      await fetchPlaylists();
+      console.log('[UploadPage] fetchPlaylists completed');
       
       // Invalidate TanStack Query cache to update dashboard counts
       queryClient.invalidateQueries({ queryKey: LIBRARIES_QUERY_KEY });

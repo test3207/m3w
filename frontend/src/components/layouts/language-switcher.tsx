@@ -18,7 +18,8 @@ const LOCALE_NAMES: Record<string, string> = {
 
 export function LanguageSwitcher() {
   const [currentLocale, setCurrentLocale] = useState<string>(getLocale());
-  const availableLocales = getAvailableLocales();
+  // Use lazy initialization to ensure we get the locales after registration
+  const [availableLocales] = useState<string[]>(() => getAvailableLocales());
 
   useEffect(() => {
     // Subscribe to locale changes

@@ -17,6 +17,7 @@ function Toaster() {
         return (
           <Toast
             key={id}
+            duration={props.duration ?? 4000}
             onOpenChange={(open) => {
               if (!open) {
                 dismiss(id);

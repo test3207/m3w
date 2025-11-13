@@ -10,7 +10,6 @@ import {
   playlistIdSchema,
   addSongToPlaylistSchema,
   removeSongFromPlaylistSchema,
-  reorderPlaylistSongSchema,
 } from '@m3w/shared';
 import type { Context } from 'hono';
 
@@ -30,13 +29,39 @@ app.get('/', async (c: Context) => {
         _count: {
           select: { songs: true },
         },
+        songs: {
+          take: 4,
+          include: {
+            song: {
+              select: {
+                coverUrl: true,
+              },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
 
+    // Add coverUrl from first 4 songs (composite cover)
+    const playlistsWithCover = playlists.map((pl) => ({
+      id: pl.id,
+      name: pl.name,
+      description: pl.description,
+      userId: pl.userId,
+      songIds: pl.songIds,
+      isDefault: pl.isDefault,
+      canDelete: pl.canDelete,
+      coverUrl: pl.songs.length > 0 ? pl.songs[0].song.coverUrl : null,
+      createdAt: pl.createdAt,
+      updatedAt: pl.updatedAt,
+      _count: pl._count,
+    }));
+
     return c.json({
       success: true,
-      data: playlists,
+      data: playlistsWithCover,
     });
   } catch (error) {
     logger.error({ error }, 'Failed to fetch playlists');
@@ -234,6 +259,18 @@ app.delete('/:id', async (c: Context) => {
       );
     }
 
+    // Check if playlist can be deleted (protection for default playlist)
+    if (!existingPlaylist.canDelete) {
+      return c.json(
+        {
+          success: false,
+          message: '默认播放列表不能删除',
+          error: 'CANNOT_DELETE_DEFAULT_PLAYLIST',
+        },
+        403
+      );
+    }
+
     await prisma.playlist.delete({
       where: { id },
     });
@@ -274,24 +311,6 @@ app.get('/:id/songs', async (c: Context) => {
     // Check if playlist exists and belongs to user
     const playlist = await prisma.playlist.findFirst({
       where: { id, userId },
-      include: {
-        songs: {
-          include: {
-            song: {
-              include: {
-                file: true,
-                library: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { order: 'asc' },
-        },
-      },
     });
 
     if (!playlist) {
@@ -304,17 +323,44 @@ app.get('/:id/songs', async (c: Context) => {
       );
     }
 
-    // Transform to flat song list with file metadata and library info
-    const songs = playlist.songs.map((ps) => ({
-      ...ps.song,
-      mimeType: ps.song.file.mimeType,
-      duration: ps.song.file.duration,
-      library: ps.song.library, // Preserve library information
-    }));
+    // Fetch songs based on songIds array order
+    if (playlist.songIds.length === 0) {
+      return c.json({
+        success: true,
+        data: [],
+      });
+    }
+
+    const songs = await prisma.song.findMany({
+      where: {
+        id: { in: playlist.songIds },
+      },
+      include: {
+        file: true,
+        library: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Create a map for quick lookup
+    const songMap = new Map(songs.map((s) => [s.id, s]));
+
+    // Return songs in the order specified by songIds
+    const orderedSongs = playlist.songIds
+      .map((songId) => songMap.get(songId))
+      .filter((song) => song !== undefined)
+      .map((song) => ({
+        ...song,
+        libraryName: song.library.name,
+      }));
 
     return c.json({
       success: true,
-      data: songs,
+      data: orderedSongs,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -383,16 +429,7 @@ app.post('/:id/songs', async (c: Context) => {
     }
 
     // Check if song is already in playlist
-    const existingSong = await prisma.playlistSong.findUnique({
-      where: {
-        playlistId_songId: {
-          playlistId: id,
-          songId,
-        },
-      },
-    });
-
-    if (existingSong) {
+    if (playlist.songIds.includes(songId)) {
       return c.json(
         {
           success: false,
@@ -402,11 +439,18 @@ app.post('/:id/songs', async (c: Context) => {
       );
     }
 
-    // Add song to playlist
-    await prisma.playlistSong.create({
+    // Add song to playlist (append to songIds array)
+    const updatedPlaylist = await prisma.playlist.update({
+      where: { id },
       data: {
-        playlistId: id,
-        songId,
+        songIds: {
+          push: songId,
+        },
+      },
+      include: {
+        _count: {
+          select: { songs: true },
+        },
       },
     });
 
@@ -414,6 +458,11 @@ app.post('/:id/songs', async (c: Context) => {
       {
         success: true,
         message: 'Song added to playlist',
+        data: {
+          playlistId: id,
+          songId,
+          newSongCount: updatedPlaylist.songIds.length,
+        },
       },
       201
     );
@@ -464,15 +513,8 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       );
     }
 
-    // Remove song from playlist
-    const deleted = await prisma.playlistSong.deleteMany({
-      where: {
-        playlistId: id,
-        songId,
-      },
-    });
-
-    if (deleted.count === 0) {
+    // Check if song is in playlist
+    if (!playlist.songIds.includes(songId)) {
       return c.json(
         {
           success: false,
@@ -482,9 +524,24 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       );
     }
 
+    // Remove song from playlist (filter out from songIds array)
+    const updatedSongIds = playlist.songIds.filter((id) => id !== songId);
+
+    const updatedPlaylist = await prisma.playlist.update({
+      where: { id },
+      data: {
+        songIds: updatedSongIds,
+      },
+    });
+
     return c.json({
       success: true,
       message: 'Song removed from playlist',
+      data: {
+        playlistId: id,
+        songId,
+        newSongCount: updatedPlaylist.songIds.length,
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -509,12 +566,12 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
   }
 });
 
-// POST /api/playlists/:id/songs/reorder - Reorder song in playlist
-app.post('/:id/songs/reorder', async (c: Context) => {
+// PUT /api/playlists/:id/songs/reorder - Reorder songs in playlist
+app.put('/:id/songs/reorder', async (c: Context) => {
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
-    const { songId, direction } = reorderPlaylistSongSchema.parse(body);
+    const { songIds } = z.object({ songIds: z.array(z.string()) }).parse(body);
     const userId = getUserId(c);
 
     // Check if playlist exists and belongs to user
@@ -532,85 +589,51 @@ app.post('/:id/songs/reorder', async (c: Context) => {
       );
     }
 
-    // Find current song in playlist
-    const currentSong = await prisma.playlistSong.findUnique({
+    // Validate that all songIds exist and belong to user's libraries
+    const songs = await prisma.song.findMany({
       where: {
-        playlistId_songId: {
-          playlistId: id,
-          songId,
+        id: { in: songIds },
+        library: {
+          userId,
         },
       },
     });
 
-    if (!currentSong) {
+    if (songs.length !== songIds.length) {
       return c.json(
         {
           success: false,
-          error: 'Song not found in playlist',
+          message: '歌曲顺序无效',
+          error: 'INVALID_SONG_ORDER',
         },
-        404
+        400
       );
     }
 
-    // Find adjacent song to swap with
-    const adjacentSong = await prisma.playlistSong.findFirst({
-      where: {
-        playlistId: id,
-        order: direction === 'up' ? { lt: currentSong.order } : { gt: currentSong.order },
-      },
-      orderBy: {
-        order: direction === 'up' ? 'desc' : 'asc',
+    // Update playlist with new order
+    const updatedPlaylist = await prisma.playlist.update({
+      where: { id },
+      data: {
+        songIds,
       },
     });
-
-    // If no adjacent song found, we're at the boundary - return success without changes
-    if (!adjacentSong) {
-      logger.debug(
-        { playlistId: id, songId, direction, currentOrder: currentSong.order },
-        'Song already at boundary, no reorder needed'
-      );
-      return c.json({
-        success: true,
-        message: 'Song is already at the boundary',
-      });
-    }
-
-    // Swap orders using transaction
-    await prisma.$transaction([
-      prisma.playlistSong.update({
-        where: {
-          playlistId_songId: {
-            playlistId: id,
-            songId: currentSong.songId,
-          },
-        },
-        data: { order: adjacentSong.order },
-      }),
-      prisma.playlistSong.update({
-        where: {
-          playlistId_songId: {
-            playlistId: id,
-            songId: adjacentSong.songId,
-          },
-        },
-        data: { order: currentSong.order },
-      }),
-    ]);
 
     logger.debug(
       {
         playlistId: id,
-        songId,
-        direction,
-        oldOrder: currentSong.order,
-        newOrder: adjacentSong.order,
+        songCount: songIds.length,
       },
-      'Playlist song reordered'
+      'Playlist songs reordered'
     );
 
     return c.json({
       success: true,
-      message: 'Song reordered successfully',
+      message: 'Songs reordered successfully',
+      data: {
+        playlistId: id,
+        songCount: updatedPlaylist.songIds.length,
+        updatedAt: updatedPlaylist.updatedAt,
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -624,11 +647,175 @@ app.post('/:id/songs/reorder', async (c: Context) => {
       );
     }
 
-    logger.error({ error }, 'Failed to reorder song in playlist');
+    logger.error({ error }, 'Failed to reorder songs in playlist');
     return c.json(
       {
         success: false,
-        error: 'Failed to reorder song in playlist',
+        error: 'Failed to reorder songs in playlist',
+      },
+      500
+    );
+  }
+});
+
+// GET /api/playlists/by-library/:libraryId - Get playlist linked to library
+app.get('/by-library/:libraryId', async (c: Context) => {
+  try {
+    const userId = getUserId(c);
+    const { libraryId } = c.req.param();
+
+    const playlist = await prisma.playlist.findFirst({
+      where: {
+        userId,
+        linkedLibraryId: libraryId,
+      },
+    });
+
+    if (!playlist) {
+      return c.json(
+        {
+          success: false,
+          error: 'Playlist not found',
+        },
+        404
+      );
+    }
+
+    return c.json({
+      success: true,
+      data: playlist,
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to fetch library playlist');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to fetch library playlist',
+      },
+      500
+    );
+  }
+});
+
+// POST /api/playlists/for-library - Create playlist linked to library
+app.post('/for-library', async (c: Context) => {
+  try {
+    const userId = getUserId(c);
+    const body = await c.req.json();
+    const { name, linkedLibraryId, songIds } = body;
+
+    // Validate library belongs to user
+    const library = await prisma.library.findFirst({
+      where: { id: linkedLibraryId, userId },
+    });
+
+    if (!library) {
+      return c.json(
+        {
+          success: false,
+          error: 'Library not found',
+        },
+        404
+      );
+    }
+
+    // Create playlist
+    const playlist = await prisma.playlist.create({
+      data: {
+        name,
+        userId,
+        linkedLibraryId,
+        songIds,
+        canDelete: false, // Library playlists cannot be manually deleted
+      },
+    });
+
+    // Create PlaylistSong entries
+    const playlistSongData = songIds.map((songId: string, index: number) => ({
+      playlistId: playlist.id,
+      songId,
+      order: index,
+    }));
+
+    await prisma.playlistSong.createMany({
+      data: playlistSongData,
+    });
+
+    logger.info({ playlistId: playlist.id, linkedLibraryId }, 'Created library playlist');
+
+    return c.json({
+      success: true,
+      data: playlist,
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to create library playlist');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to create library playlist',
+      },
+      500
+    );
+  }
+});
+
+// PUT /api/playlists/:id/songs - Update playlist songs (batch)
+app.put('/:id/songs', async (c: Context) => {
+  try {
+    const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
+    const userId = getUserId(c);
+    const body = await c.req.json();
+    const { songIds } = body;
+
+    // Find playlist
+    const playlist = await prisma.playlist.findFirst({
+      where: { id, userId },
+    });
+
+    if (!playlist) {
+      return c.json(
+        {
+          success: false,
+          error: 'Playlist not found',
+        },
+        404
+      );
+    }
+
+    // Delete existing PlaylistSong entries
+    await prisma.playlistSong.deleteMany({
+      where: { playlistId: id },
+    });
+
+    // Create new PlaylistSong entries
+    const playlistSongData = songIds.map((songId: string, index: number) => ({
+      playlistId: id,
+      songId,
+      order: index,
+    }));
+
+    await prisma.playlistSong.createMany({
+      data: playlistSongData,
+    });
+
+    // Update songIds array
+    await prisma.playlist.update({
+      where: { id },
+      data: { songIds },
+    });
+
+    logger.info({ playlistId: id, songCount: songIds.length }, 'Updated playlist songs');
+
+    return c.json({
+      success: true,
+      data: null,
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to update playlist songs');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to update playlist songs',
       },
       500
     );

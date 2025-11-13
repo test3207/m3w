@@ -33,7 +33,7 @@ export default function HomePage() {
               <Link to="/signin">Sign In with GitHub</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link to="/dashboard">View Dashboard</Link>
+              <Link to="/now-playing">View Dashboard</Link>
             </Button>
           </div>
         </div>

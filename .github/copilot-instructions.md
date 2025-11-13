@@ -3,7 +3,8 @@
 ## Metadata
 
 **Created**: 2025-11-06  
-**Last Updated**: 2025-11-12
+**Last Updated**: 2025-11-12  
+**Frontend Refactor Status**: Design Phase - User Stories Documented
 
 ## Mission Snapshot
 
@@ -30,6 +31,8 @@
 | `.github/instructions/server-action-pattern.instructions.md` | `**/*` | API response pattern and usage guidance |
 | `.github/instructions/ui-feedback-workflow.instructions.md` | `**/*` | Toast feedback pipeline and usage guidance |
 | `.github/instructions/i18n-system.instructions.md` | `**/*` | Internationalization architecture and usage patterns |
+| `.github/instructions/frontend-refactor-user-stories.instructions.md` | `frontend/**/*` | User stories and design decisions for frontend refactor (mobile-first) |
+| `.github/instructions/frontend-refactor-api-changes.instructions.md` | `backend/**/*` | Required backend API changes for frontend refactor |
 
 ## How to Use These Instructions
 
@@ -38,6 +41,8 @@
 - Writing or adjusting an API route? Revisit `server-action-pattern.instructions.md` before and after changes.
 - Emitting user-visible feedback? Follow `ui-feedback-workflow.instructions.md` so all toasts stay consistent.
 - Adding or modifying user-facing text? Follow `i18n-system.instructions.md` for proper i18n integration.
+- **Working on frontend refactor?** Review `frontend-refactor-user-stories.instructions.md` for design decisions and user flows.
+- **Implementing backend API changes?** Check `frontend-refactor-api-changes.instructions.md` for required endpoints and schema updates.
 
 ## Core Context Highlights
 
@@ -62,12 +67,18 @@
 - API response pattern: [server-action-pattern.instructions.md](./instructions/server-action-pattern.instructions.md)
 - UI feedback workflow: [ui-feedback-workflow.instructions.md](./instructions/ui-feedback-workflow.instructions.md)
 - i18n system: [i18n-system.instructions.md](./instructions/i18n-system.instructions.md)
+- Frontend refactor user stories: [frontend-refactor-user-stories.instructions.md](./instructions/frontend-refactor-user-stories.instructions.md)
+- Frontend refactor API changes: [frontend-refactor-api-changes.instructions.md](./instructions/frontend-refactor-api-changes.instructions.md)
 - Frontend API client architecture: [frontend/src/services/api/README.md](../frontend/src/services/api/README.md)
 - Vite Documentation: <https://vitejs.dev/>
 - React Router Documentation: <https://reactrouter.com/>
 - Hono Documentation: <https://hono.dev/>
 - Prisma Documentation: <https://www.prisma.io/docs>
 - Tailwind CSS: <https://tailwindcss.com/docs>
+- TypeScript Handbook: <https://www.typescriptlang.org/docs/>
+
+**Document Version**: v3.1  
+**Last Updated**: 2025-11-12
 - TypeScript Handbook: <https://www.typescriptlang.org/docs/>
 
 **Document Version**: v3.1  

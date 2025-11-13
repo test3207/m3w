@@ -77,8 +77,9 @@ class ApiClient {
         (headers as Record<string, string>)['Content-Type'] = 'application/json';
       }
       
-      // Extract pathname for routeRequest (it will build full URL internally)
-      const path = new URL(url).pathname;
+      // Extract pathname and search params for routeRequest (it will build full URL internally)
+      const urlObj = new URL(url);
+      const path = urlObj.pathname + urlObj.search; // Include query params!
       
       const response = await routeRequest(path, {
         ...fetchOptions,

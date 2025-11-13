@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
+import pinyin from 'pinyin';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
@@ -14,6 +15,8 @@ import {
   libraryIdSchema,
 } from '@m3w/shared';
 import type { Context } from 'hono';
+import type { SongSortOption } from '@m3w/shared';
+import type { Song, File } from '@prisma/client';
 
 const app = new Hono();
 
@@ -31,13 +34,25 @@ app.get('/', async (c: Context) => {
         _count: {
           select: { songs: true },
         },
+        songs: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { coverUrl: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
 
+    // Add coverUrl from last added song
+    const librariesWithCover = libraries.map((lib) => ({
+      ...lib,
+      coverUrl: lib.songs[0]?.coverUrl || null,
+      songs: undefined, // Remove songs array from response
+    }));
+
     return c.json({
       success: true,
-      data: libraries,
+      data: librariesWithCover,
     });
   } catch (error) {
     logger.error({ error }, 'Failed to fetch libraries');
@@ -235,6 +250,18 @@ app.delete('/:id', async (c: Context) => {
       );
     }
 
+    // Check if library can be deleted (protection for default library)
+    if (!existing.canDelete) {
+      return c.json(
+        {
+          success: false,
+          message: '默认音乐库不能删除',
+          error: 'CANNOT_DELETE_DEFAULT_LIBRARY',
+        },
+        403
+      );
+    }
+
     // Check if library has songs
     const songCount = await prisma.song.count({
       where: { libraryId: id },
@@ -281,11 +308,66 @@ app.delete('/:id', async (c: Context) => {
   }
 });
 
+// Helper function to get Pinyin for sorting
+function getPinyinSort(text: string): string {
+  const pinyinArray = pinyin(text || '', { style: pinyin.STYLE_NORMAL });
+  return pinyinArray.flat().join('').toLowerCase();
+}
+
+// Helper function to sort songs
+type SongWithFile = Song & { file: File };
+
+function sortSongs(songs: SongWithFile[], sortOption: SongSortOption): SongWithFile[] {
+  const sorted = [...songs];
+  
+  switch (sortOption) {
+    case 'title-asc':
+      return sorted.sort((a, b) => {
+        const aTitle = getPinyinSort(a.title);
+        const bTitle = getPinyinSort(b.title);
+        return aTitle.localeCompare(bTitle);
+      });
+    
+    case 'title-desc':
+      return sorted.sort((a, b) => {
+        const aTitle = getPinyinSort(a.title);
+        const bTitle = getPinyinSort(b.title);
+        return bTitle.localeCompare(aTitle);
+      });
+    
+    case 'artist-asc':
+      return sorted.sort((a, b) => {
+        const aArtist = getPinyinSort(a.artist || '');
+        const bArtist = getPinyinSort(b.artist || '');
+        return aArtist.localeCompare(bArtist);
+      });
+    
+    case 'album-asc':
+      return sorted.sort((a, b) => {
+        const aAlbum = getPinyinSort(a.album || '');
+        const bAlbum = getPinyinSort(b.album || '');
+        return aAlbum.localeCompare(bAlbum);
+      });
+    
+    case 'date-asc':
+      return sorted.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    
+    case 'date-desc':
+    default:
+      return sorted.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+  }
+}
+
 // GET /api/libraries/:id/songs - List songs in library
 app.get('/:id/songs', async (c: Context) => {
   try {
     const { id } = libraryIdSchema.parse({ id: c.req.param('id') });
     const auth = c.get('auth');
+    const sortParam = (c.req.query('sort') as SongSortOption) || 'date-desc';
 
     // Verify ownership
     const library = await prisma.library.findFirst({
@@ -307,12 +389,14 @@ app.get('/:id/songs', async (c: Context) => {
       include: {
         file: true,
       },
-      orderBy: { createdAt: 'desc' },
     });
+
+    // Apply sorting
+    const sortedSongs = sortSongs(songs, sortParam);
 
     return c.json({
       success: true,
-      data: songs,
+      data: sortedSongs,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

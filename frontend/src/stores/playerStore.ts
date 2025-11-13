@@ -1,13 +1,59 @@
 import { create } from 'zustand';
+import { api } from '@/services';
+import { logger } from '@/lib/logger-client';
 import type { Song } from '@/types/models';
+import { getAudioPlayer, type Track } from '@/lib/audio/player';
+import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
+import { streamApiClient } from '@/services/api/main/stream-client';
 
 export type RepeatMode = 'off' | 'one' | 'all';
+export type QueueSource = 'library' | 'playlist' | 'all' | null;
+
+// Helper: Prefetch audio and create object URL
+async function prefetchAudioBlob(audioUrl: string): Promise<string | null> {
+  try {
+    logger.info('🎵 Prefetching audio', { audioUrl });
+    const response = await streamApiClient.get(audioUrl);
+    
+    if (!response.ok) {
+      logger.error('🎵 Failed to prefetch audio', { status: response.status });
+      return null;
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    logger.info('🎵 Created object URL', { objectUrl });
+    return objectUrl;
+  } catch (error) {
+    logger.error('🎵 Prefetch error', { error });
+    return null;
+  }
+}
+
+// Song → Track converter for AudioPlayer
+function songToTrack(song: Song): Track {
+  return {
+    id: song.id,
+    title: song.title,
+    artist: song.artist || undefined,
+    album: song.album || undefined,
+    coverUrl: song.coverArtUrl || undefined,
+    duration: song.duration || undefined,
+    audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
+    mimeType: 'audio/mpeg', // Default, could be enhanced with actual file type
+  };
+}
 
 interface PlayerState {
   // Current playback
   currentSong: Song | null;
   queue: Song[];
   currentIndex: number;
+  
+  // Queue source tracking
+  queueSource: QueueSource;
+  queueSourceId: string | null; // Library ID or Playlist ID
+  queueSourceName: string | null; // Display name
   
   // Playback state
   isPlaying: boolean;
@@ -34,15 +80,23 @@ interface PlayerActions {
   removeFromQueue: (index: number) => void;
   clearQueue: () => void;
   
+  // Queue source management
+  setQueueSource: (source: QueueSource, sourceId: string | null, sourceName: string | null) => void;
+  playFromLibrary: (libraryId: string, libraryName: string, songs: Song[], startIndex?: number) => Promise<void>;
+  playFromPlaylist: (playlistId: string, playlistName: string, songs: Song[], startIndex?: number) => void;
+  saveQueueAsPlaylist: (name: string) => Promise<boolean>;
+  
   // Navigation
   next: () => void;
   previous: () => void;
   seekTo: (index: number) => void;
+  seek: (time: number) => void;
   
   // Audio settings
   setVolume: (volume: number) => void;
   toggleMute: () => void;
   setRepeatMode: (mode: RepeatMode) => void;
+  toggleRepeat: () => void;
   toggleShuffle: () => void;
   
   // Progress
@@ -52,11 +106,61 @@ interface PlayerActions {
 
 type PlayerStore = PlayerState & PlayerActions;
 
-export const usePlayerStore = create<PlayerStore>((set, get) => ({
+export const usePlayerStore = create<PlayerStore>((set, get) => {
+  // Get AudioPlayer singleton instance
+  const audioPlayer = getAudioPlayer();
+  
+  // Setup event listeners for AudioPlayer state changes
+  audioPlayer.on('play', (state) => {
+    set({ isPlaying: true, currentTime: state.currentTime, duration: state.duration });
+    logger.info('AudioPlayer playing');
+  });
+
+  audioPlayer.on('pause', (state) => {
+    set({ isPlaying: false, currentTime: state.currentTime });
+    logger.info('AudioPlayer paused');
+  });
+
+  audioPlayer.on('end', async () => {
+    const { next, repeatMode } = get();
+    logger.info('Track ended, repeatMode:', repeatMode);
+    
+    if (repeatMode === 'one') {
+      // Replay current track
+      const { currentSong } = get();
+      if (currentSong) {
+        const track = songToTrack(currentSong);
+        const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+        const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+        audioPlayer.play(preparedTrack);
+      }
+    } else {
+      // Play next track
+      await next();
+    }
+  });
+
+  audioPlayer.on('error', (state) => {
+    logger.error('AudioPlayer error', { track: state.currentTrack });
+    set({ isPlaying: false });
+  });
+
+  // Start a timer to update current time
+  setInterval(() => {
+    const state = audioPlayer.getState();
+    if (state.isPlaying) {
+      set({ currentTime: state.currentTime, duration: state.duration });
+    }
+  }, 500); // Update every 500ms
+
+  return {
   // Initial state
   currentSong: null,
   queue: [],
   currentIndex: -1,
+  queueSource: null,
+  queueSourceId: null,
+  queueSourceName: null,
   isPlaying: false,
   volume: 0.8,
   isMuted: false,
@@ -68,21 +172,41 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   // Playback control
   play: (song) => {
     if (song) {
+      const track = songToTrack(song);
+      audioPlayer.play(track);
       set({ currentSong: song, isPlaying: true });
+      logger.info('Playing song', { songId: song.id, title: song.title });
     } else {
+      audioPlayer.resume();
       set({ isPlaying: true });
     }
   },
 
-  pause: () => set({ isPlaying: false }),
+  pause: () => {
+    audioPlayer.pause();
+    set({ isPlaying: false });
+  },
 
-  togglePlayPause: () => set((state) => ({ isPlaying: !state.isPlaying })),
+  togglePlayPause: () => {
+    const { isPlaying, currentSong } = get();
+    if (isPlaying) {
+      audioPlayer.pause();
+      set({ isPlaying: false });
+    } else {
+      if (currentSong) {
+        audioPlayer.resume();
+        set({ isPlaying: true });
+      }
+    }
+  },
 
-  stop: () =>
+  stop: () => {
+    audioPlayer.stop();
     set({
       isPlaying: false,
       currentTime: 0,
-    }),
+    });
+  },
 
   // Queue management
   setQueue: (songs, startIndex = 0) =>
@@ -121,10 +245,137 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       currentIndex: -1,
       currentSong: null,
       isPlaying: false,
+      queueSource: null,
+      queueSourceId: null,
+      queueSourceName: null,
     }),
 
+  // Queue source management
+  setQueueSource: (source, sourceId, sourceName) =>
+    set({
+      queueSource: source,
+      queueSourceId: sourceId,
+      queueSourceName: sourceName,
+    }),
+
+  playFromLibrary: async (libraryId, libraryName, songs, startIndex = 0) => {
+    const currentSong = songs[startIndex];
+    if (!currentSong) {
+      logger.warn('No song at start index', { startIndex, songCount: songs.length });
+      return;
+    }
+
+    // Create or update library's "Play All" playlist
+    try {
+      const playlistName = `${libraryName} - 播放全部`;
+      const songIds = songs.map(s => s.id);
+      
+      // Try to find existing playlist for this library
+      const existingPlaylist = await api.main.playlists.getByLibrary(libraryId);
+      
+      let playlistId: string;
+      if (existingPlaylist) {
+        // Update existing playlist
+        await api.main.playlists.updateSongs(existingPlaylist.id, { songIds });
+        playlistId = existingPlaylist.id;
+        logger.info('Updated library playlist', { playlistId, songCount: songIds.length });
+      } else {
+        // Create new playlist linked to library
+        const newPlaylist = await api.main.playlists.createForLibrary({
+          name: playlistName,
+          linkedLibraryId: libraryId,
+          songIds,
+        });
+        playlistId = newPlaylist.id;
+        logger.info('Created library playlist', { playlistId, libraryId });
+      }
+      
+      // Now play from this playlist
+      get().playFromPlaylist(playlistId, playlistName, songs, startIndex);
+      
+    } catch (error) {
+      logger.error('Failed to create/update library playlist', { error, libraryId });
+      
+      // Fallback: play without saving playlist
+      const track = songToTrack(currentSong);
+      const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+      const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+      
+      audioPlayer.play(preparedTrack);
+
+      set({
+        queue: songs,
+        currentIndex: startIndex,
+        currentSong,
+        queueSource: 'library',
+        queueSourceId: libraryId,
+        queueSourceName: libraryName,
+        isPlaying: true,
+      });
+    }
+  },
+
+  playFromPlaylist: async (playlistId, playlistName, songs, startIndex = 0) => {
+    const currentSong = songs[startIndex];
+    if (!currentSong) {
+      logger.warn('No song at start index', { startIndex, songCount: songs.length });
+      return;
+    }
+
+    // Convert song to track and prefetch
+    const track = songToTrack(currentSong);
+    const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+    const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+
+    // Play the prepared track
+    audioPlayer.play(preparedTrack);
+
+    set({
+      queue: songs,
+      currentIndex: startIndex,
+      currentSong,
+      queueSource: 'playlist',
+      queueSourceId: playlistId,
+      queueSourceName: playlistName,
+      isPlaying: true,
+    });
+    
+    logger.info('Playing from playlist', { 
+      playlistId, 
+      playlistName, 
+      songCount: songs.length, 
+      startIndex,
+      songTitle: currentSong.title 
+    });
+  },
+
+  saveQueueAsPlaylist: async (name: string) => {
+    const { queue } = get();
+    
+    if (queue.length === 0) {
+      logger.warn('Cannot save empty queue as playlist');
+      return false;
+    }
+
+    try {
+      const songIds = queue.map((song) => song.id);
+      const newPlaylist = await api.main.playlists.create({ name });
+      
+      // Add songs in order
+      for (const songId of songIds) {
+        await api.main.playlists.addSong(newPlaylist.id, { songId });
+      }
+      
+      logger.info('Saved queue as playlist', { playlistName: name, songCount: songIds.length });
+      return true;
+    } catch (error) {
+      logger.error('Failed to save queue as playlist', { error, name });
+      return false;
+    }
+  },
+
   // Navigation
-  next: () => {
+  next: async () => {
     const { queue, currentIndex, repeatMode } = get();
 
     if (queue.length === 0) return;
@@ -143,43 +394,81 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       return;
     }
 
-    set({
-      currentIndex: nextIndex,
-      currentSong: queue[nextIndex],
-      currentTime: 0,
-    });
+    const nextSong = queue[nextIndex];
+    if (nextSong) {
+      const track = songToTrack(nextSong);
+      const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+      const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+      
+      audioPlayer.play(preparedTrack);
+      set({
+        currentIndex: nextIndex,
+        currentSong: nextSong,
+        currentTime: 0,
+        isPlaying: true,
+      });
+      logger.info('Playing next song', { index: nextIndex, title: nextSong.title });
+    }
   },
 
-  previous: () => {
+  previous: async () => {
     const { queue, currentIndex, currentTime } = get();
 
     if (queue.length === 0) return;
 
     // If more than 3 seconds played, restart current song
     if (currentTime > 3) {
+      audioPlayer.seek(0);
       set({ currentTime: 0 });
+      logger.info('Restarting current song');
       return;
     }
 
     const prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
-
-    set({
-      currentIndex: prevIndex,
-      currentSong: queue[prevIndex],
-      currentTime: 0,
-    });
+    const prevSong = queue[prevIndex];
+    
+    if (prevSong) {
+      const track = songToTrack(prevSong);
+      const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+      const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+      
+      audioPlayer.play(preparedTrack);
+      set({
+        currentIndex: prevIndex,
+        currentSong: prevSong,
+        currentTime: 0,
+        isPlaying: true,
+      });
+      logger.info('Playing previous song', { index: prevIndex, title: prevSong.title });
+    }
   },
 
-  seekTo: (index) => {
+  seekTo: async (index) => {
     const { queue } = get();
 
-    if (index >= 0 && index < queue.length) {
+    if (index < 0 || index >= queue.length) return;
+
+    const song = queue[index];
+    if (song) {
+      const track = songToTrack(song);
+      const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+      const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+      
+      audioPlayer.play(preparedTrack);
       set({
         currentIndex: index,
-        currentSong: queue[index],
+        currentSong: song,
         currentTime: 0,
+        isPlaying: true,
       });
+      logger.info('Seeking to song', { index, title: song.title });
     }
+  },
+
+  seek: (time) => {
+    audioPlayer.seek(time);
+    set({ currentTime: time });
+    logger.info('Seeking to time', { time });
   },
 
   // Audio settings
@@ -195,6 +484,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     })),
 
   setRepeatMode: (mode) => set({ repeatMode: mode }),
+
+  toggleRepeat: () =>
+    set((state) => {
+      const modes: RepeatMode[] = ['off', 'all', 'one'];
+      const currentIndex = modes.indexOf(state.repeatMode);
+      const nextIndex = (currentIndex + 1) % modes.length;
+      return { repeatMode: modes[nextIndex] };
+    }),
 
   toggleShuffle: () =>
     set((state) => {
@@ -229,4 +526,5 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   setCurrentTime: (time) => set({ currentTime: time }),
 
   setDuration: (duration) => set({ duration }),
-}));
+  };
+});

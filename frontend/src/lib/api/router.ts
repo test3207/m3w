@@ -76,7 +76,10 @@ export async function routeRequest(
   // Online: try backend first
   try {
     // Build full backend URL from path
-    const fullUrl = new URL(path, API_BASE_URL).toString();
+    // path may contain query params, so use it directly if it starts with /
+    const fullUrl = path.startsWith('http') 
+      ? path 
+      : `${API_BASE_URL}${path}`;
     
     const response = await fetch(fullUrl, {
       ...init,

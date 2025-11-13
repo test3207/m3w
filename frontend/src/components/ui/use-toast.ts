@@ -115,6 +115,12 @@ const toast = ({ id: toastId, ...rest }: Omit<ToasterToast, "id"> & { id?: strin
     },
   });
 
+  // Auto-dismiss after duration (default to TOAST_REMOVE_DELAY if not specified)
+  const duration = rest.duration ?? TOAST_REMOVE_DELAY;
+  setTimeout(() => {
+    dispatch({ type: "DISMISS_TOAST", toastId: id });
+  }, duration);
+
   return {
     id,
     dismiss: () => dispatch({ type: "DISMISS_TOAST", toastId: id }),

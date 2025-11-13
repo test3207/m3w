@@ -170,7 +170,14 @@
       "songAlbumLabel": "Album",
       "songDurationLabel": "Duration",
       "noPlaylistsHelper": "Create a playlist first to start adding songs.",
-      "goToPlaylistsLink": "Go to playlists"
+      "goToPlaylistsLink": "Go to playlists",
+      "sortDateDesc": "Date Added (Newest)",
+      "sortDateAsc": "Date Added (Oldest)",
+      "sortTitleAsc": "Title A-Z",
+      "sortTitleDesc": "Title Z-A",
+      "sortArtistAsc": "Artist A-Z",
+      "sortAlbumAsc": "Album A-Z",
+      "loadingLabel": "Loading..."
     },
     "addToPlaylist": {
       "label": "Add to playlist",
@@ -328,5 +335,10 @@
       "durationUnit": " s",
       "bitrateUnit": " kbps"
     }
+  },
+  "playback": {
+    "startPlayingTitle": "Now Playing",
+    "startPlayingDescription": "Playing all songs from \"{0}\"",
+    "playFromLibraryDescription": "Playing from library"
   }
 }
