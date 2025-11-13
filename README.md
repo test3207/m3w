@@ -345,42 +345,24 @@ m3w/
 
 ### 🔧 Known Issues & Follow-up Tasks
 
-**1. ~~Layout Issues~~** ✅ **RESOLVED** (2025-11-13)
+All major UI/UX issues have been resolved! ✅
 
-- **Resolution**: Implemented proper height calculation for main container
-  - Main container now uses `calc(100vh - header - nav - player)` for precise height
-  - Added MobileHeader component for unified status indicators
-  - All pages changed from `min-h-screen` to `h-full` with internal scrolling
-  - No global scrollbar, content scrolls within page boundaries
+**Recent Resolutions (2025-11-13):**
 
-**2. Library/Playlist Card Design** (High Priority)
-
-- **Problem**: Cover images are too large, resulting in low information density
-- **Current**: Large images dominate the card, minimal metadata shown
-- **Action Needed**: Redesign card layout to reduce image size and display more song information
-
-**3. "Now Playing" Page Value** (Medium Priority)
-
-- **Problem**: Functional overlap with full-screen player
-- **Current**: Both pages show similar information with low value differentiation
-- **Action Needed**: Reevaluate the purpose of "Now Playing" page vs. full-screen player
-
-**4. Full-Screen Player UI** (High Priority)
-
-- **Problem A**: Controls positioned too high, should anchor to bottom edge
-- **Problem B**: Button recognition is low, unclear what each control does
-- **Action Needed**:
-  - Anchor control panel to bottom of screen
-  - Improve button styling and iconography for better recognition
-  - Add visual hierarchy to separate primary actions from secondary
+- ✅ Layout vertical scrollbar fixed with precise height calculation
+- ✅ Library/Playlist cards redesigned (stacked layout, 96px covers)
+- ✅ "Now Playing" page removed (simplified to 3-tab navigation)
+- ✅ Full-screen player redesigned (anchored controls, text labels)
+- ✅ Visual indicator for currently playing song in playlists
 
 ### 📋 Backlog
 
 - Enhanced user profile management (edit name, email)
 - Redis integration for caching
-- Testing expansion (Playwright E2E tests)
+- Testing expansion (Playwright E2E tests, coverage targets)
 - PWA background sync for offline mutations
 - Push notifications for sync status
+- Advanced cache strategies and eviction policies
 
 ## Internationalization (i18n)
 

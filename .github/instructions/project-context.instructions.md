@@ -97,15 +97,19 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
       - Kubernetes deployment configurations
       - Alignment of infrastructure tooling (Kubernetes, PostgreSQL, ELK, etc.) with the observability stack for production readiness
 
+- **Mobile-First UI Refactor** ✅ **COMPLETED** (2025-11-13)
+  - Zustand state management (libraryStore, playlistStore, enhanced playerStore)
+  - Mobile-first layout components (MobileLayout, MobileHeader, BottomNavigation)
+  - Event-driven architecture for cross-component sync (EventBus)
+  - Layout vertical scrollbar fix with precise height calculation
+  - Redesigned library/playlist cards (stacked layout with 96px covers)
+  - Removed redundant Now Playing page (simplified to 3-tab navigation)
+  - Visual indicator for currently playing song in playlists
+  - Redesigned full-screen player with anchored controls and text labels
+  - Login redirect fix (/libraries instead of /now-playing)
+  - Complete mobile UI/UX improvements
+
 ### Planned Initiatives (Upcoming)
-- **UI/UX Improvements** (High Priority)
-  - ~~Fix global layout vertical scrollbar issue~~ ✅ **RESOLVED** (2025-11-13)
-    - Implemented MobileHeader component with status indicators
-    - Main container uses precise calc() for height distribution
-    - All pages use h-full with internal scrolling, no global scrollbar
-  - Redesign library and playlist card styles (reduce image size, increase information density)
-  - Reconsider "Now Playing" page value (overlaps with full-screen player functionality)
-  - Refactor full-screen player layout (anchor controls to bottom, improve button recognition)
 - **Core Product Enhancements**
   - Enhanced user profile management
   - Redis integration for caching
@@ -153,11 +157,14 @@ m3w/
 │   │   ├── components/           # UI primitives, features, and layouts
 │   │   │   ├── features/         # Feature-specific components
 │   │   │   │   ├── dashboard/    # Dashboard cards and initializers
+│   │   │   │   ├── libraries/    # Library management components
+│   │   │   │   ├── navigation/   # Bottom navigation and FAB
 │   │   │   │   ├── network/      # Network status indicator
-│   │   │   │   ├── player/       # Mini player and playback controls
+│   │   │   │   ├── player/       # MiniPlayer, FullPlayer, PlayQueueDrawer
+│   │   │   │   ├── playlists/    # Playlist management components
 │   │   │   │   ├── pwa/          # PWA prompts and utilities
-│   │   │   │   └── upload/       # Upload form and file handling
-│   │   │   ├── layouts/          # Layout components (navbar, shell)
+│   │   │   │   └── upload/       # Upload drawer and form handling
+│   │   │   ├── layouts/          # Layout components (MobileLayout, MobileHeader)
 │   │   │   ├── providers/        # Context providers (auth, etc.)
 │   │   │   └── ui/               # shadcn/ui base components
 │   │   ├── hooks/                # React hooks (useAuthRefresh, etc.)
@@ -199,7 +206,11 @@ m3w/
 │   │   │               ├── upload.ts     # File upload
 │   │   │               └── player.ts     # Playback state
 │   │   ├── stores/               # Zustand state stores
-│   │   │   └── authStore.ts      # Auth state with auto-refresh
+│   │   │   ├── authStore.ts      # Auth state with auto-refresh
+│   │   │   ├── libraryStore.ts   # Library management state
+│   │   │   ├── playlistStore.ts  # Playlist management state
+│   │   │   ├── playerStore.ts    # Audio player and queue state
+│   │   │   └── uiStore.ts        # UI state (drawers, modals)
 │   │   ├── test/                 # Unit and integration test helpers
 │   │   ├── types/                # Shared TypeScript declarations
 │   │   └── main.tsx              # Vite entry point with routing
