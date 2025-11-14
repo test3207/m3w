@@ -7,6 +7,8 @@ on:
       - develop
   # Allow manual trigger for testing
   workflow_dispatch:
+  # Allow workflow to be called by other workflows
+  workflow_call:
 
 # Cancel in-progress runs for the same PR
 concurrency:
