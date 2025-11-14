@@ -2,9 +2,10 @@ name: Create RC Branch
 
 on:
   schedule:
-    # Run every Tuesday at 10:00 AM Beijing time (CST, UTC+8)
+    # Run every Tuesday at 10:00 AM Beijing time (China Standard Time, UTC+8)
     # Beijing 10:00 AM = UTC 02:00 AM (10 - 8 = 2)
     # Day of week: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+    # Status badge: https://github.com/test3207/m3w/actions/workflows/create-rc-branch.yml/badge.svg
     - cron: '0 2 * * 2'
   # Allow manual trigger for testing
   workflow_dispatch:
@@ -34,9 +35,7 @@ jobs:
         id: check
         run: |
           # Check for commits since last Tuesday (7 days ago)
-          DAYS_AGO=7
-          CUTOFF_TIME=$(date -u -d "$DAYS_AGO days ago" +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-${DAYS_AGO}d +%Y-%m-%dT%H:%M:%S)
-          COMMIT_COUNT=$(git log --since="$CUTOFF_TIME" --oneline | wc -l)
+          COMMIT_COUNT=$(git log --since="7 days ago" --oneline | wc -l)
           LATEST_COMMIT=$(git log -1 --format=%H)
           
           echo "Checking commits since last Tuesday (7 days ago)"

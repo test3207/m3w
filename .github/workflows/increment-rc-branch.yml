@@ -5,6 +5,12 @@ on:
     branches:
       - 'release/v*.*.*-rc*'
 
+# Serialize RC branch creation to prevent race conditions
+# when multiple commits are pushed to the same release branch rapidly
+concurrency:
+  group: increment-rc-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
