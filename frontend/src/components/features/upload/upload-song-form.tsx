@@ -334,18 +334,18 @@ export function UploadSongForm({ onDrawerClose }: UploadSongFormProps) {
                 align="center"
                 className="rounded-lg border bg-card p-3 text-sm"
               >
-                <div className="shrink-0" role="img" aria-label="Status icon">
+                <div className="shrink-0">
                   {item.status === "pending" && (
-                    <Music className="h-5 w-5 text-muted-foreground" />
+                    <Music className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                   )}
                   {item.status === "uploading" && (
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" aria-hidden="true" />
                   )}
                   {item.status === "success" && (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <CheckCircle2 className="h-5 w-5 text-green-500" aria-hidden="true" />
                   )}
                   {item.status === "error" && (
-                    <XCircle className="h-5 w-5 text-destructive" />
+                    <XCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
                   )}
                 </div>
 
