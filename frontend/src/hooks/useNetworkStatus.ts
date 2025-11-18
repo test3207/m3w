@@ -13,8 +13,18 @@ export function useNetworkStatus() {
   const [pendingSyncs, setPendingSyncs] = useState(0);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => {
+      setIsOnline(true);
+      // When browser goes online, optimistically assume API is reachable.
+      // NOTE: This may cause a brief UI inconsistency if the API is still unreachable (e.g., server down but network up).
+      // The next API call will correct isApiReachable via 'api-error'/'api-success' events.
+      setIsApiReachable(true);
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      setIsApiReachable(false);
+    };
 
     // Listen for API connectivity events
     const handleApiError = () => setIsApiReachable(false);

@@ -470,6 +470,7 @@ class AudioPlayer {
       this.howl = null;
     }
     this.stopProgressUpdate();
+    this.pendingSeek = null; // Clear pending seek to avoid state issues
   }
 
   private canInitializeAudio(): boolean {

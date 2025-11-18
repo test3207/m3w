@@ -70,8 +70,8 @@ export const player = {
   /**
    * Update playback progress
    */
-  updateProgress: async (data: UpdateProgressInput): Promise<void> => {
-    return mainApiClient.put(MAIN_API_ENDPOINTS.player.progress, data);
+  updateProgress: async (data: UpdateProgressInput, options?: RequestInit): Promise<void> => {
+    return mainApiClient.put(MAIN_API_ENDPOINTS.player.progress, data, options);
   },
 
   /**

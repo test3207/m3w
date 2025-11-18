@@ -18,7 +18,6 @@ interface MobileLayoutProps {
 export function MobileLayout({ children }: MobileLayoutProps) {
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const currentTime = usePlayerStore((state) => state.currentTime);
   const loadPlaybackProgress = usePlayerStore((state) => state.loadPlaybackProgress);
   const savePlaybackProgress = usePlayerStore((state) => state.savePlaybackProgress);
   const hasSong = currentSong !== null;
@@ -29,13 +28,42 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save progress when playing or when time changes significantly
+  // Save progress before page unload (using fetch with keepalive for reliability)
   useEffect(() => {
-    if (currentSong && isPlaying && currentTime > 0) {
-      savePlaybackProgress();
+    const handleBeforeUnload = () => {
+      // Get latest state directly from store
+      const state = usePlayerStore.getState();
+      if (state.currentSong) {
+        state.savePlaybackProgressSync(); // Use keepalive for guaranteed delivery
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []); // Empty deps - listener always uses latest store state
+
+  // Save progress when song changes (immediate) or periodically while playing
+  useEffect(() => {
+    if (!currentSong || !isPlaying) {
+      return;
     }
+
+    // Immediate save on song change
+    savePlaybackProgress();
+
+    // Set up interval for periodic saves while playing
+    const interval = setInterval(() => {
+      // Always save, don't check currentTime here (it's captured in closure)
+      savePlaybackProgress();
+    }, 5000); // Save every 5 seconds while playing
+
+    return () => {
+      clearInterval(interval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSong?.id, currentTime, isPlaying]);
+  }, [currentSong?.id, isPlaying]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
