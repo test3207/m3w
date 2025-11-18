@@ -4,6 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 export default defineConfig({
+  define: {
+    // Expose BUILD_TARGET as compile-time constant for tree-shaking
+    'import.meta.env.VITE_BUILD_TARGET': JSON.stringify(process.env.BUILD_TARGET || 'prod'),
+  },
   plugins: [
     react(),
     VitePWA({

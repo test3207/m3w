@@ -513,5 +513,11 @@
         "errorTitle": "Removal failed"
       }
     }
+  },
+  "demo": {
+    "bannerMessage": "Demo Environment - Data resets every hour",
+    "storageLimitReached": "Storage limit reached (5GB). Please wait for next reset.",
+    "storageUsage": "Storage",
+    "systemResetting": "System is resetting, please try again later"
   }
 }

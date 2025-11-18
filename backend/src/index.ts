@@ -74,11 +74,53 @@ import songsRoutes from './routes/songs';
 import uploadRoutes from './routes/upload';
 import playerRoutes from './routes/player';
 
+// Conditionally import Demo Mode modules (only in RC builds)
+const IS_DEMO_BUILD = process.env.BUILD_TARGET === 'rc';
+
+type DemoModules = {
+  storageTracker: {
+    enabled: boolean;
+    initialize: () => Promise<void>;
+    incrementUsage: (bytes: number) => void;
+    canUpload: (bytes: number) => boolean;
+    getCurrentUsage: () => import('@m3w/shared').StorageUsageInfo;
+    reset: () => void;
+  };
+  demoStorageCheckMiddleware: () => (c: import('hono').Context, next: import('hono').Next) => Promise<void | Response>;
+  registerDemoRoutes: (app: import('hono').Hono) => void;
+  startDemoResetService: () => void;
+};
+
+let demoModules: DemoModules | null = null;
+
+if (IS_DEMO_BUILD) {
+  logger.info('Demo mode code included (RC build)');
+  // Synchronous import in RC builds (code exists)
+  const storageTrackerModule = await import('./lib/demo/storage-tracker');
+  const middlewareModule = await import('./lib/demo/middleware');
+  const resetServiceModule = await import('./lib/demo/reset-service');
+  
+  demoModules = {
+    storageTracker: storageTrackerModule.storageTracker,
+    demoStorageCheckMiddleware: middlewareModule.demoStorageCheckMiddleware,
+    registerDemoRoutes: middlewareModule.registerDemoRoutes,
+    startDemoResetService: resetServiceModule.startDemoResetService,
+  };
+  
+  // Initialize storage tracker
+  await demoModules.storageTracker.initialize();
+  logger.info('Demo mode modules loaded');
+} else {
+  logger.info('Demo mode code excluded (Production build)');
+}
+
 const app = new Hono();
 
 // Middleware
 app.use('*', honoLogger());
 app.use('*', prettyJSON());
+
+// CORS must be before all routes
 app.use(
   '*',
   cors({
@@ -86,6 +128,13 @@ app.use(
     credentials: true,
   })
 );
+
+// Apply demo middleware if available
+if (demoModules) {
+  app.use('*', demoModules.demoStorageCheckMiddleware());
+  demoModules.registerDemoRoutes(app);
+  demoModules.startDemoResetService();
+}
 
 // Health check
 app.get('/health', (c) => {

@@ -97,6 +97,23 @@ app.post('/', async (c: Context) => {
     if (!fileRecord) {
       isNewFile = true;
 
+      // Check storage limit before processing (Demo mode only)
+      const IS_DEMO_BUILD = process.env.BUILD_TARGET === 'rc';
+      if (IS_DEMO_BUILD) {
+        try {
+          const { storageTracker } = await import('../lib/demo/storage-tracker');
+          if (storageTracker.enabled && !storageTracker.canUpload(file.size)) {
+            return c.json({
+              success: false,
+              error: 'Storage limit reached (5GB). Please wait for next reset.',
+            }, 403);
+          }
+        } catch {
+          // Demo modules not available, continue normally
+          logger.debug('Demo modules not available');
+        }
+      }
+
       // 5. Extract metadata using music-metadata
       let metadata: {
         duration?: number;
@@ -168,6 +185,20 @@ app.post('/', async (c: Context) => {
       });
 
       logger.info({ fileId: fileRecord.id }, 'File record created');
+      
+      // Increment storage usage (Demo mode only)
+      const IS_DEMO_BUILD_TRACK = process.env.BUILD_TARGET === 'rc';
+      if (IS_DEMO_BUILD_TRACK) {
+        try {
+          const { storageTracker } = await import('../lib/demo/storage-tracker');
+          if (storageTracker.enabled) {
+            storageTracker.incrementUsage(file.size);
+          }
+        } catch {
+          // Demo modules not available, continue normally
+          logger.debug('Demo modules not available for tracking');
+        }
+      }
     } else {
       logger.info({ fileId: fileRecord.id }, 'File already exists, reusing');
     }

@@ -913,4 +913,14 @@ export interface Messages {
       };
     };
   };
+  demo: {
+    /** Demo Environment - Data resets every hour */
+    bannerMessage: string;
+    /** Storage limit reached (5GB). Please wait for next reset. */
+    storageLimitReached: string;
+    /** Storage */
+    storageUsage: string;
+    /** System is resetting, please try again later */
+    systemResetting: string;
+  };
 }

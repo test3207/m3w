@@ -513,5 +513,11 @@
         "errorTitle": "移除失败"
       }
     }
+  },
+  "demo": {
+    "bannerMessage": "演示环境 - 数据每小时自动重置",
+    "storageLimitReached": "存储空间已满 (5GB)，请等待下次重置",
+    "storageUsage": "存储",
+    "systemResetting": "系统正在重置，请稍后重试"
   }
 }
