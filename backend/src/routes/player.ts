@@ -8,6 +8,7 @@ import { z, ZodError } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
+import { resolveCoverUrl } from '../lib/cover-url-helper';
 import type { Context } from 'hono';
 
 const app = new Hono();
@@ -115,7 +116,7 @@ app.get('/seed', async (c: Context) => {
             title: playlistSong.title,
             artist: playlistSong.artist,
             album: playlistSong.album,
-            coverUrl: playlistSong.coverUrl,
+            coverUrl: resolveCoverUrl({ id: playlistSong.id, coverUrl: playlistSong.coverUrl }),
             duration: playlistSong.file.duration ?? undefined,
             audioUrl,
             mimeType: playlistSong.file.mimeType ?? undefined,
@@ -177,7 +178,7 @@ app.get('/seed', async (c: Context) => {
             title: librarySong.title,
             artist: librarySong.artist,
             album: librarySong.album,
-            coverUrl: librarySong.coverUrl,
+            coverUrl: resolveCoverUrl({ id: librarySong.id, coverUrl: librarySong.coverUrl }),
             duration: librarySong.file.duration ?? undefined,
             audioUrl,
             mimeType: librarySong.file.mimeType ?? undefined,
@@ -370,7 +371,7 @@ app.get('/progress', async (c: Context) => {
           title: song.title,
           artist: song.artist,
           album: song.album,
-          coverUrl: song.coverUrl,
+          coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
           duration: song.file.duration ?? undefined,
           audioUrl,
           mimeType: song.file.mimeType ?? undefined,

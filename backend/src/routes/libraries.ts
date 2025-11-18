@@ -9,6 +9,7 @@ import pinyin from 'pinyin';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
+import { resolveCoverUrl } from '../lib/cover-url-helper';
 import {
   createLibrarySchema,
   updateLibrarySchema,
@@ -37,18 +38,21 @@ app.get('/', async (c: Context) => {
         songs: {
           orderBy: { createdAt: 'desc' },
           take: 1,
-          select: { coverUrl: true },
+          select: { id: true, coverUrl: true },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
 
     // Add coverUrl from last added song
-    const librariesWithCover = libraries.map((lib) => ({
-      ...lib,
-      coverUrl: lib.songs[0]?.coverUrl || null,
-      songs: undefined, // Remove songs array from response
-    }));
+    const librariesWithCover = libraries.map((lib) => {
+      const lastSong = lib.songs[0];
+      return {
+        ...lib,
+        coverUrl: lastSong ? resolveCoverUrl({ id: lastSong.id, coverUrl: lastSong.coverUrl }) : null,
+        songs: undefined, // Remove songs array from response
+      };
+    });
 
     return c.json({
       success: true,
@@ -394,9 +398,15 @@ app.get('/:id/songs', async (c: Context) => {
     // Apply sorting
     const sortedSongs = sortSongs(songs, sortParam);
 
+    // Convert coverUrl to API paths
+    const songsWithResolvedCovers = sortedSongs.map(song => ({
+      ...song,
+      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
+    }));
+
     return c.json({
       success: true,
-      data: sortedSongs,
+      data: songsWithResolvedCovers,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

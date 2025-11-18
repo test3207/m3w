@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
+import { resolveCoverUrl } from '../lib/cover-url-helper';
 import { getUserId } from '../lib/auth-helper';
 import {
   createPlaylistSchema,
@@ -34,6 +35,7 @@ app.get('/', async (c: Context) => {
           include: {
             song: {
               select: {
+                id: true,
                 coverUrl: true,
               },
             },
@@ -45,19 +47,22 @@ app.get('/', async (c: Context) => {
     });
 
     // Add coverUrl from first 4 songs (composite cover)
-    const playlistsWithCover = playlists.map((pl) => ({
-      id: pl.id,
-      name: pl.name,
-      description: pl.description,
-      userId: pl.userId,
-      songIds: pl.songIds,
-      isDefault: pl.isDefault,
-      canDelete: pl.canDelete,
-      coverUrl: pl.songs.length > 0 ? pl.songs[0].song.coverUrl : null,
-      createdAt: pl.createdAt,
-      updatedAt: pl.updatedAt,
-      _count: pl._count,
-    }));
+    const playlistsWithCover = playlists.map((pl) => {
+      const firstSong = pl.songs[0]?.song;
+      return {
+        id: pl.id,
+        name: pl.name,
+        description: pl.description,
+        userId: pl.userId,
+        songIds: pl.songIds,
+        isDefault: pl.isDefault,
+        canDelete: pl.canDelete,
+        coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
+        createdAt: pl.createdAt,
+        updatedAt: pl.updatedAt,
+        _count: pl._count,
+      };
+    });
 
     return c.json({
       success: true,
