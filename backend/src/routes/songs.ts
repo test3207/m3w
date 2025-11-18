@@ -11,6 +11,7 @@ import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 import { updateSongSchema, songIdSchema } from '@m3w/shared';
+import { resolveCoverUrl } from '../lib/cover-url-helper';
 import type { Context } from 'hono';
 import type { SongSortOption } from '@m3w/shared';
 
@@ -124,7 +125,7 @@ app.get('/search', async (c: Context) => {
       artist: song.artist,
       album: song.album,
       duration: song.file.duration,
-      coverUrl: song.coverUrl,
+      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
       streamUrl: `/api/songs/${song.id}/stream`,
       libraryId: song.libraryId,
       libraryName: song.library?.name || '',
@@ -188,7 +189,10 @@ app.get('/:id', async (c: Context) => {
 
     return c.json({
       success: true,
-      data: song,
+      data: {
+        ...song,
+        coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -609,6 +613,95 @@ app.delete('/:id', async (c: Context) => {
       {
         success: false,
         error: 'Failed to delete song',
+      },
+      500
+    );
+  }
+});
+
+// GET /api/songs/:id/cover - Get song cover image
+// Returns cover image from MinIO or 404 if not available
+app.get('/:id/cover', async (c: Context) => {
+  try {
+    const auth = c.get('auth');
+    const songId = c.req.param('id');
+
+    // Get song and verify ownership
+    const song = await prisma.song.findFirst({
+      where: {
+        id: songId,
+        library: {
+          userId: auth.userId,
+        },
+      },
+    });
+
+    if (!song || !song.coverUrl) {
+      return c.json(
+        {
+          success: false,
+          error: 'Cover image not found',
+        },
+        404
+      );
+    }
+
+    // If coverUrl is an external URL, redirect to it
+    if (song.coverUrl.startsWith('http://') || song.coverUrl.startsWith('https://')) {
+      return c.redirect(song.coverUrl);
+    }
+
+    // Otherwise, it's a MinIO path - fetch from storage
+    const { getMinioClient } = await import('../lib/minio-client');
+    const minioClient = getMinioClient();
+    const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
+
+    try {
+      // Get cover image from MinIO
+      const dataStream = await minioClient.getObject(bucketName, song.coverUrl);
+      
+      // Determine content type from file extension
+      const ext = song.coverUrl.split('.').pop()?.toLowerCase();
+      const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+
+      // Stream the image back to client
+      const readableStream = new ReadableStream({
+        async start(controller) {
+          dataStream.on('data', (chunk: Buffer) => {
+            controller.enqueue(chunk);
+          });
+          dataStream.on('end', () => {
+            controller.close();
+          });
+          dataStream.on('error', (err) => {
+            logger.error({ error: err, songId }, 'Error streaming cover image');
+            controller.error(err);
+          });
+        },
+      });
+
+      return new Response(readableStream, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
+        },
+      });
+    } catch (error) {
+      logger.error({ error, songId, coverPath: song.coverUrl }, 'Failed to fetch cover from MinIO');
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to fetch cover image',
+        },
+        500
+      );
+    }
+  } catch (error) {
+    logger.error({ error }, 'Failed to process cover request');
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to process cover request',
       },
       500
     );

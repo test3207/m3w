@@ -23,6 +23,7 @@
 
 ## Key Technical Decisions
 - File storage uses hash-based deduplication with reference counting; metadata remains user-specific.
+- Audio cover art is extracted during upload, stored in MinIO under `covers/{fileHash}.jpg`, and always exposed as an absolute URL (built from `API_BASE_URL` + `/api/songs/:id/cover`) via the cover URL helper so future migrations (for example presigned URLs) do not require data changes and the fully separated frontend can consume the value directly.
 - Audio streaming uses API proxy pattern (`/api/songs/[songId]/stream`) with Range request support; MinIO is never exposed to clients and remains internal to the backend network.
 - Metadata extraction prioritizes user edits over backend extraction, and backend extraction over frontend extraction.
 - Environment configuration requires separate `.env` files for frontend and backend.

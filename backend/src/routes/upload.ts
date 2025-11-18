@@ -91,6 +91,8 @@ app.post('/', async (c: Context) => {
     });
 
     let isNewFile = false;
+    let coverImageBuffer: Buffer | null = null;
+    let coverImageFormat: string | null = null;
 
     if (!fileRecord) {
       isNewFile = true;
@@ -111,6 +113,15 @@ app.post('/', async (c: Context) => {
           sampleRate: parsed.format.sampleRate,
           channels: parsed.format.numberOfChannels,
         };
+        
+        // Extract cover art from ID3 tags
+        if (parsed.common.picture && parsed.common.picture.length > 0) {
+          const picture = parsed.common.picture[0];
+          coverImageBuffer = Buffer.from(picture.data);
+          coverImageFormat = picture.format; // e.g., 'image/jpeg', 'image/png'
+          logger.info({ format: coverImageFormat, size: coverImageBuffer.length }, 'Cover art extracted');
+        }
+        
         logger.info(metadata, 'Metadata extracted');
       } catch (error) {
         logger.warn({ error }, 'Failed to extract metadata');
@@ -161,7 +172,37 @@ app.post('/', async (c: Context) => {
       logger.info({ fileId: fileRecord.id }, 'File already exists, reusing');
     }
 
-    // 8. Extract user-provided metadata
+    // 8. Upload cover image to MinIO if extracted
+    let coverUrl: string | null = null;
+    if (isNewFile && coverImageBuffer && coverImageFormat) {
+      try {
+        const minioClient = getMinioClient();
+        const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
+        
+        // Determine file extension from MIME type
+        const coverExt = coverImageFormat === 'image/png' ? 'png' : 'jpg';
+        const coverObjectName = `covers/${fileHash}.${coverExt}`;
+        
+        // Upload cover image
+        await minioClient.putObject(
+          bucketName,
+          coverObjectName,
+          coverImageBuffer,
+          coverImageBuffer.length,
+          {
+            'Content-Type': coverImageFormat,
+          }
+        );
+        
+        logger.info({ coverObjectName }, 'Cover image uploaded to MinIO');
+        // Store as relative path - frontend will use /api/songs/:id/cover
+        coverUrl = coverObjectName;
+      } catch (error) {
+        logger.warn({ error }, 'Failed to upload cover image');
+      }
+    }
+
+    // 9. Extract user-provided metadata
     const userMetadata: {
       libraryId: string;
       title: string;
@@ -184,12 +225,19 @@ app.post('/', async (c: Context) => {
     if (formData.get('albumArtist')) userMetadata.albumArtist = formData.get('albumArtist') as string;
     if (formData.get('genre')) userMetadata.genre = formData.get('genre') as string;
     if (formData.get('composer')) userMetadata.composer = formData.get('composer') as string;
-    if (formData.get('coverUrl')) userMetadata.coverUrl = formData.get('coverUrl') as string;
+    
+    // Use extracted cover if available, otherwise user-provided URL
+    if (coverUrl) {
+      userMetadata.coverUrl = coverUrl;
+    } else if (formData.get('coverUrl')) {
+      userMetadata.coverUrl = formData.get('coverUrl') as string;
+    }
+    
     if (formData.get('year')) userMetadata.year = parseInt(formData.get('year') as string, 10);
     if (formData.get('trackNumber')) userMetadata.trackNumber = parseInt(formData.get('trackNumber') as string, 10);
     if (formData.get('discNumber')) userMetadata.discNumber = parseInt(formData.get('discNumber') as string, 10);
 
-    // 9. Check if song already exists in this library
+    // 10. Check if song already exists in this library
     const existingSong = await prisma.song.findFirst({
       where: {
         libraryId,
@@ -212,7 +260,7 @@ app.post('/', async (c: Context) => {
       );
     }
 
-    // 10. Create Song record and increment refCount
+    // 11. Create Song record and increment refCount
     const song = await prisma.$transaction(async (tx) => {
       // Create song
       const newSong = await tx.song.create({
