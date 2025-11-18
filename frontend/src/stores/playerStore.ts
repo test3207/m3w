@@ -10,9 +10,20 @@ import { I18n } from '@/locales/i18n';
 export type RepeatMode = 'off' | 'one' | 'all';
 export type QueueSource = 'library' | 'playlist' | 'all' | null;
 
-// Debounce helper for progress saving
-let progressSaveTimeout: NodeJS.Timeout | null = null;
-const PROGRESS_SAVE_DEBOUNCE_MS = 2000;
+// Store previous state for HMR (use window to survive HMR)
+declare global {
+  interface Window {
+    __PLAYER_STATE_BACKUP__?: PlayerState;
+  }
+}
+
+const getBackupState = (): PlayerState | null => {
+  return window.__PLAYER_STATE_BACKUP__ || null;
+};
+
+const setBackupState = (state: PlayerState) => {
+  window.__PLAYER_STATE_BACKUP__ = state;
+};
 
 // Helper: Prefetch audio and create object URL
 async function prefetchAudioBlob(audioUrl: string): Promise<string | null> {
@@ -70,6 +81,10 @@ interface PlayerState {
   // Progress
   currentTime: number;
   duration: number;
+  
+  // Preference loading tracking (prevent race condition)
+  hasLoadedPreferences: boolean;
+  hasUserModifiedPreferences: boolean;
 }
 
 interface PlayerActions {
@@ -100,7 +115,7 @@ interface PlayerActions {
   // Audio settings
   setVolume: (volume: number) => void;
   toggleMute: () => void;
-  setRepeatMode: (mode: RepeatMode) => void;
+  setRepeatMode: (mode: RepeatMode) => Promise<void>;
   toggleRepeat: () => void;
   toggleShuffle: () => void;
   
@@ -111,12 +126,13 @@ interface PlayerActions {
   // Initialization & Persistence
   loadPlaybackProgress: () => Promise<void>;
   savePlaybackProgress: () => void;
+  savePlaybackProgressSync: () => void; // Synchronous save using fetch with keepalive: true for page unload
 }
 
 type PlayerStore = PlayerState & PlayerActions;
 
 export const usePlayerStore = create<PlayerStore>((set, get) => {
-  // Get AudioPlayer singleton instance
+  // Get AudioPlayer instance
   const audioPlayer = getAudioPlayer();
   
   // Setup event listeners for AudioPlayer state changes
@@ -162,21 +178,26 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     }
   }, 500); // Update every 500ms
 
+  const backupState = getBackupState();
+  const audioState = audioPlayer.getState();
+
   return {
-  // Initial state
-  currentSong: null,
-  queue: [],
-  currentIndex: -1,
-  queueSource: null,
-  queueSourceId: null,
-  queueSourceName: null,
-  isPlaying: false,
-  volume: 0.8,
-  isMuted: false,
-  repeatMode: 'off',
-  isShuffled: false,
-  currentTime: 0,
-  duration: 0,
+  // Initial state (restore from backup if HMR, otherwise start fresh)
+  currentSong: backupState?.currentSong ?? null,
+  queue: backupState?.queue ?? [],
+  currentIndex: backupState?.currentIndex ?? -1,
+  queueSource: backupState?.queueSource ?? null,
+  queueSourceId: backupState?.queueSourceId ?? null,
+  queueSourceName: backupState?.queueSourceName ?? null,
+  isPlaying: audioState.isPlaying, // Always use AudioPlayer's actual state
+  volume: backupState?.volume ?? 0.8,
+  isMuted: backupState?.isMuted ?? false,
+  repeatMode: backupState?.repeatMode ?? 'off',
+  isShuffled: backupState?.isShuffled ?? false,
+  currentTime: backupState?.currentTime ?? 0,
+  duration: backupState?.duration ?? 0,
+  hasLoadedPreferences: backupState?.hasLoadedPreferences ?? false,
+  hasUserModifiedPreferences: backupState?.hasUserModifiedPreferences ?? false,
 
   // Playback control
   play: (song) => {
@@ -193,18 +214,19 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
   pause: () => {
     audioPlayer.pause();
-    set({ isPlaying: false });
+    // isPlaying state will be set by AudioPlayer 'pause' event
   },
 
   togglePlayPause: () => {
     const { isPlaying, currentSong } = get();
     if (isPlaying) {
       audioPlayer.pause();
-      set({ isPlaying: false });
+      // isPlaying state will be set by AudioPlayer 'pause' event
     } else {
       if (currentSong) {
         audioPlayer.resume();
-        set({ isPlaying: true });
+        // isPlaying state will be set by AudioPlayer 'play' event
+        // If resume fails, 'error' event will handle the state
       }
     }
   },
@@ -531,53 +553,82 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       isMuted: !state.isMuted,
     })),
 
-  setRepeatMode: (mode) => set({ repeatMode: mode }),
+  setRepeatMode: async (mode) => {
+    set({ repeatMode: mode, hasUserModifiedPreferences: true });
+    
+    // Skip backend save if offline
+    if (!navigator.onLine) {
+      logger.info('Offline - repeat mode saved locally only', { repeatMode: mode });
+      return;
+    }
+    
+    try {
+      await api.main.player.updatePreferences({ repeatMode: mode });
+      logger.info('Saved repeat mode preference', { repeatMode: mode });
+    } catch (error) {
+      logger.error('Failed to save repeat mode preference', error);
+    }
+  },
 
-  toggleRepeat: () =>
-    set((state) => {
-      const modes: RepeatMode[] = ['off', 'all', 'one'];
-      const currentIndex = modes.indexOf(state.repeatMode);
-      const nextIndex = (currentIndex + 1) % modes.length;
-      const nextMode = modes[nextIndex];
-      
-      logger.info('Toggle repeat mode', { 
-        from: state.repeatMode, 
-        to: nextMode,
-        currentIndex,
-        nextIndex
-      });
-      
-      return { repeatMode: nextMode };
-    }),
+  toggleRepeat: () => {
+    const state = get();
+    const modes: RepeatMode[] = ['off', 'all', 'one'];
+    const currentIndex = modes.indexOf(state.repeatMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    const nextMode = modes[nextIndex];
+    
+    logger.info('Toggle repeat mode', { 
+      from: state.repeatMode, 
+      to: nextMode,
+      currentIndex,
+      nextIndex
+    });
+    
+    // Save to backend (async, don't wait)
+    get().setRepeatMode(nextMode);
+  },
 
-  toggleShuffle: () =>
-    set((state) => {
-      const newShuffled = !state.isShuffled;
+  toggleShuffle: async () => {
+    const state = get();
+    const newShuffled = !state.isShuffled;
 
-      if (newShuffled && state.queue.length > 0) {
-        // Shuffle queue (keep current song at current index)
-        const shuffled = [...state.queue];
-        const currentSong = shuffled[state.currentIndex];
+    if (newShuffled && state.queue.length > 0) {
+      // Shuffle queue (keep current song at current index)
+      const shuffled = [...state.queue];
+      const currentSong = shuffled[state.currentIndex];
 
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-
-        // Move current song back to current index
-        const newCurrentIndex = shuffled.indexOf(currentSong);
-        if (newCurrentIndex !== state.currentIndex && newCurrentIndex !== -1) {
-          [shuffled[state.currentIndex], shuffled[newCurrentIndex]] = [
-            shuffled[newCurrentIndex],
-            shuffled[state.currentIndex],
-          ];
-        }
-
-        return { isShuffled: newShuffled, queue: shuffled };
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
 
-      return { isShuffled: newShuffled };
-    }),
+      // Move current song back to current index
+      const newCurrentIndex = shuffled.indexOf(currentSong);
+      if (newCurrentIndex !== state.currentIndex && newCurrentIndex !== -1) {
+        [shuffled[state.currentIndex], shuffled[newCurrentIndex]] = [
+          shuffled[newCurrentIndex],
+          shuffled[state.currentIndex],
+        ];
+      }
+
+      set({ isShuffled: newShuffled, queue: shuffled, hasUserModifiedPreferences: true });
+    } else {
+      set({ isShuffled: newShuffled, hasUserModifiedPreferences: true });
+    }
+    
+    // Save to backend (async, don't wait) - skip if offline
+    if (!navigator.onLine) {
+      logger.info('Offline - shuffle saved locally only', { shuffleEnabled: newShuffled });
+      return;
+    }
+    
+    try {
+      await api.main.player.updatePreferences({ shuffleEnabled: newShuffled });
+      logger.info('Saved shuffle preference', { shuffleEnabled: newShuffled });
+    } catch (error) {
+      logger.error('Failed to save shuffle preference', error);
+    }
+  },
 
   // Progress
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -588,6 +639,31 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   loadPlaybackProgress: async () => {
     try {
       logger.info('Loading playback progress...');
+      
+      // Load playback preferences (repeat mode and shuffle)
+      // Skip if user has already modified preferences locally (prevent race condition)
+      const { hasUserModifiedPreferences } = get();
+      if (!hasUserModifiedPreferences) {
+        try {
+          const preferences = await api.main.player.getPreferences();
+          if (preferences) {
+            set({
+              repeatMode: preferences.repeatMode,
+              isShuffled: preferences.shuffleEnabled,
+              hasLoadedPreferences: true,
+            });
+            logger.info('Loaded playback preferences', { 
+              repeatMode: preferences.repeatMode, 
+              shuffleEnabled: preferences.shuffleEnabled 
+            });
+          }
+        } catch (prefError) {
+          logger.warn('Failed to load playback preferences', prefError);
+        }
+      } else {
+        logger.info('Skipped loading preferences - user has local changes');
+      }
+      
       const progress = await api.main.player.getProgress();
       
       if (!progress?.track) {
@@ -749,31 +825,81 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       return;
     }
 
-    // Debounce save to avoid excessive API calls
-    if (progressSaveTimeout) {
-      clearTimeout(progressSaveTimeout);
-    }
+    const contextType = (queueSource === 'library' || queueSource === 'playlist') 
+      ? queueSource 
+      : undefined;
 
-    progressSaveTimeout = setTimeout(() => {
-      const contextType = (queueSource === 'library' || queueSource === 'playlist') 
-        ? queueSource 
-        : undefined;
-
-      api.main.player.updateProgress({
-        songId: currentSong.id,
-        position: Math.round(currentTime),
-        contextType,
-        contextId: queueSourceId ?? undefined,
-        contextName: queueSourceName ?? undefined,
-      }).catch((error) => {
+    api.main.player.updateProgress({
+      songId: currentSong.id,
+      position: Math.round(currentTime),
+      contextType,
+      contextId: queueSourceId ?? undefined,
+      contextName: queueSourceName ?? undefined,
+    })
+      .then(() => {
+        logger.info('Saved playback progress', { 
+          songId: currentSong.id, 
+          position: Math.round(currentTime) 
+        });
+      })
+      .catch((error) => {
         logger.error('Failed to save playback progress', error);
       });
+  },
 
-      logger.info('Saved playback progress', { 
-        songId: currentSong.id, 
-        position: Math.round(currentTime) 
-      });
-    }, PROGRESS_SAVE_DEBOUNCE_MS);
+  savePlaybackProgressSync: () => {
+    const { currentSong, currentTime, queueSource, queueSourceId, queueSourceName } = get();
+    
+    if (!currentSong) {
+      return;
+    }
+
+    const contextType = (queueSource === 'library' || queueSource === 'playlist') 
+      ? queueSource 
+      : undefined;
+
+    const data = {
+      songId: currentSong.id,
+      position: Math.round(currentTime),
+      contextType,
+      contextId: queueSourceId ?? undefined,
+      contextName: queueSourceName ?? undefined,
+    };
+
+    // Use fetch with keepalive for page unload (allows PUT method unlike sendBeacon)
+    // keepalive ensures request completes even if page is already closing
+    void api.main.player.updateProgress(data, { keepalive: true }).catch((err) => {
+      // Log error but can't handle it during page unload
+      logger.error('Failed to send playback progress with keepalive', err);
+    });
+
+    logger.info('Sent playback progress with keepalive', { 
+      songId: currentSong.id, 
+      position: Math.round(currentTime) 
+    });
   },
   };
 });
+
+// Save state for HMR (development only)
+if (import.meta.env.DEV) {
+  usePlayerStore.subscribe((state) => {
+    setBackupState({
+      currentSong: state.currentSong,
+      queue: state.queue,
+      currentIndex: state.currentIndex,
+      queueSource: state.queueSource,
+      queueSourceId: state.queueSourceId,
+      queueSourceName: state.queueSourceName,
+      isPlaying: state.isPlaying, // Saved for completeness, but always overwritten during restore (read from AudioPlayer)
+      volume: state.volume,
+      isMuted: state.isMuted,
+      repeatMode: state.repeatMode,
+      isShuffled: state.isShuffled,
+      currentTime: state.currentTime,
+      duration: state.duration,
+      hasLoadedPreferences: state.hasLoadedPreferences,
+      hasUserModifiedPreferences: state.hasUserModifiedPreferences,
+    });
+  });
+}
