@@ -84,7 +84,7 @@ podman machine list        # Should show running machine (Windows/macOS)
 # Navigate to project directory
 cd m3w
 
-# Start PostgreSQL and Redis
+# Start PostgreSQL and MinIO
 podman-compose up -d
 
 # Check running containers
