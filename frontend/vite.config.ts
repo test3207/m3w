@@ -107,8 +107,6 @@ export default defineConfig({
         manualChunks: {
           // React core libraries
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          // TanStack Query
-          'query-vendor': ['@tanstack/react-query'],
           // Radix UI components
           'ui-vendor': [
             '@radix-ui/react-alert-dialog',

@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./styles/globals.css";
 
 // Import i18n initialization
@@ -30,28 +29,13 @@ import { InstallPrompt } from "./components/features/pwa/install-prompt";
 import { MobileLayout } from "./components/layouts/mobile-layout";
 import { AuthProvider } from "./components/providers/auth-provider";
 
-// Create QueryClient instance
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1, // Retry failed requests once
-      refetchOnWindowFocus: false, // Don't refetch on window focus by default
-      staleTime: 30000, // Data is fresh for 30 seconds by default
-    },
-    mutations: {
-      retry: 0, // Don't retry mutations
-    },
-  },
-});
-
 // Start background sync service
 syncService.start();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
@@ -120,6 +104,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <InstallPrompt />
         </BrowserRouter>
       </AuthProvider>
-    </QueryClientProvider>
   </React.StrictMode>
 );
