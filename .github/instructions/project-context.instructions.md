@@ -5,7 +5,7 @@
 ### Architecture Overview
 
 **Frontend**: Vite 5 + React 19 + React Router 6
-**Backend**: Hono 4 (Node.js) + Prisma + PostgreSQL + MinIO + Redis
+**Backend**: Hono 4 (Node.js) + Prisma + PostgreSQL + MinIO
 
 The project has been **migrated from Next.js to a separated frontend/backend architecture**:
 - **Frontend** (`/frontend`): Pure SPA using Vite, React Router, and TanStack Query
@@ -112,7 +112,6 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
 ### Planned Initiatives (Upcoming)
 - **Core Product Enhancements**
   - Enhanced user profile management
-  - Redis integration for caching
   - Testing expansion (Playwright end-to-end, coverage targets)
 - **PWA Enhancements**
   - Background sync for offline mutations
@@ -330,8 +329,8 @@ m3w/
 │  ├── Logging (hono/logger + Pino)          │
 │  └── Rate Limiting (Future)                 │
 └─────────────────────────────────────────────┘
-          ↓           ↓           ↓
-    PostgreSQL     Redis      MinIO
+          ↓           ↓
+    PostgreSQL     MinIO
 ```
 
 ### Technology Stack
@@ -357,7 +356,6 @@ m3w/
 - **Framework**: Hono 4 (Node.js)
 - **ORM**: Prisma
 - **Database**: PostgreSQL 16
-- **Cache**: Redis 7
 - **File Storage**: MinIO (S3-compatible)
 - **Authentication**: JWT (jsonwebtoken) with GitHub OAuth
 - **Validation**: Zod
@@ -383,14 +381,13 @@ Local Development:
 - Podman Desktop or Docker Desktop
 - Next.js app (dev mode)
 - PostgreSQL
-- Redis
 - MinIO
 
 Production:
 - Kubernetes deployment
 - Container runtime: containerd
 - Ingress: Nginx or Traefik
-- Stateful services for PostgreSQL, Redis, MinIO
+- Stateful services for PostgreSQL, MinIO
 - Persistent volumes
 - CI/CD via GitHub Actions
 - Container registry: Docker Hub (official images)
@@ -484,7 +481,6 @@ Observability plans include Pino logging, optional Prometheus and Grafana, optio
 ### Scalability Considerations
 - Both frontend and backend are stateless and support horizontal scaling.
 - JWT tokens enable stateless authentication across multiple instances.
-- Redis provides shared caching.
 - Future microservice extraction possible with clear backend separation.
 - Integration points reserved for message queues, search, object storage, email, and upload pipelines.
 

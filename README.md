@@ -1,6 +1,6 @@
 # M3W - Music Player
 
-Production-grade self-hosted music player built with Vite, Hono, PostgreSQL, and Redis.
+Production-grade self-hosted music player built with Vite, Hono, and PostgreSQL.
 
 ## Tech Stack
 
@@ -20,7 +20,6 @@ Production-grade self-hosted music player built with Vite, Hono, PostgreSQL, and
 - **Framework**: Hono 4 (Node.js 25.1.0)
 - **Language**: TypeScript 5
 - **Database**: PostgreSQL 16 (Prisma ORM)
-- **Cache**: Redis 7
 - **Storage**: MinIO (S3-compatible)
 - **Authentication**: JWT with GitHub OAuth
 - **Logging**: Pino
@@ -96,7 +95,7 @@ The setup script will:
 
 - Install dependencies for root, frontend, backend, and shared packages
 - Create `backend/.env` and `frontend/.env` from templates
-- Start PostgreSQL, Redis, and MinIO containers (using Docker Hub images)
+- Start PostgreSQL and MinIO containers (using Docker Hub images)
 - Run database migrations
 - Provide next steps
 
@@ -171,7 +170,6 @@ podman-compose up -d
 This will start:
 
 - PostgreSQL on `localhost:5432`
-- Redis on `localhost:6379`
 - MinIO on `localhost:9000`
 
 ### 4. Run Database Migrations
@@ -358,7 +356,6 @@ All major UI/UX issues have been resolved! ✅
 ### 📋 Backlog
 
 - Enhanced user profile management (edit name, email)
-- Redis integration for caching
 - Testing expansion (Playwright E2E tests, coverage targets)
 - PWA background sync for offline mutations
 - Push notifications for sync status
@@ -521,7 +518,7 @@ docker build -t m3w:local -f docker/Dockerfile .
 
 #### 3. Run Production Container
 
-**Important**: The container must join the `m3w_default` network created by docker-compose to access PostgreSQL, Redis, and MinIO.
+**Important**: The container must join the `m3w_default` network created by docker-compose to access PostgreSQL and MinIO.
 
 ```bash
 # With Podman
@@ -555,7 +552,7 @@ docker rm m3w-prod
 
 **Key Differences in `.env.docker`:**
 
-- Use container service names (`m3w-postgres`, `m3w-redis`, `m3w-minio`) instead of `localhost` when the container joins the compose network
+- Use container service names (`m3w-postgres`, `m3w-minio`) instead of `localhost` when the container joins the compose network
 - Set `NODE_ENV=production`
 - Configure proxy with `host.containers.internal` if needed for external API access (e.g., GitHub OAuth)
 

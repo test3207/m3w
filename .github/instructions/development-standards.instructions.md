@@ -26,10 +26,10 @@
 - Audio streaming uses API proxy pattern (`/api/songs/[songId]/stream`) with Range request support; MinIO is never exposed to clients and remains internal to the backend network.
 - Metadata extraction prioritizes user edits over backend extraction, and backend extraction over frontend extraction.
 - Environment configuration requires separate `.env` files for frontend and backend.
-- Backend environment variables in `backend/.env` (DATABASE_URL, JWT_SECRET, GITHUB_CLIENT_*, MinIO, Redis).
+- Backend environment variables in `backend/.env` (DATABASE_URL, JWT_SECRET, GITHUB_CLIENT_*, MinIO).
 - Frontend environment variables in `frontend/.env` (VITE_API_URL).
 - Container environments use `.env.docker` with `host.containers.internal` to access host services; local development uses `.env` with `localhost`.
-- When the production container joins the docker-compose network (`m3w_default`), use container service names (`m3w-postgres`, `m3w-redis`, `m3w-minio`) instead of `host.containers.internal`.
+- When the production container joins the docker-compose network (`m3w_default`), use container service names (`m3w-postgres`, `m3w-minio`) instead of `host.containers.internal`.
 - Authentication uses JWT tokens with GitHub OAuth; no session database.
 - PWA with offline-first architecture using IndexedDB via Dexie and Service Worker with Workbox.
 - User feedback flows through the toast store defined in `frontend/src/components/ui/use-toast.ts` with a single `<Toaster />` in `frontend/src/main.tsx`.
@@ -75,7 +75,7 @@
 ## Local Production Testing
 - Build production images with `podman build -t m3w:local -f docker/Dockerfile .` or equivalent Docker command.
 - Use `.env.docker` (created from `.env.docker.example`) for container environments.
-- When using docker-compose services, the container must join the `m3w_default` network to access PostgreSQL, Redis, and MinIO via their container names (`m3w-postgres`, `m3w-redis`, `m3w-minio`).
+- When using docker-compose services, the container must join the `m3w_default` network to access PostgreSQL and MinIO via their container names (`m3w-postgres`, `m3w-minio`).
 - Run containers with `podman run -d --name m3w-prod --network m3w_default -p 4000:4000 --env-file backend/.env.docker m3w:local`.
 - For standalone containers without compose, use `host.containers.internal` in `.env.docker` to access host services.
 - Verify builds pass type checking, linting, and produce functional containers before deployment.

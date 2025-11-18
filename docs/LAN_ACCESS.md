@@ -98,7 +98,6 @@ You need to allow the following ports:
 - **4000**: Hono backend API
 - **5432**: PostgreSQL (if you need to access database from other machines)
 - **9000**: MinIO (if direct access is needed)
-- **6379**: Redis (if direct access is needed)
 
 #### Method 1: Using PowerShell (Administrator privileges required)
 

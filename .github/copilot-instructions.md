@@ -11,7 +11,7 @@
 - M3W is a self-hosted music player with separated frontend/backend architecture that prioritizes full library ownership and offline resilience.
 - Core online features complete: multi-library management, cross-library playlists, mobile-first UI, playback state management with HMR persistence.
 - Current focus: Offline experience design - PWA integration, IndexedDB caching, background sync, and graceful degradation.
-- Core stack: Vite 5 + React 19 (frontend), Hono 4 + Node.js (backend), Prisma/PostgreSQL, MinIO, Redis (reserved), shadcn/ui, Tailwind CSS v4, PWA (in progress), Dexie IndexedDB (planned).
+- Core stack: Vite 5 + React 19 (frontend), Hono 4 + Node.js (backend), Prisma/PostgreSQL, MinIO, shadcn/ui, Tailwind CSS v4, PWA (in progress), Dexie IndexedDB (planned).
 - Internationalization: Custom Proxy-based i18n system with full type safety and reactive language switching.
 - Frontend API: Unified service layer with type-safe clients (see project-context for details).
 
@@ -43,7 +43,7 @@
 
 ## Core Context Highlights
 
-- **Architecture**: Separated frontend/backend with Vite SPA frontend and Hono REST API backend, Prisma for PostgreSQL, MinIO for deduplicated audio storage, Redis earmarked for caching.
+- **Architecture**: Separated frontend/backend with Vite SPA frontend and Hono REST API backend, Prisma for PostgreSQL, MinIO for deduplicated audio storage.
 - **Primary domains**: Library management, playlist authoring and ordering, upload deduplication with metadata extraction, offline playback via IndexedDB and Service Worker.
 - **Current phase**: Online features complete (mobile-first UI, multi-library, playlists, player state). Next milestone: Offline experience (PWA, caching, sync).
 

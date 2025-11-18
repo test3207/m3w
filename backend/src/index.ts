@@ -47,7 +47,7 @@ const envVars = Object.entries(process.env)
     // Only show M3W-related and common dev variables
     return (
       key.startsWith('DATABASE_') ||
-      key.startsWith('REDIS_') ||
+
       key.startsWith('MINIO_') ||
       key.startsWith('JWT_') ||
       key.startsWith('GITHUB_') ||

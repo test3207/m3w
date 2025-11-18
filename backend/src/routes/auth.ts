@@ -427,9 +427,10 @@ app.get('/session', authMiddleware, async (c: Context) => {
   }
 });
 
-// POST /api/auth/logout - Logout (optional: could invalidate tokens in Redis)
+// POST /api/auth/logout - Logout
 app.post('/logout', authMiddleware, async (c: Context) => {
-  // TODO: Add token to blacklist in Redis if needed
+  // Note: Using stateless JWT, no server-side session invalidation needed
+  // Client should delete tokens on logout
   return c.json({
     success: true,
     message: 'Logged out successfully',
