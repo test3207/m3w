@@ -3,14 +3,15 @@
 ## Metadata
 
 **Created**: 2025-11-06  
-**Last Updated**: 2025-11-12  
-**Frontend Refactor Status**: Design Phase - User Stories Documented
+**Last Updated**: 2025-11-18  
+**Current Phase**: Offline Experience Design
 
 ## Mission Snapshot
 
 - M3W is a self-hosted music player with separated frontend/backend architecture that prioritizes full library ownership and offline resilience.
-- Immediate roadmap covers upload deduplication, playlist management, offline caching polish, and the first user-testing deployment.
-- Core stack: Vite 5 + React 19 (frontend), Hono 4 + Node.js (backend), Prisma/PostgreSQL, MinIO, Redis (reserved), shadcn/ui, Tailwind CSS v4, PWA (planned), Dexie IndexedDB (planned).
+- Core online features complete: multi-library management, cross-library playlists, mobile-first UI, playback state management with HMR persistence.
+- Current focus: Offline experience design - PWA integration, IndexedDB caching, background sync, and graceful degradation.
+- Core stack: Vite 5 + React 19 (frontend), Hono 4 + Node.js (backend), Prisma/PostgreSQL, MinIO, Redis (reserved), shadcn/ui, Tailwind CSS v4, PWA (in progress), Dexie IndexedDB (planned).
 - Internationalization: Custom Proxy-based i18n system with full type safety and reactive language switching.
 - Frontend API: Unified service layer with type-safe clients (see project-context for details).
 
@@ -28,27 +29,23 @@
 | --- | --- | --- |
 | `.github/instructions/project-context.instructions.md` | `**/*` | Full project status, architecture, and domain context |
 | `.github/instructions/development-standards.instructions.md` | `**/*` | Coding conventions, testing strategy, and workflow agreements |
-| `.github/instructions/server-action-pattern.instructions.md` | `**/*` | API response pattern and usage guidance |
-| `.github/instructions/ui-feedback-workflow.instructions.md` | `**/*` | Toast feedback pipeline and usage guidance |
+| `.github/instructions/api-patterns.instructions.md` | `**/*` | API response pattern and toast feedback workflow |
 | `.github/instructions/i18n-system.instructions.md` | `**/*` | Internationalization architecture and usage patterns |
-| `.github/instructions/frontend-refactor-user-stories.instructions.md` | `frontend/**/*` | User stories and design decisions for frontend refactor (mobile-first) |
-| `.github/instructions/frontend-refactor-api-changes.instructions.md` | `backend/**/*` | Required backend API changes for frontend refactor |
+| `.github/instructions/user-stories.instructions.md` | `**/*` | Complete product requirements (online + offline experience) |
 
 ## How to Use These Instructions
 
 - Need business context, core flows, or roadmap? Open `project-context.instructions.md`.
 - Touching code style, typing, Git flow, or testing? Review `development-standards.instructions.md`.
-- Writing or adjusting an API route? Revisit `server-action-pattern.instructions.md` before and after changes.
-- Emitting user-visible feedback? Follow `ui-feedback-workflow.instructions.md` so all toasts stay consistent.
+- Writing or adjusting an API route or toast feedback? Follow `api-patterns.instructions.md` for consistent response structure and user notifications.
 - Adding or modifying user-facing text? Follow `i18n-system.instructions.md` for proper i18n integration.
-- **Working on frontend refactor?** Review `frontend-refactor-user-stories.instructions.md` for design decisions and user flows.
-- **Implementing backend API changes?** Check `frontend-refactor-api-changes.instructions.md` for required endpoints and schema updates.
+- Understanding product requirements (online or offline)? Check `user-stories.instructions.md` for complete user flows and acceptance criteria.
 
 ## Core Context Highlights
 
 - **Architecture**: Separated frontend/backend with Vite SPA frontend and Hono REST API backend, Prisma for PostgreSQL, MinIO for deduplicated audio storage, Redis earmarked for caching.
 - **Primary domains**: Library management, playlist authoring and ordering, upload deduplication with metadata extraction, offline playback via IndexedDB and Service Worker.
-- **Current phase**: Vite migration complete, development environment operational. Next milestones include PWA integration, richer user profile data, Redis-backed caching, stronger automated testing, and CI/CD rollout.
+- **Current phase**: Online features complete (mobile-first UI, multi-library, playlists, player state). Next milestone: Offline experience (PWA, caching, sync).
 
 ## Working Agreements
 
@@ -64,11 +61,9 @@
 
 - Project context instructions: [project-context.instructions.md](./instructions/project-context.instructions.md)
 - Development standards instructions: [development-standards.instructions.md](./instructions/development-standards.instructions.md)
-- API response pattern: [server-action-pattern.instructions.md](./instructions/server-action-pattern.instructions.md)
-- UI feedback workflow: [ui-feedback-workflow.instructions.md](./instructions/ui-feedback-workflow.instructions.md)
+- API patterns (response + toast): [api-patterns.instructions.md](./instructions/api-patterns.instructions.md)
 - i18n system: [i18n-system.instructions.md](./instructions/i18n-system.instructions.md)
-- Frontend refactor user stories: [frontend-refactor-user-stories.instructions.md](./instructions/frontend-refactor-user-stories.instructions.md)
-- Frontend refactor API changes: [frontend-refactor-api-changes.instructions.md](./instructions/frontend-refactor-api-changes.instructions.md)
+- User stories (online + offline): [user-stories.instructions.md](./instructions/user-stories.instructions.md)
 - Frontend API client architecture: [frontend/src/services/api/README.md](../frontend/src/services/api/README.md)
 - Vite Documentation: <https://vitejs.dev/>
 - React Router Documentation: <https://reactrouter.com/>
@@ -77,9 +72,5 @@
 - Tailwind CSS: <https://tailwindcss.com/docs>
 - TypeScript Handbook: <https://www.typescriptlang.org/docs/>
 
-**Document Version**: v3.1  
-**Last Updated**: 2025-11-12
-- TypeScript Handbook: <https://www.typescriptlang.org/docs/>
-
-**Document Version**: v3.1  
-**Last Updated**: 2025-11-12
+**Document Version**: v4.0  
+**Last Updated**: 2025-11-18
