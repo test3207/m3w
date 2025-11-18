@@ -1,18 +1,33 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { VStack, HStack } from "@/components/ui/stack";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Text } from "@/components/ui/text";
+import { FormDescription } from "@/components/ui/form-description";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/use-toast";
+import { useLibraryStore } from "@/stores/libraryStore";
+import { usePlaylistStore } from "@/stores/playlistStore";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
+import { eventBus, EVENTS } from "@/lib/events";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { api } from "@/services";
 import type { LibraryOption } from "@/types/models";
-import { CheckCircle2, XCircle, Loader2, Music } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Music, LibraryBig } from "lucide-react";
+import { isDefaultLibrary } from "@m3w/shared";
 
 interface UploadSongFormProps {
-  libraries: LibraryOption[];
-  onUploadSuccess?: () => void | Promise<void>;
+  onDrawerClose?: () => void;
 }
 
 interface FileUploadItem {
@@ -23,12 +38,68 @@ interface FileUploadItem {
   songTitle?: string;
 }
 
-export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormProps) {
+export function UploadSongForm({ onDrawerClose }: UploadSongFormProps) {
   const { toast } = useToast();
-  const [libraryId, setLibraryId] = useState<string>(libraries[0]?.id ?? "");
+  const { libraries, fetchLibraries } = useLibraryStore();
+  const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
+  
+  // Compute library options from libraries
+  const libraryOptions: LibraryOption[] = useMemo(() => {
+    return libraries.map((library) => ({
+      id: library.id,
+      name: library.name,
+      description: library.description ?? null,
+      songCount: library._count?.songs ?? 0,
+    }));
+  }, [libraries]);
+
+  // Get default library ID
+  const defaultLibraryId = useMemo(() => {
+    if (libraries.length === 0) return '';
+    const defaultLibrary = libraries.find(isDefaultLibrary);
+    return defaultLibrary?.id || libraries[0].id;
+  }, [libraries]);
+
+  const [libraryId, setLibraryId] = useState<string>('');
   const [files, setFiles] = useState<FileUploadItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  
+  const loading = libraries.length === 0;
+
+  // Fetch libraries on mount
+  useEffect(() => {
+    if (libraries.length === 0) {
+      fetchLibraries();
+    }
+  }, [libraries.length, fetchLibraries]);
+
+  // Set library ID when libraries are loaded
+  useEffect(() => {
+    if (!libraryId && defaultLibraryId) {
+      setLibraryId(defaultLibraryId);
+    }
+  }, [libraryId, defaultLibraryId]);
+
+  const handleUploadSuccess = async () => {
+    logger.info('Upload completed, refreshing data');
+    
+    // Refresh libraries to update song counts
+    await fetchLibraries();
+    
+    // Refresh playlists (in case new songs added)
+    await fetchPlaylists();
+    
+    // Emit event to notify other components
+    eventBus.emit(EVENTS.SONG_UPLOADED);
+    
+    // Close drawer after 2 seconds to let user see success toast
+    if (onDrawerClose) {
+      setTimeout(() => {
+        onDrawerClose();
+      }, 2000);
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files ?? []);
@@ -64,14 +135,9 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
 
     const { file } = item;
 
-    // 1. Calculate file hash
-    logger.info("Calculating file hash...", { fileName: file.name });
+    // Calculate file hash and upload
     const hash = await calculateFileHash(file);
-    logger.info("File hash calculated", { hash, fileName: file.name });
-
-    // 2. Upload to backend (metadata will be extracted automatically)
     const data = await api.main.upload.uploadFile(libraryId, file, hash);
-
     const songTitle = data.song.title || file.name;
 
     // Update status to success
@@ -82,9 +148,6 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
           : f
       )
     );
-
-    console.log('[UploadSongForm] File upload success, set status to success:', { fileName: file.name, songTitle, index });
-    logger.info("File uploaded successfully", { fileName: file.name, songTitle });
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -140,8 +203,6 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
         }
       }
 
-      console.log('[UploadSongForm] Upload complete:', { successCount, errorCount, hasCallback: !!onUploadSuccess });
-
       if (successCount > 0) {
         toast({
           title: I18n.success.title,
@@ -158,10 +219,8 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
       }
 
       // Refresh libraries data after showing toast
-      if (successCount > 0 && onUploadSuccess) {
-        console.log('[UploadSongForm] Calling onUploadSuccess');
-        await onUploadSuccess();
-        console.log('[UploadSongForm] onUploadSuccess completed');
+      if (successCount > 0) {
+        await handleUploadSuccess();
       }
     } finally {
       setUploading(false);
@@ -172,33 +231,69 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
   const successCount = files.filter((f) => f.status === "success").length;
   const errorCount = files.filter((f) => f.status === "error").length;
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="library">{I18n.upload.form.selectLibraryLabel}</Label>
-        <select
-          id="library"
-          value={libraryId}
-          onChange={(event) => setLibraryId(event.target.value)}
-          className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          disabled={uploading}
-        >
-          {libraries.length === 0 ? (
-            <option value="">{I18n.upload.form.libraryOptionFallback}</option>
-          ) : null}
-          {libraries.map((library) => (
-            <option key={library.id} value={library.id}>
-              {library.name} ({library.songCount}
-              {I18n.upload.form.librarySongSuffix})
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-muted-foreground">
-          {I18n.upload.form.selectLibraryPlaceholder}
-        </p>
-      </div>
+  // If only one library is provided, hide the selector
+  const showLibrarySelector = libraryOptions.length > 1;
 
-      <div className="space-y-2">
+  // Loading state
+  if (loading) {
+    return (
+      <VStack gap="md" align="center" justify="center" className="flex-1 py-12">
+        <Text variant="body" color="muted">{I18n.common.loadingLabel}</Text>
+      </VStack>
+    );
+  }
+
+  // Empty state
+  if (libraryOptions.length === 0) {
+    return (
+      <EmptyState
+        icon={<LibraryBig className="h-12 w-12" />}
+        title={I18n.upload.page.emptyState}
+        action={
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (onDrawerClose) onDrawerClose();
+              // Navigation to libraries page handled by parent
+            }}
+          >
+            {I18n.library.manager.form.submitLabel}
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+      <VStack gap="lg" className="flex-1 overflow-y-auto">
+        {showLibrarySelector && (
+        <VStack gap="xs">
+          <Label htmlFor="library">{I18n.upload.form.selectLibraryLabel}</Label>
+          <Select
+            value={libraryId}
+            onValueChange={setLibraryId}
+            disabled={uploading}
+          >
+            <SelectTrigger id="library">
+              <SelectValue placeholder={I18n.upload.form.libraryOptionFallback} />
+            </SelectTrigger>
+            <SelectContent>
+              {libraryOptions.map((library) => (
+                <SelectItem key={library.id} value={library.id}>
+                  {library.name} ({library.songCount}
+                  {I18n.upload.form.librarySongSuffix})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormDescription>
+            {I18n.upload.form.selectLibraryPlaceholder}
+          </FormDescription>
+        </VStack>
+      )}
+
+        <VStack gap="xs">
         <Label htmlFor="file">{I18n.upload.form.selectFilesLabel}</Label>
         <Input
           ref={fileInputRef}
@@ -209,17 +304,17 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
           multiple
           disabled={uploading}
         />
-        <p className="text-xs text-muted-foreground">
+        <FormDescription>
           {I18n.upload.form.multiFileHelper}
-        </p>
-      </div>
+        </FormDescription>
+        </VStack>
 
-      {files.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">
+        {files.length > 0 && (
+        <VStack gap="sm">
+          <HStack justify="between" align="center">
+            <Text variant="h6" className="text-sm font-medium">
               {I18n.upload.form.selectedFilesTitle} ({files.length})
-            </h3>
+            </Text>
             <Button
               type="button"
               variant="ghost"
@@ -229,15 +324,17 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
             >
               {I18n.upload.form.clearAllButton}
             </Button>
-          </div>
+          </HStack>
 
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <VStack gap="xs" className="max-h-96 overflow-y-auto">
             {files.map((item, index) => (
-              <div
+              <HStack
                 key={index}
-                className="flex items-center gap-3 rounded-lg border bg-card p-3 text-sm"
+                gap="sm"
+                align="center"
+                className="rounded-lg border bg-card p-3 text-sm"
               >
-                <div className="shrink-0">
+                <div className="shrink-0" role="img" aria-label="Status icon">
                   {item.status === "pending" && (
                     <Music className="h-5 w-5 text-muted-foreground" />
                   )}
@@ -252,17 +349,17 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
                   )}
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
+                <VStack gap="xs" className="flex-1 min-w-0">
+                  <Text variant="body" className="font-medium truncate">
                     {item.songTitle || item.file.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
+                  </Text>
+                  <Text variant="caption" color="muted">
                     {(item.file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
+                  </Text>
                   {item.error && (
-                    <p className="text-xs text-destructive mt-1">{item.error}</p>
+                    <Text variant="caption" color="destructive">{item.error}</Text>
                   )}
-                </div>
+                </VStack>
 
                 {item.status === "pending" && !uploading && (
                   <Button
@@ -274,28 +371,30 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
                     {I18n.upload.form.removeButton}
                   </Button>
                 )}
-              </div>
+              </HStack>
             ))}
-          </div>
+          </VStack>
 
           {(successCount > 0 || errorCount > 0) && (
-            <div className="flex gap-4 text-sm">
+            <HStack gap="md" className="text-sm">
               {successCount > 0 && (
-                <span className="text-green-600">
+                <Badge variant="default" className="bg-green-600 hover:bg-green-700">
                   ✓ {successCount} {I18n.upload.form.successLabel}
-                </span>
+                </Badge>
               )}
               {errorCount > 0 && (
-                <span className="text-destructive">
+                <Badge variant="destructive">
                   ✗ {errorCount} {I18n.upload.form.errorLabel}
-                </span>
+                </Badge>
               )}
-            </div>
+            </HStack>
           )}
-        </div>
+        </VStack>
       )}
+      </VStack>
 
-      <div className="flex items-center gap-3">
+      {/* Fixed bottom buttons */}
+      <HStack gap="sm" className="mt-4 pt-4 border-t bg-background">
         <Button type="submit" disabled={files.length === 0 || !libraryId || uploading}>
           {uploading
             ? `${I18n.upload.form.uploadingLabel} (${uploadingCount}/${files.length})`
@@ -309,7 +408,7 @@ export function UploadSongForm({ libraries, onUploadSuccess }: UploadSongFormPro
         >
           {I18n.upload.form.resetButton}
         </Button>
-      </div>
+      </HStack>
     </form>
   );
 }
