@@ -74,8 +74,41 @@ import songsRoutes from './routes/songs';
 import uploadRoutes from './routes/upload';
 import playerRoutes from './routes/player';
 
-// Conditionally import Demo Mode modules (only in RC builds)
-const IS_DEMO_BUILD = process.env.BUILD_TARGET === 'rc';
+// ============================================================================
+// Demo Mode - Two-Layer Control
+// ============================================================================
+//
+// Layer 1: Code Inclusion (Compile-time)
+//   Variable: BUILD_TARGET (build) or .env (dev)
+//   Values: 'rc' (include demo code) | 'prod' (exclude demo code)
+//   Effect: Controls whether demo modules are bundled (~8KB difference)
+//   
+//   - Prod build:  BUILD_TARGET=prod  → Tree-shaking removes demo code
+//   - RC build:    BUILD_TARGET=rc    → Demo code included in bundle
+//   - Dev mode:    BUILD_TARGET in .env (default: 'rc')
+//
+// Layer 2: Feature Activation (Runtime)
+//   Variable: DEMO_MODE
+//   Values: 'true' (activate) | 'false' (inactive)
+//   Effect: Controls whether demo features are active
+//   Requirement: Only works when demo code is included (BUILD_TARGET=rc)
+//
+//   Examples:
+//     RC deployment with demo active:   BUILD_TARGET=rc + DEMO_MODE=true
+//     RC deployment with demo inactive: BUILD_TARGET=rc + DEMO_MODE=false
+//     Dev with demo testing:            BUILD_TARGET=rc + DEMO_MODE=true
+//     Dev without demo:                 BUILD_TARGET=prod + DEMO_MODE=* (ignored)
+//
+// ============================================================================
+
+declare const __IS_DEMO_BUILD__: boolean;
+
+// Dev mode: tsx doesn't process tsup's define, fallback to env var
+if (typeof __IS_DEMO_BUILD__ === 'undefined') {
+  const buildTarget = process.env.BUILD_TARGET || 'rc';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).__IS_DEMO_BUILD__ = buildTarget === 'rc';
+}
 
 type DemoModules = {
   storageTracker: {
@@ -91,16 +124,18 @@ type DemoModules = {
   startDemoResetService: () => void;
 };
 
-let demoModules: DemoModules | null = null;
-
-if (IS_DEMO_BUILD) {
+// Separate function for demo initialization (only in RC builds)
+// When __IS_DEMO_BUILD__ = false, this entire function should be tree-shaken
+async function initializeDemoMode(): Promise<DemoModules> {
   logger.info('Demo mode code included (RC build)');
-  // Synchronous import in RC builds (code exists)
-  const storageTrackerModule = await import('./lib/demo/storage-tracker');
-  const middlewareModule = await import('./lib/demo/middleware');
-  const resetServiceModule = await import('./lib/demo/reset-service');
   
-  demoModules = {
+  const [storageTrackerModule, middlewareModule, resetServiceModule] = await Promise.all([
+    import('./lib/demo/storage-tracker'),
+    import('./lib/demo/middleware'),
+    import('./lib/demo/reset-service'),
+  ]);
+  
+  const modules = {
     storageTracker: storageTrackerModule.storageTracker,
     demoStorageCheckMiddleware: middlewareModule.demoStorageCheckMiddleware,
     registerDemoRoutes: middlewareModule.registerDemoRoutes,
@@ -108,8 +143,18 @@ if (IS_DEMO_BUILD) {
   };
   
   // Initialize storage tracker
-  await demoModules.storageTracker.initialize();
+  await modules.storageTracker.initialize();
   logger.info('Demo mode modules loaded');
+  
+  return modules;
+}
+
+// Import demo modules only if built with demo support (RC build)
+let demoModules: DemoModules | null = null;
+
+if (__IS_DEMO_BUILD__) {
+  demoModules = await initializeDemoMode();
+  logger.info('Demo mode modules loaded (RC build)');
 } else {
   logger.info('Demo mode code excluded (Production build)');
 }
@@ -129,11 +174,18 @@ app.use(
   })
 );
 
-// Apply demo middleware if available
-if (demoModules) {
+// Enable demo features if:
+// 1. Demo modules are loaded (RC build), AND
+// 2. DEMO_MODE=true in environment (runtime control)
+const isDemoEnabled = process.env.DEMO_MODE === 'true';
+
+if (demoModules && isDemoEnabled) {
+  logger.info('Demo mode enabled (DEMO_MODE=true)');
   app.use('*', demoModules.demoStorageCheckMiddleware());
   demoModules.registerDemoRoutes(app);
   demoModules.startDemoResetService();
+} else if (demoModules) {
+  logger.info('Demo mode available but disabled (set DEMO_MODE=true to enable)');
 }
 
 // Health check
