@@ -10,7 +10,8 @@
  * Using __VITE_IS_DEMO_BUILD__ ensures proper dead code elimination
  * because it's replaced with a boolean literal during build.
  */
-export const IS_DEMO_BUILD = __VITE_IS_DEMO_BUILD__;
 
-// TypeScript declaration for the injected global
+// TypeScript declaration for the Vite-injected global
 declare const __VITE_IS_DEMO_BUILD__: boolean;
+
+export const IS_DEMO_BUILD = __VITE_IS_DEMO_BUILD__;
