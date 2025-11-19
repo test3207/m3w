@@ -142,6 +142,14 @@ export const userDataRoutes: RouteDefinition[] = [
  * These routes require network connection and never work offline
  */
 export const adminRoutes: RouteDefinition[] = [
+  // Health check
+  {
+    path: '/api/health',
+    method: 'GET',
+    offlineCapable: false,
+    description: 'Backend health check endpoint',
+  },
+
   // Authentication
   {
     path: '/api/auth/login',
@@ -201,7 +209,7 @@ export const adminRoutes: RouteDefinition[] = [
   // Player state (optional backend sync)
   {
     path: '/api/player/progress',
-    method: 'POST',
+    method: 'PUT',
     offlineCapable: false,
     description: 'Sync playback progress to server',
   },

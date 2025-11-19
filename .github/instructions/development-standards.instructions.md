@@ -216,10 +216,11 @@ docker run -d --name m3w-rc --network m3w_default -p 4000:4000 \
   2. **Run local pre-commit checks** (lint/type-check/test/build)
   3. Make commits following Conventional Commits format
   4. Push feature branch to remote
-  5. Create Pull Request with clear description
+  5. Create Pull Request with clear description **in English** (title, body, comments)
   6. **Monitor PR checks using GitHub CLI and MCP** (see below)
   7. Wait for review and approval before merging
 - Follow Conventional Commits (for example `feat:`, `fix:`, `docs:`, `refactor:`, `test:`).
+- **All PR content must be in English** (title, description, comments) for consistency and broader collaboration.
 - Only commit or push when explicitly requested; keep the working state ready for commits at all times.
 
 ## Pull Request Management

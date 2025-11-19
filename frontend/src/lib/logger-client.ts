@@ -22,4 +22,10 @@ export const logger = {
       console.info(`[Client Info] ${message}`, data);
     }
   },
+
+  debug: (message: string, data?: unknown) => {
+    if (typeof window !== 'undefined' && import.meta.env.DEV) {
+      console.debug(`[Client Debug] ${message}`, data);
+    }
+  },
 };

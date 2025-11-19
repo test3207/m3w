@@ -3,25 +3,27 @@
 ## Metadata
 
 **Created**: 2025-11-06  
-**Last Updated**: 2025-11-18  
-**Current Phase**: Offline Experience Design
+**Last Updated**: 2025-11-19  
+**Current Phase**: User Testing & Deployment Preparation
 
 ## Mission Snapshot
 
 - M3W is a self-hosted music player with separated frontend/backend architecture that prioritizes full library ownership and offline resilience.
-- Core online features complete: multi-library management, cross-library playlists, mobile-first UI, playback state management with HMR persistence.
-- Current focus: Offline experience design - PWA integration, IndexedDB caching, background sync, and graceful degradation.
-- Core stack: Vite 5 + React 19 (frontend), Hono 4 + Node.js (backend), Prisma/PostgreSQL, MinIO, shadcn/ui, Tailwind CSS v4, PWA (in progress), Dexie IndexedDB (planned).
+- Core online features complete: multi-library management, cross-library playlists, mobile-first UI, playback state management, PWA integration with offline capabilities.
+- Demo mode complete: RC builds with storage limits, auto-reset, and user-facing banners for stakeholder evaluation.
+- Current focus: User testing with RC builds, deployment preparation, and CI/CD pipeline setup.
+- Core stack: Vite 5 + React 19 (frontend), Hono 4 + Node.js (backend), Prisma/PostgreSQL, MinIO, shadcn/ui, Tailwind CSS v4, PWA with Workbox, Dexie IndexedDB.
 - Internationalization: Custom Proxy-based i18n system with full type safety and reactive language switching.
 - Frontend API: Unified service layer with type-safe clients (see project-context for details).
 
 ## Quick Reference (Hard Rules)
 
-- Communicate with the user in Chinese; keep code, commands, and file contents in English unless existing text dictates otherwise.
+- Communicate with the user in Chinese; keep code, commands, file contents, and **Pull Requests** in English unless existing text dictates otherwise.
 - Prefer built-in VS Code tools; when commands are unavoidable, use Windows PowerShell syntax.
 - Default to ASCII output; add concise English code comments only for non-obvious logic.
 - Update the relevant instruction immediately after any confirmed technical decision or process change.
 - Use Conventional Commit messages and only commit/push when explicitly requested by the user.
+- **DO NOT create new documentation or test files without explicit user approval**. New content should be integrated into existing documents rather than creating scattered files.
 
 ## Instruction Index
 
@@ -45,7 +47,7 @@
 
 - **Architecture**: Separated frontend/backend with Vite SPA frontend and Hono REST API backend, Prisma for PostgreSQL, MinIO for deduplicated audio storage.
 - **Primary domains**: Library management, playlist authoring and ordering, upload deduplication with metadata extraction, offline playback via IndexedDB and Service Worker.
-- **Current phase**: Online features complete (mobile-first UI, multi-library, playlists, player state). Next milestone: Offline experience (PWA, caching, sync).
+- **Current phase**: Online and offline features complete. Demo mode deployed for stakeholder testing. Next milestone: Production deployment and CI/CD automation.
 
 ## Working Agreements
 
@@ -72,5 +74,5 @@
 - Tailwind CSS: <https://tailwindcss.com/docs>
 - TypeScript Handbook: <https://www.typescriptlang.org/docs/>
 
-**Document Version**: v4.0  
-**Last Updated**: 2025-11-18
+**Document Version**: v4.1  
+**Last Updated**: 2025-11-19
