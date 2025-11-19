@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Heart,
   ListMusic,
+  Music,
   Play,
   Pause,
   SkipBack,
@@ -113,7 +114,7 @@ export function FullPlayer() {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-muted">
-              <span className="text-4xl text-muted-foreground">♪</span>
+              <Music className="h-20 w-20 text-muted-foreground/30" />
             </div>
           )}
         </div>

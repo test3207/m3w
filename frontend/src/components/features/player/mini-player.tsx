@@ -3,7 +3,7 @@
  * Compact player displayed above bottom navigation
  */
 
-import { Play, Pause, SkipForward } from 'lucide-react';
+import { Play, Pause, SkipForward, Music } from 'lucide-react';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useUIStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
@@ -32,8 +32,8 @@ export function MiniPlayer() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-              No Cover
+            <div className="flex h-full w-full items-center justify-center bg-muted">
+              <Music className="h-6 w-6 text-muted-foreground/30" />
             </div>
           )}
         </div>
