@@ -124,9 +124,10 @@ type DemoModules = {
   startDemoResetService: () => void;
 };
 
-// Separate function for demo initialization (only in RC builds)
-// When __IS_DEMO_BUILD__ = false, this entire function should be tree-shaken
-async function initializeDemoMode(): Promise<DemoModules> {
+// Import demo modules only if built with demo support (RC build)
+let demoModules: DemoModules | null = null;
+
+if (__IS_DEMO_BUILD__) {
   logger.info('Demo mode code included (RC build)');
   
   const [storageTrackerModule, middlewareModule, resetServiceModule] = await Promise.all([
@@ -135,7 +136,7 @@ async function initializeDemoMode(): Promise<DemoModules> {
     import('./lib/demo/reset-service'),
   ]);
   
-  const modules = {
+  demoModules = {
     storageTracker: storageTrackerModule.storageTracker,
     demoStorageCheckMiddleware: middlewareModule.demoStorageCheckMiddleware,
     registerDemoRoutes: middlewareModule.registerDemoRoutes,
@@ -143,18 +144,8 @@ async function initializeDemoMode(): Promise<DemoModules> {
   };
   
   // Initialize storage tracker
-  await modules.storageTracker.initialize();
+  await demoModules.storageTracker.initialize();
   logger.info('Demo mode modules loaded');
-  
-  return modules;
-}
-
-// Import demo modules only if built with demo support (RC build)
-let demoModules: DemoModules | null = null;
-
-if (__IS_DEMO_BUILD__) {
-  demoModules = await initializeDemoMode();
-  logger.info('Demo mode modules loaded (RC build)');
 } else {
   logger.info('Demo mode code excluded (Production build)');
 }
