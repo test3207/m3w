@@ -361,6 +361,7 @@ app.get('/:id/songs', async (c: Context) => {
       .map((song) => ({
         ...song,
         libraryName: song.library.name,
+        coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
       }));
 
     return c.json({

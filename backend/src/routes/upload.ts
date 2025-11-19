@@ -12,6 +12,7 @@ import { getMinioClient } from '../lib/minio-client';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
+import { resolveCoverUrl } from '../lib/cover-url-helper';
 
 // Compile-time constant injected by tsup for tree-shaking
 declare const __IS_DEMO_BUILD__: boolean;
@@ -319,7 +320,10 @@ app.post('/', async (c: Context) => {
     return c.json({
       success: true,
       data: {
-        song,
+        song: {
+          ...song,
+          coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
+        },
         file: fileRecord,
         isNewFile,
       },
