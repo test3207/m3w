@@ -174,3 +174,12 @@ export interface PaginatedResponse<T> {
   limit: number;
   totalPages: number;
 }
+
+// Demo Mode types
+export interface StorageUsageInfo {
+  used: number;
+  limit: number;
+  usedFormatted: string;
+  limitFormatted: string;
+  percentage: string;
+}

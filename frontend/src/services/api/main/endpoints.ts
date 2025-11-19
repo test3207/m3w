@@ -52,4 +52,8 @@ export const MAIN_API_ENDPOINTS = {
     progress: '/api/player/progress',
     preferences: '/api/player/preferences',
   },
+  // Demo
+  demo: {
+    storage: '/api/demo/storage',
+  },
 } as const;

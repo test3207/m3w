@@ -34,6 +34,82 @@
 - Authentication uses JWT tokens with GitHub OAuth; no session database.
 - PWA with offline-first architecture using IndexedDB via Dexie and Service Worker with Workbox.
 - User feedback flows through the toast store defined in `frontend/src/components/ui/use-toast.ts` with a single `<Toaster />` in `frontend/src/main.tsx`.
+- **Demo Mode**: Compile-time controlled via `BUILD_TARGET=rc` (includes code) or `BUILD_TARGET=prod` (tree-shaken), runtime enabled via `DEMO_MODE=true` in backend `.env`; provides storage limits, hourly reset (optional), and user-facing banner with free music links.
+
+## UI Component Standards & Accessibility (a11y)
+
+### Component Usage Requirements
+- **NEVER use raw HTML elements** (`<div>`, `<span>`, `<button>`) for UI construction.
+- **ALWAYS use component library** components from `frontend/src/components/ui/` or create reusable components when needed.
+- **Rationale**: Ensures consistent styling, built-in a11y support, and maintainable codebase.
+
+### Available UI Components
+- **Layout**: `Stack` (flex layouts with gap/align/justify), `Separator` (semantic dividers)
+- **Typography**: `Text` (semantic headings/body with auto-mapping to h1-h6/p/span)
+- **Interactive**: `Button`, `Dialog`, `Sheet`, `DropdownMenu`, `Select`
+- **Display**: `Badge`, `Card`, `Avatar`, `EmptyState`
+- **Forms**: `Input`, `Textarea`, `Label`, `FormDescription`
+- **Feedback**: `toast` (via `useToast` hook), `PageLoader`
+- **Lists**: `ListItem` for consistent list styling
+
+### Accessibility Requirements
+1. **Semantic HTML**:
+   - Use `<nav>`, `<aside>`, `<main>`, `<article>`, `<section>` for structural elements
+   - Use `<ul>`/`<li>` for lists (not div stacks)
+   - Use `<button>` for clickable actions (not `<div onClick>`)
+   - Use `<a>` for navigation links with proper `href`
+
+2. **ARIA Attributes**:
+   - Add `role` when semantic HTML is insufficient (e.g., `role="banner"`)
+   - Use `aria-label` for elements without visible text
+   - Use `aria-hidden="true"` for decorative elements (icons, separators)
+   - Provide `aria-describedby` for complex interactions
+
+3. **Keyboard Navigation**:
+   - All interactive elements must be keyboard accessible
+   - Add visible focus states: `focus:ring-2 focus:ring-primary focus:ring-offset-2`
+   - Maintain logical tab order
+   - Support Escape key for closing modals/drawers
+
+4. **Screen Reader Support**:
+   - Provide text alternatives for non-text content
+   - Use `visually-hidden` class for screen-reader-only text when needed
+   - Announce dynamic content changes with `aria-live` when appropriate
+
+5. **Color & Contrast**:
+   - Ensure WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text)
+   - Don't rely solely on color to convey information
+   - Use Tailwind's semantic color tokens (`text-foreground`, `bg-muted`, etc.)
+
+### Example: Good vs Bad
+
+❌ **Bad** (raw elements, no a11y):
+```tsx
+<div className="flex gap-2">
+  <div onClick={handleClick}>Click me</div>
+  <div>|</div>
+  <div className="flex gap-1">
+    <a href="#">Link 1</a>
+    <span>·</span>
+    <a href="#">Link 2</a>
+  </div>
+</div>
+```
+
+✅ **Good** (components, semantic HTML, a11y):
+```tsx
+<Stack direction="horizontal" gap="sm" align="center">
+  <Button onClick={handleClick}>Click me</Button>
+  <Separator orientation="vertical" className="h-4" aria-hidden="true" />
+  <nav aria-label="Quick links">
+    <ul className="flex gap-1 list-none">
+      <li><a href="#link1" className="focus:ring-2 focus:ring-primary">Link 1</a></li>
+      <li aria-hidden="true">·</li>
+      <li><a href="#link2" className="focus:ring-2 focus:ring-primary">Link 2</a></li>
+    </ul>
+  </nav>
+</Stack>
+```
 
 ## TypeScript Standards
 - `strict: true` must remain enabled.

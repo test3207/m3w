@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 export default defineConfig({
+  define: {
+    // Inject compile-time boolean constant for tree-shaking
+    // When BUILD_TARGET=prod, this becomes literal `false` and dead code is eliminated
+    '__VITE_IS_DEMO_BUILD__': JSON.stringify((process.env.BUILD_TARGET || 'prod') === 'rc'),
+  },
   plugins: [
     react(),
     VitePWA({

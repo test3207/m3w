@@ -40,6 +40,7 @@
     "@m3w/shared": "file:./shared"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0"
   }
 }

@@ -80,6 +80,15 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Playback progress persistence (resume from last position)
   - Auto-save progress with 2-second debounce
   - Full queue restoration from context (library/playlist)
+- **Demo Mode** (2025-11-18)
+  - Compile-time control via BUILD_TARGET environment variable (rc/prod)
+  - Runtime toggle via DEMO_MODE backend environment variable
+  - Storage limit enforcement (5GB default, configurable)
+  - Hourly data reset with cron scheduler (optional)
+  - User-facing banner with storage usage and free music resource links
+  - Frontend API detection pattern (no frontend env vars needed)
+  - Complete code tree-shaking in production builds
+  - Accessible banner component using Stack, Text, Separator primitives
 
 ### Active Initiatives (In Progress)
 - **Demo & Evaluation**

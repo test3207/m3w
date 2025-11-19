@@ -10,6 +10,7 @@ import { BottomNavigation } from '@/components/features/navigation/bottom-naviga
 import { MiniPlayer, FullPlayer, PlayQueueDrawer } from '@/components/features/player';
 import { FloatingActionButton } from '@/components/features/navigation/floating-action-button';
 import { UploadDrawer } from '@/components/features/upload/upload-drawer';
+import { DemoBanner } from '@/components/features/demo/DemoBanner';
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -67,6 +68,9 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
+      {/* Demo Banner (if enabled) */}
+      <DemoBanner />
+
       {/* Top Header with status indicators (56px) */}
       <MobileHeader />
 

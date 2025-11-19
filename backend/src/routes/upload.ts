@@ -13,6 +13,9 @@ import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 
+// Compile-time constant injected by tsup for tree-shaking
+declare const __IS_DEMO_BUILD__: boolean;
+
 const app = new Hono();
 
 // Apply auth middleware to all routes
@@ -97,6 +100,22 @@ app.post('/', async (c: Context) => {
     if (!fileRecord) {
       isNewFile = true;
 
+      // Check storage limit before processing (Demo mode only)
+      if (__IS_DEMO_BUILD__) {
+        try {
+          const { storageTracker } = await import('../lib/demo/storage-tracker');
+          if (storageTracker.enabled && !storageTracker.canUpload(file.size)) {
+            return c.json({
+              success: false,
+              error: 'Storage limit reached (5GB). Please wait for next reset.',
+            }, 403);
+          }
+        } catch {
+          // Demo modules not available, continue normally
+          logger.debug('Demo modules not available');
+        }
+      }
+
       // 5. Extract metadata using music-metadata
       let metadata: {
         duration?: number;
@@ -168,6 +187,19 @@ app.post('/', async (c: Context) => {
       });
 
       logger.info({ fileId: fileRecord.id }, 'File record created');
+      
+      // Increment storage usage (Demo mode only)
+      if (__IS_DEMO_BUILD__) {
+        try {
+          const { storageTracker } = await import('../lib/demo/storage-tracker');
+          if (storageTracker.enabled) {
+            storageTracker.incrementUsage(file.size);
+          }
+        } catch {
+          // Demo modules not available, continue normally
+          logger.debug('Demo modules not available for tracking');
+        }
+      }
     } else {
       logger.info({ fileId: fileRecord.id }, 'File already exists, reusing');
     }

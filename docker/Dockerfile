@@ -1,5 +1,5 @@
 # Backend Production Dockerfile (Hono API)
-FROM node:25.1.0-alpine AS base
+FROM node:25.2.1-alpine AS base
 
 # Install dependencies
 FROM base AS deps
@@ -24,6 +24,11 @@ RUN cd shared && npm run build
 # Build backend
 FROM base AS builder
 WORKDIR /app
+
+# Build target argument (rc or prod)
+ARG BUILD_TARGET=prod
+ENV BUILD_TARGET=${BUILD_TARGET}
+
 COPY --from=deps /app/backend/node_modules ./backend/node_modules
 COPY --from=shared-builder /app/shared ./shared
 COPY backend ./backend
@@ -31,8 +36,8 @@ COPY backend ./backend
 # Generate Prisma Client
 RUN cd backend && npx prisma generate
 
-# Build backend
-RUN cd backend && npm run build
+# Build backend with specified target
+RUN cd backend && npm run build:${BUILD_TARGET}
 
 # Production image
 FROM base AS runner

@@ -558,6 +558,85 @@ docker rm m3w-prod
 
 See `.github/copilot-instructions.md` for architecture details and deployment strategy.
 
+## Demo Mode
+
+M3W includes an optional **Demo Mode** for RC (release candidate) builds that provides:
+
+- **Storage Limit**: 5GB maximum (configurable)
+- **Auto Reset**: Hourly data reset (optional)
+- **User Banner**: Visible warning with storage usage and free music links
+
+### Use Cases
+
+- **Stakeholder Testing**: Let users try the app without data liability
+- **Public Demo**: Provide a risk-free trial environment
+- **Development Testing**: Test reset/cleanup workflows
+
+### Configuration
+
+Demo mode is **compile-time controlled** and **runtime configured**:
+
+#### 1. Build Target
+
+```bash
+# RC Build (includes demo code, but disabled by default)
+BUILD_TARGET=rc npm run build
+
+# Production Build (demo code completely removed via tree-shaking)
+BUILD_TARGET=prod npm run build  # or just: npm run build
+```
+
+#### 2. Runtime Configuration (RC builds only)
+
+```bash
+# backend/.env or .env.docker
+DEMO_MODE=true                     # Enable demo features (banner + storage limit)
+DEMO_STORAGE_LIMIT=5368709120      # 5GB in bytes
+DEMO_RESET_ENABLED=true            # Enable hourly reset (⚠️ DESTRUCTIVE)
+```
+
+#### 3. Docker Example
+
+```bash
+# Build RC image
+BUILD_TARGET=rc docker build -t m3w:rc .
+
+# Run with demo features enabled
+docker run -p 4000:4000 \
+  -e DEMO_MODE=true \
+  -e DEMO_STORAGE_LIMIT=5368709120 \
+  -e DEMO_RESET_ENABLED=true \
+  m3w:rc
+```
+
+### Behavior
+
+**When Enabled:**
+
+- Shows warning banner with storage usage
+- Blocks uploads when 5GB limit reached
+- Resets all data (including users) every hour at :00
+- Returns 503 during reset (typically <1 minute)
+- Provides links to free music resources (Free Music Archive, Musopen, ccMixter)
+
+**When Disabled (default):**
+
+- No banner, no restrictions
+- Works exactly like production build
+
+**In Production Builds:**
+
+- Demo code does not exist in the bundle
+- Environment variables have no effect
+- Zero runtime overhead
+
+### Security
+
+- ✅ RC builds default to demo **disabled**
+- ✅ Production builds cannot enable demo (code removed)
+- ✅ Clear separation prevents accidental production data loss
+- ✅ Reset failures do not rollback (retry next hour)
+
 ## Additional Documentation
 
 - [Frontend API Client Architecture](./frontend/src/services/api/README.md) - Layered API client design and usage patterns
