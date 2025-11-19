@@ -80,7 +80,7 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Playback progress persistence (resume from last position)
   - Auto-save progress with 2-second debounce
   - Full queue restoration from context (library/playlist)
-- **Demo Mode** (2025-11-18)
+- **Demo Mode** ✅ **COMPLETED**
   - Compile-time control via BUILD_TARGET environment variable (rc/prod)
   - Runtime toggle via DEMO_MODE backend environment variable
   - Storage limit enforcement (5GB default, configurable)
@@ -89,11 +89,12 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Frontend API detection pattern (no frontend env vars needed)
   - Complete code tree-shaking in production builds
   - Accessible banner component using Stack, Text, Separator primitives
+  - Local development and Docker deployment support
 
 ### Active Initiatives (In Progress)
-- **Demo & Evaluation**
-  - User testing and first deployment
-  - Read-only demo environment so stakeholders can trial the app without data liability
+- **User Testing & Evaluation**
+  - Ongoing user testing
+  - Stakeholder feedback collection
 - **Deployment Pathfinding**
   - Lightweight deployment path (GitHub Actions → Aliyun/Azure) mirroring the local setup
 - **Delivery & Infrastructure**

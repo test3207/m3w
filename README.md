@@ -340,6 +340,7 @@ m3w/
 - Settings page with user profile and logout
 - Type system unification (using @m3w/shared)
 - PWA integration with offline capabilities
+- Demo mode (local dev and Docker deployment support)
 
 ### 🔧 Known Issues & Follow-up Tasks
 
@@ -352,6 +353,13 @@ All major UI/UX issues have been resolved! ✅
 - ✅ "Now Playing" page removed (simplified to 3-tab navigation)
 - ✅ Full-screen player redesigned (anchored controls, text labels)
 - ✅ Visual indicator for currently playing song in playlists
+
+### 📋 Current Focus
+
+- User testing (ongoing)
+- Stakeholder feedback collection
+- Deployment preparation (CI/CD pipeline)
+- Production environment setup
 
 ### 📋 Backlog
 

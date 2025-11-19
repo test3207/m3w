@@ -198,8 +198,8 @@ if (demoModules && isDemoEnabled) {
   logger.info('Demo mode available but disabled (set DEMO_MODE=true to enable)');
 }
 
-// Health check
-app.get('/health', (c) => {
+// Health check endpoint for frontend network detection
+app.get('/api/health', (c) => {
   return c.json({
     status: 'ok',
     timestamp: new Date().toISOString(),

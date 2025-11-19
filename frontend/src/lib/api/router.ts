@@ -14,11 +14,65 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 // Track backend reachability
 let isBackendReachable = true;
+let healthCheckInterval: NodeJS.Timeout | null = null;
+
+// Health check function - ping backend to detect recovery
+async function checkBackendHealth(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+    
+    const response = await fetch(`${API_BASE_URL}/api/health`, {
+      method: 'GET',
+      credentials: 'include',
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Start health check polling (only when backend is unreachable)
+function startHealthCheck() {
+  if (healthCheckInterval) return;
+  
+  logger.info('Starting backend health check polling');
+  healthCheckInterval = setInterval(async () => {
+    if (!isBackendReachable) {
+      logger.debug('Checking backend health...');
+      const isHealthy = await checkBackendHealth();
+      if (isHealthy) {
+        logger.info('Backend recovered, stopping health checks');
+        emitNetworkStatus(true);
+        stopHealthCheck();
+      }
+    }
+  }, 5000); // Check every 5 seconds
+}
+
+// Stop health check polling
+function stopHealthCheck() {
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+    logger.info('Stopped backend health check polling');
+  }
+}
 
 // Helper to emit network status events
 function emitNetworkStatus(isReachable: boolean) {
   if (isReachable !== isBackendReachable) {
     isBackendReachable = isReachable;
+    
+    if (!isReachable) {
+      startHealthCheck(); // Start polling when backend becomes unreachable
+    } else {
+      stopHealthCheck(); // Stop polling when backend recovers
+    }
+    
     window.dispatchEvent(new CustomEvent(isReachable ? 'api-success' : 'api-error'));
     logger.info('Backend reachability changed', { isReachable });
   }
