@@ -5,8 +5,9 @@ import path from 'path';
 
 export default defineConfig({
   define: {
-    // Expose BUILD_TARGET as compile-time constant for tree-shaking
-    'import.meta.env.VITE_BUILD_TARGET': JSON.stringify(process.env.BUILD_TARGET || 'prod'),
+    // Inject compile-time boolean constant for tree-shaking
+    // When BUILD_TARGET=prod, this becomes literal `false` and dead code is eliminated
+    '__VITE_IS_DEMO_BUILD__': JSON.stringify((process.env.BUILD_TARGET || 'prod') === 'rc'),
   },
   plugins: [
     react(),

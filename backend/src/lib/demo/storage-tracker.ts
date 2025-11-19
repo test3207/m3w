@@ -2,7 +2,7 @@
  * Demo Mode - Storage Tracker
  * 
  * Tracks storage usage in memory for demo environments.
- * Only active when DEMO_STORAGE_LIMIT_ENABLED=true.
+ * Only active when DEMO_MODE=true.
  */
 
 import { prisma } from '../prisma';
