@@ -18,11 +18,12 @@
 
 ## Quick Reference (Hard Rules)
 
-- Communicate with the user in Chinese; keep code, commands, and file contents in English unless existing text dictates otherwise.
+- Communicate with the user in Chinese; keep code, commands, file contents, and **Pull Requests** in English unless existing text dictates otherwise.
 - Prefer built-in VS Code tools; when commands are unavoidable, use Windows PowerShell syntax.
 - Default to ASCII output; add concise English code comments only for non-obvious logic.
 - Update the relevant instruction immediately after any confirmed technical decision or process change.
 - Use Conventional Commit messages and only commit/push when explicitly requested by the user.
+- **DO NOT create new documentation or test files without explicit user approval**. New content should be integrated into existing documents rather than creating scattered files.
 
 ## Instruction Index
 
