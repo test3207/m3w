@@ -136,18 +136,156 @@
 - Constants use UPPER_SNAKE_CASE.
 - Files use kebab-case for routes and PascalCase for components.
 
+## Pre-Commit Local Testing
+
+Before committing code, run the following checks to catch issues early:
+
+### Required Checks (Always Run)
+```bash
+# 1. Lint check
+npm run lint
+
+# 2. Type check (no emit)
+npm run type-check
+
+# 3. Run tests
+npm test
+
+# 4. Build verification
+npm run build
+```
+
+### When to Run Docker Image Testing
+
+Run local Docker image verification when changes affect:
+- Backend API routes or services
+- Dockerfile or build configuration
+- Environment variables or configuration files
+- Database schema (Prisma migrations)
+- Build scripts or dependencies
+
+**Docker Build Test Workflow:**
+```bash
+# 1. Build production image
+docker build -t m3w:test -f docker/Dockerfile --build-arg BUILD_TARGET=prod .
+
+# 2. Ensure services are running
+docker-compose up -d
+
+# 3. Create backend/.env.docker (if not exists)
+# Key differences from .env:
+#   DATABASE_URL=postgresql://postgres:postgres@m3w-postgres:5432/m3w
+#   MINIO_ENDPOINT=m3w-minio
+
+# 4. Run container in docker-compose network
+docker run -d \
+  --name m3w-test \
+  --network m3w_default \
+  -p 4000:4000 \
+  --env-file backend/.env.docker \
+  m3w:test
+
+# 5. Run migrations
+docker exec m3w-test npx prisma migrate deploy
+
+# 6. Smoke tests
+curl http://localhost:4000/api/auth/me  # Should return 401
+docker logs m3w-test | grep -i error     # Check for errors
+
+# 7. Functional test (optional)
+# - Start frontend: cd frontend && npm run dev
+# - Test sign-in, upload, playback flows
+
+# 8. Cleanup
+docker stop m3w-test && docker rm m3w-test && docker rmi m3w:test
+```
+
+**For RC builds** (with demo mode):
+```bash
+docker build -t m3w:rc -f docker/Dockerfile --build-arg BUILD_TARGET=rc .
+docker run -d --name m3w-rc --network m3w_default -p 4000:4000 \
+  --env-file backend/.env.docker -e DEMO_MODE=true m3w:rc
+```
+
 ## Git Workflow
 - Branch strategy: `main` for production, `develop` for integration, `feature/*` for new work.
 - **NEVER push directly to `main` branch**. Always create a feature branch and submit a Pull Request.
 - Feature branch naming: `feature/<description>`, `fix/<description>`, `refactor/<description>`.
 - PR workflow:
   1. Create feature branch from `main` or `develop`
-  2. Make commits following Conventional Commits format
-  3. Push feature branch to remote
-  4. Create Pull Request with clear description
-  5. Wait for review and approval before merging
+  2. **Run local pre-commit checks** (lint/type-check/test/build)
+  3. Make commits following Conventional Commits format
+  4. Push feature branch to remote
+  5. Create Pull Request with clear description
+  6. **Monitor PR checks using GitHub CLI and MCP** (see below)
+  7. Wait for review and approval before merging
 - Follow Conventional Commits (for example `feat:`, `fix:`, `docs:`, `refactor:`, `test:`).
 - Only commit or push when explicitly requested; keep the working state ready for commits at all times.
+
+## Pull Request Management
+
+### Monitoring PR Checks
+
+Use GitHub CLI (`gh`) and MCP tools to monitor CI status:
+
+```bash
+# Check PR status (use PR number)
+gh pr checks 43
+
+# Expected output format:
+# ✓  PR Check/Build & Test
+# ✓  PR Check/Code Quality
+# ✓  PR Check/Docker Build Validation
+# ✓  PR Check/PR Check Summary
+```
+
+**Using MCP Tools:**
+```typescript
+// Read PR status
+mcp_github_pull_request_read({
+  method: 'get_status',
+  owner: 'test3207',
+  repo: 'm3w',
+  pullNumber: 43
+})
+
+// Merge when all checks pass
+mcp_github_merge_pull_request({
+  owner: 'test3207',
+  repo: 'm3w',
+  pullNumber: 43,
+  merge_method: 'squash'
+})
+```
+
+### PR Check Workflow
+
+1. **Create PR**: Use MCP `mcp_github_create_pull_request`
+2. **Wait for CI**: Checks typically take 2-3 minutes
+3. **Monitor Status**: Use `gh pr checks <number>` or MCP `pull_request_read`
+4. **Address Failures**: 
+   - Lint errors: Fix and push to same branch
+   - Type errors: Run `npm run type-check` locally first
+   - Test failures: Run `npm test` locally to reproduce
+   - Build failures: Run `npm run build` locally
+5. **Merge**: Use MCP `mcp_github_merge_pull_request` when green
+6. **Cleanup**: Delete local and remote branches after merge
+
+### Required PR Checks
+
+All PRs must pass these automated checks:
+- **Code Quality**: ESLint for frontend and backend
+- **Build & Test**: Vitest unit tests for frontend and backend
+- **Docker Build Validation**: Production image builds successfully
+- **TypeScript**: No type errors in strict mode
+
+### Best Practices
+
+- **Run checks locally first**: Don't rely on CI to catch basic errors
+- **Use MCP + gh CLI**: Automate PR creation and monitoring
+- **Squash merge**: Keep main branch history clean
+- **Delete branches**: Clean up after merge to avoid clutter
+- **Close linked issues**: Use `Closes #XX` in commit message
 
 ## Local Production Testing
 - Build production images with `podman build -t m3w:local -f docker/Dockerfile .` or equivalent Docker command.
