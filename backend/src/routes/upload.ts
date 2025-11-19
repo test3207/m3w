@@ -187,8 +187,7 @@ app.post('/', async (c: Context) => {
       logger.info({ fileId: fileRecord.id }, 'File record created');
       
       // Increment storage usage (Demo mode only)
-      const IS_DEMO_BUILD_TRACK = process.env.BUILD_TARGET === 'rc';
-      if (IS_DEMO_BUILD_TRACK) {
+      if (IS_DEMO_BUILD) {
         try {
           const { storageTracker } = await import('../lib/demo/storage-tracker');
           if (storageTracker.enabled) {

@@ -9,4 +9,3 @@ export * from './upload';
 export * from './player';
 export * from './auth';
 export * from './demo';
-export * from './demo';

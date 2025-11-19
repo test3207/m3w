@@ -96,7 +96,7 @@ class StorageTracker {
       limit: this.limit,
       usedFormatted: formatBytes(this.currentUsage),
       limitFormatted: formatBytes(this.limit),
-      percentage: ((this.currentUsage / this.limit) * 100).toFixed(1)
+      percentage: (this.limit > 0 ? ((this.currentUsage / this.limit) * 100).toFixed(1) : '0.0')
     };
   }
 

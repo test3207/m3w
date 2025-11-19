@@ -38,8 +38,8 @@ export function demoStorageCheckMiddleware() {
     // Check if system is resetting
     if (isResetting) {
       return c.json({
-        status: 'error',
-        message: 'System is resetting, please try again later',
+        success: false,
+        error: 'System is resetting, please try again later',
       }, 503);
     }
 
