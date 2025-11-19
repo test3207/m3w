@@ -124,6 +124,25 @@ type DemoModules = {
   startDemoResetService: () => void;
 };
 
+// ============================================================================
+// ⚠️ CRITICAL: Tree-shaking Requirements
+// ============================================================================
+// 
+// The demo initialization code MUST stay inline within the if (__IS_DEMO_BUILD__) block.
+// DO NOT extract it into a separate function!
+//
+// ❌ BAD (breaks tree-shaking):
+//   async function initDemo() { /* demo code */ }
+//   if (__IS_DEMO_BUILD__) { await initDemo(); }
+//   // Function definition remains in PROD build even when if-block is removed
+//
+// ✅ GOOD (enables tree-shaking):
+//   if (__IS_DEMO_BUILD__) { /* demo code inline */ }
+//   // Entire block eliminated in PROD build (0 demo refs, -8.5KB)
+//
+// Verified: PROD 0 refs | RC 16 refs | Diff +8.5KB (+11.73%)
+// ============================================================================
+
 // Import demo modules only if built with demo support (RC build)
 let demoModules: DemoModules | null = null;
 
