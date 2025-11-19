@@ -310,8 +310,7 @@ export default function LibraryDetailPage() {
                 {/* Duration */}
                 {song.file?.duration && (
                   <div className="shrink-0 text-sm text-muted-foreground">
-                    {Math.floor(song.file.duration / 60)}:
-                    {(song.file.duration % 60).toString().padStart(2, "0")}
+                    {formatDuration(song.file.duration)}
                   </div>
                 )}
               </div>

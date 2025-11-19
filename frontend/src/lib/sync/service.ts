@@ -48,6 +48,19 @@ export class SyncService {
    * Manually trigger sync
    */
   async sync(): Promise<void> {
+    // Check if user is guest
+    const authStore = localStorage.getItem('auth-storage');
+    if (authStore) {
+      try {
+        const { state } = JSON.parse(authStore);
+        if (state?.isGuest) {
+          return; // Do not sync in guest mode
+        }
+      } catch {
+        // Ignore parse error
+      }
+    }
+
     if (this.isSyncing || !navigator.onLine) {
       return;
     }

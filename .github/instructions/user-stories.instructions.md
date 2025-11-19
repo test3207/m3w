@@ -298,207 +298,129 @@ Functionality integrated into Full Player actions
 
 ---
 
-## Part 2: Offline Experience (🎯 Current Focus)
+## Part 2: Standalone Offline Experience (Phase 1 Design)
 
-### Design Goals
+**Concept**: A fully functional local music player that requires **zero** server interaction. This is the "Guest Mode" or "Local Mode".
 
-1. **Progressive Enhancement**: App works offline with gracefully degraded features
-2. **Transparent Caching**: Users don't need to manually "download" songs
-3. **Automatic Sync**: Offline mutations sync automatically when connection restored
-4. **Clear Feedback**: UI always shows network/sync status
+### Story 6: Guest Entry (Zero Friction)
 
----
-
-### Story 6: Automatic Offline Caching
-
-**Goal**: Songs are automatically cached for offline playback without user intervention
+**Goal**: User opens the app and starts using it immediately without an account.
 
 **Flow**:
-
-**Automatic Cache on Play**:
-```
-1. User plays a song (online)
-2. Audio file automatically cached to IndexedDB
-3. Next play (offline or online) loads from cache
-4. No user action required
-```
-
-**Cache Strategy**:
-```
-Priority 1: Currently playing song
-Priority 2: Next 3 songs in queue
-Priority 3: Recently played songs (last 50)
-Priority 4: Songs in "我喜欢的音乐" playlist
-```
-
-**Cache Management**:
-```
-1. Settings → Storage Management
-2. View cache usage: "已缓存 234 首歌曲 (5.2 GB / 60 GB)"
-3. Options:
-   - Clear all cache
-   - Clear old cache (>30 days not played)
-   - Request persistent storage
-```
+1.  **Entry**: On the Sign-in page, user clicks "Offline Mode" (离线使用).
+2.  **Initialization**:
+    - System initializes a `Guest` session (no token).
+    - Router switches to `OfflineProxy` mode.
+    - Auto-creates local resources in IndexedDB: "Local Library" and "Favorites".
+3.  **Landing**: User lands on the Dashboard, UI is identical to logged-in state but strictly local.
 
 **Acceptance Criteria**:
-- [ ] Songs auto-cache on first play
-- [ ] Pre-fetch next 3 songs in queue
-- [ ] Cache survives browser restart
-- [ ] Cache quota monitoring
-- [ ] User can clear cache in Settings
-- [ ] Persistent storage request prompt
+- [ ] "Offline Mode" button on Sign-in page.
+- [ ] No network requests sent to backend API.
+- [ ] `authStore` handles Guest state correctly.
+- [ ] Default local library and playlist created in IndexedDB.
 
----
+### Story 7: Local Resource Management
 
-### Story 7: Offline Playback
-
-**Goal**: User can play cached songs without internet connection
+**Goal**: Guest user manages Libraries and Playlists locally.
 
 **Flow**:
-
-**Offline Playback**:
-```
-1. User goes offline (airplane mode, no WiFi)
-2. Network indicator shows "离线" in top bar
-3. User navigates to Library or Playlist
-4. Cached songs show normal, uncached songs show "未缓存" badge
-5. User plays cached song → Works normally
-6. User tries to play uncached song → Toast: "此歌曲未缓存，需要网络连接"
-7. Queue automatically skips uncached songs when offline
-```
-
-**Cache Indicators**:
-```
-Song List Item:
-┌─────────────────────────────────────┐
-│ [Cover] Song Title               [✓]│ ← Cached
-│         Artist Name              3:45│
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│ [Cover] Song Title         [云 离线]│ ← Not cached
-│         Artist Name              3:45│
-└─────────────────────────────────────┘
-```
+1.  **Create**: User creates a "Gym Playlist" or "Work Library".
+2.  **Storage**: Data is stored **only** in browser IndexedDB.
+3.  **Persistence**: Data survives browser restarts.
+4.  **Isolation**: These resources have `userId: 'guest'` and are invisible to other users (if multiple people used the same browser).
 
 **Acceptance Criteria**:
-- [ ] Network status indicator in UI
-- [ ] Cached songs playable offline
-- [ ] Uncached songs show clear indicator
-- [ ] Auto-skip uncached songs in queue
-- [ ] Error message when trying to play uncached
-- [ ] No degradation in playback quality
+- [ ] CRUD operations for Libraries/Playlists work via `OfflineProxy`.
+- [ ] Data persists across reloads.
 
----
+### Story 8: Local File Import
 
-### Story 8: Offline Mutations & Sync
+**Goal**: Guest user adds music to their local library.
 
-**Goal**: User actions offline are queued and synced when connection restored
+**Context**: In Offline Mode, we don't "upload" to a server. We "import" to the browser.
 
 **Flow**:
-
-**Offline Actions**:
-```
-1. User goes offline
-2. User performs actions:
-   - Add song to playlist
-   - Remove song from playlist
-   - Reorder playlist
-   - Update song metadata (title, artist)
-   - Create new playlist
-   - Delete playlist
-3. Each action stored in sync queue (IndexedDB)
-4. UI updates optimistically
-5. Action shows "待同步" badge
-```
-
-**Auto Sync on Reconnect**:
-```
-1. Network restored
-2. Sync indicator shows "正在同步..."
-3. Sync queue processed in order
-4. On conflict: Server wins, local reverted with notification
-5. Sync complete → "同步完成"
-```
-
-**Sync Queue Management**:
-```
-Settings → Sync Status:
-┌─────────────────────────────────────┐
-│ 待同步操作 (3)                       │
-│ ├─ 添加歌曲到 "深夜驾车" (2分钟前)    │
-│ ├─ 创建播放列表 "新歌单" (5分钟前)    │
-│ └─ 修改歌曲信息 "Song A" (10分钟前)   │
-│                                      │
-│ [手动同步] [清空队列]                 │
-└─────────────────────────────────────┘
-```
+1.  **Action**: User clicks "Import Songs" (replaces "Upload" text in Guest Mode).
+2.  **Processing**:
+    - Files selected from device.
+    - Metadata extracted in-browser (`music-metadata-browser`).
+    - Audio file stored as `Blob` in IndexedDB (or Cache API).
+    - Cover art extracted and stored locally.
+3.  **Result**: Song appears in Local Library immediately.
 
 **Acceptance Criteria**:
-- [ ] Offline mutations queued in IndexedDB
-- [ ] UI updates optimistically
-- [ ] Auto-sync on network restore
-- [ ] Conflict resolution (server wins)
-- [ ] Sync queue visible in Settings
-- [ ] Manual sync trigger
-- [ ] Clear sync queue option
+- [ ] File import stores binary data locally.
+- [ ] Storage quota checked before import.
+- [ ] Progress bar reflects local processing speed.
 
 ---
 
-### Story 9: Metadata Sync
+## Part 3: Account Binding (Phase 2 Design)
 
-**Goal**: Library and Playlist metadata always available offline
+**Concept**: Bridging the gap. A Guest user decides to sign up/in to a Self-hosted server and wants to keep their data.
+
+### Story 9: Guest to Account Migration
+
+**Goal**: Guest user logs in and merges local data to the server.
 
 **Flow**:
-
-**Metadata Caching**:
-```
-1. On app load (online):
-   - Fetch all Libraries metadata
-   - Fetch all Playlists metadata
-   - Fetch all Songs metadata (without audio files)
-   - Store in IndexedDB
-
-2. Periodic refresh (every 5 minutes, online only):
-   - Update changed metadata
-   - Incremental sync
-
-3. Offline mode:
-   - Load metadata from IndexedDB
-   - Show last sync time: "最后同步：2分钟前"
-```
-
-**Stale Data Handling**:
-```
-1. Offline for >24 hours
-2. Warning banner: "数据可能已过期，请连接网络同步"
-3. User can still browse/play cached content
-4. On reconnect: Full metadata refresh
-```
+1.  **Trigger**: Guest user clicks "Sign In" in Settings.
+2.  **Authentication**: User completes GitHub OAuth flow.
+3.  **Decision Prompt**:
+    - "We found local data. What would you like to do?"
+    - Option A: **Merge to Account** (Upload local songs/playlists to server).
+    - Option B: **Keep Local Only** (Stay as local data, separate from account - *Complex, maybe V2*).
+    - Option C: **Discard** (Clear guest data).
+4.  **Execution (Merge)**:
+    - Background process uploads local songs to Server.
+    - Creates corresponding Libraries/Playlists on Server.
+    - Updates local IndexedDB IDs to match new Server IDs.
+5.  **Completion**: User is now fully "Online" with their previous data.
 
 **Acceptance Criteria**:
-- [ ] All metadata cached on app load
-- [ ] Metadata survives browser restart
-- [ ] Last sync time displayed
-- [ ] Stale data warning (>24h)
-- [ ] Incremental sync when online
-- [ ] Full refresh on reconnect
+- [ ] Detect pre-existing guest data on login.
+- [ ] Migration UI/Wizard.
+- [ ] Batch upload mechanism for migration.
 
 ---
 
-### Story 10: Storage Quota Management
+## Part 4: Temporary Offline Experience (Phase 3 Design)
 
-**Goal**: User understands and controls offline storage usage
+**Concept**: The "Classic" offline mode. An Online (Self-hosted) user loses internet connection or wants to save data for travel.
+
+### Story 10: Transparent Caching (Online -> Local)
+
+**Goal**: Online user's content is automatically available offline.
 
 **Flow**:
+1.  **Passive Cache**: When playing a song online, it is cached to IndexedDB/Cache API.
+2.  **Active Download**: User clicks "Download" on a Playlist/Library.
+3.  **Sync**: Metadata (text) is synced periodically to IndexedDB.
 
-**Storage Status**:
-```
-Settings → 存储管理:
-┌─────────────────────────────────────┐
-│ 存储使用情况                         │
-│                                      │
+**Acceptance Criteria**:
+- [ ] Audio files cached on play.
+- [ ] Metadata synced locally.
+
+### Story 11: Offline Fallback (Roaming)
+
+**Goal**: Seamless transition when network drops.
+
+**Flow**:
+1.  **Event**: Network disconnects.
+2.  **UI Update**: "Offline" badge appears.
+3.  **Router Switch**: API requests fallback to `OfflineProxy` (Read-Only for server data, or Queue for mutations).
+4.  **Playback**:
+    - Cached songs play normally.
+    - Uncached songs show disabled state.
+
+**Acceptance Criteria**:
+- [ ] Graceful degradation when offline.
+- [ ] Clear indication of what is playable.
+
+---
+
+## Key Data Flows│                                      │
 │ ██████████░░░░░░░░░░ 5.2 GB / 60 GB│
 │                                      │
 │ 详细信息:                            │
@@ -569,6 +491,49 @@ When storage >80%:
 - [ ] App installs to home screen
 - [ ] Standalone mode works
 - [ ] Offline functionality intact
+
+---
+
+### Story 12: Guest Mode (Offline First)
+
+**Goal**: Enable immediate, full-featured app usage without requiring an account or internet connection.
+
+**Context**:
+Currently, the app requires GitHub login to start. This creates friction for users who just want to play local files or test the app. Guest Mode allows the app to function as a purely local music player.
+
+**Flow**:
+
+1.  **Guest Entry**:
+    - On the Sign-In page, user sees a "Use Offline" (离线使用) button.
+    - Clicking it bypasses OAuth and initializes a "Guest Session".
+
+2.  **System Initialization (Invisible to User)**:
+    - `AuthStore` sets user to a local Guest identity.
+    - `Router` switches to **Offline Mode**, directing ALL API requests to the `OfflineProxy`.
+    - `OfflineProxy` initializes a local database (IndexedDB) if not present.
+    - Default resources are created locally: "Local Library" (Default) and "Favorites".
+
+3.  **The Guest Experience**:
+    - **Interface**: Identical to the logged-in experience.
+    - **Upload**: Files are processed locally; metadata extracted in browser; audio cached in IndexedDB.
+    - **Playback**: Full player features work (queue, loop, shuffle).
+    - **Persistence**: Data survives browser restarts (via IndexedDB).
+
+4.  **Limitations & Feedback**:
+    - **Sync**: Disabled. Settings page shows "Guest Mode - Local Only".
+    - **Network**: App behaves as if "Offline" regarding server communication, but "Online" for local operations.
+
+5.  **Transition to Account (Future Scope)**:
+    - User clicks "Sign In" in Settings.
+    - Prompt: "Switching to account will hide guest data" (MVP) or "Merge data" (Future).
+
+**Acceptance Criteria**:
+- [ ] "Offline Mode" button on Sign-in page
+- [ ] Guest user identity managed in AuthStore
+- [ ] Router intercepts API calls and directs to Offline Proxy
+- [ ] Offline Proxy handles "guest" userId
+- [ ] Full feature set available locally (Create Library, Upload, Play)
+- [ ] No server calls made in Guest Mode
 
 ---
 

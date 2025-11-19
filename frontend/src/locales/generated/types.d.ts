@@ -32,6 +32,10 @@ export interface Messages {
     description: string;
     /** Sign in with GitHub */
     button: string;
+    /** Offline Mode */
+    guest: string;
+    /** Use locally without an account */
+    guestDescription: string;
     /** Processing... */
     processing: string;
     /** By signing in, you agree to our Terms of Service and Privacy Policy. */

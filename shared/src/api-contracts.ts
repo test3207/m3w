@@ -115,6 +115,24 @@ export const userDataRoutes: RouteDefinition[] = [
     offlineCapable: true,
     description: 'Remove song from playlist (queued when offline)',
   },
+  {
+    path: '/api/playlists/by-library/:libraryId',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'Get playlist linked to library',
+  },
+  {
+    path: '/api/playlists/for-library',
+    method: 'POST',
+    offlineCapable: true,
+    description: 'Create playlist linked to library (queued when offline)',
+  },
+  {
+    path: '/api/playlists/:id/songs',
+    method: 'PUT',
+    offlineCapable: true,
+    description: 'Update playlist songs (batch update)',
+  },
 
   // Songs
   {
@@ -134,6 +152,18 @@ export const userDataRoutes: RouteDefinition[] = [
     method: 'DELETE',
     offlineCapable: true,
     description: 'Delete song (queued when offline)',
+  },
+  {
+    path: '/api/upload',
+    method: 'POST',
+    offlineCapable: true,
+    description: 'Upload audio file (local storage when offline)',
+  },
+  {
+    path: '/api/songs/:id/stream',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'Stream audio file (local blob when offline)',
   },
 ];
 
@@ -190,39 +220,35 @@ export const adminRoutes: RouteDefinition[] = [
     description: 'Update user (admin only)',
   },
 
-  // Upload
-  {
-    path: '/api/upload/song',
-    method: 'POST',
-    offlineCapable: false,
-    description: 'Upload audio file to MinIO',
-  },
-
-  // Audio Streaming
-  {
-    path: '/api/songs/:id/stream',
-    method: 'GET',
-    offlineCapable: false,
-    description: 'Stream audio file (Range requests supported)',
-  },
-
   // Player state (optional backend sync)
   {
     path: '/api/player/progress',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'Get last playback progress',
+  },
+  {
+    path: '/api/player/progress',
     method: 'PUT',
-    offlineCapable: false,
+    offlineCapable: true,
     description: 'Sync playback progress to server',
+  },
+  {
+    path: '/api/player/seed',
+    method: 'GET',
+    offlineCapable: true,
+    description: 'Get default playback seed',
   },
   {
     path: '/api/player/preferences',
     method: 'GET',
-    offlineCapable: false,
+    offlineCapable: true,
     description: 'Get user playback preferences',
   },
   {
     path: '/api/player/preferences',
     method: 'PATCH',
-    offlineCapable: false,
+    offlineCapable: true,
     description: 'Update user playback preferences',
   },
 ];
@@ -246,8 +272,11 @@ export function isOfflineCapable(path: string, method: string): boolean {
  * Simple path matching (supports :param syntax)
  */
 function matchPath(pattern: string, path: string): boolean {
+  // Remove query string from path before matching
+  const cleanPath = path.split('?')[0];
+  
   const patternParts = pattern.split('/');
-  const pathParts = path.split('/');
+  const pathParts = cleanPath.split('/');
 
   if (patternParts.length !== pathParts.length) {
     return false;

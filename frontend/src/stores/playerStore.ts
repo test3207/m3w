@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
-import type { Song } from '@/types/models';
 import { getAudioPlayer, type Track } from '@/lib/audio/player';
+import { prefetchAudioBlob } from '@/lib/audio/prefetch';
+import type { Song } from '@/types/models';
 import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
-import { streamApiClient } from '@/services/api/main/stream-client';
 import { I18n } from '@/locales/i18n';
 
 export type RepeatMode = 'off' | 'one' | 'all';
@@ -24,27 +24,6 @@ const getBackupState = (): PlayerState | null => {
 const setBackupState = (state: PlayerState) => {
   window.__PLAYER_STATE_BACKUP__ = state;
 };
-
-// Helper: Prefetch audio and create object URL
-async function prefetchAudioBlob(audioUrl: string): Promise<string | null> {
-  try {
-    logger.info('🎵 Prefetching audio', { audioUrl });
-    const response = await streamApiClient.get(audioUrl);
-    
-    if (!response.ok) {
-      logger.error('🎵 Failed to prefetch audio', { status: response.status });
-      return null;
-    }
-
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    logger.info('🎵 Created object URL', { objectUrl });
-    return objectUrl;
-  } catch (error) {
-    logger.error('🎵 Prefetch error', { error });
-    return null;
-  }
-}
 
 // Song → Track converter for AudioPlayer
 function songToTrack(song: Song): Track {
@@ -556,12 +535,6 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   setRepeatMode: async (mode) => {
     set({ repeatMode: mode, hasUserModifiedPreferences: true });
     
-    // Skip backend save if offline
-    if (!navigator.onLine) {
-      logger.info('Offline - repeat mode saved locally only', { repeatMode: mode });
-      return;
-    }
-    
     try {
       await api.main.player.updatePreferences({ repeatMode: mode });
       logger.info('Saved repeat mode preference', { repeatMode: mode });
@@ -616,12 +589,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       set({ isShuffled: newShuffled, hasUserModifiedPreferences: true });
     }
     
-    // Save to backend (async, don't wait) - skip if offline
-    if (!navigator.onLine) {
-      logger.info('Offline - shuffle saved locally only', { shuffleEnabled: newShuffled });
-      return;
-    }
-    
+    // Save to backend (async, don't wait)
     try {
       await api.main.player.updatePreferences({ shuffleEnabled: newShuffled });
       logger.info('Saved shuffle preference', { shuffleEnabled: newShuffled });
