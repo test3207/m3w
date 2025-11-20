@@ -528,12 +528,15 @@ Currently, the app requires GitHub login to start. This creates friction for use
     - Prompt: "Switching to account will hide guest data" (MVP) or "Merge data" (Future).
 
 **Acceptance Criteria**:
-- [ ] "Offline Mode" button on Sign-in page
-- [ ] Guest user identity managed in AuthStore
-- [ ] Router intercepts API calls and directs to Offline Proxy
-- [ ] Offline Proxy handles "guest" userId
-- [ ] Full feature set available locally (Create Library, Upload, Play)
-- [ ] No server calls made in Guest Mode
+- [x] "Offline Mode" button on Sign-in page
+- [x] Guest user identity managed in AuthStore
+- [x] Router intercepts API calls and directs to Offline Proxy
+- [x] Offline Proxy handles "guest" userId
+- [x] Full feature set available locally (Create Library, Upload, Play)
+- [x] No server calls made in Guest Mode
+- [x] Cover art extraction from audio files
+- [x] HMR fixes and proper initialization
+- [x] IndexedDB v2 with linkedLibraryId index
 
 ---
 
