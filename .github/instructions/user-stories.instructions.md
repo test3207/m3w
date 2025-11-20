@@ -345,12 +345,15 @@ Functionality integrated into Full Player actions
 2.  **Processing**:
     - Files selected from device.
     - Metadata extracted in-browser (`music-metadata-browser`).
-    - Audio file stored as `Blob` in IndexedDB (or Cache API).
-    - Cover art extracted and stored locally.
+    - Audio file cached in Cache Storage API via Service Worker.
+    - Cover art extracted and cached locally.
+    - Metadata stored in IndexedDB.
 3.  **Result**: Song appears in Local Library immediately.
 
 **Acceptance Criteria**:
-- [ ] File import stores binary data locally.
+- [x] File import stores audio in Cache Storage API.
+- [x] Metadata stored in IndexedDB.
+- [x] Cover art cached via Service Worker.
 - [ ] Storage quota checked before import.
 - [ ] Progress bar reflects local processing speed.
 
@@ -515,9 +518,9 @@ Currently, the app requires GitHub login to start. This creates friction for use
 
 3.  **The Guest Experience**:
     - **Interface**: Identical to the logged-in experience.
-    - **Upload**: Files are processed locally; metadata extracted in browser; audio cached in IndexedDB.
-    - **Playback**: Full player features work (queue, loop, shuffle).
-    - **Persistence**: Data survives browser restarts (via IndexedDB).
+    - **Upload**: Files are processed locally; metadata extracted in browser; audio cached in Cache Storage.
+    - **Playback**: Full player features work (queue, loop, shuffle, seek with Range requests).
+    - **Persistence**: Data survives browser restarts (metadata in IndexedDB, audio in Cache Storage).
 
 4.  **Limitations & Feedback**:
     - **Sync**: Disabled. Settings page shows "Guest Mode - Local Only".
@@ -537,6 +540,9 @@ Currently, the app requires GitHub login to start. This creates friction for use
 - [x] Cover art extraction from audio files
 - [x] HMR fixes and proper initialization
 - [x] IndexedDB v2 with linkedLibraryId index
+- [x] Audio files cached in Cache Storage API
+- [x] Service Worker with Range request support for seek
+- [x] Player preferences and progress persistence
 
 ---
 
@@ -652,11 +658,11 @@ setInterval(async () => {
 
 ### Frontend
 
-1. **Service Worker**: Vite PWA Plugin with Workbox
-2. **IndexedDB**: Dexie for structured data
-3. **Cache API**: For audio file caching
-4. **Background Sync API**: For offline mutations
-5. **Storage Quota API**: For quota management
+1. **Service Worker**: Custom implementation with token injection (Vite PWA Plugin injectManifest strategy)
+2. **IndexedDB**: Dexie for metadata storage (libraries, playlists, songs, preferences, progress)
+3. **Cache Storage API**: For audio/cover file caching with Range request support
+4. **Background Sync API**: For offline mutations (planned)
+5. **Storage Quota API**: For quota management (Issue #50)
 
 ### Backend
 
@@ -690,5 +696,5 @@ setInterval(async () => {
 
 ---
 
-**Document Version**: v1.0  
-**Last Updated**: 2025-11-18
+**Document Version**: v1.1  
+**Last Updated**: 2025-11-20
