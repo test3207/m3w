@@ -13,11 +13,13 @@ interface AuthState {
   user: User | null;
   tokens: AuthTokens | null;
   isAuthenticated: boolean;
+  isGuest: boolean;
   isLoading: boolean;
 }
 
 interface AuthActions {
   setAuth: (user: User, tokens: AuthTokens) => void;
+  loginAsGuest: () => void;
   clearAuth: () => void;
   setLoading: (isLoading: boolean) => void;
   refreshAccessToken: () => Promise<boolean>;
@@ -33,6 +35,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       tokens: null,
       isAuthenticated: false,
+      isGuest: false,
       isLoading: true,
 
       // Actions
@@ -41,6 +44,27 @@ export const useAuthStore = create<AuthStore>()(
           user,
           tokens,
           isAuthenticated: true,
+          isGuest: false,
+          isLoading: false,
+        });
+      },
+
+      loginAsGuest: () => {
+        set({
+          user: {
+            id: 'guest',
+            name: 'Guest User',
+            email: 'guest@local',
+            image: null,
+            createdAt: new Date().toISOString(),
+          },
+          tokens: {
+            accessToken: 'guest-token',
+            refreshToken: 'guest-refresh-token',
+            expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
+          },
+          isAuthenticated: true,
+          isGuest: true,
           isLoading: false,
         });
       },
@@ -50,6 +74,7 @@ export const useAuthStore = create<AuthStore>()(
           user: null,
           tokens: null,
           isAuthenticated: false,
+          isGuest: false,
           isLoading: false,
         });
       },
@@ -59,9 +84,14 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       refreshAccessToken: async () => {
-        const { tokens } = get();
+        const { tokens, isGuest } = get();
         if (!tokens?.refreshToken) {
           return false;
+        }
+
+        // Guest tokens don't need refresh
+        if (isGuest) {
+          return true;
         }
 
         try {
@@ -84,10 +114,16 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       checkAuthStatus: async () => {
-        const { tokens, refreshAccessToken, clearAuth } = get();
+        const { tokens, refreshAccessToken, clearAuth, isGuest } = get();
 
         if (!tokens) {
           set({ isLoading: false, isAuthenticated: false });
+          return;
+        }
+
+        // Skip backend check for guest users
+        if (isGuest) {
+          set({ isLoading: false, isAuthenticated: true });
           return;
         }
 
@@ -119,6 +155,7 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         tokens: state.tokens,
         isAuthenticated: state.isAuthenticated,
+        isGuest: state.isGuest,
       }),
     }
   )

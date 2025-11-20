@@ -6,9 +6,6 @@ import "./styles/globals.css";
 // Import i18n initialization
 import "./locales/init";
 
-// Import sync service
-import { syncService } from "./lib/sync/service";
-
 // Lazy load pages for code splitting
 const HomePage = lazy(() => import("./pages/HomePage"));
 const SignInPage = lazy(() => import("./pages/SignInPage"));
@@ -29,10 +26,19 @@ import { InstallPrompt } from "./components/features/pwa/install-prompt";
 import { MobileLayout } from "./components/layouts/mobile-layout";
 import { AuthProvider } from "./components/providers/auth-provider";
 
-// Start background sync service
-syncService.start();
+// Get or create root for HMR compatibility
+// Store root instance on the DOM element to prevent duplicate createRoot calls during HMR
+interface RootElement extends HTMLElement {
+  _reactRoot?: ReturnType<typeof ReactDOM.createRoot>;
+}
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root") as RootElement;
+
+if (!rootElement._reactRoot) {
+  rootElement._reactRoot = ReactDOM.createRoot(rootElement);
+}
+
+rootElement._reactRoot.render(
   <React.StrictMode>
     <AuthProvider>
       <BrowserRouter>
@@ -106,3 +112,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       </AuthProvider>
   </React.StrictMode>
 );
+
+// Dummy export to satisfy Vite Fast Refresh
+export default {};

@@ -23,19 +23,14 @@ import { api } from "@/services";
 import { eventBus, EVENTS } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
-import type { Song as SharedSong, SongSortOption } from "@m3w/shared";
-import type { Song } from "@/types/models";
+import type { Song, SongSortOption } from "@m3w/shared";
+import { formatDuration } from "@/lib/utils/format-duration";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Convert shared Song to frontend Song (now same type, just pass through)
-function convertSong(song: SharedSong): Song {
-  return song;
-}
 
 export default function LibraryDetailPage() {
   useLocale(); // Subscribe to locale changes
@@ -74,7 +69,7 @@ export default function LibraryDetailPage() {
 
         // Fetch songs
         const songsData = await api.main.libraries.getSongs(id, sortOption);
-        setSongs(songsData.map(convertSong));
+        setSongs(songsData);
       } catch (error) {
         toast({
           variant: "destructive",
@@ -95,7 +90,7 @@ export default function LibraryDetailPage() {
       const refetchSongs = async () => {
         try {
           const songsData = await api.main.libraries.getSongs(id, sortOption);
-          setSongs(songsData.map(convertSong));
+          setSongs(songsData);
         } catch (error) {
           // Silent fail - user will see stale data
           console.error("Failed to refresh songs:", error);
@@ -310,8 +305,7 @@ export default function LibraryDetailPage() {
                 {/* Duration */}
                 {song.file?.duration && (
                   <div className="shrink-0 text-sm text-muted-foreground">
-                    {Math.floor(song.file.duration / 60)}:
-                    {(song.file.duration % 60).toString().padStart(2, "0")}
+                    {formatDuration(song.file.duration)}
                   </div>
                 )}
               </div>

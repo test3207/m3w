@@ -92,6 +92,19 @@ function getAuthToken(): string | null {
   }
 }
 
+// Helper to check if user is guest
+function isGuestUser(): boolean {
+  try {
+    const authStore = localStorage.getItem('auth-storage');
+    if (!authStore) return false;
+
+    const parsed = JSON.parse(authStore);
+    return parsed.state?.isGuest === true;
+  } catch {
+    return false;
+  }
+}
+
 // API Router
 export async function routeRequest(
   path: string,
@@ -100,6 +113,26 @@ export async function routeRequest(
   const method = init?.method || 'GET';
   const isOnline = navigator.onLine;
   const offlineCapable = isOfflineCapable(path, method);
+  const isGuest = isGuestUser();
+
+  // Guest Mode: Always use offline proxy for capable routes
+  if (isGuest) {
+    if (offlineCapable) {
+      logger.info('Guest mode: Using offline proxy', { path, method });
+      return await callOfflineProxy(path, init);
+    } else {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'This feature is not available in Guest Mode',
+        }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+  }
 
   // Decision matrix:
   // 1. If offline (network or backend) and route is offline-capable → use offline proxy

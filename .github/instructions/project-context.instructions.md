@@ -90,6 +90,14 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Complete code tree-shaking in production builds
   - Accessible banner component using Stack, Text, Separator primitives
   - Local development and Docker deployment support
+- **Guest Mode (Offline-First)** ✅ **COMPLETED** (PR #47)
+  - Zero-friction entry: "Offline Mode" button on sign-in page
+  - Full feature parity without account: upload, play, manage libraries/playlists
+  - Router automatically routes guest requests to offline proxy
+  - IndexedDB-based local storage with auto-initialization
+  - Cover art extraction from audio files (music-metadata)
+  - HMR fixes and proper initialization
+  - No backend API calls in guest mode
 
 ### Active Initiatives (In Progress)
 - **User Testing & Evaluation**
@@ -490,6 +498,86 @@ Observability plans include Pino logging, optional Prometheus and Grafana, optio
 
 ### Scalability Considerations
 - Both frontend and backend are stateless and support horizontal scaling.
+- JWT tokens enable stateless authentication across multiple instances.
+- Future microservice extraction possible with clear backend separation.
+- Integration points reserved for message queues, search, object storage, email, and upload pipelines.
+
+## Architecture Decisions & Technical Debt
+
+### Guest Mode vs Temporary Offline (2025-11-20)
+
+**Decision**: Guest Mode and Authenticated User Offline share the same infrastructure.
+
+**Rationale**:
+- Both scenarios involve local data storage (IndexedDB)
+- The only difference is whether to sync with backend
+  - Guest User: Never syncs (no account)
+  - Auth User Offline: Syncs when online (has account)
+- Router determines routing based on `isGuest` flag and network status
+- Unified data schema reduces duplication
+
+**Implementation**:
+```typescript
+// Two dimensions define behavior:
+// 1. User Type: Guest (no account) vs Auth (has account)
+// 2. Network: Online vs Offline
+
+// Router logic:
+if (isGuest) {
+  → Always use OfflineProxy (never call backend)
+} else if (isOnline) {
+  → Try backend, fallback to OfflineProxy if offline-capable
+} else {
+  → Use OfflineProxy if offline-capable, else error
+}
+```
+
+**Known Issues** (Technical Debt):
+1. **Sync Queue Design**: Current implementation replays API operations (create/update/delete), which causes conflicts and accumulation. Should be refactored to state-based synchronization with three-way merge.
+2. **Media Storage**: Audio blobs stored in IndexedDB cause performance issues and storage limitations. Should migrate to Cache Storage API via Service Worker.
+3. **Storage Quota**: No user-facing monitoring or cleanup UI for storage usage.
+
+### Offline Sync Strategy (2025-11-20)
+
+**Current Implementation**: Operation Replay (Sync Queue)
+- Queues API operations (create/update/delete) with full payload
+- Replays operations on reconnect
+- Problems: Conflicts, accumulation, dependency issues
+
+**Future Direction**: State-Based Synchronization
+- Track dirty entities with timestamps (not operations)
+- Three-way merge: Backend state, Local state, Common ancestor
+- Conflict resolution: Last-Write-Wins or User-Choose
+- Implementation tracked in Milestone 1 technical debt issues
+
+### Media Storage Strategy (2025-11-20)
+
+**Current Implementation**: IndexedDB Blobs
+- Audio files and covers stored as blobs in IndexedDB
+- Cover URLs created via `URL.createObjectURL()`
+- Problems: Performance, quota limits, memory leaks
+
+**Future Direction**: Cache Storage API
+```
+Architecture:
+Service Worker
+├─ Cache API: Audio files (Range request support)
+└─ Cache API: Cover images
+
+IndexedDB
+├─ Songs metadata only
+├─ Libraries
+└─ Playlists
+```
+
+**Benefits**:
+- Larger storage quota (Cache Storage >> IndexedDB)
+- Native HTTP caching support (Range requests, MIME types)
+- Service Worker can intercept and serve requests
+- Better browser optimization
+- Implementation tracked in Milestone 1 technical debt issues
+
+## Pending Decisions
 - JWT tokens enable stateless authentication across multiple instances.
 - Future microservice extraction possible with clear backend separation.
 - Integration points reserved for message queues, search, object storage, email, and upload pipelines.

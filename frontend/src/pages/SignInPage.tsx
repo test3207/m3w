@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +12,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
+import { useAuthStore } from "@/stores/authStore";
+import { initGuestResources } from "@/lib/db/init-guest";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -19,6 +21,8 @@ export default function SignInPage() {
   useLocale();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { loginAsGuest } = useAuthStore();
+  const navigate = useNavigate();
 
   const handleGitHubSignIn = async () => {
     setIsLoading(true);
@@ -82,6 +86,43 @@ export default function SignInPage() {
               <span suppressHydrationWarning>
                 {isLoading ? I18n.signin.processing : I18n.signin.button}
               </span>
+            </Button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or
+                </span>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={async () => {
+                setIsLoading(true);
+                try {
+                  await initGuestResources();
+                  loginAsGuest();
+                  navigate("/libraries");
+                } catch (error) {
+                  console.error(error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to initialize guest mode",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              className="w-full"
+              size="lg"
+              disabled={isLoading}
+            >
+              <span suppressHydrationWarning>{I18n.signin.guest}</span>
             </Button>
 
             <div className="mt-6 text-center">

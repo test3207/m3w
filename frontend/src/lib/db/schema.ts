@@ -58,12 +58,18 @@ export class M3WDatabase extends Dexie {
   constructor() {
     super('m3w-offline');
 
+    // Version 1: Initial schema
     this.version(1).stores({
       libraries: 'id, userId, name, createdAt, _syncStatus',
       playlists: 'id, userId, name, createdAt, _syncStatus',
       songs: 'id, libraryId, title, artist, album, _syncStatus',
       playlistSongs: 'id, playlistId, songId, [playlistId+songId], order, _syncStatus',
       syncQueue: '++id, entityType, entityId, operation, createdAt',
+    });
+
+    // Version 2: Add linkedLibraryId index to playlists
+    this.version(2).stores({
+      playlists: 'id, userId, linkedLibraryId, name, createdAt, _syncStatus',
     });
   }
 }

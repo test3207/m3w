@@ -46,6 +46,7 @@ export interface Playlist {
   description: string | null;
   userId: string;
   songIds: string[];  // Maintain song order (frontend manages)
+  linkedLibraryId?: string | null; // Link to library for "Play All" playlists
   isDefault: boolean; // Mark favorites playlist (auto-created)
   canDelete: boolean; // Prevent deletion of default playlist
   coverUrl?: string | null;  // Cover from first 4 songs (computed)

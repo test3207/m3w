@@ -13,8 +13,11 @@ import {
   createPlaylistSchema,
   updatePlaylistSchema,
 } from '@m3w/shared';
+import { parseBlob } from 'music-metadata';
+import { calculateFileHash } from '../utils/hash';
+import type { OfflineSong } from '../db/schema';
 
-const app = new Hono();
+const app = new Hono().basePath('/api');
 
 // Helper to get userId from auth store
 function getUserId(): string {
@@ -77,7 +80,18 @@ app.get('/libraries/:id', async (c: Context) => {
 
     const library = await db.libraries.get(id);
 
-    if (!library || library.userId !== userId) {
+    if (!library) {
+      return c.json(
+        {
+          success: false,
+          error: 'Library not found',
+        },
+        404
+      );
+    }
+
+    // Check ownership (skip for guest to allow access to guest's own libraries)
+    if (library.userId !== userId && userId !== 'guest') {
       return c.json(
         {
           success: false,
@@ -100,7 +114,8 @@ app.get('/libraries/:id', async (c: Context) => {
       success: true,
       data: libraryWithCount,
     });
-  } catch {
+  } catch (error) {
+    console.error('[OfflineProxy] GET /libraries/:id error:', error);
     return c.json(
       {
         success: false,
@@ -132,12 +147,16 @@ app.post('/libraries', async (c: Context) => {
     };
 
     await db.libraries.add(library);
-    await addToSyncQueue({
-      entityType: 'library',
-      entityId: library.id,
-      operation: 'create',
-      data: library,
-    });
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'library',
+        entityId: library.id,
+        operation: 'create',
+        data: library,
+      });
+    }
 
     return c.json(
       {
@@ -186,12 +205,16 @@ app.patch('/libraries/:id', async (c: Context) => {
     };
 
     await db.libraries.put(updated);
-    await addToSyncQueue({
-      entityType: 'library',
-      entityId: id,
-      operation: 'update',
-      data: updated,
-    });
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'library',
+        entityId: id,
+        operation: 'update',
+        data: updated,
+      });
+    }
 
     return c.json({
       success: true,
@@ -228,11 +251,15 @@ app.delete('/libraries/:id', async (c: Context) => {
     }
 
     await db.libraries.delete(id);
-    await addToSyncQueue({
-      entityType: 'library',
-      entityId: id,
-      operation: 'delete',
-    });
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'library',
+        entityId: id,
+        operation: 'delete',
+      });
+    }
 
     return c.json({
       success: true,
@@ -389,12 +416,16 @@ app.post('/playlists', async (c: Context) => {
     };
 
     await db.playlists.add(playlist);
-    await addToSyncQueue({
-      entityType: 'playlist',
-      entityId: playlist.id,
-      operation: 'create',
-      data: playlist,
-    });
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'playlist',
+        entityId: playlist.id,
+        operation: 'create',
+        data: playlist,
+      });
+    }
 
     return c.json(
       {
@@ -443,12 +474,16 @@ app.patch('/playlists/:id', async (c: Context) => {
     };
 
     await db.playlists.put(updated);
-    await addToSyncQueue({
-      entityType: 'playlist',
-      entityId: id,
-      operation: 'update',
-      data: updated,
-    });
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'playlist',
+        entityId: id,
+        operation: 'update',
+        data: updated,
+      });
+    }
 
     return c.json({
       success: true,
@@ -485,11 +520,15 @@ app.delete('/playlists/:id', async (c: Context) => {
     }
 
     await db.playlists.delete(id);
-    await addToSyncQueue({
-      entityType: 'playlist',
-      entityId: id,
-      operation: 'delete',
-    });
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'playlist',
+        entityId: id,
+        operation: 'delete',
+      });
+    }
 
     return c.json({
       success: true,
@@ -609,12 +648,16 @@ app.post('/playlists/:id/songs', async (c: Context) => {
     };
 
     await db.playlistSongs.add(playlistSong);
-    await addToSyncQueue({
-      entityType: 'playlistSong',
-      entityId: playlistSong.id,
-      operation: 'create',
-      data: playlistSong,
-    });
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'playlistSong',
+        entityId: playlistSong.id,
+        operation: 'create',
+        data: playlistSong,
+      });
+    }
 
     return c.json(
       {
@@ -671,11 +714,15 @@ app.delete('/playlists/:id/songs/:songId', async (c: Context) => {
     }
 
     await db.playlistSongs.delete(playlistSong.id);
-    await addToSyncQueue({
-      entityType: 'playlistSong',
-      entityId: playlistSong.id,
-      operation: 'delete',
-    });
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'playlistSong',
+        entityId: playlistSong.id,
+        operation: 'delete',
+      });
+    }
 
     return c.json({
       success: true,
@@ -686,6 +733,201 @@ app.delete('/playlists/:id/songs/:songId', async (c: Context) => {
       {
         success: false,
         error: 'Failed to remove song from playlist',
+      },
+      500
+    );
+  }
+});
+
+// GET /api/playlists/by-library/:libraryId - Get playlist linked to library
+app.get('/playlists/by-library/:libraryId', async (c: Context) => {
+  try {
+    const libraryId = c.req.param('libraryId');
+    const userId = getUserId();
+
+    // Find playlist with linkedLibraryId
+    const playlist = await db.playlists
+      .where('linkedLibraryId')
+      .equals(libraryId)
+      .first();
+
+    if (!playlist) {
+      return c.json({
+        success: true,
+        data: null,
+      });
+    }
+
+    if (playlist.userId !== userId) {
+      return c.json({
+        success: true,
+        data: null,
+      });
+    }
+
+    // Add song count
+    const songCount = await db.playlistSongs.where('playlistId').equals(playlist.id).count();
+
+    return c.json({
+      success: true,
+      data: {
+        ...playlist,
+        _count: {
+          songs: songCount,
+        },
+      },
+    });
+  } catch {
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to fetch library playlist',
+      },
+      500
+    );
+  }
+});
+
+// POST /api/playlists/for-library - Create playlist linked to library
+app.post('/playlists/for-library', async (c: Context) => {
+  try {
+    const body = await c.req.json();
+    const { name, linkedLibraryId, songIds } = body;
+    const userId = getUserId();
+
+    const playlist: OfflinePlaylist = {
+      id: crypto.randomUUID(),
+      name,
+      description: null,
+      userId,
+      songIds: songIds || [],
+      linkedLibraryId,
+      isDefault: false,
+      canDelete: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      _count: { songs: songIds?.length || 0 },
+      _syncStatus: 'pending',
+    };
+
+    await db.playlists.add(playlist);
+
+    // Add playlist songs
+    if (songIds && songIds.length > 0) {
+      await Promise.all(
+        songIds.map((songId: string, index: number) =>
+          db.playlistSongs.add({
+            id: crypto.randomUUID(),
+            playlistId: playlist.id,
+            songId,
+            order: index + 1,
+            addedAt: new Date(),
+            _syncStatus: 'pending' as const,
+          })
+        )
+      );
+    }
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'playlist',
+        entityId: playlist.id,
+        operation: 'create',
+        data: playlist,
+      });
+    }
+
+    return c.json(
+      {
+        success: true,
+        data: playlist,
+        message: 'Library playlist created (will sync when online)',
+      },
+      201
+    );
+  } catch {
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to create library playlist',
+      },
+      500
+    );
+  }
+});
+
+// PUT /api/playlists/:id/songs - Update playlist songs (batch)
+app.put('/playlists/:id/songs', async (c: Context) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const { songIds } = body;
+    const userId = getUserId();
+
+    const playlist = await db.playlists.get(id);
+
+    if (!playlist || playlist.userId !== userId) {
+      return c.json(
+        {
+          success: false,
+          error: 'Playlist not found',
+        },
+        404
+      );
+    }
+
+    // Delete existing playlist songs
+    const existingSongs = await db.playlistSongs
+      .where('playlistId')
+      .equals(id)
+      .toArray();
+    await Promise.all(existingSongs.map((ps) => db.playlistSongs.delete(ps.id)));
+
+    // Add new songs
+    if (songIds && songIds.length > 0) {
+      await Promise.all(
+        songIds.map((songId: string, index: number) =>
+          db.playlistSongs.add({
+            id: crypto.randomUUID(),
+            playlistId: id,
+            songId,
+            order: index + 1,
+            addedAt: new Date(),
+            _syncStatus: 'pending' as const,
+          })
+        )
+      );
+    }
+
+    // Update playlist songIds
+    const updated: OfflinePlaylist = {
+      ...playlist,
+      songIds,
+      updatedAt: new Date().toISOString(),
+      _syncStatus: 'pending',
+    };
+    await db.playlists.put(updated);
+    
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'playlist',
+        entityId: id,
+        operation: 'update',
+        data: updated,
+      });
+    }
+
+    return c.json({
+      success: true,
+      message: 'Playlist songs updated (will sync when online)',
+    });
+  } catch {
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to update playlist songs',
       },
       500
     );
@@ -756,18 +998,21 @@ app.post('/playlists/:id/songs/reorder', async (c: Context) => {
     await db.playlistSongs.put(currentSong);
     await db.playlistSongs.put(adjacentSong);
 
-    await addToSyncQueue({
-      entityType: 'playlistSong',
-      entityId: currentSong.id,
-      operation: 'update',
-      data: currentSong,
-    });
-    await addToSyncQueue({
-      entityType: 'playlistSong',
-      entityId: adjacentSong.id,
-      operation: 'update',
-      data: adjacentSong,
-    });
+    // Only queue sync for authenticated users
+    if (userId !== 'guest') {
+      await addToSyncQueue({
+        entityType: 'playlistSong',
+        entityId: currentSong.id,
+        operation: 'update',
+        data: currentSong,
+      });
+      await addToSyncQueue({
+        entityType: 'playlistSong',
+        entityId: adjacentSong.id,
+        operation: 'update',
+        data: adjacentSong,
+      });
+    }
 
     return c.json({
       success: true,
@@ -817,6 +1062,177 @@ app.get('/songs/:id', async (c: Context) => {
       500
     );
   }
+});
+
+// GET /api/songs/:id/stream - Stream audio file (Offline)
+app.get('/songs/:id/stream', async (c: Context) => {
+  try {
+    const id = c.req.param('id');
+    const song = await db.songs.get(id);
+
+    if (!song || !song._audioBlob) {
+      return c.json(
+        {
+          success: false,
+          error: 'Audio file not found locally',
+        },
+        404
+      );
+    }
+
+    // Return the blob directly
+    return new Response(song._audioBlob, {
+      headers: {
+        'Content-Type': song._audioBlob.type || 'audio/mpeg',
+        'Content-Length': song._audioBlob.size.toString(),
+      },
+    });
+  } catch {
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to stream song',
+      },
+      500
+    );
+  }
+});
+
+// ============================================
+// Upload Routes
+// ============================================
+
+// POST /api/upload - Upload audio file (Offline)
+app.post('/upload', async (c: Context) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    const libraryId = formData.get('libraryId') as string;
+
+    if (!file || !libraryId) {
+      return c.json({ success: false, error: 'Missing file or libraryId' }, 400);
+    }
+
+    // 1. Calculate hash
+    const hash = await calculateFileHash(file);
+
+    // 2. Extract metadata
+    const metadata = await parseBlob(file);
+    const { common, format } = metadata;
+
+    // 3. Extract cover art if available
+    let coverUrl: string | null = null;
+    if (common.picture && common.picture.length > 0) {
+      const picture = common.picture[0];
+      // Convert Uint8Array to Blob - use Array.from to ensure compatibility
+      const blob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
+      coverUrl = URL.createObjectURL(blob);
+    }
+
+    // 4. Create Song object
+    const songId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const song: OfflineSong = {
+      id: songId,
+      title: common.title || file.name.replace(/\.[^/.]+$/, ""),
+      artist: common.artist || "Unknown Artist",
+      album: common.album || "Unknown Album",
+      albumArtist: common.albumartist || null,
+      year: common.year || null,
+      genre: common.genre && common.genre.length > 0 ? common.genre[0] : null,
+      trackNumber: common.track.no || null,
+      discNumber: common.disk.no || null,
+      composer: common.composer && common.composer.length > 0 ? common.composer[0] : null,
+      coverUrl,
+      fileId: hash, // Use hash as fileId for local
+      libraryId,
+      createdAt: now,
+      updatedAt: now,
+      file: {
+        id: hash,
+        hash: hash,
+        path: 'local',
+        size: file.size,
+        mimeType: file.type,
+        duration: format.duration || 0,
+        bitrate: format.bitrate || 0,
+        sampleRate: format.sampleRate || 0,
+        channels: format.numberOfChannels || 0,
+      },
+      _audioBlob: file, // Store blob locally
+      _syncStatus: 'pending',
+    };
+
+    // 5. Save to DB
+    await db.songs.add(song);
+
+    return c.json({
+      success: true,
+      data: {
+        song,
+        isDuplicate: false
+      }
+    });
+
+  } catch (error) {
+    console.error('Offline upload failed', error);
+    return c.json({ success: false, error: 'Upload failed' }, 500);
+  }
+});
+
+// ============================================
+// Player Routes (Mock for Guest/Offline)
+// ============================================
+
+// GET /api/player/progress - Get playback progress
+app.get('/player/progress', async (c: Context) => {
+  // Return null (no saved progress in offline mode)
+  return c.json({
+    success: true,
+    data: null
+  });
+});
+
+// PUT /api/player/progress - Sync playback progress
+app.put('/player/progress', async (c: Context) => {
+  // In offline mode, we just acknowledge the request
+  return c.json({
+    success: true,
+    data: { synced: true }
+  });
+});
+
+// GET /api/player/seed - Get default playback seed
+app.get('/player/seed', async (c: Context) => {
+  // Return null (no seed in offline mode)
+  return c.json({
+    success: true,
+    data: null
+  });
+});
+
+// GET /api/player/preferences - Get user preferences
+app.get('/player/preferences', async (c: Context) => {
+  // Return default preferences
+  return c.json({
+    success: true,
+    data: {
+      volume: 1,
+      muted: false,
+      repeatMode: 'off',
+      shuffleEnabled: false
+    }
+  });
+});
+
+// PATCH /api/player/preferences - Update user preferences
+app.patch('/player/preferences', async (c: Context) => {
+  // Acknowledge update
+  return c.json({
+    success: true,
+    data: { updated: true }
+  });
 });
 
 export default app;
