@@ -10,8 +10,8 @@ declare const self: ServiceWorkerGlobalScope;
 import { precacheAndRoute } from 'workbox-precaching';
 
 // Precache static assets (injected by Vite PWA plugin)
-declare let __WB_MANIFEST: Array<{ url: string; revision: string }>;
-precacheAndRoute(__WB_MANIFEST);
+// Use self.__WB_MANIFEST for Workbox to inject the precache manifest
+precacheAndRoute(self.__WB_MANIFEST);
 
 const CACHE_NAME = 'm3w-media-v1';
 const AUTH_DB_NAME = 'm3w-auth';
@@ -127,6 +127,7 @@ async function handleMediaRequest(request: Request): Promise<Response> {
 
 /**
  * Install event: Setup cache
+ * Note: Use skipWaiting carefully - it can interrupt ongoing operations
  */
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing service worker...');
@@ -134,8 +135,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(() => {
       console.log('[SW] ✅ Cache created');
-      // Skip waiting to activate immediately
-      return self.skipWaiting();
+      // Don't skip waiting automatically during install
+      // Let the user decide when to update via the reload prompt
+      // This prevents interrupting OAuth flows or active playback
     })
   );
 });

@@ -13,6 +13,10 @@ import { logger } from '@/lib/logger-client';
 import { api } from '@/services';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
+import { useAuthStore } from '@/stores/authStore';
+import { usePlayerStore } from '@/stores/playerStore';
+import { useLibraryStore } from '@/stores/libraryStore';
+import { usePlaylistStore } from '@/stores/playlistStore';
 
 interface MobileUserMenuProps {
   name?: string | null;
@@ -23,6 +27,11 @@ interface MobileUserMenuProps {
 export function MobileUserMenu({ name, email, image }: MobileUserMenuProps) {
   useLocale();
   const navigate = useNavigate();
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const clearPlayerQueue = usePlayerStore((state) => state.clearQueue);
+  const resetLibraries = useLibraryStore((state) => state.reset);
+  const resetPlaylists = usePlaylistStore((state) => state.reset);
+  
   const displayName = name ?? email;
   const initials = (name || email)
     .split(' ')
@@ -32,12 +41,28 @@ export function MobileUserMenu({ name, email, image }: MobileUserMenuProps) {
     .toUpperCase();
 
   async function handleSignOut() {
-    try {
-      await api.main.auth.signout();
-      navigate('/');
-    } catch (error) {
-      logger.error('Sign out failed', error);
-    }
+    // 1. Clear all frontend state first (synchronous)
+    clearAuth(); // Clears tokens and IndexedDB token
+    clearPlayerQueue();
+    resetLibraries();
+    resetPlaylists();
+    
+    // 2. Wait for Zustand persist to write to localStorage
+    // This ensures state is fully cleared before navigation
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // 3. Navigate to sign-in page
+    navigate('/');
+    
+    // 4. Call backend signout in background (async, fire-and-forget)
+    // Continue even if this fails - frontend is already clean
+    api.main.auth.signout().catch((error) => {
+      logger.error('Backend signout failed', error);
+    });
+    
+    // Note: Cache Storage is intentionally preserved
+    // Benefits: Faster next login, saves bandwidth, matches industry standard (Spotify/YouTube)
+    // Security: Media files only, no tokens/credentials
   }
 
   return (

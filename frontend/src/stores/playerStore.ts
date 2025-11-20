@@ -249,8 +249,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       };
     }),
 
-  clearQueue: () =>
-    set({
+  clearQueue: () => {
+    // Stop audio playback
+    const audioPlayer = getAudioPlayer();
+    audioPlayer.stop();
+    
+    return set({
       queue: [],
       currentIndex: -1,
       currentSong: null,
@@ -258,7 +262,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       queueSource: null,
       queueSourceId: null,
       queueSourceName: null,
-    }),
+    });
+  },
 
   // Queue source management
   setQueueSource: (source, sourceId, sourceName) =>
