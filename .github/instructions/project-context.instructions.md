@@ -32,12 +32,15 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
 - Toast feedback system unified via `use-toast` store and wired into playlist and library dashboard actions
 - Audio streaming via API proxy with Range request support (MinIO access internalized)
 - Internationalization (i18n) system with custom Proxy-based architecture, build tooling, and reactive language switching
-- **PWA Integration**
-  - Service Worker with Workbox for offline caching
-  - IndexedDB via Dexie for offline data storage
-  - Audio file caching with progress tracking
-  - Metadata sync queue for offline mutations
-  - Storage quota monitoring and management
+- **PWA Integration** ✅ **COMPLETED** (Issue #49)
+  - Custom Service Worker with token injection and Range request support
+  - Cache Storage API for audio/cover files (replaces IndexedDB blobs)
+  - IndexedDB via Dexie for metadata storage (libraries, playlists, songs)
+  - Dual-layer token storage (localStorage + IndexedDB for Service Worker access)
+  - Guest mode audio caching with `/guest/songs/:id/stream` URLs
+  - Auth mode cache-first strategy with backend fallback
+  - Range request support for seek functionality (206 Partial Content)
+  - Playback state persistence (preferences, progress) via IndexedDB
   - Offline-capable router with fallback to IndexedDB proxy
 - **Vite Migration Complete**
   - All pages migrated: Dashboard, Libraries, Playlists, Upload, Detail pages, Settings
@@ -132,9 +135,10 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Enhanced user profile management
   - Testing expansion (Playwright end-to-end, coverage targets)
 - **PWA Enhancements**
+  - Storage quota monitoring UI (Issue #50)
+  - Cache management utilities (Issue #51)
   - Background sync for offline mutations
   - Push notifications for sync status
-  - Advanced cache strategies and eviction policies
 - **Observability & Operations**
   - Observability stack with Elasticsearch, Logstash, and Kibana for future production monitoring
 
@@ -190,6 +194,16 @@ m3w/
 │   │   │   │   ├── client.ts     # Base HTTP client (internal use)
 │   │   │   │   └── router.ts     # Request routing (online/offline)
 │   │   │   ├── audio/            # Audio player and queue management
+│   │   │   │   ├── player.ts     # Howler.js wrapper
+│   │   │   │   └── prefetch.ts   # Audio preloading (skips Guest URLs)
+│   │   │   ├── auth/             # Authentication utilities
+│   │   │   │   └── token-storage.ts  # Dual-layer token sync (localStorage + IndexedDB)
+│   │   │   ├── db/               # IndexedDB schema and utilities
+│   │   │   │   └── schema.ts     # Dexie schema with metadata tables
+│   │   │   ├── offline-proxy/    # Guest mode API simulation
+│   │   │   │   └── index.ts      # Hono-based offline API routes
+│   │   │   ├── pwa/              # PWA and caching utilities
+│   │   │   │   └── cache-manager.ts  # Cache Storage API helpers
 │   │   │   ├── sync/             # Offline sync service (planned)
 │   │   │   └── logger-client.ts  # Client-side logging
 │   │   ├── locales/              # i18n message catalogs
@@ -366,8 +380,11 @@ m3w/
 - **Data Fetching**: TanStack Query 5
 - **Audio Processing**: Howler.js
 - **Metadata Extraction (Client)**: `music-metadata-browser`
-- **PWA**: Vite PWA Plugin
-- **Offline Storage**: Dexie (IndexedDB wrapper)
+- **PWA**: Vite PWA Plugin (injectManifest strategy)
+- **Service Worker**: Custom implementation with token injection and Range request support
+- **Offline Storage**: 
+  - Dexie (IndexedDB wrapper) for metadata
+  - Cache Storage API for audio/cover files
 - **Fuzzy Search**: Fuse.js
 
 #### Backend Layer
@@ -381,17 +398,22 @@ m3w/
 - **Metadata Extraction**: `music-metadata`
 
 #### PWA and Offline Features
-- Service Worker: Vite PWA Plugin (Workbox)
+- Service Worker: Custom implementation (replaces Workbox)
+  - Token injection from IndexedDB for authenticated requests
+  - Range request support for audio seeking (206 Partial Content)
+  - Cache-first strategy for media files
+  - Guest mode URLs (`/guest/songs/*`) served from cache
 - Cache Strategy:
-  - Audio files: CacheFirst with range request support
-  - API calls: NetworkFirst with fallback
-  - Static assets: Precache
-- IndexedDB usage:
-  - Songs metadata
-  - Playlists
-  - Lyrics cache
-  - Offline queue
-- Web Workers for audio processing, lyrics matching, and background sync
+  - Audio/cover files: Cache Storage API (Cache-first with Range support)
+  - API calls: NetworkFirst with offline fallback
+  - Static assets: Precached by Vite PWA Plugin
+- IndexedDB usage (metadata only):
+  - Libraries, playlists, songs (no blobs)
+  - Player preferences and progress
+  - Sync queue for offline mutations (planned)
+- Token Storage:
+  - Dual-layer: localStorage (main thread) + IndexedDB (Service Worker access)
+  - Auto-sync on login/logout
 
 #### Infrastructure
 
@@ -534,8 +556,8 @@ if (isGuest) {
 
 **Known Issues** (Technical Debt):
 1. **Sync Queue Design**: Current implementation replays API operations (create/update/delete), which causes conflicts and accumulation. Should be refactored to state-based synchronization with three-way merge.
-2. **Media Storage**: Audio blobs stored in IndexedDB cause performance issues and storage limitations. Should migrate to Cache Storage API via Service Worker.
-3. **Storage Quota**: No user-facing monitoring or cleanup UI for storage usage.
+2. **Storage Quota Monitoring**: No user-facing UI for storage usage (Issue #50).
+3. **Cache Management**: Manual cleanup and statistics utilities needed (Issue #51).
 
 ### Offline Sync Strategy (2025-11-20)
 
@@ -552,14 +574,14 @@ if (isGuest) {
 
 ### Media Storage Strategy (2025-11-20)
 
-**Current Implementation**: IndexedDB Blobs
-- Audio files and covers stored as blobs in IndexedDB
-- Cover URLs created via `URL.createObjectURL()`
-- Problems: Performance, quota limits, memory leaks
+**Current Implementation**: Cache Storage API ✅ **COMPLETED** (Issue #49)
+- Audio files and covers stored in Cache Storage API
+- Service Worker intercepts `/api/songs/:id/stream` and `/guest/songs/:id/stream`
+- Range request support for seeking (206 Partial Content)
+- Token injection from IndexedDB for authenticated requests
 
-**Future Direction**: Cache Storage API
+**Architecture**:
 ```
-Architecture:
 Service Worker
 ├─ Cache API: Audio files (Range request support)
 └─ Cache API: Cover images
@@ -567,15 +589,21 @@ Service Worker
 IndexedDB
 ├─ Songs metadata only
 ├─ Libraries
-└─ Playlists
+├─ Playlists
+├─ Player preferences
+└─ Player progress
 ```
 
 **Benefits**:
-- Larger storage quota (Cache Storage >> IndexedDB)
-- Native HTTP caching support (Range requests, MIME types)
-- Service Worker can intercept and serve requests
-- Better browser optimization
-- Implementation tracked in Milestone 1 technical debt issues
+- ✅ Larger storage quota (Cache Storage >> IndexedDB)
+- ✅ Native HTTP caching support (Range requests, MIME types)
+- ✅ Service Worker intercepts and serves requests
+- ✅ Better browser optimization
+- ✅ No `URL.createObjectURL()` memory leaks
+
+**Follow-up**:
+- Issue #50: Storage quota monitoring UI
+- Issue #51: Cache management utilities
 
 ## Pending Decisions
 - JWT tokens enable stateless authentication across multiple instances.
