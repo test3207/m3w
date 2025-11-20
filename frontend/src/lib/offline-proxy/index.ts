@@ -15,6 +15,7 @@ import {
 } from '@m3w/shared';
 import { parseBlob } from 'music-metadata';
 import { calculateFileHash } from '../utils/hash';
+import { cacheGuestAudio, cacheGuestCover } from '../pwa/cache-manager';
 import type { OfflineSong } from '../db/schema';
 
 const app = new Hono().basePath('/api');
@@ -1064,39 +1065,9 @@ app.get('/songs/:id', async (c: Context) => {
   }
 });
 
-// GET /api/songs/:id/stream - Stream audio file (Offline)
-app.get('/songs/:id/stream', async (c: Context) => {
-  try {
-    const id = c.req.param('id');
-    const song = await db.songs.get(id);
-
-    if (!song || !song._audioBlob) {
-      return c.json(
-        {
-          success: false,
-          error: 'Audio file not found locally',
-        },
-        404
-      );
-    }
-
-    // Return the blob directly
-    return new Response(song._audioBlob, {
-      headers: {
-        'Content-Type': song._audioBlob.type || 'audio/mpeg',
-        'Content-Length': song._audioBlob.size.toString(),
-      },
-    });
-  } catch {
-    return c.json(
-      {
-        success: false,
-        error: 'Failed to stream song',
-      },
-      500
-    );
-  }
-});
+// GET /api/songs/:id/stream - Deprecated
+// Guest mode now uses /guest/songs/:id/stream served by Service Worker
+// This route kept for backward compatibility but will return 404
 
 // ============================================
 // Upload Routes
@@ -1120,17 +1091,24 @@ app.post('/upload', async (c: Context) => {
     const metadata = await parseBlob(file);
     const { common, format } = metadata;
 
-    // 3. Extract cover art if available
+    // 3. Generate song ID (needed for cache URLs)
+    const songId = crypto.randomUUID();
+
+    // 4. Extract cover art if available and cache it
     let coverUrl: string | null = null;
     if (common.picture && common.picture.length > 0) {
       const picture = common.picture[0];
-      // Convert Uint8Array to Blob - use Array.from to ensure compatibility
-      const blob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
-      coverUrl = URL.createObjectURL(blob);
+      // Convert Uint8Array to Blob
+      const coverBlob = new Blob([new Uint8Array(picture.data)], { type: picture.format });
+      
+      // Cache cover in Cache Storage and get guest URL
+      coverUrl = await cacheGuestCover(songId, coverBlob);
     }
 
-    // 4. Create Song object
-    const songId = crypto.randomUUID();
+    // 4. Cache audio file in Cache Storage
+    const streamUrl = await cacheGuestAudio(songId, file);
+
+    // 5. Create Song object
     const now = new Date().toISOString();
 
     const song: OfflineSong = {
@@ -1144,7 +1122,8 @@ app.post('/upload', async (c: Context) => {
       trackNumber: common.track.no || null,
       discNumber: common.disk.no || null,
       composer: common.composer && common.composer.length > 0 ? common.composer[0] : null,
-      coverUrl,
+      coverUrl: coverUrl || null,
+      streamUrl, // Guest URL: /guest/songs/{id}/stream
       fileId: hash, // Use hash as fileId for local
       libraryId,
       createdAt: now,
@@ -1160,11 +1139,11 @@ app.post('/upload', async (c: Context) => {
         sampleRate: format.sampleRate || 0,
         channels: format.numberOfChannels || 0,
       },
-      _audioBlob: file, // Store blob locally
+      // No longer store blobs in IndexedDB
       _syncStatus: 'pending',
     };
 
-    // 5. Save to DB
+    // 6. Save metadata to IndexedDB
     await db.songs.add(song);
 
     return c.json({
@@ -1182,57 +1161,297 @@ app.post('/upload', async (c: Context) => {
 });
 
 // ============================================
-// Player Routes (Mock for Guest/Offline)
+// Player Routes (Guest Mode - IndexedDB backed)
 // ============================================
 
 // GET /api/player/progress - Get playback progress
 app.get('/player/progress', async (c: Context) => {
-  // Return null (no saved progress in offline mode)
-  return c.json({
-    success: true,
-    data: null
-  });
+  try {
+    const userId = getUserId();
+    const progress = await db.playerProgress.get(userId);
+    
+    if (!progress) {
+      return c.json({
+        success: true,
+        data: null
+      });
+    }
+    
+    // Get song details from IndexedDB
+    const song = await db.songs.get(progress.songId);
+    if (!song) {
+      return c.json({
+        success: true,
+        data: null
+      });
+    }
+    
+    // Determine context (library or playlist)
+    let context = null;
+    
+    // Try to find which playlist contains this song
+    const playlists = await db.playlists
+      .where('userId')
+      .equals(userId)
+      .toArray();
+    
+    const playlistWithSong = playlists.find(p => 
+      p.songIds && p.songIds.includes(song.id)
+    );
+    
+    if (playlistWithSong) {
+      context = {
+        type: 'playlist',
+        id: playlistWithSong.id,
+        name: playlistWithSong.name,
+      };
+    } else if (song.libraryId) {
+      // Fallback to library
+      const library = await db.libraries.get(song.libraryId);
+      if (library) {
+        context = {
+          type: 'library',
+          id: library.id,
+          name: library.name,
+        };
+      }
+    }
+    
+    // Return in backend API format
+    return c.json({
+      success: true,
+      data: {
+        track: {
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          coverUrl: song.coverUrl,
+          duration: progress.duration,
+          mimeType: 'audio/mpeg',
+        },
+        position: progress.position,
+        context,
+        updatedAt: progress.updatedAt.toISOString(),
+      }
+    });
+  } catch {
+    return c.json({
+      success: true,
+      data: null
+    });
+  }
 });
 
 // PUT /api/player/progress - Sync playback progress
 app.put('/player/progress', async (c: Context) => {
-  // In offline mode, we just acknowledge the request
-  return c.json({
-    success: true,
-    data: { synced: true }
-  });
+  try {
+    const userId = getUserId();
+    const body = await c.req.json();
+    
+    // Extract fields from request body
+    const { songId, position } = body;
+    
+    // Get current song to determine duration
+    const song = await db.songs.get(songId);
+    const duration = song?.file?.duration ?? 0;
+    
+    await db.playerProgress.put({
+      userId,
+      songId,
+      position,
+      duration,
+      updatedAt: new Date(),
+    });
+    
+    return c.json({
+      success: true,
+      data: { synced: true }
+    });
+  } catch {
+    return c.json({
+      success: false,
+      error: 'Failed to save progress'
+    }, 500);
+  }
 });
 
 // GET /api/player/seed - Get default playback seed
 app.get('/player/seed', async (c: Context) => {
-  // Return null (no seed in offline mode)
-  return c.json({
-    success: true,
-    data: null
-  });
+  try {
+    const userId = getUserId();
+    
+    // Try to find first playlist with songs
+    const playlists = await db.playlists
+      .where('userId')
+      .equals(userId)
+      .sortBy('createdAt');
+    
+    for (const playlist of playlists) {
+      if (playlist.songIds && playlist.songIds.length > 0) {
+        const firstSongId = playlist.songIds[0];
+        const song = await db.songs.get(firstSongId);
+        
+        if (song) {
+          return c.json({
+            success: true,
+            data: {
+              track: {
+                id: song.id,
+                title: song.title,
+                artist: song.artist,
+                album: song.album,
+                coverUrl: song.coverUrl,
+                mimeType: 'audio/mpeg',
+                duration: null,
+              },
+              context: {
+                type: 'playlist',
+                id: playlist.id,
+                name: playlist.name,
+              }
+            }
+          });
+        }
+      }
+    }
+    
+    // Fallback to first library with songs
+    const libraries = await db.libraries
+      .where('userId')
+      .equals(userId)
+      .sortBy('createdAt');
+    
+    for (const library of libraries) {
+      const songs = await db.songs
+        .where('libraryId')
+        .equals(library.id)
+        .limit(1)
+        .toArray();
+      
+      const song = songs[0];
+      if (song) {
+        return c.json({
+          success: true,
+          data: {
+            track: {
+              id: song.id,
+              title: song.title,
+              artist: song.artist,
+              album: song.album,
+              coverUrl: song.coverUrl,
+              mimeType: 'audio/mpeg',
+              duration: null,
+            },
+            context: {
+              type: 'library',
+              id: library.id,
+              name: library.name,
+            }
+          }
+        });
+      }
+    }
+    
+    // No seed available
+    return c.json({
+      success: true,
+      data: null
+    });
+  } catch {
+    return c.json({
+      success: true,
+      data: null
+    });
+  }
 });
 
 // GET /api/player/preferences - Get user preferences
 app.get('/player/preferences', async (c: Context) => {
-  // Return default preferences
-  return c.json({
-    success: true,
-    data: {
-      volume: 1,
-      muted: false,
-      repeatMode: 'off',
-      shuffleEnabled: false
-    }
-  });
+  try {
+    const userId = getUserId();
+    const preferences = await db.playerPreferences.get(userId);
+    
+    return c.json({
+      success: true,
+      data: preferences || {
+        volume: 1,
+        muted: false,
+        repeatMode: 'off',
+        shuffleEnabled: false
+      }
+    });
+  } catch {
+    return c.json({
+      success: true,
+      data: {
+        volume: 1,
+        muted: false,
+        repeatMode: 'off',
+        shuffleEnabled: false
+      }
+    });
+  }
 });
 
 // PATCH /api/player/preferences - Update user preferences
 app.patch('/player/preferences', async (c: Context) => {
-  // Acknowledge update
-  return c.json({
-    success: true,
-    data: { updated: true }
-  });
+  try {
+    const userId = getUserId();
+    const body = await c.req.json();
+    const current = await db.playerPreferences.get(userId);
+    
+    const updated = {
+      userId,
+      volume: body.volume ?? current?.volume ?? 1,
+      muted: body.muted ?? current?.muted ?? false,
+      repeatMode: body.repeatMode ?? current?.repeatMode ?? 'off',
+      shuffleEnabled: body.shuffleEnabled ?? current?.shuffleEnabled ?? false,
+      updatedAt: new Date(),
+    };
+    
+    await db.playerPreferences.put(updated);
+    
+    return c.json({
+      success: true,
+      data: { updated: true }
+    });
+  } catch {
+    return c.json({
+      success: false,
+      error: 'Failed to update preferences'
+    }, 500);
+  }
+});
+
+// PUT /api/player/preferences - Update user preferences (alias for PATCH)
+app.put('/player/preferences', async (c: Context) => {
+  try {
+    const userId = getUserId();
+    const body = await c.req.json();
+    const current = await db.playerPreferences.get(userId);
+    
+    const updated = {
+      userId,
+      volume: body.volume ?? current?.volume ?? 1,
+      muted: body.muted ?? current?.muted ?? false,
+      repeatMode: body.repeatMode ?? current?.repeatMode ?? 'off',
+      shuffleEnabled: body.shuffleEnabled ?? current?.shuffleEnabled ?? false,
+      updatedAt: new Date(),
+    };
+    
+    await db.playerPreferences.put(updated);
+    
+    return c.json({
+      success: true,
+      data: { updated: true }
+    });
+  } catch {
+    return c.json({
+      success: false,
+      error: 'Failed to update preferences'
+    }, 500);
+  }
 });
 
 export default app;

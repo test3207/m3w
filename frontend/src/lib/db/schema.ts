@@ -6,7 +6,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { Library, Playlist, Song } from '@m3w/shared';
 
-// Extend types for IndexedDB-specific fields
+// Extend shared types with IndexedDB-specific fields
 export interface OfflineLibrary extends Library {
   _syncStatus?: 'synced' | 'pending' | 'conflict';
   _lastSyncedAt?: Date;
@@ -20,7 +20,8 @@ export interface OfflinePlaylist extends Playlist {
 export interface OfflineSong extends Song {
   _syncStatus?: 'synced' | 'pending' | 'conflict';
   _lastSyncedAt?: Date;
-  _audioBlob?: Blob; // Cached audio file
+  /** Audio stream URL (Guest: /guest/songs/:id/stream, Auth: /api/songs/:id/stream) */
+  streamUrl?: string;
 }
 
 // Playlist-Song relationship (for ordering)
@@ -34,7 +35,26 @@ export interface OfflinePlaylistSong {
   _lastSyncedAt?: Date;
 }
 
-// Sync queue for offline changes
+// Player preferences (Guest mode only, Auth uses backend)
+export interface PlayerPreferences {
+  userId: string;
+  volume: number;
+  muted: boolean;
+  repeatMode: 'off' | 'one' | 'all';
+  shuffleEnabled: boolean;
+  updatedAt: Date;
+}
+
+// Player progress (Guest mode only, Auth uses backend)
+export interface PlayerProgress {
+  userId: string;
+  songId: string;
+  position: number;
+  duration: number;
+  updatedAt: Date;
+}
+
+// Sync queue for offline changes (future use)
 export interface SyncQueueItem {
   id?: number;
   entityType: 'library' | 'playlist' | 'song' | 'playlistSong';
@@ -54,22 +74,21 @@ export class M3WDatabase extends Dexie {
   songs!: EntityTable<OfflineSong, 'id'>;
   playlistSongs!: EntityTable<OfflinePlaylistSong, 'id'>;
   syncQueue!: EntityTable<SyncQueueItem, 'id'>;
+  playerPreferences!: EntityTable<PlayerPreferences, 'userId'>;
+  playerProgress!: EntityTable<PlayerProgress, 'userId'>;
 
   constructor() {
     super('m3w-offline');
 
-    // Version 1: Initial schema
+    // Single version schema (delete db manually for testing)
     this.version(1).stores({
       libraries: 'id, userId, name, createdAt, _syncStatus',
-      playlists: 'id, userId, name, createdAt, _syncStatus',
+      playlists: 'id, userId, linkedLibraryId, name, createdAt, _syncStatus',
       songs: 'id, libraryId, title, artist, album, _syncStatus',
       playlistSongs: 'id, playlistId, songId, [playlistId+songId], order, _syncStatus',
       syncQueue: '++id, entityType, entityId, operation, createdAt',
-    });
-
-    // Version 2: Add linkedLibraryId index to playlists
-    this.version(2).stores({
-      playlists: 'id, userId, linkedLibraryId, name, createdAt, _syncStatus',
+      playerPreferences: 'userId, updatedAt',
+      playerProgress: 'userId, songId, updatedAt',
     });
   }
 }
@@ -85,6 +104,8 @@ export async function clearAllData() {
     db.songs.clear(),
     db.playlistSongs.clear(),
     db.syncQueue.clear(),
+    db.playerPreferences.clear(),
+    db.playerProgress.clear(),
   ]);
 }
 
