@@ -3,6 +3,15 @@
  * All endpoints are relative paths. Base URL is configured in apiClient.
  */
 
+/**
+ * Get stream URL based on current auth context
+ * Guest mode: /guest/songs/:id/stream (served by Service Worker from Cache Storage)
+ * Auth mode: /api/songs/:id/stream (fetched from backend with token)
+ */
+export function getStreamUrl(songId: string, isGuest: boolean): string {
+  return isGuest ? `/guest/songs/${songId}/stream` : `/api/songs/${songId}/stream`;
+}
+
 export const MAIN_API_ENDPOINTS = {
   // Auth
   auth: {

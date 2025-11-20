@@ -60,6 +60,57 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 /**
+ * Handle Range requests for cached audio files (enables seeking)
+ * 
+ * @param cachedResponse - Full cached response
+ * @param rangeHeader - Range header value (e.g., "bytes=0-1023")
+ * @returns 206 Partial Content response with requested byte range
+ */
+async function handleRangeRequest(cachedResponse: Response, rangeHeader: string): Promise<Response> {
+  const arrayBuffer = await cachedResponse.arrayBuffer();
+  const totalSize = arrayBuffer.byteLength;
+  
+  // Parse Range header: "bytes=start-end" or "bytes=start-"
+  const rangeMatch = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+  if (!rangeMatch) {
+    console.error('[SW] Invalid Range header:', rangeHeader);
+    return new Response('Invalid Range header', { status: 416 });
+  }
+  
+  const start = parseInt(rangeMatch[1], 10);
+  const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : totalSize - 1;
+  
+  // Validate range
+  if (start >= totalSize || end >= totalSize || start > end) {
+    console.error('[SW] Range out of bounds:', { start, end, totalSize });
+    return new Response('Range Not Satisfiable', { 
+      status: 416,
+      headers: {
+        'Content-Range': `bytes */${totalSize}`,
+      },
+    });
+  }
+  
+  // Extract requested slice
+  const slicedBuffer = arrayBuffer.slice(start, end + 1);
+  const contentLength = slicedBuffer.byteLength;
+  
+  console.log('[SW] 📊 Range request:', { start, end, contentLength, totalSize });
+  
+  // Return 206 Partial Content
+  return new Response(slicedBuffer, {
+    status: 206,
+    statusText: 'Partial Content',
+    headers: {
+      'Content-Type': cachedResponse.headers.get('Content-Type') || 'audio/mpeg',
+      'Content-Length': contentLength.toString(),
+      'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+      'Accept-Ranges': 'bytes',
+    },
+  });
+}
+
+/**
  * Handle media requests (audio/cover files)
  * Supports both authenticated (/api/songs/*) and guest (/guest/songs/*) URLs
  */
@@ -68,9 +119,19 @@ async function handleMediaRequest(request: Request): Promise<Response> {
   const cache = await caches.open(CACHE_NAME);
 
   // 1. Check cache first (works for both Auth and Guest)
-  const cached = await cache.match(request);
+  // Note: Use url string without Range header to find full cached response
+  const cacheKey = new Request(request.url);
+  const cached = await cache.match(cacheKey);
+  
   if (cached) {
     console.log('[SW] ✅ Serving from cache:', url.pathname);
+    
+    // Handle Range requests (for seeking)
+    const rangeHeader = request.headers.get('Range');
+    if (rangeHeader) {
+      return handleRangeRequest(cached, rangeHeader);
+    }
+    
     return cached;
   }
 

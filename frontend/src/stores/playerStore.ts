@@ -4,8 +4,9 @@ import { logger } from '@/lib/logger-client';
 import { getAudioPlayer, type Track } from '@/lib/audio/player';
 import { prefetchAudioBlob } from '@/lib/audio/prefetch';
 import type { Song } from '@m3w/shared';
-import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
+import { getStreamUrl } from '@/services/api/main/endpoints';
 import { I18n } from '@/locales/i18n';
+import { useAuthStore } from './authStore';
 
 export type RepeatMode = 'off' | 'one' | 'all';
 export type QueueSource = 'library' | 'playlist' | 'all' | null;
@@ -27,6 +28,8 @@ const setBackupState = (state: PlayerState) => {
 
 // Song → Track converter for AudioPlayer
 function songToTrack(song: Song): Track {
+  const isGuest = useAuthStore.getState().isGuest;
+  
   return {
     id: song.id,
     title: song.title,
@@ -34,7 +37,7 @@ function songToTrack(song: Song): Track {
     album: song.album || undefined,
     coverUrl: song.coverUrl || undefined,
     duration: song.file?.duration || undefined,
-    audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
+    audioUrl: getStreamUrl(song.id, isGuest),
     mimeType: song.file?.mimeType || undefined,
   };
 }
@@ -426,21 +429,16 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
     let nextIndex: number;
 
-    // Note: repeatMode only affects automatic playback (on track end)
-    // Manual "next" button should always skip to next track
+    // Manual "next" button always loops (ignore repeat mode)
+    // Repeat mode only affects automatic playback on track end
     if (currentIndex < queue.length - 1) {
       // Play next song in queue
       nextIndex = currentIndex + 1;
       logger.info('Playing next song in queue', { nextIndex });
-    } else if (repeatMode === 'all' || repeatMode === 'one') {
-      // Loop back to first song (both 'all' and 'one' modes loop the queue)
-      nextIndex = 0;
-      logger.info('Looping back to first song', { repeatMode });
     } else {
-      // End of queue, no repeat
-      logger.info('End of queue reached, stopping playback', { repeatMode });
-      set({ isPlaying: false });
-      return;
+      // Loop back to first song (manual next always loops)
+      nextIndex = 0;
+      logger.info('Manual next: looping back to first song');
     }
 
     const nextSong = queue[nextIndex];
@@ -661,6 +659,18 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
               fileId: '', // Not needed for playback
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
+              // Include file info for proper audio format detection
+              file: seed.track.mimeType || seed.track.duration ? {
+                id: '',
+                hash: '',
+                path: '',
+                size: 0,
+                mimeType: seed.track.mimeType ?? 'audio/mpeg',
+                duration: seed.track.duration ?? null,
+                bitrate: null,
+                sampleRate: null,
+                channels: null,
+              } : undefined,
             };
             
             set({
@@ -670,9 +680,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
               queueSource: seed.context.type as QueueSource,
               queueSourceId: seed.context.id,
               queueSourceName: seed.context.name,
+              isPlaying: false, // Don't auto-play
             });
             
-            logger.info('Loaded default seed', { songId: song.id, title: song.title });
+            // Prime AudioPlayer so it's ready to play
+            const track = songToTrack(song);
+            audioPlayer.prime(track);
+            
+            logger.info('Loaded default seed and primed player', { songId: song.id, title: song.title });
           }
         } catch (seedError) {
           logger.warn('Failed to load default seed', seedError);
@@ -765,27 +780,32 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         isPlaying: false, // Don't auto-play
       });
 
-      // Preload audio and prime player with object URL (same as normal playback)
-      const audioUrl = MAIN_API_ENDPOINTS.songs.stream(song.id);
+      // Preload audio and prime player
+      const isGuest = useAuthStore.getState().isGuest;
+      const audioUrl = getStreamUrl(song.id, isGuest);
       const objectUrl = await prefetchAudioBlob(audioUrl);
       
+      const track = songToTrack(song);
+      
       if (objectUrl) {
-        const track = songToTrack(song);
-        track.resolvedUrl = objectUrl; // Use preloaded blob URL
-        audioPlayer.prime(track);
-        audioPlayer.seek(progress.position);
-        
+        // Auth mode: Use preloaded blob URL
+        track.resolvedUrl = objectUrl;
         logger.info('Restored playback state with preloaded audio', { 
           songId: song.id, 
           position: progress.position,
           queueLength: fullQueue.length 
         });
       } else {
-        logger.warn('Failed to preload audio for resume, using direct stream');
-        const track = songToTrack(song);
-        audioPlayer.prime(track);
-        audioPlayer.seek(progress.position);
+        // Guest mode: Service Worker handles streaming
+        logger.info('Restored playback state (Guest mode - Service Worker streaming)', { 
+          songId: song.id, 
+          position: progress.position,
+          queueLength: fullQueue.length 
+        });
       }
+      
+      audioPlayer.prime(track);
+      audioPlayer.seek(progress.position);
     } catch (error) {
       logger.error('Failed to load playback progress', error);
     }

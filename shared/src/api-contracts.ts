@@ -251,6 +251,12 @@ export const adminRoutes: RouteDefinition[] = [
     offlineCapable: true,
     description: 'Update user playback preferences',
   },
+  {
+    path: '/api/player/preferences',
+    method: 'PUT',
+    offlineCapable: true,
+    description: 'Update user playback preferences (alias for PATCH)',
+  },
 ];
 
 /**
