@@ -20,7 +20,9 @@ export interface OfflinePlaylist extends Playlist {
 export interface OfflineSong extends Song {
   _syncStatus?: 'synced' | 'pending' | 'conflict';
   _lastSyncedAt?: Date;
-  _audioBlob?: Blob; // Cached audio file
+  /** @deprecated Use streamUrl instead. Audio files now stored in Cache Storage. */
+  _audioBlob?: Blob; // Legacy field for backward compatibility
+  streamUrl?: string; // Guest: /guest/songs/:id/stream, Auth: /api/songs/:id/stream
 }
 
 // Playlist-Song relationship (for ordering)

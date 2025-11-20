@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
+import { saveTokenToIndexedDB, clearTokenFromIndexedDB } from '@/lib/auth/token-storage';
 import type { AuthTokens } from '@m3w/shared';
 import type { User as ApiUser } from '@/services/api/main/resources/auth';
 
@@ -40,6 +41,11 @@ export const useAuthStore = create<AuthStore>()(
 
       // Actions
       setAuth: (user, tokens) => {
+        // Sync access token to IndexedDB for Service Worker
+        saveTokenToIndexedDB(tokens.accessToken).catch((error) => {
+          logger.error('Failed to sync token to IndexedDB', { error });
+        });
+
         set({
           user,
           tokens,
@@ -70,6 +76,11 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       clearAuth: () => {
+        // Clear token from IndexedDB
+        clearTokenFromIndexedDB().catch((error) => {
+          logger.error('Failed to clear token from IndexedDB', { error });
+        });
+
         set({
           user: null,
           tokens: null,
@@ -97,13 +108,16 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const data = await api.main.auth.refreshToken(tokens.refreshToken);
 
-          set({
-            tokens: {
-              accessToken: data.accessToken,
-              refreshToken: data.refreshToken || tokens.refreshToken,
-              expiresAt: data.expiresAt,
-            },
-          });
+          const newTokens = {
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken || tokens.refreshToken,
+            expiresAt: data.expiresAt,
+          };
+
+          // Sync new token to IndexedDB
+          await saveTokenToIndexedDB(newTokens.accessToken);
+
+          set({ tokens: newTokens });
 
           return true;
         } catch (error) {

@@ -50,6 +50,6 @@ export const auth = {
    * Sign out
    */
   signout: async (): Promise<void> => {
-    return mainApiClient.post(MAIN_API_ENDPOINTS.auth.signout);
+    return mainApiClient.post(MAIN_API_ENDPOINTS.auth.logout);
   },
 };

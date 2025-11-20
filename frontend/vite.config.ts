@@ -14,8 +14,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
+      // Use custom service worker with token injection
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'service-worker-custom.ts',
       devOptions: {
-        enabled: true, // Enable PWA in dev mode for testing
+        enabled: true,
         type: 'module',
       },
       manifest: {
@@ -47,58 +51,8 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
-            },
-          },
-          // Cache API GET requests with NetworkFirst strategy
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/') &&
-              (url.pathname.includes('/songs') ||
-                url.pathname.includes('/libraries') ||
-                url.pathname.includes('/playlists')),
-            handler: 'NetworkFirst',
-            method: 'GET',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
-              },
-              networkTimeoutSeconds: 10,
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          // Cache audio files with CacheFirst strategy
-          {
-            urlPattern: ({ url }) => url.pathname.match(/^\/api\/songs\/\d+\/stream/),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'audio-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-              rangeRequests: true, // Support Range requests for audio
-            },
-          },
-        ],
-      },
+      // injectManifest strategy uses custom service worker
+      // No workbox configuration needed
     }),
   ],
   resolve: {

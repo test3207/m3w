@@ -10,7 +10,7 @@ export const MAIN_API_ENDPOINTS = {
     callback: '/api/auth/callback',
     refresh: '/api/auth/refresh',
     me: '/api/auth/me',
-    signout: '/api/auth/signout',
+    logout: '/api/auth/logout',
   },
   // Libraries
   libraries: {
