@@ -54,10 +54,9 @@ export const useAuthStore = create<AuthStore>()(
           user: {
             id: 'guest',
             name: 'Guest User',
-            email: null,
+            email: 'guest@local',
             image: null,
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
           },
           tokens: {
             accessToken: 'guest-token',

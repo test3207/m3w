@@ -14,7 +14,7 @@ export interface User {
   email: string;
   name?: string;
   avatarUrl?: string;
-  githubId: string;
+  githubId?: string; // Optional: only present for GitHub-authenticated users
   createdAt: string;
 }
 

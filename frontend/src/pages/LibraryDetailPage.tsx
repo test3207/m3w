@@ -25,6 +25,7 @@ import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
 import type { Song as SharedSong, SongSortOption } from "@m3w/shared";
 import type { Song } from "@/types/models";
+import { formatDuration } from "@/lib/utils/format-duration";
 import {
   DropdownMenu,
   DropdownMenuContent,
