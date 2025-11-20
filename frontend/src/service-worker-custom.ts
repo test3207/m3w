@@ -88,15 +88,20 @@ async function handleMediaRequest(request: Request): Promise<Response> {
   try {
     const token = await getAuthToken();
     
-    // Clone request and add Authorization header
+    // Build headers
+    const headers = new Headers(request.headers);
+    
+    // Only set Authorization header if token exists
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+    
+    // Clone request with new headers
     const authenticatedRequest = new Request(request, {
-      headers: new Headers({
-        ...Object.fromEntries(request.headers.entries()),
-        'Authorization': token ? `Bearer ${token}` : '',
-      }),
+      headers,
     });
 
-    console.log('[SW] 🌐 Fetching from backend:', url.pathname);
+    console.log('[SW] 🌐 Fetching from backend:', url.pathname, token ? '(with token)' : '(no token)');
     const response = await fetch(authenticatedRequest);
 
     // Cache successful complete responses (200 OK)
