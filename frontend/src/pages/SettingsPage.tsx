@@ -19,6 +19,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useToast } from "@/components/ui/use-toast";
 import { useLocale } from "@/locales/use-locale";
 import { I18n } from "@/locales/i18n";
+import StorageManager from "@/components/features/settings/StorageManager";
 
 export default function SettingsPage() {
   useLocale();
@@ -130,6 +131,9 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Storage Management Section */}
+      <StorageManager />
 
       {/* Logout Section */}
       <Card>

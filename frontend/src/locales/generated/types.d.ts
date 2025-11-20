@@ -752,6 +752,52 @@ export interface Messages {
       /** Sign Out */
       signOut: string;
     };
+    storage: {
+      /** Storage Management */
+      title: string;
+      /** Loading storage information... */
+      loading: string;
+      /** Show Details */
+      showDetails: string;
+      /** Hide Details */
+      hideDetails: string;
+      /** Browser estimate - actual available space may vary */
+      quotaNote: string;
+      persistent: {
+        /** Persistent Storage */
+        title: string;
+        /** Prevent browser from deleting cached data */
+        description: string;
+        /** Granted */
+        granted: string;
+        /** Request */
+        request: string;
+        /** Persistent Storage Granted */
+        successTitle: string;
+        /** Your cached data is now protected from automatic deletion */
+        successDescription: string;
+        /** Data Protection Active */
+        deniedTitle: string;
+        /** The browser automatically protects PWA data. Your music library is safe and won't be cleared without your action. */
+        deniedDescription: string;
+        /** Request Failed */
+        errorTitle: string;
+        /** Failed to request persistent storage. Please try again later. */
+        errorDescription: string;
+        /** Feature Not Available */
+        unsupportedTitle: string;
+        /** Your browser doesn't support persistent storage, or the app needs to be installed as PWA first. */
+        unsupportedDescription: string;
+      };
+      breakdown: {
+        /** Audio Files */
+        audio: string;
+        /** Cover Images */
+        covers: string;
+        /** Metadata */
+        metadata: string;
+      };
+    };
     toast: {
       /** Signed out successfully */
       signOutSuccess: string;

@@ -638,7 +638,7 @@ app.post('/playlists/:id/songs', async (c: Context) => {
       ? Math.max(...existingSongs.map((ps) => ps.order))
       : 0;
 
-    // Add to playlist
+    // Add to playlist (align with backend: no fromLibraryId)
     const playlistSong = {
       id: crypto.randomUUID(),
       playlistId: id,
@@ -813,7 +813,7 @@ app.post('/playlists/for-library', async (c: Context) => {
 
     await db.playlists.add(playlist);
 
-    // Add playlist songs
+    // Add playlist songs (align with backend: no fromLibraryId needed)
     if (songIds && songIds.length > 0) {
       await Promise.all(
         songIds.map((songId: string, index: number) =>
@@ -885,7 +885,7 @@ app.put('/playlists/:id/songs', async (c: Context) => {
       .toArray();
     await Promise.all(existingSongs.map((ps) => db.playlistSongs.delete(ps.id)));
 
-    // Add new songs
+    // Add new songs (align with backend: no fromLibraryId)
     if (songIds && songIds.length > 0) {
       await Promise.all(
         songIds.map((songId: string, index: number) =>
@@ -1113,6 +1113,7 @@ app.post('/upload', async (c: Context) => {
 
     const song: OfflineSong = {
       id: songId,
+      libraryId, // Primary library where song was uploaded
       title: common.title || file.name.replace(/\.[^/.]+$/, ""),
       artist: common.artist || "Unknown Artist",
       album: common.album || "Unknown Album",
@@ -1125,7 +1126,6 @@ app.post('/upload', async (c: Context) => {
       coverUrl: coverUrl || null,
       streamUrl, // Guest URL: /guest/songs/{id}/stream
       fileId: hash, // Use hash as fileId for local
-      libraryId,
       createdAt: now,
       updatedAt: now,
       file: {
@@ -1139,12 +1139,25 @@ app.post('/upload', async (c: Context) => {
         sampleRate: format.sampleRate || 0,
         channels: format.numberOfChannels || 0,
       },
+      // Cache status fields (v2 schema)
+      isCached: true,
+      lastCacheCheck: Date.now(),
+      fileHash: hash,
       // No longer store blobs in IndexedDB
       _syncStatus: 'pending',
     };
 
     // 6. Save metadata to IndexedDB
     await db.songs.add(song);
+    
+    // 7. Create library-song relationship (schema v2)
+    await db.librarySongs.add({
+      id: `${libraryId}-${songId}`,
+      libraryId,
+      songId,
+      addedAt: new Date(),
+      _syncStatus: 'pending',
+    });
 
     return c.json({
       success: true,
@@ -1205,15 +1218,18 @@ app.get('/player/progress', async (c: Context) => {
         id: playlistWithSong.id,
         name: playlistWithSong.name,
       };
-    } else if (song.libraryId) {
-      // Fallback to library
-      const library = await db.libraries.get(song.libraryId);
-      if (library) {
-        context = {
-          type: 'library',
-          id: library.id,
-          name: library.name,
-        };
+    } else {
+      // Fallback to library (query librarySongs for schema v2)
+      const librarySong = await db.librarySongs.where('songId').equals(song.id).first();
+      if (librarySong) {
+        const library = await db.libraries.get(librarySong.libraryId);
+        if (library) {
+          context = {
+            type: 'library',
+            id: library.id,
+            name: library.name,
+          };
+        }
       }
     }
     

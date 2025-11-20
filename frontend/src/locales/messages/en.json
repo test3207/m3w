@@ -416,6 +416,32 @@
       "description": "Sign out or manage your account",
       "signOut": "Sign Out"
     },
+    "storage": {
+      "title": "Storage Management",
+      "loading": "Loading storage information...",
+      "showDetails": "Show Details",
+      "hideDetails": "Hide Details",
+      "quotaNote": "Browser estimate - actual available space may vary",
+      "persistent": {
+        "title": "Persistent Storage",
+        "description": "Prevent browser from deleting cached data",
+        "granted": "Granted",
+        "request": "Request",
+        "successTitle": "Persistent Storage Granted",
+        "successDescription": "Your cached data is now protected from automatic deletion",
+        "deniedTitle": "Data Protection Active",
+        "deniedDescription": "The browser automatically protects PWA data. Your music library is safe and won't be cleared without your action.",
+        "errorTitle": "Request Failed",
+        "errorDescription": "Failed to request persistent storage. Please try again later.",
+        "unsupportedTitle": "Feature Not Available",
+        "unsupportedDescription": "Your browser doesn't support persistent storage, or the app needs to be installed as PWA first."
+      },
+      "breakdown": {
+        "audio": "Audio Files",
+        "covers": "Cover Images",
+        "metadata": "Metadata"
+      }
+    },
     "toast": {
       "signOutSuccess": "Signed out successfully",
       "signOutDescription": "You have been signed out successfully"

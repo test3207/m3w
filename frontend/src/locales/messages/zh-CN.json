@@ -416,6 +416,32 @@
       "description": "退出登录或管理您的账户",
       "signOut": "退出登录"
     },
+    "storage": {
+      "title": "存储管理",
+      "loading": "正在加载存储信息...",
+      "showDetails": "显示详情",
+      "hideDetails": "隐藏详情",
+      "quotaNote": "浏览器估算值 - 实际可用空间可能不同",
+      "persistent": {
+        "title": "持久化存储",
+        "description": "防止浏览器删除缓存数据",
+        "granted": "已授权",
+        "request": "请求授权",
+        "successTitle": "持久化存储已授予",
+        "successDescription": "您的缓存数据现在受保护，不会被自动删除",
+        "deniedTitle": "数据保护已启用",
+        "deniedDescription": "浏览器会自动保护 PWA 数据。您的音乐库是安全的，不会在未经您同意的情况下被清除。",
+        "errorTitle": "请求失败",
+        "errorDescription": "请求持久化存储失败，请稍后重试。",
+        "unsupportedTitle": "功能不可用",
+        "unsupportedDescription": "您的浏览器不支持持久化存储，或需要先将应用安装为 PWA。"
+      },
+      "breakdown": {
+        "audio": "音频文件",
+        "covers": "封面图片",
+        "metadata": "元数据"
+      }
+    },
     "toast": {
       "signOutSuccess": "已退出登录",
       "signOutDescription": "您已成功退出登录"
