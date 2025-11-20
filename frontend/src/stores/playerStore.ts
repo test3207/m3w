@@ -3,7 +3,7 @@ import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
 import { getAudioPlayer, type Track } from '@/lib/audio/player';
 import { prefetchAudioBlob } from '@/lib/audio/prefetch';
-import type { Song } from '@/types/models';
+import type { Song } from '@m3w/shared';
 import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
 import { I18n } from '@/locales/i18n';
 
