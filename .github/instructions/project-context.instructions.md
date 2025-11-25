@@ -207,7 +207,14 @@ m3w/
 │   │   │   ├── db/               # IndexedDB schema and utilities
 │   │   │   │   └── schema.ts     # Dexie schema with metadata tables
 │   │   │   ├── offline-proxy/    # Guest mode API simulation
-│   │   │   │   └── index.ts      # Hono-based offline API routes
+│   │   │   │   ├── index.ts      # Main router composition
+│   │   │   │   ├── routes/       # Domain-specific route handlers
+│   │   │   │   │   ├── libraries.ts
+│   │   │   │   │   ├── playlists.ts
+│   │   │   │   │   ├── songs.ts
+│   │   │   │   │   ├── upload.ts
+│   │   │   │   │   └── player.ts
+│   │   │   │   └── utils/        # Shared utilities (auth, sorting)
 │   │   │   ├── pwa/              # PWA and caching utilities
 │   │   │   │   └── cache-manager.ts  # Cache Storage API helpers
 │   │   │   ├── sync/             # Offline sync service (planned)
