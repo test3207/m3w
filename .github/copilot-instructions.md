@@ -30,7 +30,7 @@
 | File | Applies To | Purpose |
 | --- | --- | --- |
 | `.github/instructions/project-context.instructions.md` | `**/*` | Full project status, architecture, and domain context |
-| `.github/instructions/development-standards.instructions.md` | `**/*` | Coding conventions, testing strategy, and workflow agreements |
+| `.github/instructions/development-standards.instructions.md` | `**/*` | Coding conventions, testing strategy, workflow agreements, and **project management** |
 | `.github/instructions/api-patterns.instructions.md` | `**/*` | API response pattern and toast feedback workflow |
 | `.github/instructions/i18n-system.instructions.md` | `**/*` | Internationalization architecture and usage patterns |
 | `.github/instructions/user-stories.instructions.md` | `**/*` | Complete product requirements (online + offline experience) |
@@ -39,6 +39,7 @@
 
 - Need business context, core flows, or roadmap? Open `project-context.instructions.md`.
 - Touching code style, typing, Git flow, or testing? Review `development-standards.instructions.md`.
+- **Managing issues, epics, or milestones?** See the Project Management section in `development-standards.instructions.md`.
 - Writing or adjusting an API route or toast feedback? Follow `api-patterns.instructions.md` for consistent response structure and user notifications.
 - Adding or modifying user-facing text? Follow `i18n-system.instructions.md` for proper i18n integration.
 - Understanding product requirements (online or offline)? Check `user-stories.instructions.md` for complete user flows and acceptance criteria.
@@ -67,6 +68,8 @@
 - i18n system: [i18n-system.instructions.md](./instructions/i18n-system.instructions.md)
 - User stories (online + offline): [user-stories.instructions.md](./instructions/user-stories.instructions.md)
 - Frontend API client architecture: [frontend/src/services/api/README.md](../frontend/src/services/api/README.md)
+- **GitHub Milestone**: <https://github.com/test3207/m3w/milestone/1>
+- **GitHub Project Board**: <https://github.com/users/test3207/projects/3>
 - Vite Documentation: <https://vitejs.dev/>
 - React Router Documentation: <https://reactrouter.com/>
 - Hono Documentation: <https://hono.dev/>
@@ -74,5 +77,5 @@
 - Tailwind CSS: <https://tailwindcss.com/docs>
 - TypeScript Handbook: <https://www.typescriptlang.org/docs/>
 
-**Document Version**: v4.1  
-**Last Updated**: 2025-11-19
+**Document Version**: v4.2  
+**Last Updated**: 2025-11-25

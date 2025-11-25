@@ -223,6 +223,84 @@ docker run -d --name m3w-rc --network m3w_default -p 4000:4000 \
 - **All PR content must be in English** (title, description, comments) for consistency and broader collaboration.
 - Only commit or push when explicitly requested; keep the working state ready for commits at all times.
 
+## Project Management
+
+### Structure Overview
+
+The project uses a **two-layer management structure**:
+
+```
+Milestone (deadline-driven)
+└── Epic (feature domain aggregation)
+    └── Issue (specific task)
+```
+
+### Resources
+
+| Resource | URL | Purpose |
+|----------|-----|----------|
+| **Milestone 1** | https://github.com/test3207/m3w/milestone/1 | Core Product Release & Deployment Automation (Due: 2025-11-30) |
+| **Project Board** | https://github.com/users/test3207/projects/3 | Kanban view for task tracking |
+
+### Epics (Milestone 1)
+
+| Epic | Issue # | Description |
+|------|---------|-------------|
+| Epic 1: Core User Experience | #29 | Online & offline features, Guest mode, PWA |
+| Epic 2: Production & Demo | #30 | Docker, demo mode, open source prep |
+| Epic 3: CI/CD Pipeline | #31 | Automated builds, tests, cloud deployment |
+| Epic 4: Quality | #38 | Bug fixes, testing improvements |
+
+### Issue Management Rules
+
+1. **Milestone only links Epics**: Individual issues are NOT directly linked to Milestone
+2. **Epic tracks sub-issues via checklist**: Each Epic body contains `- [x] #XX` checklist for progress tracking
+3. **Issue references Epic in body**: Use "Parent Issue: Epic X (#YY)" in issue description
+4. **GitHub auto-calculates progress**: Epic checklist shows completion percentage
+
+### Working with Issues
+
+**Creating a new Issue:**
+```bash
+# Create issue and link to Epic via body text
+gh issue create --title "Feature description" --body "Parent Issue: Epic 1 (#29)"
+
+# Then update the Epic checklist manually or via MCP
+```
+
+**Updating Epic progress:**
+```typescript
+// Use MCP to update Epic body with new checklist item
+mcp_github_issue_write({
+  method: 'update',
+  owner: 'test3207',
+  repo: 'm3w',
+  issue_number: 29,
+  body: `...existing content...
+- [ ] #XX New sub-issue`
+})
+```
+
+**Closing an Issue:**
+- Use `Closes #XX` in PR description or commit message
+- Update Epic checklist: change `- [ ] #XX` to `- [x] #XX`
+
+### CLI Quick Reference
+
+```bash
+# List all issues by state
+gh issue list --state all
+
+# List issues in milestone
+gh api repos/test3207/m3w/milestones
+
+# View Epic details
+gh issue view 29
+
+# Check milestone progress
+gh api repos/test3207/m3w/milestones/1 --jq '{title, open_issues, closed_issues, due_on}'
+```
+
 ## Pull Request Management
 
 ### Monitoring PR Checks
