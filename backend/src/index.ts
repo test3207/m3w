@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
+import { serveStatic } from '@hono/node-server/serve-static';
 import 'dotenv/config';
 import { logger } from './lib/logger';
 import { prisma } from './lib/prisma';
@@ -215,7 +216,23 @@ app.route('/api/songs', songsRoutes);
 app.route('/api/upload', uploadRoutes);
 app.route('/api/player', playerRoutes);
 
-// 404 handler
+// ============================================================================
+// Static Frontend Serving (All-in-One Deployment)
+// ============================================================================
+// When SERVE_FRONTEND=true, backend serves frontend static files
+// This enables single-container deployment for simplicity
+// For separated deployment, use Dockerfile.frontend instead
+if (process.env.SERVE_FRONTEND === 'true') {
+  logger.info('Static frontend serving enabled (All-in-One mode)');
+  
+  // Serve static files from public directory
+  app.use('/*', serveStatic({ root: './public' }));
+  
+  // SPA fallback - serve index.html for non-API routes
+  app.get('/*', serveStatic({ path: './public/index.html' }));
+}
+
+// 404 handler (only for API routes when frontend serving is disabled)
 app.notFound((c) => {
   return c.json({ error: 'Not Found' }, 404);
 });

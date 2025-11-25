@@ -10,7 +10,11 @@ import { isOfflineCapable } from '@m3w/shared';
 import { logger } from '../logger-client';
 
 // Backend API base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+// Priority: Runtime config (Docker) > Build-time env var > Dev default
+const API_BASE_URL = 
+  (typeof window !== 'undefined' && (window as any).__API_BASE_URL__ !== '__API_BASE_URL__') 
+    ? (window as any).__API_BASE_URL__ 
+    : (import.meta.env.VITE_API_URL || 'http://localhost:4000');
 
 // Track backend reachability
 let isBackendReachable = true;
