@@ -82,6 +82,11 @@ app.get('/:id', async (c: Context) => {
         _count: {
           select: { songs: true },
         },
+        songs: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { id: true, coverUrl: true },
+        },
       },
     });
 
@@ -95,9 +100,17 @@ app.get('/:id', async (c: Context) => {
       );
     }
 
+    // Add coverUrl from last added song
+    const lastSong = library.songs[0];
+    const libraryWithCover = {
+      ...library,
+      coverUrl: lastSong ? resolveCoverUrl({ id: lastSong.id, coverUrl: lastSong.coverUrl }) : null,
+      songs: undefined, // Remove songs array from response
+    };
+
     return c.json({
       success: true,
-      data: library,
+      data: libraryWithCover,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

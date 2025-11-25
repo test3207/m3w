@@ -6,7 +6,7 @@
  */
 
 import { api } from '@/services';
-import { db } from '../db/schema';
+import { db, type OfflineSong } from '../db/schema';
 import { logger } from '../logger-client';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -65,6 +65,10 @@ export async function syncMetadata(): Promise<SyncResult> {
     );
     logger.info('Playlists synced', { count: playlists.length });
 
+    // Pre-load existing songs to preserve cache status
+    const existingSongs = await db.songs.toArray();
+    const existingSongsMap = new Map(existingSongs.map(s => [s.id, s]));
+
     // Fetch songs for each library (batched)
     let totalSongs = 0;
     for (const library of libraries) {
@@ -72,16 +76,16 @@ export async function syncMetadata(): Promise<SyncResult> {
         const songs = await api.main.libraries.getSongs(library.id);
 
         // Merge with existing cache status to preserve offline data
-        const mergedSongs = await Promise.all(
+        const mergedSongs: OfflineSong[] = await Promise.all(
           songs.map(async (song) => {
-            const existing = await db.songs.get(song.id);
+            const existing = existingSongsMap.get(song.id);
             return {
               ...song,
               // Preserve existing cache fields or set defaults
               isCached: existing?.isCached ?? false,
               cacheSize: existing?.cacheSize,
               lastCacheCheck: existing?.lastCacheCheck ?? 0,
-              fileHash: existing?.fileHash ?? song.file?.hash, // Use server hash if available
+              fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
               _syncStatus: 'synced' as const,
             };
           })
@@ -114,16 +118,16 @@ export async function syncMetadata(): Promise<SyncResult> {
         );
 
         // Also store the songs themselves (preserve cache status)
-        const mergedSongs = await Promise.all(
+        const mergedSongs: OfflineSong[] = await Promise.all(
           songs.map(async (song) => {
-            const existing = await db.songs.get(song.id);
+            const existing = existingSongsMap.get(song.id);
             return {
               ...song,
               // Preserve existing cache fields or set defaults
               isCached: existing?.isCached ?? false,
               cacheSize: existing?.cacheSize,
               lastCacheCheck: existing?.lastCacheCheck ?? 0,
-              fileHash: existing?.fileHash ?? song.file?.hash, // Use server hash if available
+              fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
               _syncStatus: 'synced' as const,
             };
           })

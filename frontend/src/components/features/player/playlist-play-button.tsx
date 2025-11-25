@@ -39,9 +39,9 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
           artist: track.artist ?? undefined,
           album: track.album ?? undefined,
           coverUrl: track.coverUrl ?? undefined,
-          duration: track.file?.duration ?? undefined,
+          duration: track.duration ?? undefined,
           audioUrl: MAIN_API_ENDPOINTS.songs.stream(track.id),
-          mimeType: track.file?.mimeType ?? undefined,
+          mimeType: track.mimeType ?? 'audio/mpeg',
         });
       }
 

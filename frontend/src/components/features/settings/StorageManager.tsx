@@ -97,27 +97,28 @@ export default function StorageManager() {
       localStorage.clear();
       
       logger.info('All data cleared');
+      
+      // Show success toast briefly
       toast({
         title: I18n.settings.storage.clearSuccess,
+        duration: 1000, // Show for 1 second
       });
       
-      // Reload storage usage
-      await loadStorageUsage();
-      
-      // Redirect to home (user will need to sign in again)
+      // Redirect immediately after toast (user will need to sign in again)
+      // Use replace to prevent back navigation to this page
       setTimeout(() => {
-        window.location.href = '/';
-      }, 1500);
+        window.location.replace('/');
+      }, 1000);
     } catch (error) {
       logger.error('Failed to clear data', { error });
       toast({
         title: I18n.settings.storage.clearError,
         variant: 'destructive',
       });
-    } finally {
       setIsClearing(false);
       setShowClearDialog(false);
     }
+    // Don't reset clearing state if successful - let redirect happen
   };
 
   if (!usage) {

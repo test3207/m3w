@@ -116,6 +116,12 @@ export const userDataRoutes: RouteDefinition[] = [
     description: 'Remove song from playlist (queued when offline)',
   },
   {
+    path: '/api/playlists/:id/songs/reorder',
+    method: 'PUT',
+    offlineCapable: true,
+    description: 'Reorder songs in playlist (queued when offline)',
+  },
+  {
     path: '/api/playlists/by-library/:libraryId',
     method: 'GET',
     offlineCapable: true,

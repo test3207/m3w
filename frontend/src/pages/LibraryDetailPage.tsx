@@ -303,9 +303,9 @@ export default function LibraryDetailPage() {
                 </div>
 
                 {/* Duration */}
-                {song.file?.duration && (
+                {song.duration && (
                   <div className="shrink-0 text-sm text-muted-foreground">
-                    {formatDuration(song.file.duration)}
+                    {formatDuration(song.duration)}
                   </div>
                 )}
               </div>

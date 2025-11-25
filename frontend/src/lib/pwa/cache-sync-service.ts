@@ -11,9 +11,7 @@
 import { db } from '@/lib/db/schema';
 import { logger } from '@/lib/logger-client';
 import { getCacheName } from '@/lib/pwa/cache-manager';
-
-const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
-const BATCH_SIZE = 50; // Process 50 songs at a time
+import { CACHE_SYNC_INTERVAL, CACHE_SYNC_BATCH_SIZE } from '@/lib/storage/storage-constants';
 
 interface SyncStats {
   totalChecked: number;
@@ -36,7 +34,7 @@ class CacheSyncService {
       return;
     }
 
-    logger.info('Starting cache sync service', { interval: SYNC_INTERVAL });
+    logger.info('Starting cache sync service', { interval: CACHE_SYNC_INTERVAL });
     
     // Run immediately on start
     this.runSync().catch((error) => {
@@ -48,7 +46,7 @@ class CacheSyncService {
       this.runSync().catch((error) => {
         logger.error('Scheduled cache sync failed', { error });
       });
-    }, SYNC_INTERVAL);
+    }, CACHE_SYNC_INTERVAL);
   }
 
   /**
@@ -117,8 +115,8 @@ class CacheSyncService {
       const cache = await caches.open(getCacheName('audio'));
 
       // Process in batches
-      for (let i = 0; i < songs.length; i += BATCH_SIZE) {
-        const batch = songs.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < songs.length; i += CACHE_SYNC_BATCH_SIZE) {
+        const batch = songs.slice(i, i + CACHE_SYNC_BATCH_SIZE);
         
         await Promise.all(
           batch.map(async (song) => {

@@ -17,6 +17,65 @@ import { parseBlob } from 'music-metadata';
 import { calculateFileHash } from '../utils/hash';
 import { cacheGuestAudio, cacheGuestCover } from '../pwa/cache-manager';
 import type { OfflineSong } from '../db/schema';
+import { logger } from '../logger-client';
+
+/**
+ * Get pinyin sort key for Chinese text
+ * Simplified: Use localeCompare with zh-CN locale for basic pinyin sorting
+ */
+function getPinyinSort(text: string): string {
+  // For Chinese text, use the text as-is for localeCompare
+  // localeCompare with 'zh-CN' locale will handle pinyin sorting
+  return text.toLowerCase();
+}
+
+/**
+ * Sort songs by various options (matches backend logic)
+ */
+function sortSongsOffline(songs: OfflineSong[], sortOption: string): OfflineSong[] {
+  const sorted = [...songs];
+  
+  switch (sortOption) {
+    case 'title-asc':
+      return sorted.sort((a, b) => {
+        const aTitle = getPinyinSort(a.title);
+        const bTitle = getPinyinSort(b.title);
+        return aTitle.localeCompare(bTitle, 'zh-CN');
+      });
+    
+    case 'title-desc':
+      return sorted.sort((a, b) => {
+        const aTitle = getPinyinSort(a.title);
+        const bTitle = getPinyinSort(b.title);
+        return bTitle.localeCompare(aTitle, 'zh-CN');
+      });
+    
+    case 'artist-asc':
+      return sorted.sort((a, b) => {
+        const aArtist = getPinyinSort(a.artist || '');
+        const bArtist = getPinyinSort(b.artist || '');
+        return aArtist.localeCompare(bArtist, 'zh-CN');
+      });
+    
+    case 'album-asc':
+      return sorted.sort((a, b) => {
+        const aAlbum = getPinyinSort(a.album || '');
+        const bAlbum = getPinyinSort(b.album || '');
+        return aAlbum.localeCompare(bAlbum, 'zh-CN');
+      });
+    
+    case 'date-asc':
+      return sorted.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    
+    case 'date-desc':
+    default:
+      return sorted.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+  }
+}
 
 const app = new Hono().basePath('/api');
 
@@ -45,15 +104,25 @@ app.get('/libraries', async (c: Context) => {
       .reverse()
       .sortBy('createdAt');
 
-    // Add song counts
+    // Add song counts and coverUrl from last added song
     const librariesWithCounts = await Promise.all(
       libraries.map(async (library) => {
         const songCount = await db.songs.where('libraryId').equals(library.id).count();
+        
+        // Get last added song for cover (orderBy createdAt desc, matches backend)
+        const lastSong = await db.songs
+          .where('libraryId')
+          .equals(library.id)
+          .reverse()
+          .sortBy('createdAt')
+          .then(songs => songs[0]);
+        
         return {
           ...library,
           _count: {
             songs: songCount,
           },
+          coverUrl: lastSong?.coverUrl || null,
         };
       })
     );
@@ -102,13 +171,23 @@ app.get('/libraries/:id', async (c: Context) => {
       );
     }
 
-    // Add song count
+    // Add song count and coverUrl from last added song
     const songCount = await db.songs.where('libraryId').equals(id).count();
+    
+    // Get last added song for cover (matches backend)
+    const lastSong = await db.songs
+      .where('libraryId')
+      .equals(id)
+      .reverse()
+      .sortBy('createdAt')
+      .then(songs => songs[0]);
+    
     const libraryWithCount = {
       ...library,
       _count: {
         songs: songCount,
       },
+      coverUrl: lastSong?.coverUrl || null,
     };
 
     return c.json({
@@ -282,6 +361,7 @@ app.get('/libraries/:id/songs', async (c: Context) => {
   try {
     const id = c.req.param('id');
     const userId = getUserId();
+    const sortParam = (c.req.query('sort') || 'date-desc') as string;
 
     const library = await db.libraries.get(id);
 
@@ -295,11 +375,15 @@ app.get('/libraries/:id/songs', async (c: Context) => {
       );
     }
 
+    // Query songs by libraryId (one-to-many relationship)
     const songs = await db.songs.where('libraryId').equals(id).toArray();
+
+    // Apply sorting (matches backend logic)
+    const sortedSongs = sortSongsOffline(songs, sortParam);
 
     return c.json({
       success: true,
-      data: songs,
+      data: sortedSongs,
     });
   } catch {
     return c.json(
@@ -326,15 +410,30 @@ app.get('/playlists', async (c: Context) => {
       .reverse()
       .sortBy('createdAt');
 
-    // Add song counts
+    // Add song counts and coverUrl from first song (by order)
     const playlistsWithCounts = await Promise.all(
       playlists.map(async (playlist) => {
         const songCount = await db.playlistSongs.where('playlistId').equals(playlist.id).count();
+        
+        // Get first song by order for cover (matches backend)
+        const firstPlaylistSong = await db.playlistSongs
+          .where('playlistId')
+          .equals(playlist.id)
+          .sortBy('order')
+          .then(pSongs => pSongs[0]);
+        
+        let coverUrl: string | null = null;
+        if (firstPlaylistSong) {
+          const song = await db.songs.get(firstPlaylistSong.songId);
+          coverUrl = song?.coverUrl || null;
+        }
+        
         return {
           ...playlist,
           _count: {
             songs: songCount,
           },
+          coverUrl,
         };
       })
     );
@@ -372,8 +471,21 @@ app.get('/playlists/:id', async (c: Context) => {
       );
     }
 
-    // Add song count
+    // Add song count and coverUrl from first song (by order)
     const songCount = await db.playlistSongs.where('playlistId').equals(id).count();
+    
+    // Get first song by order for cover (matches backend)
+    const firstPlaylistSong = await db.playlistSongs
+      .where('playlistId')
+      .equals(id)
+      .sortBy('order')
+      .then(pSongs => pSongs[0]);
+    
+    let coverUrl: string | null = null;
+    if (firstPlaylistSong) {
+      const song = await db.songs.get(firstPlaylistSong.songId);
+      coverUrl = song?.coverUrl || null;
+    }
 
     return c.json({
       success: true,
@@ -382,6 +494,7 @@ app.get('/playlists/:id', async (c: Context) => {
         _count: {
           songs: songCount,
         },
+        coverUrl,
       },
     });
   } catch {
@@ -673,6 +786,87 @@ app.post('/playlists/:id/songs', async (c: Context) => {
       {
         success: false,
         error: 'Failed to add song to playlist',
+      },
+      500
+    );
+  }
+});
+
+// PUT /api/playlists/:id/songs/reorder - Reorder songs in playlist
+app.put('/playlists/:id/songs/reorder', async (c: Context) => {
+  try {
+    const id = c.req.param('id');
+    const userId = getUserId();
+    const body = await c.req.json();
+    const { songIds } = body as { songIds: string[] };
+
+    // Check if playlist exists and belongs to user
+    const playlist = await db.playlists.get(id);
+    if (!playlist || playlist.userId !== userId) {
+      return c.json(
+        {
+          success: false,
+          error: 'Playlist not found',
+        },
+        404
+      );
+    }
+
+    // Validate that all songIds exist
+    const songs = await db.songs.bulkGet(songIds);
+    const validSongIds = songs.filter(s => s !== undefined).map(s => s!.id);
+    
+    if (validSongIds.length !== songIds.length) {
+      return c.json(
+        {
+          success: false,
+          message: '歌曲顺序无效',
+          error: 'INVALID_SONG_ORDER',
+        },
+        400
+      );
+    }
+
+    // Update playlist with new order
+    await db.playlists.update(id, {
+      songIds,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Update playlistSongs order field to match new songIds order
+    const playlistSongs = await db.playlistSongs
+      .where('playlistId')
+      .equals(id)
+      .toArray();
+    
+    // Create a map of songId to new order
+    const orderMap = new Map(songIds.map((songId, index) => [songId, index]));
+    
+    // Update each playlistSong's order field
+    await db.transaction('rw', db.playlistSongs, async () => {
+      for (const ps of playlistSongs) {
+        const newOrder = orderMap.get(ps.songId);
+        if (newOrder !== undefined) {
+          await db.playlistSongs.update(ps.id, { order: newOrder });
+        }
+      }
+    });
+
+    return c.json({
+      success: true,
+      message: 'Songs reordered successfully',
+      data: {
+        playlistId: id,
+        songCount: songIds.length,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to reorder songs in playlist', { error });
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to reorder songs in playlist',
       },
       500
     );
@@ -1091,10 +1285,27 @@ app.post('/upload', async (c: Context) => {
     const metadata = await parseBlob(file);
     const { common, format } = metadata;
 
-    // 3. Generate song ID (needed for cache URLs)
+    // 3. Check if File entity exists or create new one
+    let fileEntity = await db.files.where('hash').equals(hash).first();
+    
+    if (!fileEntity) {
+      // Create new File entity
+      fileEntity = {
+        id: `file-${hash}`,
+        hash,
+        size: file.size,
+        mimeType: file.type || 'audio/mpeg',
+        duration: format.duration || undefined,
+        refCount: 0, // Will be incremented below
+        createdAt: new Date(),
+      };
+      await db.files.add(fileEntity);
+    }
+
+    // 4. Generate song ID (needed for cache URLs)
     const songId = crypto.randomUUID();
 
-    // 4. Extract cover art if available and cache it
+    // 5. Extract cover art if available and cache it
     let coverUrl: string | null = null;
     if (common.picture && common.picture.length > 0) {
       const picture = common.picture[0];
@@ -1105,15 +1316,15 @@ app.post('/upload', async (c: Context) => {
       coverUrl = await cacheGuestCover(songId, coverBlob);
     }
 
-    // 4. Cache audio file in Cache Storage
+    // 6. Cache audio file in Cache Storage
     const streamUrl = await cacheGuestAudio(songId, file);
 
-    // 5. Create Song object
+    // 7. Create Song object
     const now = new Date().toISOString();
 
     const song: OfflineSong = {
       id: songId,
-      libraryId, // Primary library where song was uploaded
+      libraryId, // ✅ Required field (one-to-many relationship)
       title: common.title || file.name.replace(/\.[^/.]+$/, ""),
       artist: common.artist || "Unknown Artist",
       album: common.album || "Unknown Album",
@@ -1125,40 +1336,30 @@ app.post('/upload', async (c: Context) => {
       composer: common.composer && common.composer.length > 0 ? common.composer[0] : null,
       coverUrl: coverUrl || null,
       streamUrl, // Guest URL: /guest/songs/{id}/stream
-      fileId: hash, // Use hash as fileId for local
+      fileId: fileEntity.id, // Reference to File entity
+      duration: format.duration || null,
       createdAt: now,
       updatedAt: now,
-      file: {
-        id: hash,
-        hash: hash,
-        path: 'local',
-        size: file.size,
-        mimeType: file.type,
-        duration: format.duration || 0,
-        bitrate: format.bitrate || 0,
-        sampleRate: format.sampleRate || 0,
-        channels: format.numberOfChannels || 0,
-      },
-      // Cache status fields (v2 schema)
+      // Cache status fields
       isCached: true,
       cacheSize: file.size, // Set cache size to file size
       lastCacheCheck: Date.now(),
-      fileHash: hash,
+      fileHash: hash, // Keep for quick lookup
       // No longer store blobs in IndexedDB
       _syncStatus: 'pending',
     };
 
-    // 6. Save metadata to IndexedDB
-    await db.songs.add(song);
-    
-    // 7. Create library-song relationship (schema v2)
-    await db.librarySongs.add({
-      id: `${libraryId}-${songId}`,
-      libraryId,
-      songId,
-      addedAt: new Date(),
-      _syncStatus: 'pending',
+    // 8. Save song to IndexedDB and increment File refCount
+    await db.transaction('rw', [db.songs, db.files], async () => {
+      await db.songs.add(song);
+      
+      // Increment refCount
+      await db.files.update(fileEntity!.id, {
+        refCount: fileEntity!.refCount + 1
+      });
     });
+    
+    // Song.libraryId is the direct relationship (one-to-many)
 
     return c.json({
       success: true,
@@ -1220,10 +1421,9 @@ app.get('/player/progress', async (c: Context) => {
         name: playlistWithSong.name,
       };
     } else {
-      // Fallback to library (query librarySongs for schema v2)
-      const librarySong = await db.librarySongs.where('songId').equals(song.id).first();
-      if (librarySong) {
-        const library = await db.libraries.get(librarySong.libraryId);
+      // Fallback to library (Song.libraryId is direct reference)
+      if (song.libraryId) {
+        const library = await db.libraries.get(song.libraryId);
         if (library) {
           context = {
             type: 'library',
@@ -1267,17 +1467,20 @@ app.put('/player/progress', async (c: Context) => {
     const body = await c.req.json();
     
     // Extract fields from request body
-    const { songId, position } = body;
+    const { songId, position, contextType, contextId, contextName } = body;
     
     // Get current song to determine duration
     const song = await db.songs.get(songId);
-    const duration = song?.file?.duration ?? 0;
+    const duration = song?.duration ?? 0;
     
     await db.playerProgress.put({
       userId,
       songId,
       position,
       duration,
+      contextType,
+      contextId,
+      contextName,
       updatedAt: new Date(),
     });
     

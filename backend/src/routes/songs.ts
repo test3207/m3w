@@ -101,14 +101,33 @@ app.get('/search', async (c: Context) => {
         : undefined,
     };
 
-    // Fetch songs with library info
+    // Fetch songs with file duration and library name
     const songs = await prisma.song.findMany({
       where: whereClause,
-      include: {
-        file: true,
+      select: {
+        id: true,
+        title: true,
+        artist: true,
+        album: true,
+        albumArtist: true,
+        year: true,
+        genre: true,
+        trackNumber: true,
+        discNumber: true,
+        composer: true,
+        coverUrl: true,
+        fileId: true,
+        libraryId: true,
+        createdAt: true,
+        updatedAt: true,
+        file: {
+          select: {
+            duration: true,
+            mimeType: true,
+          },
+        },
         library: {
           select: {
-            id: true,
             name: true,
           },
         },
@@ -118,18 +137,26 @@ app.get('/search', async (c: Context) => {
     // Apply sorting
     const sortedSongs = sortSongs(songs, sort);
 
-    // Transform to include libraryName
+    // Transform to flat structure with computed fields
     const transformedSongs = sortedSongs.map((song) => ({
       id: song.id,
       title: song.title,
       artist: song.artist,
       album: song.album,
-      duration: song.file.duration,
+      albumArtist: song.albumArtist,
+      year: song.year,
+      genre: song.genre,
+      trackNumber: song.trackNumber,
+      discNumber: song.discNumber,
+      composer: song.composer,
       coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
-      streamUrl: `/api/songs/${song.id}/stream`,
+      fileId: song.fileId,
       libraryId: song.libraryId,
-      libraryName: song.library?.name || '',
+      libraryName: song.library.name,
+      duration: song.file?.duration ?? null,
+      mimeType: song.file?.mimeType ?? null,
       createdAt: song.createdAt,
+      updatedAt: song.updatedAt,
     }));
 
     logger.debug(

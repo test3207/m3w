@@ -7,6 +7,13 @@
 
 import { db } from '@/lib/db/schema';
 import { logger } from '@/lib/logger-client';
+import {
+  AVG_AUDIO_SIZE,
+  AVG_COVER_SIZE,
+  AVG_METADATA_SIZE,
+  CRITICAL_THRESHOLD,
+  WARNING_THRESHOLD,
+} from './storage-constants';
 
 export interface StorageUsage {
   /** Total quota in bytes */
@@ -77,19 +84,23 @@ class StorageMonitor {
     metadata: number;
   }> {
     try {
-      // Calculate audio cache size
+      // Get all songs
       const songs = await db.songs.toArray();
-      const audioSize = songs.reduce((sum, song) => {
-        // Prefer cacheSize, fallback to file.size for backward compatibility
-        const size = song.cacheSize || song.file?.size || 0;
-        return sum + (song.isCached ? size : 0);
+      const cachedSongs = songs.filter(s => s.isCached);
+
+      // Calculate audio cache size (only cached songs)
+      const audioSize = cachedSongs.reduce((sum, song) => {
+        // Use cacheSize if available, otherwise use constant estimate
+        const size = song.cacheSize || AVG_AUDIO_SIZE;
+        return sum + size;
       }, 0);
 
-      // Estimate cover size (covers cache not tracked yet, use 5% of audio as estimate)
-      const coverSize = Math.floor(audioSize * 0.05);
+      // Estimate cover size (only cached songs, ~100KB per cover)
+      const coverSize = cachedSongs.length * AVG_COVER_SIZE;
 
-      // Estimate IndexedDB metadata size (rough estimate: 10KB per song)
-      const metadataSize = songs.length * 10 * 1024;
+      // Estimate IndexedDB metadata size (all songs, ~10KB per song)
+      // This includes song metadata, playlist links, etc.
+      const metadataSize = songs.length * AVG_METADATA_SIZE;
 
       return {
         audio: audioSize,
@@ -108,7 +119,7 @@ class StorageMonitor {
   async checkWarning(): Promise<StorageWarning | null> {
     const usage = await this.getStorageUsage();
 
-    if (usage.usagePercent >= 90) {
+    if (usage.usagePercent >= CRITICAL_THRESHOLD) {
       return {
         level: 'critical',
         message: 'Storage almost full! Consider cleaning up unused songs.',
@@ -116,7 +127,7 @@ class StorageMonitor {
       };
     }
 
-    if (usage.usagePercent >= 80) {
+    if (usage.usagePercent >= WARNING_THRESHOLD) {
       return {
         level: 'warning',
         message: 'Storage running low. Clean up recommended.',
@@ -180,16 +191,16 @@ class StorageMonitor {
    * Get storage status color
    */
   getStatusColor(usagePercent: number): 'success' | 'warning' | 'destructive' {
-    if (usagePercent >= 90) return 'destructive';
-    if (usagePercent >= 80) return 'warning';
+    if (usagePercent >= CRITICAL_THRESHOLD) return 'destructive';
+    if (usagePercent >= WARNING_THRESHOLD) return 'warning';
     return 'success';
   }
 
   /**
    * Estimate available space for new songs
-   * @param avgSongSize - Average song size in bytes (default: 5MB)
+   * @param avgSongSize - Average song size in bytes (default: from constants)
    */
-  async estimateAvailableSongs(avgSongSize: number = 5 * 1024 * 1024): Promise<number> {
+  async estimateAvailableSongs(avgSongSize: number = AVG_AUDIO_SIZE): Promise<number> {
     const usage = await this.getStorageUsage();
     const availableBytes = usage.quota - usage.usage;
     return Math.floor(availableBytes / avgSongSize);

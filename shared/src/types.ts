@@ -82,25 +82,11 @@ export interface Song {
   coverUrl: string | null;
   fileId: string;
   libraryId: string;
+  libraryName?: string;  // Computed field for display (from library.name)
+  duration?: number | null;  // Computed field from file.duration
+  mimeType?: string | null;  // Computed field from file.mimeType
   createdAt: string; // ISO 8601 string from JSON serialization
   updatedAt: string; // ISO 8601 string from JSON serialization
-  // Optional relations (included when queried with include)
-  file?: {
-    id: string;
-    hash: string;
-    path: string;
-    size: number;
-    mimeType: string;
-    duration: number | null;
-    bitrate: number | null;
-    sampleRate: number | null;
-    channels: number | null;
-  };
-  library?: {
-    id: string;
-    name: string;
-  };
-  libraryName?: string;  // For Playlist song list display
 }
 
 export interface UpdateSongInput {

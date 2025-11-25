@@ -92,6 +92,18 @@ app.get('/:id', async (c: Context) => {
         _count: {
           select: { songs: true },
         },
+        songs: {
+          take: 1,
+          include: {
+            song: {
+              select: {
+                id: true,
+                coverUrl: true,
+              },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
       },
     });
 
@@ -105,9 +117,17 @@ app.get('/:id', async (c: Context) => {
       );
     }
 
+    // Add coverUrl from first song (by order)
+    const firstSong = playlist.songs[0]?.song;
+    const playlistWithCover = {
+      ...playlist,
+      coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
+      songs: undefined, // Remove songs array from response
+    };
+
     return c.json({
       success: true,
-      data: playlist,
+      data: playlistWithCover,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -340,11 +360,30 @@ app.get('/:id/songs', async (c: Context) => {
       where: {
         id: { in: playlist.songIds },
       },
-      include: {
-        file: true,
+      select: {
+        id: true,
+        title: true,
+        artist: true,
+        album: true,
+        albumArtist: true,
+        year: true,
+        genre: true,
+        trackNumber: true,
+        discNumber: true,
+        composer: true,
+        coverUrl: true,
+        fileId: true,
+        libraryId: true,
+        createdAt: true,
+        updatedAt: true,
+        file: {
+          select: {
+            duration: true,
+            mimeType: true,
+          },
+        },
         library: {
           select: {
-            id: true,
             name: true,
           },
         },
@@ -354,14 +393,29 @@ app.get('/:id/songs', async (c: Context) => {
     // Create a map for quick lookup
     const songMap = new Map(songs.map((s) => [s.id, s]));
 
-    // Return songs in the order specified by songIds
+    // Return songs in the order specified by songIds with computed fields
     const orderedSongs = playlist.songIds
       .map((songId) => songMap.get(songId))
       .filter((song) => song !== undefined)
       .map((song) => ({
-        ...song,
-        libraryName: song.library.name,
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        album: song.album,
+        albumArtist: song.albumArtist,
+        year: song.year,
+        genre: song.genre,
+        trackNumber: song.trackNumber,
+        discNumber: song.discNumber,
+        composer: song.composer,
         coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
+        fileId: song.fileId,
+        libraryId: song.libraryId,
+        libraryName: song.library.name,
+        duration: song.file?.duration ?? null,
+        mimeType: song.file?.mimeType ?? null,
+        createdAt: song.createdAt,
+        updatedAt: song.updatedAt,
       }));
 
     return c.json({

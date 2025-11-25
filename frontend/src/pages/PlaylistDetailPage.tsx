@@ -31,8 +31,15 @@ export default function PlaylistDetailPage() {
     reorderPlaylistSongs,
     removeSongFromPlaylist,
   } = usePlaylistStore();
-  const { playFromPlaylist, currentSong, queueSource, queueSourceId } =
-    usePlayerStore();
+  const { 
+    playFromPlaylist, 
+    currentSong, 
+    queueSource, 
+    queueSourceId,
+    isShuffled,
+    setQueue,
+    currentIndex,
+  } = usePlayerStore();
 
   const [songs, setSongs] = useState<SharedSong[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,7 +123,9 @@ export default function PlaylistDetailPage() {
   const handleMoveUp = async (index: number) => {
     if (index === 0 || !currentPlaylist) return;
 
-    const newSongIds = [...currentPlaylist.songIds];
+    // Build songIds from current songs array (source of truth for display order)
+    const currentSongIds = songs.map(s => s.id);
+    const newSongIds = [...currentSongIds];
     [newSongIds[index - 1], newSongIds[index]] = [
       newSongIds[index],
       newSongIds[index - 1],
@@ -129,6 +138,28 @@ export default function PlaylistDetailPage() {
         currentPlaylist.id
       );
       setSongs(updatedSongs);
+
+      // If currently playing this playlist in sequential mode, update queue
+      if (
+        queueSource === 'playlist' && 
+        queueSourceId === currentPlaylist.id && 
+        !isShuffled
+      ) {
+        // Calculate new index for currently playing song
+        let newIndex = currentIndex;
+        
+        // If moved the currently playing song, adjust index
+        if (currentIndex === index) {
+          newIndex = index - 1;
+        } 
+        // If moved a song from above the current song to below it
+        else if (currentIndex === index - 1) {
+          newIndex = index;
+        }
+        
+        // Update the queue with the new order and adjusted index
+        setQueue(updatedSongs, newIndex);
+      }
 
       toast({
         title: I18n.playlists.detail.moveSong.successTitle,
@@ -145,7 +176,9 @@ export default function PlaylistDetailPage() {
   const handleMoveDown = async (index: number) => {
     if (index === songs.length - 1 || !currentPlaylist) return;
 
-    const newSongIds = [...currentPlaylist.songIds];
+    // Build songIds from current songs array (source of truth for display order)
+    const currentSongIds = songs.map(s => s.id);
+    const newSongIds = [...currentSongIds];
     [newSongIds[index], newSongIds[index + 1]] = [
       newSongIds[index + 1],
       newSongIds[index],
@@ -158,6 +191,28 @@ export default function PlaylistDetailPage() {
         currentPlaylist.id
       );
       setSongs(updatedSongs);
+
+      // If currently playing this playlist in sequential mode, update queue
+      if (
+        queueSource === 'playlist' && 
+        queueSourceId === currentPlaylist.id && 
+        !isShuffled
+      ) {
+        // Calculate new index for currently playing song
+        let newIndex = currentIndex;
+        
+        // If moved the currently playing song, adjust index
+        if (currentIndex === index) {
+          newIndex = index + 1;
+        } 
+        // If moved a song from below the current song to above it
+        else if (currentIndex === index + 1) {
+          newIndex = index;
+        }
+        
+        // Update the queue with the new order and adjusted index
+        setQueue(updatedSongs, newIndex);
+      }
 
       toast({
         title: I18n.playlists.detail.moveSong.successTitle,
@@ -334,7 +389,7 @@ export default function PlaylistDetailPage() {
                           {song.album && ` • ${song.album}`}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDuration(song.file?.duration || 0)}
+                          {formatDuration(song.duration || 0)}
                         </p>
                       </button>
 

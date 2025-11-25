@@ -2,11 +2,11 @@
  * Library Service - Cascade Delete Logic
  * 
  * Handles Library deletion with proper cascade logic:
- * 1. Remove LibrarySong relationships
+ * 1. Get all songs from library (via song.libraryId)
  * 2. Remove PlaylistSong entries from that library
- * 3. Check Song reference count
- * 4. Delete Song metadata if count = 0
- * 5. Delete Cache Storage if no other library uses same fileHash
+ * 3. Delete Song metadata (no refcount needed - songs are library-specific)
+ * 4. Check fileHash usage by other songs
+ * 5. Delete Cache Storage if no other song uses same fileHash
  */
 
 import { db } from '@/lib/db/schema';
@@ -22,7 +22,6 @@ export interface DeleteProgress {
 
 export interface DeleteResult {
   success: boolean;
-  deletedLibrarySongs: number;
   deletedPlaylistSongs: number;
   deletedSongs: number;
   deletedCacheEntries: number;
@@ -42,7 +41,6 @@ class LibraryService {
   ): Promise<DeleteResult> {
     const result: DeleteResult = {
       success: true,
-      deletedLibrarySongs: 0,
       deletedPlaylistSongs: 0,
       deletedSongs: 0,
       deletedCacheEntries: 0,
@@ -52,26 +50,18 @@ class LibraryService {
     try {
       logger.info('Starting library deletion', { libraryId });
 
-      // Step 1: Get all librarySongs for this library
-      const librarySongs = await db.librarySongs
-        .where('libraryId')
-        .equals(libraryId)
-        .toArray();
-
-      const songIds = librarySongs.map((ls) => ls.songId);
-      const totalSteps = songIds.length;
+      // Step 1: Get all songs from this library (via song.libraryId)
+      const songs = await db.songs.where('libraryId').equals(libraryId).toArray();
+      const totalSteps = songs.length;
 
       onProgress?.({
-        stage: 'librarySongs',
+        stage: 'songs',
         total: totalSteps,
         current: 0,
-        message: `Found ${songIds.length} songs in library`,
+        message: `Found ${songs.length} songs in library`,
       });
 
-      // Step 2: Delete librarySongs
-      await db.librarySongs.where('libraryId').equals(libraryId).delete();
-      result.deletedLibrarySongs = librarySongs.length;
-
+      // Step 2: Delete playlistSongs from this library
       onProgress?.({
         stage: 'playlistSongs',
         total: totalSteps,
@@ -79,60 +69,76 @@ class LibraryService {
         message: 'Removing songs from playlists',
       });
 
-      // Step 3: Delete playlistSongs from this library
+      // Find all playlistSongs that reference songs from this library
+      const songIds = songs.map(s => s.id);
       const playlistSongs = await db.playlistSongs
-        .where('fromLibraryId')
-        .equals(libraryId)
+        .where('songId')
+        .anyOf(songIds)
         .toArray();
 
-      await db.playlistSongs.where('fromLibraryId').equals(libraryId).delete();
+      // Delete playlistSongs in batch
+      await Promise.all(
+        playlistSongs.map(ps => db.playlistSongs.delete(ps.id))
+      );
       result.deletedPlaylistSongs = playlistSongs.length;
 
+      // Step 3: Delete songs and cache
       onProgress?.({
         stage: 'songs',
         total: totalSteps,
         current: 0,
-        message: 'Checking song references',
+        message: 'Deleting songs and cache',
       });
 
-      // Step 4: Check each song's reference count
       const cache = await caches.open(getCacheName('audio'));
       let processed = 0;
 
-      for (const songId of songIds) {
+      for (const song of songs) {
         try {
           processed++;
           
-          // Check if song still referenced by other libraries
-          const remainingRefs = await db.librarySongs
-            .where('songId')
-            .equals(songId)
-            .count();
+          const songStreamUrl = song.streamUrl;
+          const fileId = song.fileId;
 
-          if (remainingRefs === 0) {
-            // No more references, delete song metadata
-            const song = await db.songs.get(songId);
-            if (song) {
-              // Check cache deletion eligibility (only if fileHash exists)
-              const shouldDeleteCache = song.fileHash 
-                ? await this.shouldDeleteCache(song.fileHash)
-                : true; // If no hash, safe to delete cache (unique to this song)
-              
-              if (shouldDeleteCache && song.streamUrl) {
-                // Delete from Cache Storage
-                await cache.delete(song.streamUrl);
-                result.deletedCacheEntries++;
+          // Use Dexie transaction to ensure atomic check-and-delete
+          await db.transaction('rw', [db.songs, db.files], async () => {
+            // Delete song metadata FIRST (within transaction)
+            await db.songs.delete(song.id);
+            result.deletedSongs++;
+            logger.debug('Song deleted', { songId: song.id });
 
-                logger.debug('Cache deleted', { songId, fileHash: song.fileHash });
+            // Decrement file refCount and check if cache should be deleted
+            if (fileId) {
+              const file = await db.files.get(fileId);
+              if (file) {
+                const newRefCount = file.refCount - 1;
+                
+                if (newRefCount <= 0) {
+                  // No more songs reference this file, delete cache and file record
+                  await db.files.delete(fileId);
+                  
+                  if (songStreamUrl) {
+                    await cache.delete(songStreamUrl);
+                    result.deletedCacheEntries++;
+                    logger.debug('Cache and file deleted', { songId: song.id, fileId });
+                  }
+                } else {
+                  // Update refCount
+                  await db.files.update(fileId, { refCount: newRefCount });
+                  logger.debug('File refCount decremented', { 
+                    songId: song.id, 
+                    fileId,
+                    newRefCount
+                  });
+                }
               }
-
-              // Delete song metadata
-              await db.songs.delete(songId);
-              result.deletedSongs++;
-
-              logger.debug('Song deleted', { songId });
+            } else if (songStreamUrl) {
+              // No fileId means unique file (old data), safe to delete
+              await cache.delete(songStreamUrl);
+              result.deletedCacheEntries++;
+              logger.debug('Cache deleted (unique file)', { songId: song.id });
             }
-          }
+          });
 
           onProgress?.({
             stage: 'songs',
@@ -141,8 +147,8 @@ class LibraryService {
             message: `Processing song ${processed}/${totalSteps}`,
           });
         } catch (error) {
-          result.errors.push(`Failed to process song ${songId}: ${String(error)}`);
-          logger.error('Failed to process song deletion', { songId, error });
+          result.errors.push(`Failed to process song ${song.id}: ${String(error)}`);
+          logger.error('Failed to process song deletion', { songId: song.id, error });
         }
       }
 
@@ -184,64 +190,64 @@ class LibraryService {
    */
   async removeSongFromLibrary(libraryId: string, songId: string): Promise<void> {
     try {
-      // Delete librarySong relationship
-      const librarySong = await db.librarySongs
-        .where('[libraryId+songId]')
-        .equals([libraryId, songId])
-        .first();
-
-      if (!librarySong) {
-        logger.warn('LibrarySong not found', { libraryId, songId });
+      // Get song to verify it belongs to this library
+      const song = await db.songs.get(songId);
+      
+      if (!song || song.libraryId !== libraryId) {
+        logger.warn('Song not found in library', { libraryId, songId });
         return;
       }
 
-      await db.librarySongs.delete(librarySong.id);
-
-      // Delete playlistSongs from this library
+      // Delete playlistSongs that reference this song
       await db.playlistSongs
-        .where('[songId+fromLibraryId]')
-        .equals([songId, libraryId])
+        .where('songId')
+        .equals(songId)
         .delete();
 
-      // Check reference count
-      const remainingRefs = await db.librarySongs.where('songId').equals(songId).count();
+      const songStreamUrl = song.streamUrl;
+      const fileId = song.fileId;
 
-      if (remainingRefs === 0) {
-        // Delete song and cache
-        const song = await db.songs.get(songId);
-        if (song) {
-          const shouldDeleteCache = song.fileHash
-            ? await this.shouldDeleteCache(song.fileHash)
-            : true; // If no hash, safe to delete cache (unique to this song)
-          
-          if (shouldDeleteCache && song.streamUrl) {
-            const cache = await caches.open(getCacheName('audio'));
-            await cache.delete(song.streamUrl);
-            logger.debug('Cache deleted after song removal', { songId });
+      // Use Dexie transaction to ensure atomic check-and-delete
+      await db.transaction('rw', [db.songs, db.files], async () => {
+        // Delete song metadata (within transaction)
+        await db.songs.delete(songId);
+        logger.info('Song deleted from library', { songId, libraryId });
+
+        // Decrement file refCount and check if cache should be deleted
+        if (fileId) {
+          const file = await db.files.get(fileId);
+          if (file) {
+            const newRefCount = file.refCount - 1;
+            
+            if (newRefCount <= 0) {
+              // No more songs reference this file, delete cache and file record
+              await db.files.delete(fileId);
+              
+              if (songStreamUrl) {
+                const cache = await caches.open(getCacheName('audio'));
+                await cache.delete(songStreamUrl);
+                logger.debug('Cache and file deleted', { songId, fileId });
+              }
+            } else {
+              // Update refCount
+              await db.files.update(fileId, { refCount: newRefCount });
+              logger.debug('File refCount decremented', { 
+                songId, 
+                fileId,
+                newRefCount
+              });
+            }
           }
-
-          await db.songs.delete(songId);
-          logger.info('Song deleted after library removal', { songId });
+        } else if (songStreamUrl) {
+          // No fileId means unique file (old data), safe to delete
+          const cache = await caches.open(getCacheName('audio'));
+          await cache.delete(songStreamUrl);
+          logger.debug('Cache deleted (unique file)', { songId });
         }
-      }
+      });
     } catch (error) {
       logger.error('Failed to remove song from library', { libraryId, songId, error });
       throw error;
-    }
-  }
-
-  /**
-   * Check if cache should be deleted based on fileHash
-   * Cache is deleted only if no other song uses the same fileHash
-   */
-  private async shouldDeleteCache(fileHash: string): Promise<boolean> {
-    try {
-      // Check if any other song uses this fileHash
-      const count = await db.songs.where('fileHash').equals(fileHash).count();
-      return count === 0;
-    } catch (error) {
-      logger.error('Failed to check cache deletion eligibility', { fileHash, error });
-      return false;
     }
   }
 
@@ -255,21 +261,14 @@ class LibraryService {
     cachedSize: number;
   }> {
     try {
-      const librarySongs = await db.librarySongs
-        .where('libraryId')
-        .equals(libraryId)
-        .toArray();
-
-      const songIds = librarySongs.map((ls) => ls.songId);
-      const songs = await db.songs.bulkGet(songIds);
+      // Get all songs from this library (via song.libraryId)
+      const songs = await db.songs.where('libraryId').equals(libraryId).toArray();
 
       let totalSize = 0;
       let cachedCount = 0;
       let cachedSize = 0;
 
       for (const song of songs) {
-        if (!song) continue;
-        
         if (song.isCached && song.cacheSize) {
           cachedCount++;
           cachedSize += song.cacheSize;
@@ -279,7 +278,7 @@ class LibraryService {
       }
 
       return {
-        songCount: songs.filter(Boolean).length,
+        songCount: songs.length,
         totalSize,
         cachedCount,
         cachedSize,
