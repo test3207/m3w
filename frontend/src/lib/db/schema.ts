@@ -41,7 +41,7 @@ export interface OfflineFile {
   _lastSyncedAt?: Date;
 }
 
-export interface OfflineSong extends Omit<Song, 'fileId'> {
+export interface OfflineSong extends Omit<Song, 'fileId' | 'libraryName' | 'mimeType'> {
   _syncStatus?: 'synced' | 'pending' | 'conflict';
   _lastSyncedAt?: Date;
   /** Audio stream URL (Guest: /guest/songs/:id/stream, Auth: /api/songs/:id/stream) */
@@ -54,6 +54,10 @@ export interface OfflineSong extends Omit<Song, 'fileId'> {
   fileId: string;  // Required, aligned with backend Song.fileId
   /** File hash for deduplication (kept for quick lookup without join) */
   fileHash?: string;
+  /** Library name (computed from library relation, may be null if not joined) */
+  libraryName?: string | null;
+  /** MIME type (from file relation, may be null if not joined) */
+  mimeType?: string | null;
   /**
    * Note: Song belongs to one Library (one-to-many relationship).
    * Each upload creates a new Song with unique id, even if fileId is shared.

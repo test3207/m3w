@@ -433,7 +433,6 @@ app.post('/logout', authMiddleware, async (c: Context) => {
   // Client should delete tokens on logout
   return c.json({
     success: true,
-    message: 'Logged out successfully',
   });
 });
 

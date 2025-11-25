@@ -26,16 +26,18 @@ All API routes must return a structured object:
 
 ```typescript
 {
-  status: "success" | "error",
-  message: string,
-  data?: any
+  success: boolean;
+  data?: T;           // Present on success
+  error?: string;     // Error message (English, for future i18n)
+  details?: unknown;  // Validation details (Zod errors)
 }
 ```
 
 **Key Points**:
-- `status`: Normalized to "success" or "error"
-- `message`: User-facing message (localized)
-- `data`: Optional response payload (only present on success)
+- `success`: Boolean flag for success/failure
+- `data`: Response payload (only on success)
+- `error`: Error message string (only on failure)
+- `details`: Optional validation error details
 
 ### Implementation Requirements
 
@@ -64,7 +66,14 @@ backend/src/
         └── upload.service.ts
 
 shared/src/
-├── types.ts            # Shared types for frontend/backend
+├── types/              # Shared types (modular structure)
+│   ├── index.ts        # Re-exports all domain types
+│   ├── common.ts       # ApiResponse, Pagination, Auth, User
+│   ├── library.ts      # Library entity types
+│   ├── playlist.ts     # Playlist entity types
+│   ├── song.ts         # Song entity types
+│   ├── player.ts       # Player state types
+│   └── upload.ts       # Upload operation types
 └── schemas.ts          # Zod validation schemas
 ```
 
@@ -89,19 +98,18 @@ app.post('/api/playlists', async (c) => {
     const playlist = await playlistService.create(userId, name);
     
     // 4. Return success response
-    return c.json({
-      status: 'success',
-      message: I18n.playlist.createSuccess,
+    return c.json<ApiResponse<typeof playlist>>({
+      success: true,
       data: playlist,
     });
   } catch (error) {
     // 5. Log detailed error
     logger.error('Failed to create playlist', { error, userId });
     
-    // 6. Return user-friendly error
-    return c.json({
-      status: 'error',
-      message: I18n.error.playlistCreateFailed,
+    // 6. Return error response
+    return c.json<ApiResponse>({
+      success: false,
+      error: 'Failed to create playlist',
     }, 400);
   }
 });
@@ -207,7 +215,7 @@ if (result.status === 'success') {
 
 ### DO ✅
 
-- Return `{ status, message, data? }` from all API routes
+- Return `ApiResponse<T>` with `{ success, data?, error? }` from all API routes
 - Log detailed errors server-side with context
 - Use descriptive, user-friendly error messages
 - Centralize business logic in service layer
@@ -234,7 +242,7 @@ When adding new API endpoints:
 - [ ] Create service function in `backend/src/lib/services`
 - [ ] Add route handler in `backend/src/routes`
 - [ ] Define Zod schema for input validation
-- [ ] Return `{ status, message, data? }` structure
+- [ ] Return `ApiResponse<T>` with `{ success, data?, error? }` structure
 - [ ] Add error handling with logger
 - [ ] Add i18n messages for success/error
 - [ ] Update shared types in `shared/src/types`
@@ -250,7 +258,7 @@ When adding new API endpoints:
 - Toast Store: `frontend/src/components/ui/use-toast.ts`
 - Toaster Component: `frontend/src/components/ui/toaster.tsx`
 - i18n System: `.github/instructions/i18n-system.instructions.md`
-- Shared Types: `shared/src/types.ts`
+- Shared Types: `shared/src/types/` (modular structure)
 - API Service Layer: `frontend/src/services/api/README.md`
 
 ---

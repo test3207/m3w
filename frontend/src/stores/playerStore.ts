@@ -655,8 +655,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
               composer: null,
               coverUrl: seed.track.coverUrl ?? null,
               libraryId: '', // Not available from seed
+              libraryName: null, // Not available from seed
               fileId: '', // Not needed for playback
               duration: seed.track.duration ?? null,
+              mimeType: null, // Not available from seed
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
@@ -703,8 +705,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         composer: null,
         coverUrl: progress.track.coverUrl ?? null,
         libraryId: '', // Not available from progress
+        libraryName: null, // Not available from progress
         fileId: '', // Not needed for playback
         duration: progress.track.duration ?? null,
+        mimeType: null, // Not available from progress
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

@@ -11,8 +11,11 @@ import {
   playlistIdSchema,
   addSongToPlaylistSchema,
   removeSongFromPlaylistSchema,
+  toPlaylistResponse,
+  toSongListResponse,
 } from '@m3w/shared';
 import type { Context } from 'hono';
+import type { ApiResponse, Playlist, Song, PlaylistInput, SongInput, PlaylistSongOperationResult, PlaylistReorderResult } from '@m3w/shared';
 
 const app = new Hono();
 
@@ -46,15 +49,16 @@ app.get('/', async (c: Context) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Add coverUrl from first 4 songs (composite cover)
-    const playlistsWithCover = playlists.map((pl) => {
+    // Transform to API response format using shared transformer
+    const response = playlists.map((pl) => {
       const firstSong = pl.songs[0]?.song;
-      return {
+      const input: PlaylistInput = {
         id: pl.id,
         name: pl.name,
         description: pl.description,
         userId: pl.userId,
         songIds: pl.songIds,
+        linkedLibraryId: pl.linkedLibraryId,
         isDefault: pl.isDefault,
         canDelete: pl.canDelete,
         coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
@@ -62,15 +66,16 @@ app.get('/', async (c: Context) => {
         updatedAt: pl.updatedAt,
         _count: pl._count,
       };
+      return toPlaylistResponse(input);
     });
 
-    return c.json({
+    return c.json<ApiResponse<Playlist[]>>({
       success: true,
-      data: playlistsWithCover,
+      data: response,
     });
   } catch (error) {
     logger.error({ error }, 'Failed to fetch playlists');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to fetch playlists',
@@ -117,21 +122,20 @@ app.get('/:id', async (c: Context) => {
       );
     }
 
-    // Add coverUrl from first song (by order)
+    // Transform to API response format using shared transformer
     const firstSong = playlist.songs[0]?.song;
-    const playlistWithCover = {
+    const input: PlaylistInput = {
       ...playlist,
       coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
-      songs: undefined, // Remove songs array from response
     };
 
-    return c.json({
+    return c.json<ApiResponse<Playlist>>({
       success: true,
-      data: playlistWithCover,
+      data: toPlaylistResponse(input),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Invalid playlist ID',
@@ -142,7 +146,7 @@ app.get('/:id', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to fetch playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to fetch playlist',
@@ -171,17 +175,22 @@ app.post('/', async (c: Context) => {
       },
     });
 
-    return c.json(
+    // Transform to API response format
+    const input: PlaylistInput = {
+      ...playlist,
+      coverUrl: null,  // New playlist has no songs yet
+    };
+
+    return c.json<ApiResponse<Playlist>>(
       {
         success: true,
-        data: playlist,
-        message: 'Playlist created successfully',
+        data: toPlaylistResponse(input),
       },
       201
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Validation failed',
@@ -192,7 +201,7 @@ app.post('/', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to create playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to create playlist',
@@ -216,7 +225,7 @@ app.patch('/:id', async (c: Context) => {
     });
 
     if (!existingPlaylist) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Playlist not found',
@@ -232,17 +241,32 @@ app.patch('/:id', async (c: Context) => {
         _count: {
           select: { songs: true },
         },
+        songs: {
+          take: 1,
+          include: {
+            song: {
+              select: { id: true, coverUrl: true },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
       },
     });
 
-    return c.json({
+    // Transform to API response format
+    const firstSong = playlist.songs[0]?.song;
+    const input: PlaylistInput = {
+      ...playlist,
+      coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
+    };
+
+    return c.json<ApiResponse<Playlist>>({
       success: true,
-      data: playlist,
-      message: 'Playlist updated successfully',
+      data: toPlaylistResponse(input),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Validation failed',
@@ -253,7 +277,7 @@ app.patch('/:id', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to update playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to update playlist',
@@ -275,7 +299,7 @@ app.delete('/:id', async (c: Context) => {
     });
 
     if (!existingPlaylist) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Playlist not found',
@@ -286,11 +310,10 @@ app.delete('/:id', async (c: Context) => {
 
     // Check if playlist can be deleted (protection for default playlist)
     if (!existingPlaylist.canDelete) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
-          message: '默认播放列表不能删除',
-          error: 'CANNOT_DELETE_DEFAULT_PLAYLIST',
+          error: 'Cannot delete default playlist',
         },
         403
       );
@@ -300,13 +323,12 @@ app.delete('/:id', async (c: Context) => {
       where: { id },
     });
 
-    return c.json({
+    return c.json<ApiResponse<undefined>>({
       success: true,
-      message: 'Playlist deleted successfully',
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Invalid playlist ID',
@@ -317,7 +339,7 @@ app.delete('/:id', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to delete playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to delete playlist',
@@ -339,7 +361,7 @@ app.get('/:id/songs', async (c: Context) => {
     });
 
     if (!playlist) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Playlist not found',
@@ -350,7 +372,7 @@ app.get('/:id/songs', async (c: Context) => {
 
     // Fetch songs based on songIds array order
     if (playlist.songIds.length === 0) {
-      return c.json({
+      return c.json<ApiResponse<Song[]>>({
         success: true,
         data: [],
       });
@@ -393,38 +415,23 @@ app.get('/:id/songs', async (c: Context) => {
     // Create a map for quick lookup
     const songMap = new Map(songs.map((s) => [s.id, s]));
 
-    // Return songs in the order specified by songIds with computed fields
-    const orderedSongs = playlist.songIds
+    // Build song inputs in the order specified by songIds
+    const orderedSongInputs: SongInput[] = playlist.songIds
       .map((songId) => songMap.get(songId))
-      .filter((song) => song !== undefined)
+      .filter((song): song is NonNullable<typeof song> => song !== undefined)
       .map((song) => ({
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        album: song.album,
-        albumArtist: song.albumArtist,
-        year: song.year,
-        genre: song.genre,
-        trackNumber: song.trackNumber,
-        discNumber: song.discNumber,
-        composer: song.composer,
+        ...song,
         coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
-        fileId: song.fileId,
-        libraryId: song.libraryId,
-        libraryName: song.library.name,
-        duration: song.file?.duration ?? null,
-        mimeType: song.file?.mimeType ?? null,
-        createdAt: song.createdAt,
-        updatedAt: song.updatedAt,
       }));
 
-    return c.json({
+    // Transform to API response format using shared transformer
+    return c.json<ApiResponse<Song[]>>({
       success: true,
-      data: orderedSongs,
+      data: toSongListResponse(orderedSongInputs),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Invalid playlist ID',
@@ -435,7 +442,7 @@ app.get('/:id/songs', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to fetch playlist songs');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to fetch playlist songs',
@@ -459,7 +466,7 @@ app.post('/:id/songs', async (c: Context) => {
     });
 
     if (!playlist) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Playlist not found',
@@ -479,7 +486,7 @@ app.post('/:id/songs', async (c: Context) => {
     });
 
     if (!song) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Song not found',
@@ -490,7 +497,7 @@ app.post('/:id/songs', async (c: Context) => {
 
     // Check if song is already in playlist
     if (playlist.songIds.includes(songId)) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Song is already in playlist',
@@ -514,10 +521,9 @@ app.post('/:id/songs', async (c: Context) => {
       },
     });
 
-    return c.json(
+    return c.json<ApiResponse<PlaylistSongOperationResult>>(
       {
         success: true,
-        message: 'Song added to playlist',
         data: {
           playlistId: id,
           songId,
@@ -528,7 +534,7 @@ app.post('/:id/songs', async (c: Context) => {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Validation failed',
@@ -539,7 +545,7 @@ app.post('/:id/songs', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to add song to playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to add song to playlist',
@@ -564,7 +570,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
     });
 
     if (!playlist) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Playlist not found',
@@ -575,7 +581,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
 
     // Check if song is in playlist
     if (!playlist.songIds.includes(songId)) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Song not found in playlist',
@@ -594,9 +600,8 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       },
     });
 
-    return c.json({
+    return c.json<ApiResponse<PlaylistSongOperationResult>>({
       success: true,
-      message: 'Song removed from playlist',
       data: {
         playlistId: id,
         songId,
@@ -605,7 +610,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Validation failed',
@@ -616,7 +621,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to remove song from playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to remove song from playlist',
@@ -640,7 +645,7 @@ app.put('/:id/songs/reorder', async (c: Context) => {
     });
 
     if (!playlist) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Playlist not found',
@@ -660,11 +665,10 @@ app.put('/:id/songs/reorder', async (c: Context) => {
     });
 
     if (songs.length !== songIds.length) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
-          message: '歌曲顺序无效',
-          error: 'INVALID_SONG_ORDER',
+          error: 'Invalid song order',
         },
         400
       );
@@ -686,18 +690,17 @@ app.put('/:id/songs/reorder', async (c: Context) => {
       'Playlist songs reordered'
     );
 
-    return c.json({
+    return c.json<ApiResponse<PlaylistReorderResult>>({
       success: true,
-      message: 'Songs reordered successfully',
       data: {
         playlistId: id,
         songCount: updatedPlaylist.songIds.length,
-        updatedAt: updatedPlaylist.updatedAt,
+        updatedAt: updatedPlaylist.updatedAt.toISOString(),
       },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Validation failed',
@@ -708,7 +711,7 @@ app.put('/:id/songs/reorder', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to reorder songs in playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to reorder songs in playlist',
@@ -732,7 +735,7 @@ app.get('/by-library/:libraryId', async (c: Context) => {
     });
 
     if (!playlist) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Playlist not found',
@@ -741,13 +744,19 @@ app.get('/by-library/:libraryId', async (c: Context) => {
       );
     }
 
-    return c.json({
+    // Transform to API response format using shared transformer
+    const input: PlaylistInput = {
+      ...playlist,
+      coverUrl: null,
+    };
+
+    return c.json<ApiResponse<Playlist>>({
       success: true,
-      data: playlist,
+      data: toPlaylistResponse(input),
     });
   } catch (error) {
     logger.error({ error }, 'Failed to fetch library playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to fetch library playlist',
@@ -770,7 +779,7 @@ app.post('/for-library', async (c: Context) => {
     });
 
     if (!library) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Library not found',
@@ -803,13 +812,19 @@ app.post('/for-library', async (c: Context) => {
 
     logger.info({ playlistId: playlist.id, linkedLibraryId }, 'Created library playlist');
 
-    return c.json({
+    // Transform to API response format
+    const input: PlaylistInput = {
+      ...playlist,
+      coverUrl: null,
+    };
+
+    return c.json<ApiResponse<Playlist>>({
       success: true,
-      data: playlist,
+      data: toPlaylistResponse(input),
     });
   } catch (error) {
     logger.error({ error }, 'Failed to create library playlist');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to create library playlist',
@@ -833,7 +848,7 @@ app.put('/:id/songs', async (c: Context) => {
     });
 
     if (!playlist) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Playlist not found',
@@ -866,13 +881,13 @@ app.put('/:id/songs', async (c: Context) => {
 
     logger.info({ playlistId: id, songCount: songIds.length }, 'Updated playlist songs');
 
-    return c.json({
+    return c.json<ApiResponse<null>>({
       success: true,
       data: null,
     });
   } catch (error) {
     logger.error({ error }, 'Failed to update playlist songs');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to update playlist songs',

@@ -10,10 +10,10 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
-import { updateSongSchema, songIdSchema } from '@m3w/shared';
+import { updateSongSchema, songIdSchema, toSongResponse, toSongListResponse } from '@m3w/shared';
 import { resolveCoverUrl } from '../lib/cover-url-helper';
 import type { Context } from 'hono';
-import type { SongSortOption } from '@m3w/shared';
+import type { ApiResponse, Song, SongSortOption, SongInput, SongPlaylistCount } from '@m3w/shared';
 
 const app = new Hono();
 
@@ -137,27 +137,13 @@ app.get('/search', async (c: Context) => {
     // Apply sorting
     const sortedSongs = sortSongs(songs, sort);
 
-    // Transform to flat structure with computed fields
-    const transformedSongs = sortedSongs.map((song) => ({
-      id: song.id,
-      title: song.title,
-      artist: song.artist,
-      album: song.album,
-      albumArtist: song.albumArtist,
-      year: song.year,
-      genre: song.genre,
-      trackNumber: song.trackNumber,
-      discNumber: song.discNumber,
-      composer: song.composer,
+    // Transform to API response format using shared transformer
+    const songInputs: SongInput[] = sortedSongs.map((song) => ({
+      ...song,
       coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
-      fileId: song.fileId,
-      libraryId: song.libraryId,
-      libraryName: song.library.name,
-      duration: song.file?.duration ?? null,
-      mimeType: song.file?.mimeType ?? null,
-      createdAt: song.createdAt,
-      updatedAt: song.updatedAt,
     }));
+
+    const transformedSongs = toSongListResponse(songInputs);
 
     logger.debug(
       {
@@ -170,13 +156,13 @@ app.get('/search', async (c: Context) => {
       'Songs search completed'
     );
 
-    return c.json({
+    return c.json<ApiResponse<Song[]>>({
       success: true,
       data: transformedSongs,
     });
   } catch (error) {
     logger.error({ error }, 'Failed to search songs');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to search songs',
@@ -201,11 +187,14 @@ app.get('/:id', async (c: Context) => {
       },
       include: {
         file: true,
+        library: {
+          select: { name: true },
+        },
       },
     });
 
     if (!song) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Song not found',
@@ -214,16 +203,19 @@ app.get('/:id', async (c: Context) => {
       );
     }
 
-    return c.json({
+    // Transform to API response format using shared transformer
+    const songInput: SongInput = {
+      ...song,
+      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
+    };
+
+    return c.json<ApiResponse<Song>>({
       success: true,
-      data: {
-        ...song,
-        coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
-      },
+      data: toSongResponse(songInput),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Invalid song ID',
@@ -234,7 +226,7 @@ app.get('/:id', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to fetch song');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to fetch song',
@@ -263,7 +255,7 @@ app.patch('/:id', async (c: Context) => {
     });
 
     if (!existing) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Song not found',
@@ -272,19 +264,38 @@ app.patch('/:id', async (c: Context) => {
       );
     }
 
+    // Update and fetch with relations for complete Song response
     const song = await prisma.song.update({
       where: { id },
       data,
+      include: {
+        file: {
+          select: {
+            duration: true,
+            mimeType: true,
+          },
+        },
+        library: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
-    return c.json({
+    // Transform to API response format using shared transformer
+    const songInput: SongInput = {
+      ...song,
+      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
+    };
+
+    return c.json<ApiResponse<Song>>({
       success: true,
-      data: song,
-      message: 'Song updated successfully',
+      data: toSongResponse(songInput),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Validation failed',
@@ -295,7 +306,7 @@ app.patch('/:id', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to update song');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to update song',
@@ -329,7 +340,7 @@ app.get('/:id/stream', async (c: Context) => {
     });
 
     if (!song) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Song not found',
@@ -492,7 +503,7 @@ app.get('/:id/stream', async (c: Context) => {
     });
   } catch (error) {
     logger.error({ error }, 'Failed to stream audio');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to stream audio',
@@ -519,7 +530,7 @@ app.get('/:id/playlist-count', async (c: Context) => {
     });
 
     if (!song) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Song not found',
@@ -538,13 +549,13 @@ app.get('/:id/playlist-count', async (c: Context) => {
       },
     });
 
-    return c.json({
+    return c.json<ApiResponse<SongPlaylistCount>>({
       success: true,
       data: { count },
     });
   } catch (error) {
     logger.error({ error, songId: c.req.param('id') }, 'Failed to get playlist count');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to get playlist count',
@@ -562,7 +573,7 @@ app.delete('/:id', async (c: Context) => {
     const libraryId = c.req.query('libraryId'); // Get libraryId from query param
 
     if (!libraryId) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'libraryId is required',
@@ -586,7 +597,7 @@ app.delete('/:id', async (c: Context) => {
     });
 
     if (!song) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Song not found in this library',
@@ -630,13 +641,12 @@ app.delete('/:id', async (c: Context) => {
 
     logger.info({ songId: id, libraryId, userId }, 'Song deleted from library');
 
-    return c.json({
+    return c.json<ApiResponse<undefined>>({
       success: true,
-      message: 'Song deleted successfully',
     });
   } catch (error) {
     logger.error({ error, songId: c.req.param('id') }, 'Failed to delete song');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to delete song',
@@ -664,7 +674,7 @@ app.get('/:id/cover', async (c: Context) => {
     });
 
     if (!song || !song.coverUrl) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Cover image not found',
@@ -715,7 +725,7 @@ app.get('/:id/cover', async (c: Context) => {
       });
     } catch (error) {
       logger.error({ error, songId, coverPath: song.coverUrl }, 'Failed to fetch cover from MinIO');
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Failed to fetch cover image',
@@ -725,7 +735,7 @@ app.get('/:id/cover', async (c: Context) => {
     }
   } catch (error) {
     logger.error({ error }, 'Failed to process cover request');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to process cover request',

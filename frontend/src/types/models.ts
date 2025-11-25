@@ -1,67 +1,29 @@
 /**
- * Frontend data models
- * Simplified versions of Prisma models for client-side usage
+ * Frontend-specific data models
+ * 
+ * Core types (Library, Playlist, Song, User) are imported from @m3w/shared.
+ * This file contains frontend-only extensions and utility types.
  * 
  * Backend original models location: prisma/schema.prisma
- * These interfaces are frontend-friendly versions with:
- * - Date objects converted to ISO strings
- * - Optional relations for flexible queries
- * - Computed fields like _count for aggregations
  */
 
-import type { Song } from '@m3w/shared';
+import type { Library, Playlist, Song } from '@m3w/shared';
 
 // Re-export shared types for convenience
-export type { Song };
+export type { Library, Playlist, Song } from '@m3w/shared';
+export type { User } from '@m3w/shared';
 
 /**
- * User model
- * Backend: prisma/schema.prisma -> model User
- */
-export interface User {
-  id: string;
-  email: string;
-  name?: string | null;
-  image?: string | null;
-}
-
-/**
- * Library model
- * Backend: prisma/schema.prisma -> model Library
- */
-export interface Library {
-  id: string;
-  name: string;
-  description: string | null;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  _count?: {
-    songs: number;
-  };
-}
-
-/**
- * Library with songs relation
+ * Library with songs relation (frontend-only extension)
  */
 export interface LibraryWithSongs extends Library {
   songs: Song[];
 }
 
 /**
- * Playlist model
- * Backend: prisma/schema.prisma -> model Playlist
+ * Playlist with songs relation (frontend-only extension)
  */
-export interface Playlist {
-  id: string;
-  name: string;
-  description: string | null;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  _count?: {
-    songs: number;
-  };
+export interface PlaylistWithSongs extends Playlist {
   songs?: PlaylistSong[];
 }
 
