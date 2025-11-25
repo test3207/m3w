@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { RefreshCw, Database, AlertTriangle, Trash2 } from 'lucide-react';
+import { RefreshCw, Database, AlertTriangle, Trash2, Info } from 'lucide-react';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -35,11 +35,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { db } from '@/lib/db/schema';
 
 export default function StorageManager() {
@@ -139,56 +138,56 @@ export default function StorageManager() {
   return (
     <>
       <Card>
-        <Stack gap="md" className="p-6">
+        <Stack gap="sm" className="p-4">
           {/* Header */}
           <Stack direction="horizontal" align="center" justify="between">
             <Stack direction="horizontal" gap="sm" align="center">
-              <Database className="w-5 h-5" />
-              <Text variant="h3">{I18n.settings.storage.title}</Text>
+              <Database className="w-4 h-4 text-muted-foreground" />
+              <Text variant="body" className="font-medium">Storage</Text>
               {/* PWA Status Badge */}
               {!pwaLoading && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge 
-                        variant={pwaStatus?.isPWAInstalled ? 'default' : 'secondary'}
-                        className="cursor-help"
-                      >
-                        PWA
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <Text variant="caption">
-                        {pwaStatus?.isPWAInstalled 
-                          ? I18n.settings.storage.pwa.installed 
-                          : I18n.settings.storage.pwa.notInstalled}
-                      </Text>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <>
+                  <Badge 
+                    variant={pwaStatus?.isPWAInstalled ? 'default' : 'secondary'}
+                    className="text-xs h-5"
+                  >
+                    PWA
+                  </Badge>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                        <span className="sr-only">PWA info</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-56">
+                      <Stack gap="xs">
+                        <Text variant="caption" className="font-medium text-xs">
+                          {pwaStatus?.isPWAInstalled 
+                            ? I18n.settings.storage.pwa.installed 
+                            : I18n.settings.storage.pwa.notInstalled}
+                        </Text>
+                        <Text variant="caption" className="text-muted-foreground">
+                          {I18n.settings.storage.pwa.description}
+                        </Text>
+                      </Stack>
+                    </PopoverContent>
+                  </Popover>
+                </>
               )}
             </Stack>
             
             <Stack direction="horizontal" gap="xs">
               {/* Clear All Data Button (Icon only) */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowClearDialog(true)}
-                      disabled={isLoading || isClearing}
-                      aria-label={I18n.settings.storage.clearAllButton}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <Text variant="caption">{I18n.settings.storage.clearAllButton}</Text>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowClearDialog(true)}
+                disabled={isLoading || isClearing}
+                aria-label={I18n.settings.storage.clearAllButton}
+              >
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </Button>
 
               {/* Refresh Button */}
               <Button
@@ -207,7 +206,7 @@ export default function StorageManager() {
           {warning && (
             <Alert variant={warning.level === 'critical' ? 'destructive' : 'warning'}>
               <Stack direction="horizontal" gap="sm" align="center">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                 <AlertDescription>{warning.message}</AlertDescription>
               </Stack>
             </Alert>
@@ -216,10 +215,10 @@ export default function StorageManager() {
           {/* Storage Usage */}
           <Stack gap="xs">
             <Stack direction="horizontal" align="center" justify="between">
-              <Text>
+              <Text variant="caption">
                 {storageMonitor.formatBytes(usage.usage)} / {storageMonitor.formatBytes(usage.quota)}
               </Text>
-              <Badge variant={badgeVariant}>
+              <Badge variant={badgeVariant} className="text-xs h-5">
                 {usage.usagePercent.toFixed(1)}%
               </Badge>
             </Stack>
