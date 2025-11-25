@@ -419,27 +419,25 @@
     "storage": {
       "title": "Storage Management",
       "loading": "Loading storage information...",
-      "showDetails": "Show Details",
-      "hideDetails": "Hide Details",
-      "quotaNote": "Browser estimate - actual available space may vary",
-      "persistent": {
-        "title": "Persistent Storage",
-        "description": "Prevent browser from deleting cached data",
-        "granted": "Granted",
-        "request": "Request",
-        "successTitle": "Persistent Storage Granted",
-        "successDescription": "Your cached data is now protected from automatic deletion",
-        "deniedTitle": "Data Protection Active",
-        "deniedDescription": "The browser automatically protects PWA data. Your music library is safe and won't be cleared without your action.",
-        "errorTitle": "Request Failed",
-        "errorDescription": "Failed to request persistent storage. Please try again later.",
-        "unsupportedTitle": "Feature Not Available",
-        "unsupportedDescription": "Your browser doesn't support persistent storage, or the app needs to be installed as PWA first."
+      "pwa": {
+        "title": "PWA Status",
+        "installed": "Installed",
+        "notInstalled": "Not Installed",
+        "description": "Progressive Web App enables offline music playback"
       },
-      "breakdown": {
-        "audio": "Audio Files",
-        "covers": "Cover Images",
-        "metadata": "Metadata"
+      "globalTitle": "Browser Storage",
+      "globalNote": "Shared across all accounts on this device",
+      "clearAllTitle": "Clear All Data",
+      "clearAllDescription": "This will delete all users' data on this device, including songs, playlists, and settings.",
+      "clearAllButton": "Clear All Data",
+      "clearSuccess": "All data cleared successfully",
+      "clearError": "Failed to clear data. Please try again.",
+      "clearDialog": {
+        "title": "Confirm Clear All Data",
+        "description": "This action will delete ALL data from this browser, including all users' songs, playlists, settings, and cache. This cannot be undone. You will be signed out and redirected to the homepage.",
+        "cancel": "Cancel",
+        "confirm": "Delete Everything",
+        "clearing": "Clearing..."
       }
     },
     "toast": {

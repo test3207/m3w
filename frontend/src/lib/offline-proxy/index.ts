@@ -1141,6 +1141,7 @@ app.post('/upload', async (c: Context) => {
       },
       // Cache status fields (v2 schema)
       isCached: true,
+      cacheSize: file.size, // Set cache size to file size
       lastCacheCheck: Date.now(),
       fileHash: hash,
       // No longer store blobs in IndexedDB

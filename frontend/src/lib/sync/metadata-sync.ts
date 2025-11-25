@@ -71,12 +71,23 @@ export async function syncMetadata(): Promise<SyncResult> {
       try {
         const songs = await api.main.libraries.getSongs(library.id);
 
-        await db.songs.bulkPut(
-          songs.map((song) => ({
-            ...song,
-            _syncStatus: 'synced' as const,
-          }))
+        // Merge with existing cache status to preserve offline data
+        const mergedSongs = await Promise.all(
+          songs.map(async (song) => {
+            const existing = await db.songs.get(song.id);
+            return {
+              ...song,
+              // Preserve existing cache fields or set defaults
+              isCached: existing?.isCached ?? false,
+              cacheSize: existing?.cacheSize,
+              lastCacheCheck: existing?.lastCacheCheck ?? 0,
+              fileHash: existing?.fileHash ?? song.file?.hash, // Use server hash if available
+              _syncStatus: 'synced' as const,
+            };
+          })
         );
+
+        await db.songs.bulkPut(mergedSongs);
         totalSongs += songs.length;
       } catch (error) {
         logger.error('Failed to sync library songs', { libraryId: library.id, error });
@@ -102,13 +113,23 @@ export async function syncMetadata(): Promise<SyncResult> {
           }))
         );
 
-        // Also store the songs themselves
-        await db.songs.bulkPut(
-          songs.map((song) => ({
-            ...song,
-            _syncStatus: 'synced' as const,
-          }))
+        // Also store the songs themselves (preserve cache status)
+        const mergedSongs = await Promise.all(
+          songs.map(async (song) => {
+            const existing = await db.songs.get(song.id);
+            return {
+              ...song,
+              // Preserve existing cache fields or set defaults
+              isCached: existing?.isCached ?? false,
+              cacheSize: existing?.cacheSize,
+              lastCacheCheck: existing?.lastCacheCheck ?? 0,
+              fileHash: existing?.fileHash ?? song.file?.hash, // Use server hash if available
+              _syncStatus: 'synced' as const,
+            };
+          })
         );
+
+        await db.songs.bulkPut(mergedSongs);
 
         totalPlaylistSongs += songs.length;
       } catch (error) {

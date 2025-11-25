@@ -146,7 +146,7 @@ Before committing code, run the following checks to catch issues early:
 npm run lint
 
 # 2. Type check (no emit)
-npm run type-check
+npx tsc --noEmit
 
 # 3. Run tests
 npm test

@@ -113,8 +113,10 @@ class LibraryService {
             // No more references, delete song metadata
             const song = await db.songs.get(songId);
             if (song) {
-              // Check cache deletion eligibility
-              const shouldDeleteCache = await this.shouldDeleteCache(song.fileHash);
+              // Check cache deletion eligibility (only if fileHash exists)
+              const shouldDeleteCache = song.fileHash 
+                ? await this.shouldDeleteCache(song.fileHash)
+                : true; // If no hash, safe to delete cache (unique to this song)
               
               if (shouldDeleteCache && song.streamUrl) {
                 // Delete from Cache Storage
@@ -208,7 +210,9 @@ class LibraryService {
         // Delete song and cache
         const song = await db.songs.get(songId);
         if (song) {
-          const shouldDeleteCache = await this.shouldDeleteCache(song.fileHash);
+          const shouldDeleteCache = song.fileHash
+            ? await this.shouldDeleteCache(song.fileHash)
+            : true; // If no hash, safe to delete cache (unique to this song)
           
           if (shouldDeleteCache && song.streamUrl) {
             const cache = await caches.open(getCacheName('audio'));

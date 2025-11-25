@@ -757,45 +757,41 @@ export interface Messages {
       title: string;
       /** Loading storage information... */
       loading: string;
-      /** Show Details */
-      showDetails: string;
-      /** Hide Details */
-      hideDetails: string;
-      /** Browser estimate - actual available space may vary */
-      quotaNote: string;
-      persistent: {
-        /** Persistent Storage */
+      pwa: {
+        /** PWA Status */
         title: string;
-        /** Prevent browser from deleting cached data */
+        /** Installed */
+        installed: string;
+        /** Not Installed */
+        notInstalled: string;
+        /** Progressive Web App enables offline music playback */
         description: string;
-        /** Granted */
-        granted: string;
-        /** Request */
-        request: string;
-        /** Persistent Storage Granted */
-        successTitle: string;
-        /** Your cached data is now protected from automatic deletion */
-        successDescription: string;
-        /** Data Protection Active */
-        deniedTitle: string;
-        /** The browser automatically protects PWA data. Your music library is safe and won't be cleared without your action. */
-        deniedDescription: string;
-        /** Request Failed */
-        errorTitle: string;
-        /** Failed to request persistent storage. Please try again later. */
-        errorDescription: string;
-        /** Feature Not Available */
-        unsupportedTitle: string;
-        /** Your browser doesn't support persistent storage, or the app needs to be installed as PWA first. */
-        unsupportedDescription: string;
       };
-      breakdown: {
-        /** Audio Files */
-        audio: string;
-        /** Cover Images */
-        covers: string;
-        /** Metadata */
-        metadata: string;
+      /** Browser Storage */
+      globalTitle: string;
+      /** Shared across all accounts on this device */
+      globalNote: string;
+      /** Clear All Data */
+      clearAllTitle: string;
+      /** This will delete all users' data on this device, including songs, playlists, and settings. */
+      clearAllDescription: string;
+      /** Clear All Data */
+      clearAllButton: string;
+      /** All data cleared successfully */
+      clearSuccess: string;
+      /** Failed to clear data. Please try again. */
+      clearError: string;
+      clearDialog: {
+        /** Confirm Clear All Data */
+        title: string;
+        /** This action will delete ALL data from this browser, including all users' songs, playlists, settings, and cache. This cannot be undone. You will be signed out and redirected to the homepage. */
+        description: string;
+        /** Cancel */
+        cancel: string;
+        /** Delete Everything */
+        confirm: string;
+        /** Clearing... */
+        clearing: string;
       };
     };
     toast: {

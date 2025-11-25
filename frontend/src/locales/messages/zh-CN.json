@@ -419,27 +419,25 @@
     "storage": {
       "title": "存储管理",
       "loading": "正在加载存储信息...",
-      "showDetails": "显示详情",
-      "hideDetails": "隐藏详情",
-      "quotaNote": "浏览器估算值 - 实际可用空间可能不同",
-      "persistent": {
-        "title": "持久化存储",
-        "description": "防止浏览器删除缓存数据",
-        "granted": "已授权",
-        "request": "请求授权",
-        "successTitle": "持久化存储已授予",
-        "successDescription": "您的缓存数据现在受保护，不会被自动删除",
-        "deniedTitle": "数据保护已启用",
-        "deniedDescription": "浏览器会自动保护 PWA 数据。您的音乐库是安全的，不会在未经您同意的情况下被清除。",
-        "errorTitle": "请求失败",
-        "errorDescription": "请求持久化存储失败，请稍后重试。",
-        "unsupportedTitle": "功能不可用",
-        "unsupportedDescription": "您的浏览器不支持持久化存储，或需要先将应用安装为 PWA。"
+      "pwa": {
+        "title": "PWA 状态",
+        "installed": "已安装",
+        "notInstalled": "未安装",
+        "description": "PWA 应用可实现离线音乐播放"
       },
-      "breakdown": {
-        "audio": "音频文件",
-        "covers": "封面图片",
-        "metadata": "元数据"
+      "globalTitle": "浏览器存储",
+      "globalNote": "此设备上所有账户共享",
+      "clearAllTitle": "清除所有数据",
+      "clearAllDescription": "这将删除此设备上所有用户的数据，包括歌曲、播放列表和设置。",
+      "clearAllButton": "清除所有数据",
+      "clearSuccess": "所有数据已清除",
+      "clearError": "清除失败，请重试",
+      "clearDialog": {
+        "title": "确认清除所有数据",
+        "description": "此操作将删除浏览器中的所有数据，包括所有用户的歌曲、播放列表、设置和缓存。此操作不可撤销。您将被退出登录并跳转到首页。",
+        "cancel": "取消",
+        "confirm": "删除全部",
+        "clearing": "清除中..."
       }
     },
     "toast": {

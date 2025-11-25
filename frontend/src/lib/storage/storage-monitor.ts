@@ -80,7 +80,9 @@ class StorageMonitor {
       // Calculate audio cache size
       const songs = await db.songs.toArray();
       const audioSize = songs.reduce((sum, song) => {
-        return sum + (song.isCached && song.cacheSize ? song.cacheSize : 0);
+        // Prefer cacheSize, fallback to file.size for backward compatibility
+        const size = song.cacheSize || song.file?.size || 0;
+        return sum + (song.isCached ? size : 0);
       }, 0);
 
       // Estimate cover size (covers cache not tracked yet, use 5% of audio as estimate)

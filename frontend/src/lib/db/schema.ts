@@ -26,8 +26,8 @@ export interface OfflineSong extends Song {
   isCached: boolean;
   cacheSize?: number;
   lastCacheCheck: number;
-  /** File hash for deduplication */
-  fileHash: string;
+  /** File hash for deduplication (optional, only available after caching or upload) */
+  fileHash?: string;
   /**
    * Primary library ID where song was first uploaded.
    * Song can exist in multiple libraries via librarySongs join table.
