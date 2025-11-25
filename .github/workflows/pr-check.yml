@@ -195,6 +195,7 @@ jobs:
           file: ./docker/Dockerfile
           platforms: linux/amd64
           push: false
+          load: true
           tags: m3w:pr-${{ github.event.pull_request.number }}
           build-args: |
             BUILD_TARGET=prod
@@ -204,7 +205,7 @@ jobs:
       - name: Report build success
         run: |
           echo "✅ Docker image built successfully"
-          echo "Image size: $(docker images m3w:pr-${{ github.event.pull_request.number }} --format '{{.Size}}')"
+          docker images m3w:pr-${{ github.event.pull_request.number }} --format "Image: {{.Repository}}:{{.Tag}}, Size: {{.Size}}"
 
   pr-check-summary:
     name: PR Check Summary

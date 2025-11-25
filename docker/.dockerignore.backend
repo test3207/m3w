@@ -1,3 +1,6 @@
+# Backend-only Docker Image .dockerignore
+# This file is used with Dockerfile.backend
+
 # Node modules
 node_modules
 */node_modules
@@ -42,23 +45,9 @@ coverage
 *.spec.ts
 *.spec.tsx
 
-# Docs and assets
+# Frontend (not needed in backend-only image)
+frontend
+
+# Docs and scripts
 docs
-assets
-
-# Note: scripts excluded by default, included in specific Dockerfiles as needed
-# All-in-One: needs scripts for frontend i18n build
-# Backend-only: excludes scripts (uses .dockerignore.backend)
-# scripts
-
-# Docker
-docker-compose.yml
-Dockerfile*
-.dockerignore
-# Keep entrypoint scripts
-!docker/*.sh
-
-# Misc
-README.md
-*.md
-!backend/README.md
+scripts

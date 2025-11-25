@@ -366,11 +366,85 @@ All PRs must pass these automated checks:
 - **Delete branches**: Clean up after merge to avoid clutter
 - **Close linked issues**: Use `Closes #XX` in commit message
 
+## Docker Image Build and Versioning
+
+### Build Scripts
+
+Local builds use PowerShell scripts for consistency:
+
+```powershell
+# Build RC images (for demo/testing)
+.\scripts\build-docker.ps1 -Type rc -RcNumber 1
+
+# Build production images (from current package.json version)
+.\scripts\build-docker.ps1 -Type prod
+
+# Bump version for next release
+.\scripts\bump-version.ps1 -Type patch  # or minor, major
+```
+
+### Versioning Strategy
+
+**RC Builds**:
+- Format: `v0.1.0-rc.1`, `v0.1.0-rc.2`, `v0.1.0-rc.3`...
+- Base version unchanged during RC cycle
+- Tags: version-specific + `rc` (rolling)
+- Never updates `latest` tag
+
+**Production Builds**:
+- Format: `v0.1.0`, `v0.1.1`, `v0.2.0`...
+- Version bumped before build (patch/minor/major)
+- Tags: full version + `v0.1` + `v0` + `latest`
+- `latest` always points to stable production
+
+### Image Variants
+
+- `m3w`: All-in-One (Frontend + Backend)
+- `m3w-backend`: Backend API only
+- `m3w-frontend`: Frontend static files (TBD)
+
+### CI/CD Automation
+
+See [Issue #61](https://github.com/test3207/m3w/issues/61) for GitHub Actions workflows:
+- RC builds: Auto-trigger on push to main
+- Production builds: Manual trigger with version selection
+- Image optimization: [Issue #60](https://github.com/test3207/m3w/issues/60)
+
 ## Local Production Testing
-- Build production images with `podman build -t m3w:local -f docker/Dockerfile .` or equivalent Docker command.
+
+### Using Build Scripts (Recommended)
+
+```powershell
+# Build all image variants (AIO + Backend)
+.\scripts\build-docker.ps1 -Type prod
+
+# Build with registry prefix
+.\scripts\build-docker.ps1 -Type prod -Registry ghcr.io/test3207
+
+# Build RC variant
+.\scripts\build-docker.ps1 -Type rc -RcNumber 1
+```
+
+See [scripts/build-docker.ps1](../../scripts/build-docker.ps1) for full options.
+
+### Manual Build and Test
+
+- Build production images with `podman build -t m3w:local -f docker/Dockerfile --build-arg BUILD_TARGET=prod .`
 - Use `.env.docker` (created from `.env.docker.example`) for container environments.
 - When using docker-compose services, the container must join the `m3w_default` network to access PostgreSQL and MinIO via their container names (`m3w-postgres`, `m3w-minio`).
 - Run containers with `podman run -d --name m3w-prod --network m3w_default -p 4000:4000 --env-file backend/.env.docker m3w:local`.
 - For standalone containers without compose, use `host.containers.internal` in `.env.docker` to access host services.
 - Verify builds pass type checking, linting, and produce functional containers before deployment.
 - Test authentication flows and database connectivity in the containerized environment.
+
+**Cleanup**:
+```bash
+podman stop m3w-prod ; podman rm m3w-prod ; podman rmi m3w:local
+```
+
+**For RC builds** (with demo mode):
+```bash
+.\scripts\build-docker.ps1 -Type rc -RcNumber 1
+podman run -d --name m3w-rc --network m3w_default -p 4000:4000 \
+  --env-file backend/.env.docker -e DEMO_MODE=true ghcr.io/test3207/m3w:v0.1.0-rc.1
+```

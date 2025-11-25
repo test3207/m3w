@@ -12,6 +12,11 @@
     <!-- manifest will be auto-injected by vite-plugin-pwa -->
     
     <title>M3W - Music Player</title>
+    
+    <!-- Runtime configuration injection point (replaced by docker-entrypoint.sh) -->
+    <script>
+      window.__API_BASE_URL__ = '__API_BASE_URL__';
+    </script>
   </head>
   <body>
     <div id="root"></div>
