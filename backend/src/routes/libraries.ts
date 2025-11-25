@@ -14,10 +14,11 @@ import {
   createLibrarySchema,
   updateLibrarySchema,
   libraryIdSchema,
+  toLibraryResponse,
+  toSongListResponse,
 } from '@m3w/shared';
 import type { Context } from 'hono';
-import type { SongSortOption } from '@m3w/shared';
-import type { Song, File } from '@prisma/client';
+import type { ApiResponse, Library, Song, SongSortOption, LibraryInput, SongInput } from '@m3w/shared';
 
 const app = new Hono();
 
@@ -44,23 +45,23 @@ app.get('/', async (c: Context) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Add coverUrl from last added song
-    const librariesWithCover = libraries.map((lib) => {
+    // Transform to API response format using shared transformer
+    const response = libraries.map((lib) => {
       const lastSong = lib.songs[0];
-      return {
+      const input: LibraryInput = {
         ...lib,
         coverUrl: lastSong ? resolveCoverUrl({ id: lastSong.id, coverUrl: lastSong.coverUrl }) : null,
-        songs: undefined, // Remove songs array from response
       };
+      return toLibraryResponse(input);
     });
 
-    return c.json({
+    return c.json<ApiResponse<Library[]>>({
       success: true,
-      data: librariesWithCover,
+      data: response,
     });
   } catch (error) {
     logger.error({ error }, 'Failed to fetch libraries');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to fetch libraries',
@@ -91,7 +92,7 @@ app.get('/:id', async (c: Context) => {
     });
 
     if (!library) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Library not found',
@@ -100,21 +101,20 @@ app.get('/:id', async (c: Context) => {
       );
     }
 
-    // Add coverUrl from last added song
+    // Transform to API response format using shared transformer
     const lastSong = library.songs[0];
-    const libraryWithCover = {
+    const input: LibraryInput = {
       ...library,
       coverUrl: lastSong ? resolveCoverUrl({ id: lastSong.id, coverUrl: lastSong.coverUrl }) : null,
-      songs: undefined, // Remove songs array from response
     };
 
-    return c.json({
+    return c.json<ApiResponse<Library>>({
       success: true,
-      data: libraryWithCover,
+      data: toLibraryResponse(input),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Invalid library ID',
@@ -125,7 +125,7 @@ app.get('/:id', async (c: Context) => {
     }
 
     logger.error(error, 'Failed to fetch library');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to fetch library',
@@ -154,17 +154,22 @@ app.post('/', async (c: Context) => {
       },
     });
 
-    return c.json(
+    // Transform to API response format
+    const input: LibraryInput = {
+      ...library,
+      coverUrl: null,  // New library has no songs yet
+    };
+
+    return c.json<ApiResponse<Library>>(
       {
         success: true,
-        data: library,
-        message: 'Library created successfully',
+        data: toLibraryResponse(input),
       },
       201
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Validation failed',
@@ -175,7 +180,7 @@ app.post('/', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to create library');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to create library',
@@ -199,7 +204,7 @@ app.patch('/:id', async (c: Context) => {
     });
 
     if (!existing) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Library not found',
@@ -215,17 +220,28 @@ app.patch('/:id', async (c: Context) => {
         _count: {
           select: { songs: true },
         },
+        songs: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { id: true, coverUrl: true },
+        },
       },
     });
 
-    return c.json({
+    // Transform to API response format
+    const lastSong = library.songs[0];
+    const input: LibraryInput = {
+      ...library,
+      coverUrl: lastSong ? resolveCoverUrl({ id: lastSong.id, coverUrl: lastSong.coverUrl }) : null,
+    };
+
+    return c.json<ApiResponse<Library>>({
       success: true,
-      data: library,
-      message: 'Library updated successfully',
+      data: toLibraryResponse(input),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Validation failed',
@@ -236,7 +252,7 @@ app.patch('/:id', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to update library');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to update library',
@@ -258,7 +274,7 @@ app.delete('/:id', async (c: Context) => {
     });
 
     if (!existing) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Library not found',
@@ -269,11 +285,10 @@ app.delete('/:id', async (c: Context) => {
 
     // Check if library can be deleted (protection for default library)
     if (!existing.canDelete) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
-          message: '默认音乐库不能删除',
-          error: 'CANNOT_DELETE_DEFAULT_LIBRARY',
+          error: 'Cannot delete default library',
         },
         403
       );
@@ -285,7 +300,7 @@ app.delete('/:id', async (c: Context) => {
     });
 
     if (songCount > 0) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Cannot delete library with songs',
@@ -298,13 +313,12 @@ app.delete('/:id', async (c: Context) => {
       where: { id },
     });
 
-    return c.json({
+    return c.json<ApiResponse<undefined>>({
       success: true,
-      message: 'Library deleted successfully',
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Invalid library ID',
@@ -315,7 +329,7 @@ app.delete('/:id', async (c: Context) => {
     }
 
     logger.error({ error }, 'Failed to delete library');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to delete library',
@@ -332,9 +346,15 @@ function getPinyinSort(text: string): string {
 }
 
 // Helper function to sort songs
-type SongWithFile = Song & { file: File };
+// Using a generic interface for sorting that works with Prisma results
+interface SortableSong {
+  title: string;
+  artist: string | null;
+  album: string | null;
+  createdAt: Date;
+}
 
-function sortSongs(songs: SongWithFile[], sortOption: SongSortOption): SongWithFile[] {
+function sortSongs<T extends SortableSong>(songs: T[], sortOption: SongSortOption): T[] {
   const sorted = [...songs];
   
   switch (sortOption) {
@@ -392,7 +412,7 @@ app.get('/:id/songs', async (c: Context) => {
     });
 
     if (!library) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Library not found',
@@ -405,25 +425,28 @@ app.get('/:id/songs', async (c: Context) => {
       where: { libraryId: id },
       include: {
         file: true,
+        library: {
+          select: { name: true },
+        },
       },
     });
 
     // Apply sorting
     const sortedSongs = sortSongs(songs, sortParam);
 
-    // Convert coverUrl to API paths
-    const songsWithResolvedCovers = sortedSongs.map(song => ({
+    // Transform to API response format using shared transformer
+    const songInputs: SongInput[] = sortedSongs.map(song => ({
       ...song,
       coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
     }));
 
-    return c.json({
+    return c.json<ApiResponse<Song[]>>({
       success: true,
-      data: songsWithResolvedCovers,
+      data: toSongListResponse(songInputs),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json(
+      return c.json<ApiResponse<never>>(
         {
           success: false,
           error: 'Invalid library ID',
@@ -434,7 +457,7 @@ app.get('/:id/songs', async (c: Context) => {
     }
 
     logger.error({ error, stack: error instanceof Error ? error.stack : undefined }, 'Failed to fetch library songs');
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to fetch library songs',

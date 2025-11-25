@@ -234,7 +234,7 @@ m3w/
 │   │   │           ├── client.ts         # JSON API client
 │   │   │           ├── stream-client.ts  # Binary data client
 │   │   │           ├── endpoints.ts      # URL builders
-│   │   │           ├── types.ts          # Shared types
+│   │   │           ├── types/            # Shared types (modular)
 │   │   │           └── resources/        # API resource services
 │   │   │               ├── auth.ts       # Authentication
 │   │   │               ├── libraries.ts  # Library management

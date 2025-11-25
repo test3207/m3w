@@ -53,7 +53,7 @@
 ## Working Agreements
 
 - Keep business logic inside `backend/src/lib/services`; API routes stay thin wrappers.
-- API routes return `{ status, message, data? }` for consistent error handling; client components convert these into toasts.
+- API routes return `{ success, data?, error?, details? }` for consistent error handling; client components handle errors via toast.
 - Frontend API calls use `api.main.*` service layer (JSON) or `streamApiClient` (binary data); never use `apiClient` directly in business logic.
 - Trigger toasts only from the client layer; never emit them directly inside API handlers.
 - All user-facing text must use the i18n system (`I18n.category.key`); never hardcode strings.
@@ -77,5 +77,5 @@
 - Tailwind CSS: <https://tailwindcss.com/docs>
 - TypeScript Handbook: <https://www.typescriptlang.org/docs/>
 
-**Document Version**: v4.2  
+**Document Version**: v4.3  
 **Last Updated**: 2025-11-25

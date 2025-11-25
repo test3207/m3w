@@ -186,13 +186,13 @@ export async function createLibrary(data: FormData) {
   try {
     // ... business logic
     return {
-      status: 'success',
-      message: I18n.library.createSuccess
+      success: true,
+      data: result
     };
   } catch (error) {
     return {
-      status: 'error',
-      message: I18n.error.generic
+      success: false,
+      error: 'Failed to create library'
     };
   }
 }
@@ -200,8 +200,9 @@ export async function createLibrary(data: FormData) {
 
 **Rules:**
 - Import `I18n` only
-- Return messages in `{ status, message }` shape
-- Let client components handle toast display
+- Return `{ success, data? }` or `{ success: false, error }` shape
+- Error messages in English (for future i18n)
+- Let client components handle toast display with localized text
 
 ### Language Switcher
 

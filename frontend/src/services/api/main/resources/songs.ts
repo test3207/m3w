@@ -4,15 +4,10 @@
 
 import { mainApiClient } from '../client';
 import { MAIN_API_ENDPOINTS } from '../endpoints';
-import type { Song, SongSearchParams } from '@m3w/shared';
-import type { UpdateSongInput } from '@m3w/shared';
+import type { Song, SongSearchParams, UpdateSongInput, SongPlaylistCount } from '@m3w/shared';
 
 // Re-export shared types
 export type { UpdateSongInput, SongSearchParams };
-
-export interface PlaylistCountResponse {
-  count: number;
-}
 
 export const songs = {
   /**
@@ -54,7 +49,7 @@ export const songs = {
    * Get playlist count for song
    */
   getPlaylistCount: async (id: string): Promise<number> => {
-    const response = await mainApiClient.get<PlaylistCountResponse>(
+    const response = await mainApiClient.get<SongPlaylistCount>(
       MAIN_API_ENDPOINTS.songs.playlistCount(id)
     );
     return response.count;

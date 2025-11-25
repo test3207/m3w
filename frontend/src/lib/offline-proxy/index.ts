@@ -12,13 +12,21 @@ import {
   updateLibrarySchema,
   createPlaylistSchema,
   updatePlaylistSchema,
+  toLibraryResponse,
+  toPlaylistResponse,
+} from '@m3w/shared';
+import type {
+  SongSortOption,
+  ApiResponse,
+  PlaylistReorderResult,
+  ProgressSyncResult,
+  PreferencesUpdateResult,
 } from '@m3w/shared';
 import { parseBlob } from 'music-metadata';
 import { calculateFileHash } from '../utils/hash';
 import { cacheGuestAudio, cacheGuestCover } from '../pwa/cache-manager';
 import type { OfflineSong } from '../db/schema';
 import { logger } from '../logger-client';
-import type { SongSortOption } from '@m3w/shared';
 
 /**
  * Get pinyin sort key for Chinese text
@@ -245,6 +253,7 @@ app.post('/libraries', async (c: Context) => {
       userId,
       isDefault: false,
       canDelete: true,
+      coverUrl: null,  // New library has no songs yet
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       _count: { songs: 0 },
@@ -263,11 +272,11 @@ app.post('/libraries', async (c: Context) => {
       });
     }
 
+    // Transform to API response format
     return c.json(
       {
         success: true,
-        data: library,
-        message: 'Library created (will sync when online)',
+        data: toLibraryResponse(library),
       },
       201
     );
@@ -324,7 +333,6 @@ app.patch('/libraries/:id', async (c: Context) => {
     return c.json({
       success: true,
       data: updated,
-      message: 'Library updated (will sync when online)',
     });
   } catch {
     return c.json(
@@ -368,7 +376,6 @@ app.delete('/libraries/:id', async (c: Context) => {
 
     return c.json({
       success: true,
-      message: 'Library deleted (will sync when online)',
     });
   } catch {
     return c.json(
@@ -546,8 +553,10 @@ app.post('/playlists', async (c: Context) => {
       description: data.description ?? null,
       userId,
       songIds: [],
+      linkedLibraryId: null,
       isDefault: false,
       canDelete: true,
+      coverUrl: null,  // New playlist has no songs yet
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       _count: { songs: 0 },
@@ -566,11 +575,11 @@ app.post('/playlists', async (c: Context) => {
       });
     }
 
+    // Transform to API response format
     return c.json(
       {
         success: true,
-        data: playlist,
-        message: 'Playlist created (will sync when online)',
+        data: toPlaylistResponse(playlist),
       },
       201
     );
@@ -627,7 +636,6 @@ app.patch('/playlists/:id', async (c: Context) => {
     return c.json({
       success: true,
       data: updated,
-      message: 'Playlist updated (will sync when online)',
     });
   } catch {
     return c.json(
@@ -671,7 +679,6 @@ app.delete('/playlists/:id', async (c: Context) => {
 
     return c.json({
       success: true,
-      message: 'Playlist deleted (will sync when online)',
     });
   } catch {
     return c.json(
@@ -802,7 +809,6 @@ app.post('/playlists/:id/songs', async (c: Context) => {
       {
         success: true,
         data: playlistSong,
-        message: 'Song added to playlist (will sync when online)',
       },
       201
     );
@@ -845,8 +851,7 @@ app.put('/playlists/:id/songs/reorder', async (c: Context) => {
       return c.json(
         {
           success: false,
-          message: '歌曲顺序无效',
-          error: 'INVALID_SONG_ORDER',
+          error: 'Invalid song order',
         },
         400
       );
@@ -877,9 +882,8 @@ app.put('/playlists/:id/songs/reorder', async (c: Context) => {
       }
     });
 
-    return c.json({
+    return c.json<ApiResponse<PlaylistReorderResult>>({
       success: true,
-      message: 'Songs reordered successfully',
       data: {
         playlistId: id,
         songCount: songIds.length,
@@ -888,7 +892,7 @@ app.put('/playlists/:id/songs/reorder', async (c: Context) => {
     });
   } catch (error) {
     logger.error('Failed to reorder songs in playlist', { error });
-    return c.json(
+    return c.json<ApiResponse<never>>(
       {
         success: false,
         error: 'Failed to reorder songs in playlist',
@@ -946,7 +950,6 @@ app.delete('/playlists/:id/songs/:songId', async (c: Context) => {
 
     return c.json({
       success: true,
-      message: 'Song removed from playlist (will sync when online)',
     });
   } catch {
     return c.json(
@@ -1024,6 +1027,7 @@ app.post('/playlists/for-library', async (c: Context) => {
       linkedLibraryId,
       isDefault: false,
       canDelete: true,
+      coverUrl: null,  // Will be computed from first song
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       _count: { songs: songIds?.length || 0 },
@@ -1062,7 +1066,6 @@ app.post('/playlists/for-library', async (c: Context) => {
       {
         success: true,
         data: playlist,
-        message: 'Library playlist created (will sync when online)',
       },
       201
     );
@@ -1141,7 +1144,6 @@ app.put('/playlists/:id/songs', async (c: Context) => {
 
     return c.json({
       success: true,
-      message: 'Playlist songs updated (will sync when online)',
     });
   } catch {
     return c.json(
@@ -1414,15 +1416,18 @@ app.put('/player/progress', async (c: Context) => {
       updatedAt: new Date(),
     });
     
-    return c.json({
+    return c.json<ApiResponse<ProgressSyncResult>>({
       success: true,
       data: { synced: true }
     });
   } catch {
-    return c.json({
-      success: false,
-      error: 'Failed to save progress'
-    }, 500);
+    return c.json<ApiResponse<never>>(
+      {
+        success: false,
+        error: 'Failed to save progress'
+      },
+      500
+    );
   }
 });
 
@@ -1562,15 +1567,18 @@ app.patch('/player/preferences', async (c: Context) => {
     
     await db.playerPreferences.put(updated);
     
-    return c.json({
+    return c.json<ApiResponse<PreferencesUpdateResult>>({
       success: true,
       data: { updated: true }
     });
   } catch {
-    return c.json({
-      success: false,
-      error: 'Failed to update preferences'
-    }, 500);
+    return c.json<ApiResponse<never>>(
+      {
+        success: false,
+        error: 'Failed to update preferences'
+      },
+      500
+    );
   }
 });
 
@@ -1592,15 +1600,18 @@ app.put('/player/preferences', async (c: Context) => {
     
     await db.playerPreferences.put(updated);
     
-    return c.json({
+    return c.json<ApiResponse<PreferencesUpdateResult>>({
       success: true,
       data: { updated: true }
     });
   } catch {
-    return c.json({
-      success: false,
-      error: 'Failed to update preferences'
-    }, 500);
+    return c.json<ApiResponse<never>>(
+      {
+        success: false,
+        error: 'Failed to update preferences'
+      },
+      500
+    );
   }
 });
 

@@ -124,8 +124,8 @@
 - Dashboard routes render inside `DashboardLayoutShell`; compose page sections with `AdaptiveLayout` and `AdaptiveSection` so base and minimum heights stay consistent across breakpoints.
 
 ## API Response Patterns
-- API routes return `{ status, message, data? }` payloads for consistent error handling.
-- Export shared response types from `shared/src/types` for consistency.
+- API routes return `ApiResponse<T>` with `{ success, data?, error?, details? }` structure.
+- Export shared types from `@m3w/shared` (types are organized in `shared/src/types/` directory).
 - Perform boundary validation with Zod or typed helpers before calling services.
 - Log developer diagnostics through `backend/src/lib/logger.ts` while keeping user-facing messages concise.
 - Client components map API responses to toasts using the `useToast` hook.

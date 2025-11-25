@@ -20,6 +20,7 @@ export async function initGuestResources() {
       userId,
       isDefault: true,
       canDelete: false,
+      coverUrl: null,  // No songs yet
       createdAt: now,
       updatedAt: now,
       _count: { songs: 0 },
@@ -42,8 +43,10 @@ export async function initGuestResources() {
       description: null,
       userId,
       songIds: [],
+      linkedLibraryId: null,
       isDefault: true,
       canDelete: false,
+      coverUrl: null,  // No songs yet
       createdAt: now,
       updatedAt: now,
       _count: { songs: 0 },
