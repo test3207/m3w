@@ -40,6 +40,9 @@ export const CACHE_SYNC_BATCH_SIZE = 50;
 /** Cache expiry time (60 seconds for cache validation) */
 export const CACHE_EXPIRY_TIME = 60 * 1000; // 60 seconds
 
+/** In-memory cache expiry for cache-validator (1 minute) */
+export const CACHE_VALIDATOR_EXPIRY = 60 * 1000; // 1 minute
+
 // ============================================================
 // Metadata Sync Configuration
 // ============================================================

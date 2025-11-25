@@ -9,8 +9,7 @@
 import { db } from '@/lib/db/schema';
 import { logger } from '@/lib/logger-client';
 import { getCacheName } from '@/lib/pwa/cache-manager';
-
-const CACHE_EXPIRY = 60 * 1000; // 1 minute
+import { CACHE_VALIDATOR_EXPIRY } from '@/lib/storage/storage-constants';
 
 interface CacheStatus {
   isCached: boolean;
@@ -30,7 +29,7 @@ class CacheValidator {
   async isSongCached(songId: string, streamUrl?: string): Promise<boolean> {
     // Check in-memory cache first
     const cached = this.cache.get(songId);
-    if (cached && Date.now() - cached.checkedAt < CACHE_EXPIRY) {
+    if (cached && Date.now() - cached.checkedAt < CACHE_VALIDATOR_EXPIRY) {
       return cached.isCached;
     }
 

@@ -101,6 +101,13 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Cover art extraction from audio files (music-metadata)
   - HMR fixes and proper initialization
   - No backend API calls in guest mode
+- **Storage Quota Monitoring UI** ✅ **COMPLETED** (Issue #50, PR #52)
+  - StorageManager component with real-time quota display
+  - Three-layer cache synchronization (background sync + immediate validation + SW bridge)
+  - Cascade delete with Dexie transaction and file reference counting
+  - Persistent storage request handling with browser-specific messaging
+  - Storage constants centralized in storage-constants.ts
+  - Offline-proxy feature parity (playlist reorder, library sorting with pinyin)
 
 ### Active Initiatives (In Progress)
 - **User Testing & Evaluation**
@@ -135,7 +142,6 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Enhanced user profile management
   - Testing expansion (Playwright end-to-end, coverage targets)
 - **PWA Enhancements**
-  - Storage quota monitoring UI (Issue #50)
   - Cache management utilities (Issue #51)
   - Background sync for offline mutations
   - Push notifications for sync status

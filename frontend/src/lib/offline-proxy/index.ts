@@ -18,10 +18,16 @@ import { calculateFileHash } from '../utils/hash';
 import { cacheGuestAudio, cacheGuestCover } from '../pwa/cache-manager';
 import type { OfflineSong } from '../db/schema';
 import { logger } from '../logger-client';
+import type { SongSortOption } from '@m3w/shared';
 
 /**
  * Get pinyin sort key for Chinese text
- * Simplified: Use localeCompare with zh-CN locale for basic pinyin sorting
+ * 
+ * Uses localeCompare with 'zh-CN' locale for native pinyin sorting.
+ * This approach is simpler than importing a full pinyin library.
+ * 
+ * @param text - Text to normalize for sorting
+ * @returns Lowercase text for localeCompare
  */
 function getPinyinSort(text: string): string {
   // For Chinese text, use the text as-is for localeCompare
@@ -30,9 +36,28 @@ function getPinyinSort(text: string): string {
 }
 
 /**
- * Sort songs by various options (matches backend logic)
+ * Sort songs by various options (mirrors backend sort logic)
+ * 
+ * Supports 6 sorting options aligned with backend `songs.ts`:
+ * - `title-asc`: Title A-Z (Chinese sorted by Pinyin via localeCompare 'zh-CN')
+ * - `title-desc`: Title Z-A
+ * - `artist-asc`: Artist A-Z (null artists treated as empty string)
+ * - `album-asc`: Album A-Z (null albums treated as empty string)
+ * - `date-asc`: Date added (oldest first)
+ * - `date-desc`: Date added (newest first) - DEFAULT
+ * 
+ * @param songs - Array of songs to sort (not mutated, returns new array)
+ * @param sortOption - Sort option string from SongSortOption
+ * @returns New sorted array of songs
+ * 
+ * @example
+ * // Sort by title ascending (Pinyin for Chinese)
+ * const sorted = sortSongsOffline(songs, 'title-asc');
+ * 
+ * @see backend/src/routes/songs.ts - sortSongs() for backend equivalent
+ * @see shared/src/types.ts - SongSortOption type definition
  */
-function sortSongsOffline(songs: OfflineSong[], sortOption: string): OfflineSong[] {
+function sortSongsOffline(songs: OfflineSong[], sortOption: SongSortOption | string): OfflineSong[] {
   const sorted = [...songs];
   
   switch (sortOption) {
@@ -1123,101 +1148,6 @@ app.put('/playlists/:id/songs', async (c: Context) => {
       {
         success: false,
         error: 'Failed to update playlist songs',
-      },
-      500
-    );
-  }
-});
-
-// POST /api/playlists/:id/songs/reorder - Reorder songs in playlist
-app.post('/playlists/:id/songs/reorder', async (c: Context) => {
-  try {
-    const id = c.req.param('id');
-    const body = await c.req.json();
-    const { songId, direction } = body;
-    const userId = getUserId();
-
-    const playlist = await db.playlists.get(id);
-
-    if (!playlist || playlist.userId !== userId) {
-      return c.json(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
-    }
-
-    // Get all playlist songs sorted by order
-    const playlistSongs = await db.playlistSongs
-      .where('playlistId')
-      .equals(id)
-      .sortBy('order');
-
-    // Find the song to move
-    const currentIndex = playlistSongs.findIndex((ps) => ps.songId === songId);
-
-    if (currentIndex === -1) {
-      return c.json(
-        {
-          success: false,
-          error: 'Song not in playlist',
-        },
-        404
-      );
-    }
-
-    // Calculate new index
-    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-
-    // Check boundaries
-    if (newIndex < 0 || newIndex >= playlistSongs.length) {
-      return c.json({
-        success: true,
-        message: 'Song is already at the boundary',
-      });
-    }
-
-    // Swap orders
-    const currentSong = playlistSongs[currentIndex];
-    const adjacentSong = playlistSongs[newIndex];
-
-    const tempOrder = currentSong.order;
-    currentSong.order = adjacentSong.order;
-    adjacentSong.order = tempOrder;
-    currentSong._syncStatus = 'pending';
-    adjacentSong._syncStatus = 'pending';
-
-    // Update both songs
-    await db.playlistSongs.put(currentSong);
-    await db.playlistSongs.put(adjacentSong);
-
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
-      await addToSyncQueue({
-        entityType: 'playlistSong',
-        entityId: currentSong.id,
-        operation: 'update',
-        data: currentSong,
-      });
-      await addToSyncQueue({
-        entityType: 'playlistSong',
-        entityId: adjacentSong.id,
-        operation: 'update',
-        data: adjacentSong,
-      });
-    }
-
-    return c.json({
-      success: true,
-      message: 'Songs reordered (will sync when online)',
-    });
-  } catch {
-    return c.json(
-      {
-        success: false,
-        error: 'Failed to reorder songs',
       },
       500
     );
