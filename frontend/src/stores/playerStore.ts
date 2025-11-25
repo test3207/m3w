@@ -36,9 +36,8 @@ function songToTrack(song: Song): Track {
     artist: song.artist || undefined,
     album: song.album || undefined,
     coverUrl: song.coverUrl || undefined,
-    duration: song.file?.duration || undefined,
+    duration: song.duration || undefined,
     audioUrl: getStreamUrl(song.id, isGuest),
-    mimeType: song.file?.mimeType || undefined,
   };
 }
 
@@ -657,20 +656,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
               coverUrl: seed.track.coverUrl ?? null,
               libraryId: '', // Not available from seed
               fileId: '', // Not needed for playback
+              duration: seed.track.duration ?? null,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              // Include file info for proper audio format detection
-              file: seed.track.mimeType || seed.track.duration ? {
-                id: '',
-                hash: '',
-                path: '',
-                size: 0,
-                mimeType: seed.track.mimeType ?? 'audio/mpeg',
-                duration: seed.track.duration ?? null,
-                bitrate: null,
-                sampleRate: null,
-                channels: null,
-              } : undefined,
             };
             
             set({
@@ -716,20 +704,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         coverUrl: progress.track.coverUrl ?? null,
         libraryId: '', // Not available from progress
         fileId: '', // Not needed for playback
+        duration: progress.track.duration ?? null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        // Include file info for proper audio format detection
-        file: progress.track.mimeType || progress.track.duration ? {
-          id: '',
-          hash: '',
-          path: '',
-          size: 0,
-          mimeType: progress.track.mimeType ?? 'audio/mpeg',
-          duration: progress.track.duration ?? null,
-          bitrate: null,
-          sampleRate: null,
-          channels: null,
-        } : undefined,
       };
 
       // Load full queue based on context

@@ -6,6 +6,17 @@
 const CACHE_NAME = 'm3w-media-v1';
 
 /**
+ * Get cache name for specific type
+ * @param _type - Cache type ('audio' or 'covers')
+ * @returns Cache name
+ */
+export function getCacheName(_type: 'audio' | 'covers'): string {
+  // Currently using single cache for all media
+  // Future: Split into m3w-audio-v1 and m3w-covers-v1
+  return CACHE_NAME;
+}
+
+/**
  * Store audio file in Cache Storage for guest mode
  * @param songId - Unique song ID
  * @param audioBlob - Audio file blob

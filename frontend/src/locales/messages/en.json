@@ -416,6 +416,30 @@
       "description": "Sign out or manage your account",
       "signOut": "Sign Out"
     },
+    "storage": {
+      "title": "Storage Management",
+      "loading": "Loading storage information...",
+      "pwa": {
+        "title": "PWA Status",
+        "installed": "Installed",
+        "notInstalled": "Not Installed",
+        "description": "Progressive Web App enables offline music playback"
+      },
+      "globalTitle": "Browser Storage",
+      "globalNote": "Shared across all accounts on this device",
+      "clearAllTitle": "Clear All Data",
+      "clearAllDescription": "This will delete all users' data on this device, including songs, playlists, and settings.",
+      "clearAllButton": "Clear All Data",
+      "clearSuccess": "All data cleared successfully",
+      "clearError": "Failed to clear data. Please try again.",
+      "clearDialog": {
+        "title": "Confirm Clear All Data",
+        "description": "This action will delete ALL data from this browser, including all users' songs, playlists, settings, and cache. This cannot be undone. You will be signed out and redirected to the homepage.",
+        "cancel": "Cancel",
+        "confirm": "Delete Everything",
+        "clearing": "Clearing..."
+      }
+    },
     "toast": {
       "signOutSuccess": "Signed out successfully",
       "signOutDescription": "You have been signed out successfully"

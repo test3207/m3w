@@ -80,3 +80,4 @@ Thumbs.db
 .playwright-mcp/
 debug-*.mjs
 debug-*.js
+temp/

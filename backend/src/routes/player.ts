@@ -83,8 +83,18 @@ app.get('/seed', async (c: Context) => {
           take: 1,
           include: {
             song: {
-              include: {
-                file: true,
+              select: {
+                id: true,
+                title: true,
+                artist: true,
+                album: true,
+                coverUrl: true,
+                file: {
+                  select: {
+                    duration: true,
+                    mimeType: true,
+                  },
+                },
               },
             },
           },
@@ -147,8 +157,18 @@ app.get('/seed', async (c: Context) => {
             createdAt: 'asc',
           },
           take: 1,
-          include: {
-            file: true,
+          select: {
+            id: true,
+            title: true,
+            artist: true,
+            album: true,
+            coverUrl: true,
+            file: {
+              select: {
+                duration: true,
+                mimeType: true,
+              },
+            },
           },
         },
       },
@@ -338,8 +358,18 @@ app.get('/progress', async (c: Context) => {
           userId: auth.userId,
         },
       },
-      include: {
-        file: true,
+      select: {
+        id: true,
+        title: true,
+        artist: true,
+        album: true,
+        coverUrl: true,
+        file: {
+          select: {
+            duration: true,
+            mimeType: true,
+          },
+        },
       },
     });
 

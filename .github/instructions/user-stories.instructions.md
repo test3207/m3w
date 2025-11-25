@@ -315,10 +315,10 @@ Functionality integrated into Full Player actions
 3.  **Landing**: User lands on the Dashboard, UI is identical to logged-in state but strictly local.
 
 **Acceptance Criteria**:
-- [ ] "Offline Mode" button on Sign-in page.
-- [ ] No network requests sent to backend API.
-- [ ] `authStore` handles Guest state correctly.
-- [ ] Default local library and playlist created in IndexedDB.
+- [x] "Offline Mode" button on Sign-in page.
+- [x] No network requests sent to backend API.
+- [x] `authStore` handles Guest state correctly.
+- [x] Default local library and playlist created in IndexedDB.
 
 ### Story 7: Local Resource Management
 
@@ -331,8 +331,8 @@ Functionality integrated into Full Player actions
 4.  **Isolation**: These resources have `userId: 'guest'` and are invisible to other users (if multiple people used the same browser).
 
 **Acceptance Criteria**:
-- [ ] CRUD operations for Libraries/Playlists work via `OfflineProxy`.
-- [ ] Data persists across reloads.
+- [x] CRUD operations for Libraries/Playlists work via `OfflineProxy`.
+- [x] Data persists across reloads.
 
 ### Story 8: Local File Import
 

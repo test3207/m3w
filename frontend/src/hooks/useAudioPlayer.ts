@@ -128,9 +128,9 @@ export function useAudioPlayer() {
                     artist: song.artist ?? undefined,
                     album: song.album ?? undefined,
                     coverUrl: song.coverUrl ?? undefined,
-                    duration: song.file?.duration ?? undefined,
+                    duration: song.duration ?? undefined,
                     audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-                    mimeType: song.file?.mimeType ?? undefined,
+                    mimeType: song.mimeType ?? 'audio/mpeg',
                   }));
                   currentIndex = fullTracks.findIndex(t => t.id === track.id);
                   if (currentIndex === -1) currentIndex = 0;
@@ -149,9 +149,9 @@ export function useAudioPlayer() {
                     artist: song.artist ?? undefined,
                     album: song.album ?? undefined,
                     coverUrl: song.coverUrl ?? undefined,
-                    duration: song.file?.duration ?? undefined,
+                    duration: song.duration ?? undefined,
                     audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-                    mimeType: song.file?.mimeType ?? undefined,
+                    mimeType: song.mimeType ?? 'audio/mpeg',
                   }));
                   currentIndex = fullTracks.findIndex(t => t.id === track.id);
                   if (currentIndex === -1) currentIndex = 0;
@@ -246,9 +246,9 @@ export function useAudioPlayer() {
                   artist: song.artist ?? undefined,
                   album: song.album ?? undefined,
                   coverUrl: song.coverUrl ?? undefined,
-                  duration: song.file?.duration ?? undefined,
+                  duration: song.duration ?? undefined,
                   audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-                  mimeType: song.file?.mimeType ?? undefined,
+                  mimeType: song.mimeType ?? 'audio/mpeg',
                 }));
                 currentIndex = fullTracks.findIndex(t => t.id === track.id);
                 if (currentIndex === -1) currentIndex = 0;
@@ -267,9 +267,9 @@ export function useAudioPlayer() {
                   artist: song.artist ?? undefined,
                   album: song.album ?? undefined,
                   coverUrl: song.coverUrl ?? undefined,
-                  duration: song.file?.duration ?? undefined,
+                  duration: song.duration ?? undefined,
                   audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-                  mimeType: song.file?.mimeType ?? undefined,
+                  mimeType: song.mimeType ?? 'audio/mpeg',
                 }));
                 currentIndex = fullTracks.findIndex(t => t.id === track.id);
                 if (currentIndex === -1) currentIndex = 0;
@@ -647,9 +647,9 @@ export function useAudioPlayer() {
           artist: song.artist ?? undefined,
           album: song.album ?? undefined,
           coverUrl: song.coverUrl ?? undefined,
-          duration: song.file?.duration ?? undefined,
+          duration: song.duration ?? undefined,
           audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-          mimeType: song.file?.mimeType ?? undefined,
+          mimeType: song.mimeType ?? 'audio/mpeg',
         }));
 
         // Find current track index in new queue

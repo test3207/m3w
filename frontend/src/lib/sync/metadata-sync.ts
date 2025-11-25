@@ -6,7 +6,7 @@
  */
 
 import { api } from '@/services';
-import { db } from '../db/schema';
+import { db, type OfflineSong } from '../db/schema';
 import { logger } from '../logger-client';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -65,18 +65,33 @@ export async function syncMetadata(): Promise<SyncResult> {
     );
     logger.info('Playlists synced', { count: playlists.length });
 
+    // Pre-load existing songs to preserve cache status
+    const existingSongs = await db.songs.toArray();
+    const existingSongsMap = new Map(existingSongs.map(s => [s.id, s]));
+
     // Fetch songs for each library (batched)
     let totalSongs = 0;
     for (const library of libraries) {
       try {
         const songs = await api.main.libraries.getSongs(library.id);
 
-        await db.songs.bulkPut(
-          songs.map((song) => ({
-            ...song,
-            _syncStatus: 'synced' as const,
-          }))
+        // Merge with existing cache status to preserve offline data
+        const mergedSongs: OfflineSong[] = await Promise.all(
+          songs.map(async (song) => {
+            const existing = existingSongsMap.get(song.id);
+            return {
+              ...song,
+              // Preserve existing cache fields or set defaults
+              isCached: existing?.isCached ?? false,
+              cacheSize: existing?.cacheSize,
+              lastCacheCheck: existing?.lastCacheCheck ?? 0,
+              fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
+              _syncStatus: 'synced' as const,
+            };
+          })
         );
+
+        await db.songs.bulkPut(mergedSongs);
         totalSongs += songs.length;
       } catch (error) {
         logger.error('Failed to sync library songs', { libraryId: library.id, error });
@@ -102,13 +117,23 @@ export async function syncMetadata(): Promise<SyncResult> {
           }))
         );
 
-        // Also store the songs themselves
-        await db.songs.bulkPut(
-          songs.map((song) => ({
-            ...song,
-            _syncStatus: 'synced' as const,
-          }))
+        // Also store the songs themselves (preserve cache status)
+        const mergedSongs: OfflineSong[] = await Promise.all(
+          songs.map(async (song) => {
+            const existing = existingSongsMap.get(song.id);
+            return {
+              ...song,
+              // Preserve existing cache fields or set defaults
+              isCached: existing?.isCached ?? false,
+              cacheSize: existing?.cacheSize,
+              lastCacheCheck: existing?.lastCacheCheck ?? 0,
+              fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
+              _syncStatus: 'synced' as const,
+            };
+          })
         );
+
+        await db.songs.bulkPut(mergedSongs);
 
         totalPlaylistSongs += songs.length;
       } catch (error) {
