@@ -332,7 +332,7 @@ app.patch('/libraries/:id', async (c: Context) => {
 
     return c.json({
       success: true,
-      data: updated,
+      data: toLibraryResponse(updated),
     });
   } catch {
     return c.json(
@@ -635,7 +635,7 @@ app.patch('/playlists/:id', async (c: Context) => {
 
     return c.json({
       success: true,
-      data: updated,
+      data: toPlaylistResponse(updated),
     });
   } catch {
     return c.json(
