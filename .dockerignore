@@ -52,10 +52,11 @@ assets
 # scripts
 
 # Docker
-docker
 docker-compose.yml
 Dockerfile*
 .dockerignore
+# Keep entrypoint scripts
+!docker/*.sh
 
 # Misc
 README.md
