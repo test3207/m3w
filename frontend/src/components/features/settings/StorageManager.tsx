@@ -19,8 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { RefreshCw, Database, AlertTriangle, Trash2, Smartphone } from 'lucide-react';
+import { RefreshCw, Database, AlertTriangle, Trash2 } from 'lucide-react';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -35,6 +34,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { db } from '@/lib/db/schema';
 
 export default function StorageManager() {
@@ -134,46 +139,69 @@ export default function StorageManager() {
   return (
     <>
       <Card>
-        <Stack gap="lg" className="p-6">
+        <Stack gap="md" className="p-6">
           {/* Header */}
           <Stack direction="horizontal" align="center" justify="between">
             <Stack direction="horizontal" gap="sm" align="center">
               <Database className="w-5 h-5" />
               <Text variant="h3">{I18n.settings.storage.title}</Text>
+              {/* PWA Status Badge */}
+              {!pwaLoading && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge 
+                        variant={pwaStatus?.isPWAInstalled ? 'default' : 'secondary'}
+                        className="cursor-help"
+                      >
+                        PWA
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <Text variant="caption">
+                        {pwaStatus?.isPWAInstalled 
+                          ? I18n.settings.storage.pwa.installed 
+                          : I18n.settings.storage.pwa.notInstalled}
+                      </Text>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </Stack>
             
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRefresh}
-              disabled={isLoading}
-              aria-label="Refresh storage usage"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
-          </Stack>
+            <Stack direction="horizontal" gap="xs">
+              {/* Clear All Data Button (Icon only) */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowClearDialog(true)}
+                      disabled={isLoading || isClearing}
+                      aria-label={I18n.settings.storage.clearAllButton}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <Text variant="caption">{I18n.settings.storage.clearAllButton}</Text>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-          {/* PWA Status */}
-          <Stack gap="sm">
-            <Stack direction="horizontal" gap="sm" align="center">
-              <Smartphone className="w-5 h-5" aria-hidden="true" />
-              <Text>{I18n.settings.storage.pwa.title}</Text>
-            </Stack>
-            <Stack direction="horizontal" align="center" gap="sm">
-              {pwaLoading ? (
-                <Badge variant="secondary">{I18n.settings.storage.loading}</Badge>
-              ) : pwaStatus?.isPWAInstalled ? (
-                <Badge variant="default">{I18n.settings.storage.pwa.installed}</Badge>
-              ) : (
-                <Badge variant="secondary">{I18n.settings.storage.pwa.notInstalled}</Badge>
-              )}
-              <Text variant="caption" className="text-muted-foreground">
-                {I18n.settings.storage.pwa.description}
-              </Text>
+              {/* Refresh Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefresh}
+                disabled={isLoading}
+                aria-label="Refresh storage usage"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
             </Stack>
           </Stack>
-
-          <Separator />
 
           {/* Warning Banner */}
           {warning && (
@@ -185,15 +213,8 @@ export default function StorageManager() {
             </Alert>
           )}
 
-          {/* Global Storage Status */}
-          <Stack gap="sm">
-            <Stack gap="xs">
-              <Text>{I18n.settings.storage.globalTitle}</Text>
-              <Text variant="caption" className="text-muted-foreground">
-                {I18n.settings.storage.globalNote}
-              </Text>
-            </Stack>
-            
+          {/* Storage Usage */}
+          <Stack gap="xs">
             <Stack direction="horizontal" align="center" justify="between">
               <Text>
                 {storageMonitor.formatBytes(usage.usage)} / {storageMonitor.formatBytes(usage.quota)}
@@ -204,28 +225,11 @@ export default function StorageManager() {
             </Stack>
 
             <Progress value={usage.usagePercent} variant={progressVariant} />
-          </Stack>
-
-          <Separator />
-
-          {/* Clear All Data */}
-          <Stack gap="sm">
-            <Stack gap="xs">
-              <Text>{I18n.settings.storage.clearAllTitle}</Text>
-              <Text variant="caption" className="text-muted-foreground">
-                {I18n.settings.storage.clearAllDescription}
-              </Text>
-            </Stack>
             
-            <Button
-              variant="destructive"
-              onClick={() => setShowClearDialog(true)}
-              disabled={isLoading || isClearing}
-              className="w-fit"
-            >
-              <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" />
-              {I18n.settings.storage.clearAllButton}
-            </Button>
+            {/* Info Note */}
+            <Text variant="caption" className="text-muted-foreground">
+              {I18n.settings.storage.globalNote}
+            </Text>
           </Stack>
         </Stack>
       </Card>
