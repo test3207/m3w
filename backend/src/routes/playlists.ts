@@ -521,6 +521,15 @@ app.post('/:id/songs', async (c: Context) => {
       },
     });
 
+    // Also create PlaylistSong entry for consistency (used for cover retrieval)
+    await prisma.playlistSong.create({
+      data: {
+        playlistId: id,
+        songId,
+        order: updatedPlaylist.songIds.length - 1,
+      },
+    });
+
     return c.json<ApiResponse<PlaylistSongOperationResult>>(
       {
         success: true,
@@ -597,6 +606,14 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       where: { id },
       data: {
         songIds: updatedSongIds,
+      },
+    });
+
+    // Also delete PlaylistSong entry for consistency
+    await prisma.playlistSong.deleteMany({
+      where: {
+        playlistId: id,
+        songId,
       },
     });
 

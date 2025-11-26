@@ -509,6 +509,17 @@ app.post('/:id/songs', async (c: Context) => {
 
     await db.playlistSongs.add(playlistSong);
 
+    // Update playlist.songIds array to match backend behavior
+    // Also update coverUrl if playlist was empty (first song added)
+    const updatedSongIds = [...playlist.songIds, songId];
+    const wasEmpty = playlist.songIds.length === 0;
+    await db.playlists.update(id, {
+      songIds: updatedSongIds,
+      updatedAt: new Date().toISOString(),
+      // Update coverUrl if this is the first song
+      ...(wasEmpty && song.coverUrl ? { coverUrl: song.coverUrl } : {}),
+    });
+
     // Only queue sync for authenticated users
     if (userId !== 'guest') {
       await addToSyncQueue({
@@ -519,10 +530,15 @@ app.post('/:id/songs', async (c: Context) => {
       });
     }
 
+    // Return response matching backend format
     return c.json(
       {
         success: true,
-        data: playlistSong,
+        data: {
+          playlistId: id,
+          songId,
+          newSongCount: updatedSongIds.length,
+        },
       },
       201
     );
@@ -729,6 +745,13 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
 
     await db.playlistSongs.delete(playlistSong.id);
 
+    // Update playlist.songIds array to match backend behavior
+    const updatedSongIds = playlist.songIds.filter((id) => id !== songId);
+    await db.playlists.update(playlistId, {
+      songIds: updatedSongIds,
+      updatedAt: new Date().toISOString(),
+    });
+
     // Only queue sync for authenticated users
     if (userId !== 'guest') {
       await addToSyncQueue({
@@ -738,8 +761,14 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       });
     }
 
+    // Return response matching backend format
     return c.json({
       success: true,
+      data: {
+        playlistId,
+        songId,
+        newSongCount: updatedSongIds.length,
+      },
     });
   } catch {
     return c.json(
