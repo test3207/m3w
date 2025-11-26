@@ -40,36 +40,31 @@ export default function LibraryDetailPage() {
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [sortOption, setSortOption] = useState<SongSortOption>("date-desc");
+  const [isLoadingSongs, setIsLoadingSongs] = useState(false);
 
   const { currentLibrary, isLoading, fetchLibraryById, fetchLibraries } =
     useLibraryStore();
   const playFromLibrary = usePlayerStore((state) => state.playFromLibrary);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
 
-  // Fetch library and songs
+  // Effect 1: Fetch library when ID changes (NOT when sort changes)
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchLibrary = async () => {
       if (!id) {
         navigate("/libraries");
         return;
       }
 
       try {
-        // Fetch library (store handles loading state)
         const library = await fetchLibraryById(id);
         if (!library) {
           toast({
             variant: "destructive",
-            title: I18n.common.loadingLabel,
+            title: I18n.common.errorLabel,
             description: I18n.error.libraryNotFound,
           });
           navigate("/libraries");
-          return;
         }
-
-        // Fetch songs
-        const songsData = await api.main.libraries.getSongs(id, sortOption);
-        setSongs(songsData);
       } catch (error) {
         toast({
           variant: "destructive",
@@ -81,12 +76,43 @@ export default function LibraryDetailPage() {
       }
     };
 
-    fetchData();
-  }, [id, sortOption, navigate, toast, fetchLibraryById]);
+    void fetchLibrary();
+  }, [id, navigate, toast, fetchLibraryById]);
+
+  // Effect 2: Fetch songs when ID or sort option changes
+  useEffect(() => {
+    const fetchSongs = async () => {
+      if (!id) return;
+
+      setIsLoadingSongs(true);
+      try {
+        const songsData = await api.main.libraries.getSongs(id, sortOption);
+        setSongs(songsData);
+      } catch (error) {
+        console.error("Failed to fetch songs:", error);
+        // Don't show toast for song fetch errors if we're just sorting
+        // The user already has the library context
+      } finally {
+        setIsLoadingSongs(false);
+      }
+    };
+
+    void fetchSongs();
+  }, [id, sortOption]);
 
   // Refresh songs when library songs count changes (after upload)
+  // Track previous song count to only refetch on actual changes
+  const [prevSongCount, setPrevSongCount] = useState<number | undefined>(undefined);
+  const currentSongCount = currentLibrary?._count?.songs;
+  
   useEffect(() => {
-    if (currentLibrary && id) {
+    // Only refetch if count actually changed (not on initial load or sort changes)
+    if (
+      id && 
+      prevSongCount !== undefined && 
+      currentSongCount !== undefined && 
+      currentSongCount !== prevSongCount
+    ) {
       const refetchSongs = async () => {
         try {
           const songsData = await api.main.libraries.getSongs(id, sortOption);
@@ -98,8 +124,10 @@ export default function LibraryDetailPage() {
       };
       void refetchSongs();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLibrary?._count?.songs]); // Only watch song count changes
+    
+    // Update previous count
+    setPrevSongCount(currentSongCount);
+  }, [currentSongCount, id, sortOption, prevSongCount]);
 
   const handlePlayAll = () => {
     if (songs.length === 0 || !currentLibrary) return;
@@ -253,10 +281,11 @@ export default function LibraryDetailPage() {
       {/* Current Sort */}
       <p className="mb-4 text-xs text-muted-foreground">
         排序方式: {getSortLabel(sortOption)}
+        {isLoadingSongs && " (加载中...)"}
       </p>
 
       {/* Song List */}
-      {songs.length === 0 ? (
+      {songs.length === 0 && !isLoadingSongs ? (
         <div className="flex min-h-[50vh] items-center justify-center">
           <div className="text-center">
             <ListPlus className="mx-auto h-16 w-16 text-muted-foreground/50" />

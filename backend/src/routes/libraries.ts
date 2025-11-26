@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
-import pinyin from 'pinyin';
+import { pinyin } from 'pinyin';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
@@ -341,7 +341,7 @@ app.delete('/:id', async (c: Context) => {
 
 // Helper function to get Pinyin for sorting
 function getPinyinSort(text: string): string {
-  const pinyinArray = pinyin(text || '', { style: pinyin.STYLE_NORMAL });
+  const pinyinArray = pinyin(text || '');
   return pinyinArray.flat().join('').toLowerCase();
 }
 
