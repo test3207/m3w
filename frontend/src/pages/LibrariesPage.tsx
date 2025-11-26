@@ -9,7 +9,7 @@ import { useLibraryStore } from '@/stores/libraryStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Library, Plus, Music } from 'lucide-react';
+import { Library, Plus, Music, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getLibraryDisplayName, getLibraryBadge } from '@/lib/utils/defaults';
 import { isDefaultLibrary } from '@m3w/shared';
@@ -24,6 +24,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 
 export default function LibrariesPage() {
@@ -32,11 +42,16 @@ export default function LibrariesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newLibraryName, setNewLibraryName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [libraryToDelete, setLibraryToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const libraries = useLibraryStore((state) => state.libraries);
   const isLoading = useLibraryStore((state) => state.isLoading);
   const fetchLibraries = useLibraryStore((state) => state.fetchLibraries);
   const createLibrary = useLibraryStore((state) => state.createLibrary);
+  const deleteLibrary = useLibraryStore((state) => state.deleteLibrary);
 
   // Fetch libraries on mount
   useEffect(() => {
@@ -70,6 +85,35 @@ export default function LibrariesPage() {
       });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDeleteLibrary = async () => {
+    if (!libraryToDelete) return;
+    
+    try {
+      const success = await deleteLibrary(libraryToDelete.id);
+      if (success) {
+        toast({
+          title: I18n.libraries.delete.successTitle,
+          description: I18n.libraries.delete.successDescription.replace('{0}', libraryToDelete.name),
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: I18n.libraries.delete.errorTitle,
+          description: I18n.libraries.delete.cannotDeleteDefault,
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: I18n.libraries.delete.errorTitle,
+        description: error instanceof Error ? error.message : I18n.error.genericTryAgain,
+      });
+    } finally {
+      setLibraryToDelete(null);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -152,28 +196,31 @@ export default function LibrariesPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {libraries.map((library) => (
-            <Link key={library.id} to={`/libraries/${library.id}`}>
-              <Card className="overflow-hidden transition-colors hover:bg-accent cursor-pointer">
+          {libraries.map((library) => {
+            const canDelete = !isDefaultLibrary(library) && library.canDelete !== false;
+            return (
+              <Card key={library.id} className="overflow-hidden transition-colors hover:bg-accent">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
-                    {/* Cover Image - 96px */}
-                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
-                      {library.coverUrl ? (
-                        <img
-                          src={library.coverUrl}
-                          alt={getLibraryDisplayName(library)}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <Music className="h-10 w-10 text-muted-foreground/30" />
-                        </div>
-                      )}
-                    </div>
+                    {/* Cover Image - 96px (clickable) */}
+                    <Link to={`/libraries/${library.id}`} className="shrink-0">
+                      <div className="h-24 w-24 overflow-hidden rounded-md bg-muted">
+                        {library.coverUrl ? (
+                          <img
+                            src={library.coverUrl}
+                            alt={getLibraryDisplayName(library)}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Music className="h-10 w-10 text-muted-foreground/30" />
+                          </div>
+                        )}
+                      </div>
+                    </Link>
 
-                    {/* Metadata */}
-                    <div className="flex flex-1 flex-col justify-center gap-1 overflow-hidden">
+                    {/* Metadata (clickable) */}
+                    <Link to={`/libraries/${library.id}`} className="flex flex-1 flex-col justify-center gap-1 overflow-hidden">
                       <h3 className="truncate font-semibold text-base flex items-center gap-2">
                         {getLibraryDisplayName(library)}
                         {isDefaultLibrary(library) && (
@@ -188,14 +235,55 @@ export default function LibrariesPage() {
                       <p className="text-xs text-muted-foreground">
                         {I18n.libraries.card.createdAt.replace('{0}', new Date(library.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' }))}
                       </p>
-                    </div>
+                    </Link>
+
+                    {/* Delete button */}
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setLibraryToDelete({ id: library.id, name: getLibraryDisplayName(library) });
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{I18n.libraries.delete.confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {libraryToDelete
+                ? I18n.libraries.delete.confirmDescription.replace('{0}', libraryToDelete.name)
+                : ''
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{I18n.common.cancelButton}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteLibrary}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {I18n.common.deleteButton}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

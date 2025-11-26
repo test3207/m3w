@@ -431,12 +431,32 @@ export interface Messages {
       toastSuccessTitle: string;
       /** Song added successfully. */
       toastSuccessDescription: string;
+      /** Added "{0}" to "{1}" */
+      toastSuccessDescriptionWithName: string;
+      /** Added {0} songs to "{1}" */
+      batchSuccessDescription: string;
       /** Unable to add song */
       toastErrorTitle: string;
       /** Please try again. */
       toastErrorDescription: string;
       /** Select a playlist first. */
       selectPlaylistFirst: string;
+      /** Song is already in this playlist */
+      alreadyInPlaylist: string;
+      /** Create new playlist */
+      createNewPlaylist: string;
+      /** Playlist name */
+      newPlaylistPlaceholder: string;
+      /** Create */
+      createButton: string;
+      /** Failed to create playlist */
+      createPlaylistError: string;
+      /** No playlists yet */
+      noPlaylists: string;
+      /** Select a playlist for "{0}" */
+      selectPlaylistForSong: string;
+      /** Select a playlist for {0} songs */
+      selectPlaylistForSongs: string;
     };
   };
   playlist: {
@@ -649,6 +669,8 @@ export interface Messages {
       title: string;
       /** Save audio files to your library; deduplication and metadata extraction run automatically. */
       description: string;
+      /** Uploading to: {0} */
+      uploadingTo: string;
       /** Upload Audio File */
       cardTitle: string;
       /** No libraries are available yet. Create one in Library Manager before uploading. */
@@ -892,6 +914,22 @@ export interface Messages {
       /** Created on {0} */
       createdAt: string;
     };
+    delete: {
+      /** Delete */
+      button: string;
+      /** Delete Library */
+      confirmTitle: string;
+      /** Are you sure you want to delete "{0}"? All songs in this library will be removed. This action cannot be undone. */
+      confirmDescription: string;
+      /** Deleted successfully */
+      successTitle: string;
+      /** Library "{0}" has been deleted */
+      successDescription: string;
+      /** Deletion failed */
+      errorTitle: string;
+      /** Default library cannot be deleted */
+      cannotDeleteDefault: string;
+    };
     detail: {
       /** {0} songs */
       songsCount: string;
@@ -916,7 +954,7 @@ export interface Messages {
       empty: {
         /** No songs yet */
         title: string;
-        /** Click the "+" button in the bottom right to upload songs to this library */
+        /** Click the upload button above to add songs to this library */
         description: string;
       };
       deleteSong: {
@@ -930,6 +968,22 @@ export interface Messages {
         errorTitle: string;
         /** Unknown error */
         unknownError: string;
+        /** Delete Song */
+        confirmTitle: string;
+        /** Are you sure you want to delete "{0}"? This song will also be removed from all playlists. This action cannot be undone. */
+        confirmDescription: string;
+      };
+      selection: {
+        /** {0} selected */
+        selectedCount: string;
+        /** Select All */
+        selectAll: string;
+        /** Cancel */
+        cancel: string;
+        /** Add to Playlist */
+        addToPlaylist: string;
+        /** Long press to select multiple songs */
+        longPressHint: string;
       };
     };
   };
@@ -975,6 +1029,22 @@ export interface Messages {
       songsCount: string;
       /** Created on {0} */
       createdAt: string;
+    };
+    delete: {
+      /** Delete */
+      button: string;
+      /** Delete Playlist */
+      confirmTitle: string;
+      /** Are you sure you want to delete "{0}"? This action cannot be undone. */
+      confirmDescription: string;
+      /** Deleted successfully */
+      successTitle: string;
+      /** Playlist "{0}" has been deleted */
+      successDescription: string;
+      /** Deletion failed */
+      errorTitle: string;
+      /** Favorites playlist cannot be deleted */
+      cannotDeleteDefault: string;
     };
     detail: {
       /** Playlist not found */

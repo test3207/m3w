@@ -237,9 +237,19 @@
       "pendingLabel": "添加中...",
       "toastSuccessTitle": "已添加到播放列表",
       "toastSuccessDescription": "歌曲已成功添加。",
+      "toastSuccessDescriptionWithName": "已将\"{0}\"添加到\"{1}\"",
+      "batchSuccessDescription": "已将 {0} 首歌曲添加到\"{1}\"",
       "toastErrorTitle": "无法添加歌曲",
       "toastErrorDescription": "请重试。",
-      "selectPlaylistFirst": "请先选择播放列表。"
+      "selectPlaylistFirst": "请先选择播放列表。",
+      "alreadyInPlaylist": "歌曲已在此播放列表中",
+      "createNewPlaylist": "新建播放列表",
+      "newPlaylistPlaceholder": "播放列表名称",
+      "createButton": "创建",
+      "createPlaylistError": "创建播放列表失败",
+      "noPlaylists": "暂无播放列表",
+      "selectPlaylistForSong": "为\"{0}\"选择播放列表",
+      "selectPlaylistForSongs": "为 {0} 首歌曲选择播放列表"
     }
   },
   "playlist": {
@@ -360,6 +370,7 @@
     "page": {
       "title": "上传歌曲",
       "description": "将音频文件保存到您的库中；系统会自动进行去重和元数据提取。",
+      "uploadingTo": "上传到：{0}",
       "cardTitle": "上传音频文件",
       "emptyState": "暂无可用库。请先在库管理器中创建一个库再上传。"
     },
@@ -497,6 +508,15 @@
       "songsCount": "{0} 首歌曲",
       "createdAt": "创建于 {0}"
     },
+    "delete": {
+      "button": "删除",
+      "confirmTitle": "删除音乐库",
+      "confirmDescription": "确定要删除 \"{0}\" 吗？该库中的所有歌曲都将被移除。此操作无法撤销。",
+      "successTitle": "删除成功",
+      "successDescription": "音乐库 \"{0}\" 已删除",
+      "errorTitle": "删除失败",
+      "cannotDeleteDefault": "默认音乐库无法删除"
+    },
     "detail": {
       "songsCount": "{0} 首歌曲",
       "playAll": "播放全部",
@@ -511,14 +531,23 @@
       },
       "empty": {
         "title": "还没有歌曲",
-        "description": "点击右下角 \"+\" 上传歌曲到这个音乐库"
+        "description": "点击上方的上传按钮向此音乐库添加歌曲"
       },
       "deleteSong": {
         "button": "删除歌曲",
         "successTitle": "删除成功",
         "successDescription": "已从音乐库中删除\"{0}\"",
         "errorTitle": "删除失败",
-        "unknownError": "未知错误"
+        "unknownError": "未知错误",
+        "confirmTitle": "删除歌曲",
+        "confirmDescription": "确定要删除\"{0}\"吗？该歌曲也将从所有包含它的播放列表中移除。此操作无法撤销。"
+      },
+      "selection": {
+        "selectedCount": "已选择 {0} 首",
+        "selectAll": "全选",
+        "cancel": "取消",
+        "addToPlaylist": "添加到播放列表",
+        "longPressHint": "长按选择多首歌曲"
       }
     }
   },
@@ -546,6 +575,15 @@
     "card": {
       "songsCount": "{0} 首歌曲",
       "createdAt": "创建于 {0}"
+    },
+    "delete": {
+      "button": "删除",
+      "confirmTitle": "删除播放列表",
+      "confirmDescription": "确定要删除 \"{0}\" 吗？此操作无法撤销。",
+      "successTitle": "删除成功",
+      "successDescription": "播放列表 \"{0}\" 已删除",
+      "errorTitle": "删除失败",
+      "cannotDeleteDefault": "收藏夹无法删除"
     },
     "detail": {
       "notFound": "播放列表不存在",

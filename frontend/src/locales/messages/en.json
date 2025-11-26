@@ -237,9 +237,19 @@
       "pendingLabel": "Adding...",
       "toastSuccessTitle": "Added to playlist",
       "toastSuccessDescription": "Song added successfully.",
+      "toastSuccessDescriptionWithName": "Added \"{0}\" to \"{1}\"",
+      "batchSuccessDescription": "Added {0} songs to \"{1}\"",
       "toastErrorTitle": "Unable to add song",
       "toastErrorDescription": "Please try again.",
-      "selectPlaylistFirst": "Select a playlist first."
+      "selectPlaylistFirst": "Select a playlist first.",
+      "alreadyInPlaylist": "Song is already in this playlist",
+      "createNewPlaylist": "Create new playlist",
+      "newPlaylistPlaceholder": "Playlist name",
+      "createButton": "Create",
+      "createPlaylistError": "Failed to create playlist",
+      "noPlaylists": "No playlists yet",
+      "selectPlaylistForSong": "Select a playlist for \"{0}\"",
+      "selectPlaylistForSongs": "Select a playlist for {0} songs"
     }
   },
   "playlist": {
@@ -360,6 +370,7 @@
     "page": {
       "title": "Upload Songs",
       "description": "Save audio files to your library; deduplication and metadata extraction run automatically.",
+      "uploadingTo": "Uploading to: {0}",
       "cardTitle": "Upload Audio File",
       "emptyState": "No libraries are available yet. Create one in Library Manager before uploading."
     },
@@ -497,6 +508,15 @@
       "songsCount": "{0} songs",
       "createdAt": "Created on {0}"
     },
+    "delete": {
+      "button": "Delete",
+      "confirmTitle": "Delete Library",
+      "confirmDescription": "Are you sure you want to delete \"{0}\"? All songs in this library will be removed. This action cannot be undone.",
+      "successTitle": "Deleted successfully",
+      "successDescription": "Library \"{0}\" has been deleted",
+      "errorTitle": "Deletion failed",
+      "cannotDeleteDefault": "Default library cannot be deleted"
+    },
     "detail": {
       "songsCount": "{0} songs",
       "playAll": "Play All",
@@ -511,14 +531,23 @@
       },
       "empty": {
         "title": "No songs yet",
-        "description": "Click the \"+\" button in the bottom right to upload songs to this library"
+        "description": "Click the upload button above to add songs to this library"
       },
       "deleteSong": {
         "button": "Delete Song",
         "successTitle": "Deleted successfully",
         "successDescription": "Removed \"{0}\" from library",
         "errorTitle": "Deletion failed",
-        "unknownError": "Unknown error"
+        "unknownError": "Unknown error",
+        "confirmTitle": "Delete Song",
+        "confirmDescription": "Are you sure you want to delete \"{0}\"? This song will also be removed from all playlists. This action cannot be undone."
+      },
+      "selection": {
+        "selectedCount": "{0} selected",
+        "selectAll": "Select All",
+        "cancel": "Cancel",
+        "addToPlaylist": "Add to Playlist",
+        "longPressHint": "Long press to select multiple songs"
       }
     }
   },
@@ -546,6 +575,15 @@
     "card": {
       "songsCount": "{0} songs",
       "createdAt": "Created on {0}"
+    },
+    "delete": {
+      "button": "Delete",
+      "confirmTitle": "Delete Playlist",
+      "confirmDescription": "Are you sure you want to delete \"{0}\"? This action cannot be undone.",
+      "successTitle": "Deleted successfully",
+      "successDescription": "Playlist \"{0}\" has been deleted",
+      "errorTitle": "Deletion failed",
+      "cannotDeleteDefault": "Favorites playlist cannot be deleted"
     },
     "detail": {
       "notFound": "Playlist not found",
