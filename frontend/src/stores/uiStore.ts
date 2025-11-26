@@ -32,8 +32,8 @@ interface UIState {
   isSelectionMode: boolean;
   selectedSongs: SelectedSongInfo[];
   
-  // Add to playlist state (for batch add)
-  selectedSongForPlaylist: SelectedSongInfo | null; // Deprecated: use selectedSongs instead
+  // Single song for quick "Add to Playlist" action (when NOT in selection mode)
+  selectedSongForPlaylist: SelectedSongInfo | null;
 
   // Sorting
   currentSortOption: SongSortOption;

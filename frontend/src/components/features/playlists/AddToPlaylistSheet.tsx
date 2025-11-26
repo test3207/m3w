@@ -3,7 +3,7 @@
  * Sheet for adding songs to existing playlists (supports batch add)
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -43,6 +43,13 @@ export function AddToPlaylistSheet() {
   const [showNewPlaylist, setShowNewPlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  // Fetch playlists when sheet opens to ensure data is fresh
+  useEffect(() => {
+    if (isOpen) {
+      void fetchPlaylists();
+    }
+  }, [isOpen, fetchPlaylists]);
 
   // Determine which songs to add
   // Priority: selection mode > single song

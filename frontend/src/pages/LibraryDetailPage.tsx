@@ -72,6 +72,15 @@ export default function LibraryDetailPage() {
   const longPressTimer = useRef<number | null>(null);
   const longPressTriggered = useRef(false);
 
+  // Cleanup long press timer on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+      }
+    };
+  }, []);
+
   const { currentLibrary, isLoading, fetchLibraryById, fetchLibraries } =
     useLibraryStore();
   const playFromLibrary = usePlayerStore((state) => state.playFromLibrary);
@@ -144,14 +153,13 @@ export default function LibraryDetailPage() {
     void fetchSongs();
   }, [id, sortOption]);
 
-  // Effect 3: Exit selection mode when navigating away
+  // Effect 3: Exit selection mode when navigating away (cleanup only on unmount)
   useEffect(() => {
     return () => {
-      if (isSelectionMode) {
-        exitSelectionMode();
-      }
+      exitSelectionMode();
     };
-  }, [isSelectionMode, exitSelectionMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Refresh songs when library songs count changes (after upload)
   const [prevSongCount, setPrevSongCount] = useState<number | undefined>(undefined);

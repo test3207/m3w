@@ -130,7 +130,7 @@ export default function PlaylistsPage() {
       toast({
         variant: 'destructive',
         title: I18n.playlists.delete.errorTitle,
-        description: error instanceof Error ? error.message : I18n.playlists.delete.errorTitle,
+        description: error instanceof Error ? error.message : I18n.error.genericTryAgain,
       });
     } finally {
       setPlaylistToDelete(null);
