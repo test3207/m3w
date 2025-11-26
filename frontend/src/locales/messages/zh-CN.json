@@ -320,7 +320,11 @@
       "label": "随机"
     },
     "favorite": {
-      "label": "喜欢"
+      "label": "喜欢",
+      "added": "已添加到我喜欢的音乐",
+      "removed": "已从我喜欢的音乐中移除",
+      "addError": "添加失败",
+      "removeError": "移除失败"
     },
     "state": {
       "repeatOff": "循环：关闭",

@@ -26,9 +26,13 @@ interface PlaylistActions {
   deletePlaylist: (id: string) => Promise<boolean>;
 
   // Song management
-  addSongToPlaylist: (playlistId: string, songId: string) => Promise<boolean>;
+  addSongToPlaylist: (playlistId: string, songId: string, songCoverUrl?: string | null) => Promise<boolean>;
   removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<boolean>;
   reorderPlaylistSongs: (playlistId: string, songIds: string[]) => Promise<boolean>;
+
+  // Favorites
+  isSongFavorited: (songId: string) => boolean;
+  toggleFavorite: (songId: string, songCoverUrl?: string | null) => Promise<boolean>;
 
   // Computed getters
   getFavoritesPlaylist: () => Playlist | null;
@@ -128,18 +132,24 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   },
 
   // Add song to playlist
-  addSongToPlaylist: async (playlistId: string, songId: string) => {
+  addSongToPlaylist: async (playlistId: string, songId: string, songCoverUrl?: string | null) => {
     set({ isLoading: true, error: null });
     try {
       await api.main.playlists.addSong(playlistId, { songId });
 
       // Update playlist songIds in state
+      // If playlist was empty, also update coverUrl to the new song's cover
       set((state) => ({
-        playlists: state.playlists.map((pl) =>
-          pl.id === playlistId
-            ? { ...pl, songIds: [...pl.songIds, songId] }
-            : pl
-        ),
+        playlists: state.playlists.map((pl) => {
+          if (pl.id !== playlistId) return pl;
+          const wasEmpty = pl.songIds.length === 0;
+          return {
+            ...pl,
+            songIds: [...pl.songIds, songId],
+            // Update coverUrl if playlist was empty and we have a cover
+            coverUrl: wasEmpty && songCoverUrl ? songCoverUrl : pl.coverUrl,
+          };
+        }),
         isLoading: false,
       }));
 
@@ -207,6 +217,34 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   getFavoritesPlaylist: () => {
     const { playlists } = get();
     return playlists.find((pl) => isFavoritesPlaylist(pl)) || null;
+  },
+
+  // Check if a song is in favorites playlist
+  isSongFavorited: (songId: string) => {
+    const { getFavoritesPlaylist } = get();
+    const favorites = getFavoritesPlaylist();
+    if (!favorites) return false;
+    return favorites.songIds.includes(songId);
+  },
+
+  // Toggle song favorite status (add/remove from favorites playlist)
+  toggleFavorite: async (songId: string, songCoverUrl?: string | null) => {
+    const { getFavoritesPlaylist, addSongToPlaylist, removeSongFromPlaylist, isSongFavorited } = get();
+    
+    const favorites = getFavoritesPlaylist();
+    
+    if (!favorites) {
+      logger.error('Favorites playlist not found');
+      return false;
+    }
+
+    const isCurrentlyFavorited = isSongFavorited(songId);
+    
+    if (isCurrentlyFavorited) {
+      return await removeSongFromPlaylist(favorites.id, songId);
+    } else {
+      return await addSongToPlaylist(favorites.id, songId, songCoverUrl);
+    }
   },
 
   // Check if playlist can be deleted (check isDefault flag)

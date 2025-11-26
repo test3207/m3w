@@ -579,6 +579,14 @@ export interface Messages {
     favorite: {
       /** Favorite */
       label: string;
+      /** Added to Favorites */
+      added: string;
+      /** Removed from Favorites */
+      removed: string;
+      /** Failed to add to Favorites */
+      addError: string;
+      /** Failed to remove from Favorites */
+      removeError: string;
     };
     state: {
       /** Repeat: Off */

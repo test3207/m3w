@@ -3,9 +3,12 @@
  * Full-screen music player overlay
  */
 
+import { useMemo, useEffect } from 'react';
 import { usePlayerStore } from '@/stores/playerStore';
+import { usePlaylistStore } from '@/stores/playlistStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
 import {
   ChevronDown,
   Heart,
@@ -20,6 +23,7 @@ import {
 } from 'lucide-react';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
+import { isFavoritesPlaylist } from '@m3w/shared';
 
 // Utility function for duration formatting
 function formatDuration(seconds: number): string {
@@ -59,6 +63,46 @@ export function FullPlayer() {
   const seek = usePlayerStore((state) => state.seek);
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const toggleRepeat = usePlayerStore((state) => state.toggleRepeat);
+
+  // Favorites functionality - subscribe to playlists to trigger re-render when favorites change
+  const playlists = usePlaylistStore((state) => state.playlists);
+  const toggleFavorite = usePlaylistStore((state) => state.toggleFavorite);
+  const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
+  
+  // Ensure playlists are loaded when FullPlayer opens
+  useEffect(() => {
+    if (isOpen && playlists.length === 0) {
+      fetchPlaylists();
+    }
+  }, [isOpen, playlists.length, fetchPlaylists]);
+  
+  // Compute isFavorited from playlists state so component re-renders when playlists change
+  const isFavorited = useMemo(() => {
+    if (!currentSong) return false;
+    const favorites = playlists.find(isFavoritesPlaylist);
+    return favorites?.songIds?.includes(currentSong.id) ?? false;
+  }, [currentSong, playlists]);
+
+  const handleToggleFavorite = async () => {
+    if (!currentSong) return;
+    
+    // Capture current state before toggle
+    const wasFavorited = isFavorited;
+    // Pass coverUrl so playlist can update its cover when first song is added
+    const wasSuccess = await toggleFavorite(currentSong.id, currentSong.coverUrl);
+    
+    if (wasSuccess) {
+      // After toggle: if was favorited, now removed; if was not favorited, now added
+      toast({
+        title: wasFavorited ? I18n.player.favorite.removed : I18n.player.favorite.added,
+      });
+    } else {
+      toast({
+        title: wasFavorited ? I18n.player.favorite.removeError : I18n.player.favorite.addError,
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Debug: Log current repeatMode when next button is clicked
   const handleNext = () => {
@@ -204,9 +248,10 @@ export function FullPlayer() {
           <Button 
             variant="ghost" 
             size="sm"
-            className="hover:bg-accent"
+            onClick={handleToggleFavorite}
+            className={isFavorited ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'hover:bg-accent'}
           >
-            <Heart className="h-5 w-5 mr-1.5" />
+            <Heart className={`h-5 w-5 mr-1.5 ${isFavorited ? 'fill-current' : ''}`} />
             <span className="text-xs">{I18n.player.favorite.label}</span>
           </Button>
           

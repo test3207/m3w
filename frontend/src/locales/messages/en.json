@@ -320,7 +320,11 @@
       "label": "Shuffle"
     },
     "favorite": {
-      "label": "Favorite"
+      "label": "Favorite",
+      "added": "Added to Favorites",
+      "removed": "Removed from Favorites",
+      "addError": "Failed to add to Favorites",
+      "removeError": "Failed to remove from Favorites"
     },
     "state": {
       "repeatOff": "Repeat: Off",
