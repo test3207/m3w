@@ -228,7 +228,7 @@ export default function LibraryDetailPage() {
           )}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {songs.length} 首歌曲
+          {I18n.libraries.detail.songsCount.replace('{0}', String(songs.length))}
         </p>
       </div>
 
@@ -240,7 +240,7 @@ export default function LibraryDetailPage() {
           className="flex-1"
         >
           <Play className="mr-2 h-4 w-4" />
-          播放全部
+          {I18n.libraries.detail.playAll}
         </Button>
 
         <DropdownMenu>
@@ -252,27 +252,27 @@ export default function LibraryDetailPage() {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setSortOption("date-desc")}>
               {sortOption === "date-desc" && "✓ "}
-              添加时间 (最新)
+              {I18n.libraries.detail.sort.dateDesc}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setSortOption("date-asc")}>
               {sortOption === "date-asc" && "✓ "}
-              添加时间 (最旧)
+              {I18n.libraries.detail.sort.dateAsc}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setSortOption("title-asc")}>
               {sortOption === "title-asc" && "✓ "}
-              标题 A-Z
+              {I18n.libraries.detail.sort.titleAsc}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setSortOption("title-desc")}>
               {sortOption === "title-desc" && "✓ "}
-              标题 Z-A
+              {I18n.libraries.detail.sort.titleDesc}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setSortOption("artist-asc")}>
               {sortOption === "artist-asc" && "✓ "}
-              歌手 A-Z
+              {I18n.libraries.detail.sort.artistAsc}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setSortOption("album-asc")}>
               {sortOption === "album-asc" && "✓ "}
-              专辑 A-Z
+              {I18n.libraries.detail.sort.albumAsc}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -280,8 +280,8 @@ export default function LibraryDetailPage() {
 
       {/* Current Sort */}
       <p className="mb-4 text-xs text-muted-foreground">
-        排序方式: {getSortLabel(sortOption)}
-        {isLoadingSongs && " (加载中...)"}
+        {I18n.libraries.detail.sort.label.replace('{0}', getSortLabel(sortOption))}
+        {isLoadingSongs && ` (${I18n.common.loadingLabel})`}
       </p>
 
       {/* Song List */}
@@ -289,9 +289,9 @@ export default function LibraryDetailPage() {
         <div className="flex min-h-[50vh] items-center justify-center">
           <div className="text-center">
             <ListPlus className="mx-auto h-16 w-16 text-muted-foreground/50" />
-            <h2 className="mt-4 text-xl font-semibold">还没有歌曲</h2>
+            <h2 className="mt-4 text-xl font-semibold">{I18n.libraries.detail.empty.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              点击右下角 "+" 上传歌曲到这个音乐库
+              {I18n.libraries.detail.empty.description}
             </p>
           </div>
         </div>
@@ -357,7 +357,7 @@ export default function LibraryDetailPage() {
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    删除歌曲
+                    {I18n.libraries.detail.deleteSong.button}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

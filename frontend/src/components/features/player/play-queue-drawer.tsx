@@ -101,11 +101,11 @@ export function PlayQueueDrawer() {
       <SheetContent side="bottom" className="h-[80vh]">
         <SheetHeader>
           <SheetTitle>
-            播放队列 ({queue.length} 首)
+            {I18n.player.playQueue.title} ({I18n.player.playQueue.songsCount.replace('{0}', String(queue.length))})
           </SheetTitle>
           {queueSourceName && (
             <SheetDescription>
-              当前播放自：{queueSourceName}
+              {I18n.player.playQueue.playingFrom.replace('{0}', queueSourceName)}
             </SheetDescription>
           )}
         </SheetHeader>
@@ -120,7 +120,7 @@ export function PlayQueueDrawer() {
                 disabled={queue.length === 0}
               >
                 <Save className="mr-2 h-4 w-4" />
-                保存为播放列表
+                {I18n.player.playQueue.saveAsPlaylistButton}
               </Button>
               <Button
                 variant="outline"
@@ -129,7 +129,7 @@ export function PlayQueueDrawer() {
                 disabled={queue.length === 0}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                清空队列
+                {I18n.player.playQueue.clearQueueButton}
               </Button>
             </>
           ) : (
@@ -162,7 +162,7 @@ export function PlayQueueDrawer() {
                   setPlaylistName('');
                 }}
               >
-                取消
+                {I18n.common.cancelButton}
               </Button>
             </div>
           )}
@@ -170,8 +170,8 @@ export function PlayQueueDrawer() {
 
         {queue.length === 0 ? (
           <div className="mt-8 text-center text-muted-foreground">
-            <p>队列为空</p>
-            <p className="mt-2 text-sm">从音乐库或播放列表选择歌曲</p>
+            <p>{I18n.player.playQueue.emptyTitle}</p>
+            <p className="mt-2 text-sm">{I18n.player.playQueue.emptyDescription}</p>
           </div>
         ) : (
           <div className="mt-4 space-y-2 overflow-y-auto pb-20">
@@ -208,7 +208,7 @@ export function PlayQueueDrawer() {
                   <p className="truncate font-medium">
                     {song.title}
                     {index === currentIndex && (
-                      <span className="ml-2 text-xs text-primary">● 正在播放</span>
+                      <span className="ml-2 text-xs text-primary">● {I18n.player.playQueue.nowPlaying}</span>
                     )}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">

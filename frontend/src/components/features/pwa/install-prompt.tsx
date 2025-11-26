@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { logger } from '@/lib/logger-client';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -14,6 +16,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function InstallPrompt() {
+  useLocale();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
 
@@ -79,17 +82,17 @@ export function InstallPrompt() {
     <div className="fixed bottom-4 left-4 z-50 max-w-md animate-in slide-in-from-bottom-5">
       <Card>
         <CardHeader>
-          <CardTitle>Install M3W</CardTitle>
+          <CardTitle>{I18n.settings.storage.pwa.installPrompt.title}</CardTitle>
           <CardDescription>
-            Install the app for faster access and offline support
+            {I18n.settings.storage.pwa.installPrompt.description}
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex gap-2">
           <Button onClick={handleInstall}>
-            Install
+            {I18n.settings.storage.pwa.installPrompt.install}
           </Button>
           <Button variant="outline" onClick={handleDismiss}>
-            Not Now
+            {I18n.settings.storage.pwa.installPrompt.notNow}
           </Button>
         </CardFooter>
       </Card>

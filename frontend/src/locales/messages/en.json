@@ -316,7 +316,11 @@
     },
     "shuffle": {
       "enable": "Enable shuffle",
-      "disable": "Disable shuffle"
+      "disable": "Disable shuffle",
+      "label": "Shuffle"
+    },
+    "favorite": {
+      "label": "Favorite"
     },
     "state": {
       "repeatOff": "Repeat: Off",
@@ -327,6 +331,11 @@
     },
     "playQueue": {
       "title": "Play Queue",
+      "songsCount": "{0} songs",
+      "playingFrom": "Playing from: {0}",
+      "nowPlaying": "Now Playing",
+      "emptyTitle": "Queue is empty",
+      "emptyDescription": "Select songs from a library or playlist",
       "fallbackSource": "Play Queue",
       "removeFromQueueTitle": "Removed from queue",
       "clearQueueTitle": "Queue cleared",
@@ -423,7 +432,21 @@
         "title": "PWA Status",
         "installed": "Installed",
         "notInstalled": "Not Installed",
-        "description": "Progressive Web App enables offline music playback"
+        "description": "Progressive Web App enables offline music playback",
+        "installPrompt": {
+          "title": "Install M3W",
+          "description": "Install the app for faster access and offline support",
+          "install": "Install",
+          "notNow": "Not Now"
+        },
+        "reloadPrompt": {
+          "newVersionTitle": "New Version Available",
+          "offlineReadyTitle": "App Ready to Work Offline",
+          "newVersionDescription": "Click reload to update to the latest version",
+          "offlineReadyDescription": "Your music library is now available offline",
+          "reload": "Reload",
+          "close": "Close"
+        }
       },
       "globalTitle": "Browser Storage",
       "globalNote": "Shared across all accounts on this device",
@@ -537,7 +560,8 @@
       "removeSong": {
         "successTitle": "Removed: {0}",
         "errorTitle": "Removal failed"
-      }
+      },
+      "addFromLibrary": "Add songs from your libraries to this playlist"
     }
   },
   "demo": {

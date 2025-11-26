@@ -6,8 +6,11 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServiceWorker } from '@/hooks/useServiceWorker';
+import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 export function ReloadPrompt() {
+  useLocale();
   const { offlineReady, needRefresh, updateServiceWorker, close } = useServiceWorker();
 
   if (!offlineReady && !needRefresh) {
@@ -19,22 +22,24 @@ export function ReloadPrompt() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {needRefresh ? 'New Version Available' : 'App Ready to Work Offline'}
+            {needRefresh 
+              ? I18n.settings.storage.pwa.reloadPrompt.newVersionTitle 
+              : I18n.settings.storage.pwa.reloadPrompt.offlineReadyTitle}
           </CardTitle>
           <CardDescription>
             {needRefresh
-              ? 'Click reload to update to the latest version'
-              : 'Your music library is now available offline'}
+              ? I18n.settings.storage.pwa.reloadPrompt.newVersionDescription
+              : I18n.settings.storage.pwa.reloadPrompt.offlineReadyDescription}
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex gap-2">
           {needRefresh && (
             <Button onClick={() => updateServiceWorker(true)}>
-              Reload
+              {I18n.settings.storage.pwa.reloadPrompt.reload}
             </Button>
           )}
           <Button variant="outline" onClick={close}>
-            Close
+            {I18n.settings.storage.pwa.reloadPrompt.close}
           </Button>
         </CardFooter>
       </Card>

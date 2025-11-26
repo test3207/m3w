@@ -264,7 +264,7 @@ export default function PlaylistDetailPage() {
   if (!currentPlaylist) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">播放列表不存在</p>
+        <p className="text-muted-foreground">{I18n.playlists.detail.notFound}</p>
       </div>
     );
   }
@@ -279,7 +279,7 @@ export default function PlaylistDetailPage() {
               {currentPlaylist.name}
             </h1>
             <p className="text-xs text-muted-foreground">
-              {songs.length} 首歌曲
+              {I18n.playlists.detail.songsCount.replace('{0}', String(songs.length))}
             </p>
           </div>
 
@@ -291,7 +291,7 @@ export default function PlaylistDetailPage() {
               className="shrink-0"
             >
               <Play className="h-4 w-4 mr-1.5" />
-              播放全部
+              {I18n.playlists.detail.playAll}
             </Button>
           )}
         </div>
@@ -305,16 +305,16 @@ export default function PlaylistDetailPage() {
               <div className="flex flex-col items-center justify-center gap-4 text-center">
                 <Music className="h-12 w-12 text-muted-foreground/50" />
                 <div>
-                  <h3 className="font-semibold mb-1">播放列表为空</h3>
+                  <h3 className="font-semibold mb-1">{I18n.playlists.detail.empty.title}</h3>
                   <p className="text-sm text-muted-foreground">
-                    从音乐库添加歌曲到此播放列表
+                    {I18n.playlists.detail.addFromLibrary}
                   </p>
                 </div>
                 <Button
                   variant="outline"
                   onClick={() => navigate("/libraries")}
                 >
-                  浏览音乐库
+                  {I18n.playlists.detail.empty.browseButton}
                 </Button>
               </div>
             </Card>

@@ -573,6 +573,12 @@ export interface Messages {
       enable: string;
       /** Disable shuffle */
       disable: string;
+      /** Shuffle */
+      label: string;
+    };
+    favorite: {
+      /** Favorite */
+      label: string;
     };
     state: {
       /** Repeat: Off */
@@ -589,6 +595,16 @@ export interface Messages {
     playQueue: {
       /** Play Queue */
       title: string;
+      /** {0} songs */
+      songsCount: string;
+      /** Playing from: {0} */
+      playingFrom: string;
+      /** Now Playing */
+      nowPlaying: string;
+      /** Queue is empty */
+      emptyTitle: string;
+      /** Select songs from a library or playlist */
+      emptyDescription: string;
       /** Play Queue */
       fallbackSource: string;
       /** Removed from queue */
@@ -766,6 +782,30 @@ export interface Messages {
         notInstalled: string;
         /** Progressive Web App enables offline music playback */
         description: string;
+        installPrompt: {
+          /** Install M3W */
+          title: string;
+          /** Install the app for faster access and offline support */
+          description: string;
+          /** Install */
+          install: string;
+          /** Not Now */
+          notNow: string;
+        };
+        reloadPrompt: {
+          /** New Version Available */
+          newVersionTitle: string;
+          /** App Ready to Work Offline */
+          offlineReadyTitle: string;
+          /** Click reload to update to the latest version */
+          newVersionDescription: string;
+          /** Your music library is now available offline */
+          offlineReadyDescription: string;
+          /** Reload */
+          reload: string;
+          /** Close */
+          close: string;
+        };
       };
       /** Browser Storage */
       globalTitle: string;
@@ -957,6 +997,8 @@ export interface Messages {
         /** Removal failed */
         errorTitle: string;
       };
+      /** Add songs from your libraries to this playlist */
+      addFromLibrary: string;
     };
   };
   demo: {
