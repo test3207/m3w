@@ -314,7 +314,7 @@ export default function LibraryDetailPage() {
     <div className="h-full overflow-y-auto p-4">
       {/* Selection Mode Header */}
       {isSelectionMode && (
-        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-primary p-4 text-primary-foreground">
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-primary p-4 text-primary-foreground shadow-md border-b border-primary-foreground/20">
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -413,10 +413,17 @@ export default function LibraryDetailPage() {
       </div>
 
       {/* Current Sort */}
-      <p className="mb-4 text-xs text-muted-foreground">
+      <p className="mb-2 text-xs text-muted-foreground">
         {I18n.libraries.detail.sort.label.replace('{0}', getSortLabel(sortOption))}
         {isLoadingSongs && ` (${I18n.common.loadingLabel})`}
       </p>
+
+      {/* Long Press Hint */}
+      {!isSelectionMode && songs.length > 0 && (
+        <p className="mb-4 text-xs text-muted-foreground/70 italic">
+          💡 {I18n.libraries.detail.selection.longPressHint}
+        </p>
+      )}
 
       {/* Song List */}
       {songs.length === 0 && !isLoadingSongs ? (
