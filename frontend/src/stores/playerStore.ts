@@ -37,6 +37,7 @@ function songToTrack(song: Song): Track {
     album: song.album || undefined,
     coverUrl: song.coverUrl || undefined,
     duration: song.duration || undefined,
+    mimeType: song.mimeType || undefined,
     audioUrl: getStreamUrl(song.id, isGuest),
   };
 }
@@ -658,7 +659,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
               libraryName: null, // Not available from seed
               fileId: '', // Not needed for playback
               duration: seed.track.duration ?? null,
-              mimeType: null, // Not available from seed
+              mimeType: seed.track.mimeType ?? null,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
@@ -708,7 +709,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         libraryName: null, // Not available from progress
         fileId: '', // Not needed for playback
         duration: progress.track.duration ?? null,
-        mimeType: null, // Not available from progress
+        mimeType: progress.track.mimeType ?? null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

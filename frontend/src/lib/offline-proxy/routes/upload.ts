@@ -86,6 +86,7 @@ app.post('/', async (c: Context) => {
       streamUrl, // Guest URL: /guest/songs/{id}/stream
       fileId: fileEntity.id, // Reference to File entity
       duration: format.duration || null,
+      mimeType: fileEntity.mimeType, // Audio format (audio/mpeg, audio/flac, etc.)
       createdAt: now,
       updatedAt: now,
       // Cache status fields
