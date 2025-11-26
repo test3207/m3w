@@ -198,7 +198,7 @@ export function FullPlayer() {
             className={isShuffled ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'hover:bg-accent'}
           >
             <Shuffle className="h-5 w-5 mr-1.5" />
-            <span className="text-xs">随机</span>
+            <span className="text-xs">{I18n.player.shuffle.label}</span>
           </Button>
           
           <Button 
@@ -207,7 +207,7 @@ export function FullPlayer() {
             className="hover:bg-accent"
           >
             <Heart className="h-5 w-5 mr-1.5" />
-            <span className="text-xs">喜欢</span>
+            <span className="text-xs">{I18n.player.favorite.label}</span>
           </Button>
           
           <Button
