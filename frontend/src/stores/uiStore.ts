@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { SongSortOption } from '@m3w/shared';
 
 // Song info for add-to-playlist sheet
-interface SelectedSongInfo {
+export interface SelectedSongInfo {
   id: string;
   title: string;
   coverUrl?: string | null;
@@ -25,8 +25,12 @@ interface UIState {
   isFullPlayerOpen: boolean;
   isAddToPlaylistSheetOpen: boolean;
   
-  // Add to playlist state
-  selectedSongForPlaylist: SelectedSongInfo | null;
+  // Selection mode for batch operations
+  isSelectionMode: boolean;
+  selectedSongs: SelectedSongInfo[];
+  
+  // Add to playlist state (for batch add)
+  selectedSongForPlaylist: SelectedSongInfo | null; // Deprecated: use selectedSongs instead
 
   // Sorting
   currentSortOption: SongSortOption;
@@ -60,7 +64,17 @@ interface UIActions {
   closePlayQueueDrawer: () => void;
   openFullPlayer: () => void;
   closeFullPlayer: () => void;
-  openAddToPlaylistSheet: (song: SelectedSongInfo) => void;
+  
+  // Selection mode
+  enterSelectionMode: (initialSong?: SelectedSongInfo) => void;
+  exitSelectionMode: () => void;
+  toggleSongSelection: (song: SelectedSongInfo) => void;
+  selectAllSongs: (songs: SelectedSongInfo[]) => void;
+  deselectAllSongs: () => void;
+  isSongSelected: (songId: string) => boolean;
+  
+  // Add to playlist sheet
+  openAddToPlaylistSheet: (song?: SelectedSongInfo) => void;
   closeAddToPlaylistSheet: () => void;
 
   // Sorting
@@ -77,7 +91,7 @@ type UIStore = UIState & UIActions;
 
 export const useUIStore = create<UIStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Initial state
       isSidebarOpen: true,
       isSidebarCollapsed: false,
@@ -88,6 +102,8 @@ export const useUIStore = create<UIStore>()(
       isPlayQueueDrawerOpen: false,
       isFullPlayerOpen: false,
       isAddToPlaylistSheetOpen: false,
+      isSelectionMode: false,
+      selectedSongs: [],
       selectedSongForPlaylist: null,
       currentSortOption: 'date-desc',
       theme: 'system',
@@ -124,13 +140,42 @@ export const useUIStore = create<UIStore>()(
       openFullPlayer: () => set({ isFullPlayerOpen: true }),
       closeFullPlayer: () => set({ isFullPlayerOpen: false }),
 
-      openAddToPlaylistSheet: (song: SelectedSongInfo) => set({ 
+      // Selection mode actions
+      enterSelectionMode: (initialSong?: SelectedSongInfo) => set({
+        isSelectionMode: true,
+        selectedSongs: initialSong ? [initialSong] : [],
+      }),
+      
+      exitSelectionMode: () => set({
+        isSelectionMode: false,
+        selectedSongs: [],
+      }),
+      
+      toggleSongSelection: (song: SelectedSongInfo) => set((state) => {
+        const isSelected = state.selectedSongs.some(s => s.id === song.id);
+        if (isSelected) {
+          return { selectedSongs: state.selectedSongs.filter(s => s.id !== song.id) };
+        } else {
+          return { selectedSongs: [...state.selectedSongs, song] };
+        }
+      }),
+      
+      selectAllSongs: (songs: SelectedSongInfo[]) => set({ selectedSongs: songs }),
+      
+      deselectAllSongs: () => set({ selectedSongs: [] }),
+      
+      isSongSelected: (songId: string) => {
+        return get().selectedSongs.some(s => s.id === songId);
+      },
+
+      // Add to playlist actions
+      openAddToPlaylistSheet: (song?: SelectedSongInfo) => set({ 
         isAddToPlaylistSheetOpen: true, 
-        selectedSongForPlaylist: song 
+        selectedSongForPlaylist: song || null,
       }),
       closeAddToPlaylistSheet: () => set({ 
         isAddToPlaylistSheetOpen: false, 
-        selectedSongForPlaylist: null 
+        selectedSongForPlaylist: null,
       }),
 
       // Sorting actions

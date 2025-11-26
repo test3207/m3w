@@ -1,6 +1,6 @@
 /**
  * AddToPlaylistSheet Component
- * Sheet for adding a song to existing playlists
+ * Sheet for adding songs to existing playlists (supports batch add)
  */
 
 import { useState, useMemo } from 'react';
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useUIStore } from '@/stores/uiStore';
+import { useUIStore, type SelectedSongInfo } from '@/stores/uiStore';
 import { usePlaylistStore } from '@/stores/playlistStore';
 import { useToast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
@@ -28,8 +28,11 @@ export function AddToPlaylistSheet() {
   const { toast } = useToast();
   
   const isOpen = useUIStore((state) => state.isAddToPlaylistSheetOpen);
-  const selectedSong = useUIStore((state) => state.selectedSongForPlaylist);
+  const selectedSongForPlaylist = useUIStore((state) => state.selectedSongForPlaylist);
+  const selectedSongs = useUIStore((state) => state.selectedSongs);
+  const isSelectionMode = useUIStore((state) => state.isSelectionMode);
   const closeSheet = useUIStore((state) => state.closeAddToPlaylistSheet);
+  const exitSelectionMode = useUIStore((state) => state.exitSelectionMode);
   
   const playlists = usePlaylistStore((state) => state.playlists);
   const addSongToPlaylist = usePlaylistStore((state) => state.addSongToPlaylist);
@@ -41,22 +44,38 @@ export function AddToPlaylistSheet() {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  // Check which playlists already contain the song
-  const playlistsWithSong = useMemo(() => {
-    if (!selectedSong) return new Set<string>();
+  // Determine which songs to add
+  // Priority: selection mode > single song
+  const songsToAdd: SelectedSongInfo[] = useMemo(() => {
+    if (isSelectionMode && selectedSongs.length > 0) {
+      return selectedSongs;
+    }
+    if (selectedSongForPlaylist) {
+      return [selectedSongForPlaylist];
+    }
+    return [];
+  }, [isSelectionMode, selectedSongs, selectedSongForPlaylist]);
+
+  // Check which playlists already contain ALL the songs
+  const playlistsWithAllSongs = useMemo(() => {
+    if (songsToAdd.length === 0) return new Set<string>();
+    
     return new Set(
       playlists
-        .filter((pl) => pl.songIds.includes(selectedSong.id))
+        .filter((pl) => {
+          // Check if ALL selected songs are already in this playlist
+          return songsToAdd.every(song => pl.songIds.includes(song.id));
+        })
         .map((pl) => pl.id)
     );
-  }, [playlists, selectedSong]);
+  }, [playlists, songsToAdd]);
 
-  // Handle adding song to a playlist
+  // Handle adding songs to a playlist
   const handleAddToPlaylist = async (playlistId: string, playlistName: string) => {
-    if (!selectedSong) return;
+    if (songsToAdd.length === 0) return;
     
-    // Check if already in playlist
-    if (playlistsWithSong.has(playlistId)) {
+    // Check if all songs already in playlist
+    if (playlistsWithAllSongs.has(playlistId)) {
       toast({
         title: I18n.library.addToPlaylist.alreadyInPlaylist,
       });
@@ -65,20 +84,54 @@ export function AddToPlaylistSheet() {
     
     setIsAdding(true);
     try {
-      const success = await addSongToPlaylist(
-        playlistId, 
-        selectedSong.id, 
-        selectedSong.coverUrl
-      );
+      let addedCount = 0;
+      let skippedCount = 0;
       
-      if (success) {
+      // Find the playlist to check existing songs
+      const playlist = playlists.find(pl => pl.id === playlistId);
+      const existingSongIds = new Set(playlist?.songIds || []);
+      
+      // Add each song that isn't already in the playlist
+      for (const song of songsToAdd) {
+        if (existingSongIds.has(song.id)) {
+          skippedCount++;
+          continue;
+        }
+        
+        const success = await addSongToPlaylist(
+          playlistId, 
+          song.id, 
+          song.coverUrl
+        );
+        
+        if (success) {
+          addedCount++;
+        }
+      }
+      
+      if (addedCount > 0) {
+        const description = songsToAdd.length === 1
+          ? I18n.library.addToPlaylist.toastSuccessDescriptionWithName
+              .replace('{0}', songsToAdd[0].title)
+              .replace('{1}', playlistName)
+          : I18n.library.addToPlaylist.batchSuccessDescription
+              .replace('{0}', String(addedCount))
+              .replace('{1}', playlistName);
+        
         toast({
           title: I18n.library.addToPlaylist.toastSuccessTitle,
-          description: I18n.library.addToPlaylist.toastSuccessDescriptionWithName
-            .replace('{0}', selectedSong.title)
-            .replace('{1}', playlistName),
+          description,
         });
+        
+        // Exit selection mode and close sheet
+        if (isSelectionMode) {
+          exitSelectionMode();
+        }
         closeSheet();
+      } else if (skippedCount > 0) {
+        toast({
+          title: I18n.library.addToPlaylist.alreadyInPlaylist,
+        });
       } else {
         toast({
           variant: 'destructive',
@@ -97,31 +150,47 @@ export function AddToPlaylistSheet() {
     }
   };
 
-  // Handle creating a new playlist and adding the song
+  // Handle creating a new playlist and adding the songs
   const handleCreateAndAdd = async () => {
-    if (!selectedSong || !newPlaylistName.trim()) return;
+    if (songsToAdd.length === 0 || !newPlaylistName.trim()) return;
     
     setIsCreating(true);
     try {
       const newPlaylist = await createPlaylist(newPlaylistName.trim());
       
       if (newPlaylist) {
-        // Add song to the new playlist
-        const success = await addSongToPlaylist(
-          newPlaylist.id, 
-          selectedSong.id, 
-          selectedSong.coverUrl
-        );
+        // Add songs to the new playlist
+        let addedCount = 0;
+        for (const song of songsToAdd) {
+          const success = await addSongToPlaylist(
+            newPlaylist.id, 
+            song.id, 
+            song.coverUrl
+          );
+          if (success) addedCount++;
+        }
         
-        if (success) {
+        if (addedCount > 0) {
+          const description = songsToAdd.length === 1
+            ? I18n.library.addToPlaylist.toastSuccessDescriptionWithName
+                .replace('{0}', songsToAdd[0].title)
+                .replace('{1}', newPlaylistName.trim())
+            : I18n.library.addToPlaylist.batchSuccessDescription
+                .replace('{0}', String(addedCount))
+                .replace('{1}', newPlaylistName.trim());
+          
           toast({
             title: I18n.library.addToPlaylist.toastSuccessTitle,
-            description: I18n.library.addToPlaylist.toastSuccessDescriptionWithName
-              .replace('{0}', selectedSong.title)
-              .replace('{1}', newPlaylistName.trim()),
+            description,
           });
+          
           // Refresh playlists to show updated state
           await fetchPlaylists();
+          
+          // Exit selection mode and close sheet
+          if (isSelectionMode) {
+            exitSelectionMode();
+          }
           closeSheet();
         }
       } else {
@@ -152,16 +221,23 @@ export function AddToPlaylistSheet() {
     }
   };
 
+  // Generate description text
+  const getSheetDescription = () => {
+    if (songsToAdd.length === 0) return '';
+    if (songsToAdd.length === 1) {
+      return I18n.library.addToPlaylist.selectPlaylistForSong.replace('{0}', songsToAdd[0].title);
+    }
+    return I18n.library.addToPlaylist.selectPlaylistForSongs.replace('{0}', String(songsToAdd.length));
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent side="bottom" className="h-[70vh]">
         <SheetHeader>
           <SheetTitle>{I18n.library.addToPlaylist.label}</SheetTitle>
-          {selectedSong && (
-            <SheetDescription>
-              {I18n.library.addToPlaylist.selectPlaylistForSong.replace('{0}', selectedSong.title)}
-            </SheetDescription>
-          )}
+          <SheetDescription>
+            {getSheetDescription()}
+          </SheetDescription>
         </SheetHeader>
 
         <div className="mt-4 flex flex-col gap-4 overflow-y-auto pb-20">
@@ -220,7 +296,7 @@ export function AddToPlaylistSheet() {
               </div>
             ) : (
               playlists.map((playlist) => {
-                const isAlreadyAdded = playlistsWithSong.has(playlist.id);
+                const allSongsAdded = playlistsWithAllSongs.has(playlist.id);
                 const isFavorites = isFavoritesPlaylist(playlist);
                 const displayName = getPlaylistDisplayName(playlist);
                 
@@ -228,10 +304,10 @@ export function AddToPlaylistSheet() {
                   <button
                     key={playlist.id}
                     onClick={() => handleAddToPlaylist(playlist.id, displayName)}
-                    disabled={isAdding || isAlreadyAdded}
+                    disabled={isAdding || allSongsAdded}
                     className={cn(
                       'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors',
-                      isAlreadyAdded
+                      allSongsAdded
                         ? 'bg-muted/50 cursor-not-allowed opacity-60'
                         : 'hover:bg-accent cursor-pointer'
                     )}
@@ -264,7 +340,7 @@ export function AddToPlaylistSheet() {
                     </div>
 
                     {/* Already Added Indicator */}
-                    {isAlreadyAdded && (
+                    {allSongsAdded && (
                       <div className="shrink-0 text-primary">
                         <Check className="h-5 w-5" />
                       </div>

@@ -238,6 +238,7 @@
       "toastSuccessTitle": "Added to playlist",
       "toastSuccessDescription": "Song added successfully.",
       "toastSuccessDescriptionWithName": "Added \"{0}\" to \"{1}\"",
+      "batchSuccessDescription": "Added {0} songs to \"{1}\"",
       "toastErrorTitle": "Unable to add song",
       "toastErrorDescription": "Please try again.",
       "selectPlaylistFirst": "Select a playlist first.",
@@ -247,7 +248,8 @@
       "createButton": "Create",
       "createPlaylistError": "Failed to create playlist",
       "noPlaylists": "No playlists yet",
-      "selectPlaylistForSong": "Select a playlist for \"{0}\""
+      "selectPlaylistForSong": "Select a playlist for \"{0}\"",
+      "selectPlaylistForSongs": "Select a playlist for {0} songs"
     }
   },
   "playlist": {
@@ -526,7 +528,16 @@
         "successTitle": "Deleted successfully",
         "successDescription": "Removed \"{0}\" from library",
         "errorTitle": "Deletion failed",
-        "unknownError": "Unknown error"
+        "unknownError": "Unknown error",
+        "confirmTitle": "Delete Song",
+        "confirmDescription": "Are you sure you want to delete \"{0}\"? This action cannot be undone."
+      },
+      "selection": {
+        "selectedCount": "{0} selected",
+        "selectAll": "Select All",
+        "cancel": "Cancel",
+        "addToPlaylist": "Add to Playlist",
+        "longPressHint": "Long press to select multiple songs"
       }
     }
   },

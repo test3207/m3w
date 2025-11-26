@@ -1,13 +1,15 @@
 /**
  * Library Detail Page (Mobile-First)
  * Display songs in a library with playback controls
+ * Supports multi-select mode for batch operations
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
+import { useUIStore } from "@/stores/uiStore";
 import { Button } from "@/components/ui/button";
 import {
   Play,
@@ -16,6 +18,9 @@ import {
   MoreVertical,
   Trash2,
   ListMusic,
+  Check,
+  X,
+  CheckSquare,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
@@ -33,7 +38,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useUIStore } from "@/stores/uiStore";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+
+// Long press duration in milliseconds
+const LONG_PRESS_DURATION = 500;
 
 export default function LibraryDetailPage() {
   useLocale(); // Subscribe to locale changes
@@ -44,12 +62,34 @@ export default function LibraryDetailPage() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [sortOption, setSortOption] = useState<SongSortOption>("date-desc");
   const [isLoadingSongs, setIsLoadingSongs] = useState(false);
+  
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [songToDelete, setSongToDelete] = useState<{ id: string; title: string } | null>(null);
+
+  // Long press state
+  const longPressTimer = useRef<number | null>(null);
+  const longPressTriggered = useRef(false);
 
   const { currentLibrary, isLoading, fetchLibraryById, fetchLibraries } =
     useLibraryStore();
   const playFromLibrary = usePlayerStore((state) => state.playFromLibrary);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
+  
+  // Selection mode state from uiStore
+  const isSelectionMode = useUIStore((state) => state.isSelectionMode);
+  const selectedSongs = useUIStore((state) => state.selectedSongs);
+  const enterSelectionMode = useUIStore((state) => state.enterSelectionMode);
+  const exitSelectionMode = useUIStore((state) => state.exitSelectionMode);
+  const toggleSongSelection = useUIStore((state) => state.toggleSongSelection);
+  const selectAllSongs = useUIStore((state) => state.selectAllSongs);
   const openAddToPlaylistSheet = useUIStore((state) => state.openAddToPlaylistSheet);
+  const openFullPlayer = useUIStore((state) => state.openFullPlayer);
+
+  // Check if a song is selected
+  const isSongSelected = (songId: string) => {
+    return selectedSongs.some(s => s.id === songId);
+  };
 
   // Effect 1: Fetch library when ID changes (NOT when sort changes)
   useEffect(() => {
@@ -94,8 +134,6 @@ export default function LibraryDetailPage() {
         setSongs(songsData);
       } catch (error) {
         console.error("Failed to fetch songs:", error);
-        // Don't show toast for song fetch errors if we're just sorting
-        // The user already has the library context
       } finally {
         setIsLoadingSongs(false);
       }
@@ -104,13 +142,20 @@ export default function LibraryDetailPage() {
     void fetchSongs();
   }, [id, sortOption]);
 
+  // Effect 3: Exit selection mode when navigating away
+  useEffect(() => {
+    return () => {
+      if (isSelectionMode) {
+        exitSelectionMode();
+      }
+    };
+  }, [isSelectionMode, exitSelectionMode]);
+
   // Refresh songs when library songs count changes (after upload)
-  // Track previous song count to only refetch on actual changes
   const [prevSongCount, setPrevSongCount] = useState<number | undefined>(undefined);
   const currentSongCount = currentLibrary?._count?.songs;
   
   useEffect(() => {
-    // Only refetch if count actually changed (not on initial load or sort changes)
     if (
       id && 
       prevSongCount !== undefined && 
@@ -122,21 +167,42 @@ export default function LibraryDetailPage() {
           const songsData = await api.main.libraries.getSongs(id, sortOption);
           setSongs(songsData);
         } catch (error) {
-          // Silent fail - user will see stale data
           console.error("Failed to refresh songs:", error);
         }
       };
       void refetchSongs();
     }
     
-    // Update previous count
     setPrevSongCount(currentSongCount);
   }, [currentSongCount, id, sortOption, prevSongCount]);
+
+  // Long press handlers
+  const handlePressStart = (song: Song) => {
+    if (isSelectionMode) return; // Already in selection mode
+    
+    longPressTriggered.current = false;
+    longPressTimer.current = window.setTimeout(() => {
+      longPressTriggered.current = true;
+      enterSelectionMode({
+        id: song.id,
+        title: song.title,
+        coverUrl: song.coverUrl,
+      });
+    }, LONG_PRESS_DURATION);
+  };
+
+  const handlePressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
   const handlePlayAll = () => {
     if (songs.length === 0 || !currentLibrary) return;
     const displayName = getLibraryDisplayName(currentLibrary);
     void playFromLibrary(currentLibrary.id, displayName, songs, 0);
+    openFullPlayer();
     toast({
       title: I18n.playback.startPlayingTitle,
       description: I18n.playback.startPlayingDescription.replace(
@@ -146,40 +212,57 @@ export default function LibraryDetailPage() {
     });
   };
 
-  const handlePlaySong = (index: number) => {
-    if (!currentLibrary) return;
-    const displayName = getLibraryDisplayName(currentLibrary);
-    void playFromLibrary(currentLibrary.id, displayName, songs, index);
+  const handleSongClick = (song: Song, index: number) => {
+    // If long press was triggered, don't handle click
+    if (longPressTriggered.current) {
+      longPressTriggered.current = false;
+      return;
+    }
+
+    if (isSelectionMode) {
+      // Toggle selection
+      toggleSongSelection({
+        id: song.id,
+        title: song.title,
+        coverUrl: song.coverUrl,
+      });
+    } else {
+      // Play song and open full player
+      if (!currentLibrary) return;
+      const displayName = getLibraryDisplayName(currentLibrary);
+      void playFromLibrary(currentLibrary.id, displayName, songs, index);
+      openFullPlayer();
+    }
+  };
+
+  const handleSelectAll = () => {
+    selectAllSongs(
+      songs.map(song => ({
+        id: song.id,
+        title: song.title,
+        coverUrl: song.coverUrl,
+      }))
+    );
+  };
+
+  const handleBatchAddToPlaylist = () => {
+    if (selectedSongs.length === 0) return;
+    openAddToPlaylistSheet();
   };
 
   const handleDeleteSong = async (songId: string, songTitle: string) => {
     if (!id) return;
 
     try {
-      console.log(
-        "[LibraryDetailPage] Deleting song:",
-        songId,
-        "from library:",
-        id
-      );
-      // Pass libraryId to ensure we only delete from THIS library
       await api.main.songs.delete(songId, id);
 
       // Remove from local state
       setSongs(songs.filter((s) => s.id !== songId));
 
-      // Refresh current library to update count
-      console.log("[LibraryDetailPage] Refreshing current library");
+      // Refresh data
       await fetchLibraryById(id);
-
-      // Refresh libraries list (for UploadPage and other pages)
-      console.log("[LibraryDetailPage] Refreshing all libraries");
       await fetchLibraries();
-
-      // Refresh playlists (song may have been removed from playlists by cascade)
-      console.log("[LibraryDetailPage] Refreshing playlists");
       await fetchPlaylists();
-      console.log("[LibraryDetailPage] Delete complete");
 
       // Emit event to notify other components
       eventBus.emit(EVENTS.SONG_DELETED);
@@ -195,6 +278,14 @@ export default function LibraryDetailPage() {
         description: error instanceof Error ? error.message : I18n.library.detail.deleteSong.unknownError,
       });
     }
+  };
+
+  const confirmDeleteSong = () => {
+    if (songToDelete) {
+      handleDeleteSong(songToDelete.id, songToDelete.title);
+      setSongToDelete(null);
+    }
+    setDeleteDialogOpen(false);
   };
 
   const getSortLabel = (option: SongSortOption): string => {
@@ -221,8 +312,47 @@ export default function LibraryDetailPage() {
 
   return (
     <div className="h-full overflow-y-auto p-4">
+      {/* Selection Mode Header */}
+      {isSelectionMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-primary p-4 text-primary-foreground">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-primary-foreground hover:bg-primary-foreground/20"
+              onClick={exitSelectionMode}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            <span className="font-medium">
+              {I18n.libraries.detail.selection.selectedCount.replace('{0}', String(selectedSongs.length))}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-primary-foreground hover:bg-primary-foreground/20"
+              onClick={handleSelectAll}
+            >
+              <CheckSquare className="mr-1 h-4 w-4" />
+              {I18n.libraries.detail.selection.selectAll}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={selectedSongs.length === 0}
+              onClick={handleBatchAddToPlaylist}
+            >
+              <ListMusic className="mr-1 h-4 w-4" />
+              {I18n.libraries.detail.selection.addToPlaylist}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="mb-4">
+      <div className={cn("mb-4", isSelectionMode && "mt-16")}>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           {getLibraryDisplayName(currentLibrary)}
           {isDefaultLibrary(currentLibrary) && (
@@ -240,7 +370,7 @@ export default function LibraryDetailPage() {
       <div className="mb-4 flex gap-2">
         <Button
           onClick={handlePlayAll}
-          disabled={songs.length === 0}
+          disabled={songs.length === 0 || isSelectionMode}
           className="flex-1"
         >
           <Play className="mr-2 h-4 w-4" />
@@ -249,7 +379,7 @@ export default function LibraryDetailPage() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline">
+            <Button variant="outline" disabled={isSelectionMode}>
               <ArrowUpDown className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -300,17 +430,40 @@ export default function LibraryDetailPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
-          {songs.map((song, index) => (
-            <div
-              key={song.id}
-              className="flex items-center gap-3 rounded-lg border bg-card p-3"
-            >
-              {/* Clickable song area */}
+        <div className="space-y-2 pb-32">
+          {songs.map((song, index) => {
+            const isSelected = isSongSelected(song.id);
+            
+            return (
               <div
-                onClick={() => handlePlaySong(index)}
-                className="flex flex-1 items-center gap-3 cursor-pointer transition-colors hover:bg-accent rounded min-w-0"
+                key={song.id}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
+                  isSelectionMode && isSelected && "border-primary bg-primary/5",
+                  isSelectionMode && "cursor-pointer"
+                )}
+                onMouseDown={() => handlePressStart(song)}
+                onMouseUp={handlePressEnd}
+                onMouseLeave={handlePressEnd}
+                onTouchStart={() => handlePressStart(song)}
+                onTouchEnd={handlePressEnd}
+                onTouchCancel={handlePressEnd}
+                onClick={() => handleSongClick(song, index)}
               >
+                {/* Selection checkbox */}
+                {isSelectionMode && (
+                  <div
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-muted-foreground"
+                    )}
+                  >
+                    {isSelected && <Check className="h-4 w-4" />}
+                  </div>
+                )}
+
                 {/* Album Cover */}
                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
                   {song.coverUrl ? (
@@ -336,50 +489,85 @@ export default function LibraryDetailPage() {
                 </div>
 
                 {/* Duration */}
-                {song.duration && (
+                {song.duration && !isSelectionMode && (
                   <div className="shrink-0 text-sm text-muted-foreground">
                     {formatDuration(song.duration)}
                   </div>
                 )}
-              </div>
 
-              {/* More Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => openAddToPlaylistSheet({
-                      id: song.id,
-                      title: song.title,
-                      coverUrl: song.coverUrl,
-                    })}
-                  >
-                    <ListMusic className="mr-2 h-4 w-4" />
-                    {I18n.library.addToPlaylist.label}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => handleDeleteSong(song.id, song.title)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    {I18n.libraries.detail.deleteSong.button}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ))}
+                {/* More Menu (hidden in selection mode) */}
+                {!isSelectionMode && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddToPlaylistSheet({
+                            id: song.id,
+                            title: song.title,
+                            coverUrl: song.coverUrl,
+                          });
+                        }}
+                      >
+                        <ListMusic className="mr-2 h-4 w-4" />
+                        {I18n.library.addToPlaylist.label}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSongToDelete({ id: song.id, title: song.title });
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {I18n.libraries.detail.deleteSong.button}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {I18n.libraries.detail.deleteSong.confirmTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {songToDelete
+                ? I18n.libraries.detail.deleteSong.confirmDescription.replace('{0}', songToDelete.title)
+                : ''
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{I18n.common.cancelButton}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSong}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {I18n.common.deleteButton}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -433,6 +433,8 @@ export interface Messages {
       toastSuccessDescription: string;
       /** Added "{0}" to "{1}" */
       toastSuccessDescriptionWithName: string;
+      /** Added {0} songs to "{1}" */
+      batchSuccessDescription: string;
       /** Unable to add song */
       toastErrorTitle: string;
       /** Please try again. */
@@ -453,6 +455,8 @@ export interface Messages {
       noPlaylists: string;
       /** Select a playlist for "{0}" */
       selectPlaylistForSong: string;
+      /** Select a playlist for {0} songs */
+      selectPlaylistForSongs: string;
     };
   };
   playlist: {
@@ -946,6 +950,22 @@ export interface Messages {
         errorTitle: string;
         /** Unknown error */
         unknownError: string;
+        /** Delete Song */
+        confirmTitle: string;
+        /** Are you sure you want to delete "{0}"? This action cannot be undone. */
+        confirmDescription: string;
+      };
+      selection: {
+        /** {0} selected */
+        selectedCount: string;
+        /** Select All */
+        selectAll: string;
+        /** Cancel */
+        cancel: string;
+        /** Add to Playlist */
+        addToPlaylist: string;
+        /** Long press to select multiple songs */
+        longPressHint: string;
       };
     };
   };
