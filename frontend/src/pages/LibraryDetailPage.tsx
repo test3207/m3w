@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   MoreVertical,
   Trash2,
+  ListMusic,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
@@ -29,8 +30,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUIStore } from "@/stores/uiStore";
 
 export default function LibraryDetailPage() {
   useLocale(); // Subscribe to locale changes
@@ -46,6 +49,7 @@ export default function LibraryDetailPage() {
     useLibraryStore();
   const playFromLibrary = usePlayerStore((state) => state.playFromLibrary);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
+  const openAddToPlaylistSheet = useUIStore((state) => state.openAddToPlaylistSheet);
 
   // Effect 1: Fetch library when ID changes (NOT when sort changes)
   useEffect(() => {
@@ -352,6 +356,17 @@ export default function LibraryDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => openAddToPlaylistSheet({
+                      id: song.id,
+                      title: song.title,
+                      coverUrl: song.coverUrl,
+                    })}
+                  >
+                    <ListMusic className="mr-2 h-4 w-4" />
+                    {I18n.library.addToPlaylist.label}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => handleDeleteSong(song.id, song.title)}
                     className="text-destructive focus:text-destructive"

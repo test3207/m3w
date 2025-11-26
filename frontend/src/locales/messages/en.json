@@ -237,9 +237,17 @@
       "pendingLabel": "Adding...",
       "toastSuccessTitle": "Added to playlist",
       "toastSuccessDescription": "Song added successfully.",
+      "toastSuccessDescriptionWithName": "Added \"{0}\" to \"{1}\"",
       "toastErrorTitle": "Unable to add song",
       "toastErrorDescription": "Please try again.",
-      "selectPlaylistFirst": "Select a playlist first."
+      "selectPlaylistFirst": "Select a playlist first.",
+      "alreadyInPlaylist": "Song is already in this playlist",
+      "createNewPlaylist": "Create new playlist",
+      "newPlaylistPlaceholder": "Playlist name",
+      "createButton": "Create",
+      "createPlaylistError": "Failed to create playlist",
+      "noPlaylists": "No playlists yet",
+      "selectPlaylistForSong": "Select a playlist for \"{0}\""
     }
   },
   "playlist": {

@@ -431,12 +431,28 @@ export interface Messages {
       toastSuccessTitle: string;
       /** Song added successfully. */
       toastSuccessDescription: string;
+      /** Added "{0}" to "{1}" */
+      toastSuccessDescriptionWithName: string;
       /** Unable to add song */
       toastErrorTitle: string;
       /** Please try again. */
       toastErrorDescription: string;
       /** Select a playlist first. */
       selectPlaylistFirst: string;
+      /** Song is already in this playlist */
+      alreadyInPlaylist: string;
+      /** Create new playlist */
+      createNewPlaylist: string;
+      /** Playlist name */
+      newPlaylistPlaceholder: string;
+      /** Create */
+      createButton: string;
+      /** Failed to create playlist */
+      createPlaylistError: string;
+      /** No playlists yet */
+      noPlaylists: string;
+      /** Select a playlist for "{0}" */
+      selectPlaylistForSong: string;
     };
   };
   playlist: {

@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { SongSortOption } from '@m3w/shared';
 
+// Song info for add-to-playlist sheet
+interface SelectedSongInfo {
+  id: string;
+  title: string;
+  coverUrl?: string | null;
+}
+
 interface UIState {
   // Sidebar (desktop)
   isSidebarOpen: boolean;
@@ -17,6 +24,9 @@ interface UIState {
   isPlayQueueDrawerOpen: boolean;
   isFullPlayerOpen: boolean;
   isAddToPlaylistSheetOpen: boolean;
+  
+  // Add to playlist state
+  selectedSongForPlaylist: SelectedSongInfo | null;
 
   // Sorting
   currentSortOption: SongSortOption;
@@ -50,7 +60,7 @@ interface UIActions {
   closePlayQueueDrawer: () => void;
   openFullPlayer: () => void;
   closeFullPlayer: () => void;
-  openAddToPlaylistSheet: () => void;
+  openAddToPlaylistSheet: (song: SelectedSongInfo) => void;
   closeAddToPlaylistSheet: () => void;
 
   // Sorting
@@ -78,6 +88,7 @@ export const useUIStore = create<UIStore>()(
       isPlayQueueDrawerOpen: false,
       isFullPlayerOpen: false,
       isAddToPlaylistSheetOpen: false,
+      selectedSongForPlaylist: null,
       currentSortOption: 'date-desc',
       theme: 'system',
       language: 'en',
@@ -113,8 +124,14 @@ export const useUIStore = create<UIStore>()(
       openFullPlayer: () => set({ isFullPlayerOpen: true }),
       closeFullPlayer: () => set({ isFullPlayerOpen: false }),
 
-      openAddToPlaylistSheet: () => set({ isAddToPlaylistSheetOpen: true }),
-      closeAddToPlaylistSheet: () => set({ isAddToPlaylistSheetOpen: false }),
+      openAddToPlaylistSheet: (song: SelectedSongInfo) => set({ 
+        isAddToPlaylistSheetOpen: true, 
+        selectedSongForPlaylist: song 
+      }),
+      closeAddToPlaylistSheet: () => set({ 
+        isAddToPlaylistSheetOpen: false, 
+        selectedSongForPlaylist: null 
+      }),
 
       // Sorting actions
       setSortOption: (option) => set({ currentSortOption: option }),

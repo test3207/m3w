@@ -237,9 +237,17 @@
       "pendingLabel": "添加中...",
       "toastSuccessTitle": "已添加到播放列表",
       "toastSuccessDescription": "歌曲已成功添加。",
+      "toastSuccessDescriptionWithName": "已将\"{0}\"添加到\"{1}\"",
       "toastErrorTitle": "无法添加歌曲",
       "toastErrorDescription": "请重试。",
-      "selectPlaylistFirst": "请先选择播放列表。"
+      "selectPlaylistFirst": "请先选择播放列表。",
+      "alreadyInPlaylist": "歌曲已在此播放列表中",
+      "createNewPlaylist": "新建播放列表",
+      "newPlaylistPlaceholder": "播放列表名称",
+      "createButton": "创建",
+      "createPlaylistError": "创建播放列表失败",
+      "noPlaylists": "暂无播放列表",
+      "selectPlaylistForSong": "为\"{0}\"选择播放列表"
     }
   },
   "playlist": {

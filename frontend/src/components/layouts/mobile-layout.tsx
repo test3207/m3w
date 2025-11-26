@@ -10,6 +10,7 @@ import { BottomNavigation } from '@/components/features/navigation/bottom-naviga
 import { MiniPlayer, FullPlayer, PlayQueueDrawer } from '@/components/features/player';
 import { FloatingActionButton } from '@/components/features/navigation/floating-action-button';
 import { UploadDrawer } from '@/components/features/upload/upload-drawer';
+import { AddToPlaylistSheet } from '@/components/features/playlists/AddToPlaylistSheet';
 import { DemoBanner } from '@/components/features/demo/DemoBanner';
 
 interface MobileLayoutProps {
@@ -103,6 +104,9 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
       {/* Upload Drawer */}
       <UploadDrawer />
+
+      {/* Add to Playlist Sheet */}
+      <AddToPlaylistSheet />
     </div>
   );
 }

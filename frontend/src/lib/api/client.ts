@@ -88,12 +88,12 @@ class ApiClient {
 
       // Handle non-JSON responses (e.g., audio streams)
       const contentType = response.headers.get('content-type');
-      if (contentType && !contentType.includes('application/json')) {
+      if (!contentType || !contentType.includes('application/json')) {
         if (!response.ok) {
           throw new ApiError(
             response.status,
             response.statusText,
-            `Request failed: ${response.statusText}`
+            `Request failed: ${response.statusText || response.status}`
           );
         }
         return response as unknown as T;
