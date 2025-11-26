@@ -420,9 +420,10 @@ export default function LibraryDetailPage() {
 
       {/* Long Press Hint */}
       {!isSelectionMode && songs.length > 0 && (
-        <p className="mb-4 text-xs text-muted-foreground/70 italic">
-          💡 {I18n.libraries.detail.selection.longPressHint}
-        </p>
+        <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
+          <span className="text-[10px]">👆</span>
+          {I18n.libraries.detail.selection.longPressHint}
+        </div>
       )}
 
       {/* Song List */}

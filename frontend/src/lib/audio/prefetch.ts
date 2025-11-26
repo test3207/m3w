@@ -29,7 +29,7 @@ export async function prefetchAudioBlob(url: string): Promise<string | null> {
     return URL.createObjectURL(blob);
   } catch (error) {
     // Non-fatal: prefetch is optional optimization, player will use streaming URL
-    logger.debug('Prefetch skipped (will use streaming URL)', { url });
+    logger.debug('Prefetch skipped (will use streaming URL)', { url, error });
     return null;
   }
 }
