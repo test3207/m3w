@@ -428,11 +428,23 @@ app.get('/:id/songs', async (c: Context) => {
       .equals(id)
       .sortBy('order');
 
-    // Get full song details
+    // Get full song details with library name
     const songs = await Promise.all(
       playlistSongs.map(async (ps) => {
         const song = await db.songs.get(ps.songId);
-        return song;
+        if (!song) return undefined;
+
+        // Get library name if not already present on song
+        let libraryName = song.libraryName;
+        if (!libraryName && song.libraryId) {
+          const library = await db.libraries.get(song.libraryId);
+          libraryName = library?.name ?? null;
+        }
+
+        return {
+          ...song,
+          libraryName,
+        };
       })
     );
 

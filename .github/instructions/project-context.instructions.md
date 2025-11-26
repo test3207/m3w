@@ -471,7 +471,8 @@ When a user first signs in, the system auto-creates:
 - **Simple Flag Check**: Use `isDefault` boolean to identify default resources
 - **Database Best Practice**: Standard UUID primary keys, no special ID patterns
 - **Type Safety**: Helper functions `isDefaultLibrary()` and `isFavoritesPlaylist()` in `@m3w/shared/constants`
-- **i18n Display**: Frontend uses `getLibraryDisplayName()` and `getPlaylistDisplayName()` to show localized names instead of database names
+- **User Renamable**: Names displayed from backend, users can rename default resources
+- **Badge Display**: Frontend uses `getLibraryBadge()` and `getPlaylistBadge()` based on `isDefault` flag
 - **Scalable**: Can easily add more default types (e.g., "work library") by adding more flags
 
 **Implementation**:
@@ -479,7 +480,7 @@ When a user first signs in, the system auto-creates:
 // Backend creation (auth.ts)
 const defaultLibrary = await prisma.library.create({
   data: {
-    name: 'Default Library',  // Frontend displays i18n translation
+    name: 'Default Library',  // User can rename this
     userId,
     isDefault: true,
     canDelete: false,
@@ -487,8 +488,9 @@ const defaultLibrary = await prisma.library.create({
 });
 
 // Frontend display (LibrariesPage.tsx)
-import { getLibraryDisplayName } from '@/lib/utils/defaults';
-<h3>{getLibraryDisplayName(library)}</h3>  // Shows i18n translated name
+import { getLibraryDisplayName, getLibraryBadge } from '@/lib/utils/defaults';
+<h3>{getLibraryDisplayName(library)}</h3>  // Shows database name (user can rename)
+{getLibraryBadge(library) && <Badge>{getLibraryBadge(library)}</Badge>}  // Shows i18n badge if isDefault
 
 // Frontend check (stores)
 import { isDefaultLibrary } from '@m3w/shared';
@@ -498,8 +500,8 @@ const defaultLib = libraries.find(isDefaultLibrary);
 **Helper Functions** (in `shared/src/constants.ts`):
 - `isDefaultLibrary(library)` - Check if a Library is the default one
 - `isFavoritesPlaylist(playlist)` - Check if a Playlist is the favorites one
-- Frontend: `getLibraryDisplayName()`, `getPlaylistDisplayName()` - Get localized names
-- Frontend: `getLibraryBadge()`, `getPlaylistBadge()` - Get status badges
+- Frontend: `getLibraryDisplayName()`, `getPlaylistDisplayName()` - Get names from database (user-renamable)
+- Frontend: `getLibraryBadge()`, `getPlaylistBadge()` - Get i18n status badges based on isDefault flag
 - Frontend: `canDeleteLibrary()`, `canDeletePlaylist()` - Check deletion permissions
 
 **Database Indexing**:

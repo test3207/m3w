@@ -1,6 +1,11 @@
 /**
  * Default Resources Utilities
  * Helper functions for handling default library and favorites playlist
+ * 
+ * Design Decision:
+ * - Name: Always display from backend (user can rename)
+ * - Badge: Based on isDefault flag (shows "Default" or "Favorites" badge)
+ * - canDelete: Based on isDefault flag (default resources cannot be deleted)
  */
 
 import { I18n } from '@/locales/i18n';
@@ -9,25 +14,17 @@ import type { Library, Playlist } from '@m3w/shared';
 
 /**
  * Get display name for a library
- * If it's the default library, return i18n translated name
- * Otherwise return the database name
+ * Always returns the database name (user can rename even default library)
  */
 export function getLibraryDisplayName(library: Library): string {
-  if (isDefaultLibrary(library)) {
-    return I18n.defaults.library.name;
-  }
   return library.name;
 }
 
 /**
  * Get display name for a playlist
- * If it's the favorites playlist, return i18n translated name
- * Otherwise return the database name
+ * Always returns the database name (user can rename even favorites playlist)
  */
 export function getPlaylistDisplayName(playlist: Playlist): string {
-  if (isFavoritesPlaylist(playlist)) {
-    return I18n.defaults.playlist.name;
-  }
   return playlist.name;
 }
 

@@ -388,8 +388,17 @@ export default function PlaylistDetailPage() {
                           {song.artist}
                           {song.album && ` • ${song.album}`}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate">
                           {formatDuration(song.duration || 0)}
+                          {song.libraryName && (
+                            <>
+                              {" • "}
+                              {I18n.playlists.detail.fromLibrary.replace(
+                                '{0}',
+                                song.libraryName
+                              )}
+                            </>
+                          )}
                         </p>
                       </button>
 

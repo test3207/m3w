@@ -1055,6 +1055,8 @@ export interface Messages {
       playAll: string;
       /** Now Playing: {0} */
       nowPlaying: string;
+      /** From: {0} */
+      fromLibrary: string;
       empty: {
         /** Playlist is empty */
         title: string;

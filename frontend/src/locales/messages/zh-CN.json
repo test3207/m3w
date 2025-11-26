@@ -590,6 +590,7 @@
       "songsCount": "{0} 首歌曲",
       "playAll": "播放全部",
       "nowPlaying": "正在播放：{0}",
+      "fromLibrary": "来自：{0}",
       "empty": {
         "title": "播放列表为空",
         "description": "从音乐库添加歌曲到此播放列表",
