@@ -25,6 +25,9 @@ interface UIState {
   isFullPlayerOpen: boolean;
   isAddToPlaylistSheetOpen: boolean;
   
+  // Upload target library
+  uploadTargetLibraryId: string | null;
+  
   // Selection mode for batch operations
   isSelectionMode: boolean;
   selectedSongs: SelectedSongInfo[];
@@ -58,7 +61,7 @@ interface UIActions {
   closeCreatePlaylistModal: () => void;
 
   // Mobile UI
-  openUploadDrawer: () => void;
+  openUploadDrawer: (libraryId?: string) => void;
   closeUploadDrawer: () => void;
   openPlayQueueDrawer: () => void;
   closePlayQueueDrawer: () => void;
@@ -102,6 +105,7 @@ export const useUIStore = create<UIStore>()(
       isPlayQueueDrawerOpen: false,
       isFullPlayerOpen: false,
       isAddToPlaylistSheetOpen: false,
+      uploadTargetLibraryId: null,
       isSelectionMode: false,
       selectedSongs: [],
       selectedSongForPlaylist: null,
@@ -131,8 +135,14 @@ export const useUIStore = create<UIStore>()(
       closeCreatePlaylistModal: () => set({ isCreatePlaylistModalOpen: false }),
 
       // Mobile UI actions
-      openUploadDrawer: () => set({ isUploadDrawerOpen: true }),
-      closeUploadDrawer: () => set({ isUploadDrawerOpen: false }),
+      openUploadDrawer: (libraryId?: string) => set({ 
+        isUploadDrawerOpen: true,
+        uploadTargetLibraryId: libraryId || null,
+      }),
+      closeUploadDrawer: () => set({ 
+        isUploadDrawerOpen: false,
+        uploadTargetLibraryId: null,
+      }),
 
       openPlayQueueDrawer: () => set({ isPlayQueueDrawerOpen: true }),
       closePlayQueueDrawer: () => set({ isPlayQueueDrawerOpen: false }),

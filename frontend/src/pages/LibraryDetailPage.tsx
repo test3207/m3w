@@ -21,6 +21,7 @@ import {
   Check,
   X,
   CheckSquare,
+  Upload,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
@@ -85,6 +86,7 @@ export default function LibraryDetailPage() {
   const selectAllSongs = useUIStore((state) => state.selectAllSongs);
   const openAddToPlaylistSheet = useUIStore((state) => state.openAddToPlaylistSheet);
   const openFullPlayer = useUIStore((state) => state.openFullPlayer);
+  const openUploadDrawer = useUIStore((state) => state.openUploadDrawer);
 
   // Check if a song is selected
   const isSongSelected = (songId: string) => {
@@ -377,6 +379,22 @@ export default function LibraryDetailPage() {
           {I18n.libraries.detail.playAll}
         </Button>
 
+        <Button
+          variant="outline"
+          disabled={isSelectionMode}
+          onClick={() => openUploadDrawer(id)}
+        >
+          <Upload className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="outline"
+          disabled={songs.length === 0 || isSelectionMode}
+          onClick={() => enterSelectionMode()}
+        >
+          <ListMusic className="h-4 w-4" />
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" disabled={isSelectionMode}>
@@ -413,18 +431,10 @@ export default function LibraryDetailPage() {
       </div>
 
       {/* Current Sort */}
-      <p className="mb-2 text-xs text-muted-foreground">
+      <p className="mb-4 text-xs text-muted-foreground">
         {I18n.libraries.detail.sort.label.replace('{0}', getSortLabel(sortOption))}
         {isLoadingSongs && ` (${I18n.common.loadingLabel})`}
       </p>
-
-      {/* Long Press Hint */}
-      {!isSelectionMode && songs.length > 0 && (
-        <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
-          <span className="text-[10px]">👆</span>
-          {I18n.libraries.detail.selection.longPressHint}
-        </div>
-      )}
 
       {/* Song List */}
       {songs.length === 0 && !isLoadingSongs ? (

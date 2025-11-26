@@ -28,6 +28,7 @@ import { isDefaultLibrary } from "@m3w/shared";
 
 interface UploadSongFormProps {
   onDrawerClose?: () => void;
+  targetLibraryId?: string | null;
 }
 
 interface FileUploadItem {
@@ -38,7 +39,7 @@ interface FileUploadItem {
   songTitle?: string;
 }
 
-export function UploadSongForm({ onDrawerClose }: UploadSongFormProps) {
+export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFormProps) {
   const { toast } = useToast();
   const { libraries, fetchLibraries } = useLibraryStore();
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
@@ -53,12 +54,13 @@ export function UploadSongForm({ onDrawerClose }: UploadSongFormProps) {
     }));
   }, [libraries]);
 
-  // Get default library ID
+  // Get default library ID - prefer targetLibraryId if provided
   const defaultLibraryId = useMemo(() => {
+    if (targetLibraryId) return targetLibraryId;
     if (libraries.length === 0) return '';
     const defaultLibrary = libraries.find(isDefaultLibrary);
     return defaultLibrary?.id || libraries[0].id;
-  }, [libraries]);
+  }, [libraries, targetLibraryId]);
 
   const [libraryId, setLibraryId] = useState<string>('');
   const [files, setFiles] = useState<FileUploadItem[]>([]);
@@ -231,8 +233,8 @@ export function UploadSongForm({ onDrawerClose }: UploadSongFormProps) {
   const successCount = files.filter((f) => f.status === "success").length;
   const errorCount = files.filter((f) => f.status === "error").length;
 
-  // If only one library is provided, hide the selector
-  const showLibrarySelector = libraryOptions.length > 1;
+  // Hide selector if targetLibraryId is provided (from library detail page) or only one library
+  const showLibrarySelector = !targetLibraryId && libraryOptions.length > 1;
 
   // Loading state
   if (loading) {

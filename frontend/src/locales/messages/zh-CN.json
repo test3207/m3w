@@ -370,6 +370,7 @@
     "page": {
       "title": "上传歌曲",
       "description": "将音频文件保存到您的库中；系统会自动进行去重和元数据提取。",
+      "uploadingTo": "上传到：{0}",
       "cardTitle": "上传音频文件",
       "emptyState": "暂无可用库。请先在库管理器中创建一个库再上传。"
     },
@@ -507,6 +508,15 @@
       "songsCount": "{0} 首歌曲",
       "createdAt": "创建于 {0}"
     },
+    "delete": {
+      "button": "删除",
+      "confirmTitle": "删除音乐库",
+      "confirmDescription": "确定要删除 \"{0}\" 吗？该库中的所有歌曲都将被移除。此操作无法撤销。",
+      "successTitle": "删除成功",
+      "successDescription": "音乐库 \"{0}\" 已删除",
+      "errorTitle": "删除失败",
+      "cannotDeleteDefault": "默认音乐库无法删除"
+    },
     "detail": {
       "songsCount": "{0} 首歌曲",
       "playAll": "播放全部",
@@ -521,7 +531,7 @@
       },
       "empty": {
         "title": "还没有歌曲",
-        "description": "点击右下角 \"+\" 上传歌曲到这个音乐库"
+        "description": "点击上方的上传按钮向此音乐库添加歌曲"
       },
       "deleteSong": {
         "button": "删除歌曲",
@@ -530,7 +540,7 @@
         "errorTitle": "删除失败",
         "unknownError": "未知错误",
         "confirmTitle": "删除歌曲",
-        "confirmDescription": "确定要删除\"{0}\"吗？此操作无法撤销。"
+        "confirmDescription": "确定要删除\"{0}\"吗？该歌曲也将从所有包含它的播放列表中移除。此操作无法撤销。"
       },
       "selection": {
         "selectedCount": "已选择 {0} 首",
@@ -565,6 +575,15 @@
     "card": {
       "songsCount": "{0} 首歌曲",
       "createdAt": "创建于 {0}"
+    },
+    "delete": {
+      "button": "删除",
+      "confirmTitle": "删除播放列表",
+      "confirmDescription": "确定要删除 \"{0}\" 吗？此操作无法撤销。",
+      "successTitle": "删除成功",
+      "successDescription": "播放列表 \"{0}\" 已删除",
+      "errorTitle": "删除失败",
+      "cannotDeleteDefault": "收藏夹无法删除"
     },
     "detail": {
       "notFound": "播放列表不存在",

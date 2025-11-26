@@ -9,7 +9,7 @@ import { usePlaylistStore } from "@/stores/playlistStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ListMusic, Plus, Music } from "lucide-react";
+import { ListMusic, Plus, Music, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { eventBus, EVENTS } from "@/lib/events";
 import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
@@ -25,6 +25,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 
 export default function PlaylistsPage() {
@@ -33,11 +43,16 @@ export default function PlaylistsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [playlistToDelete, setPlaylistToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const playlists = usePlaylistStore((state) => state.playlists);
   const isLoading = usePlaylistStore((state) => state.isLoading);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
   const createPlaylist = usePlaylistStore((state) => state.createPlaylist);
+  const deletePlaylist = usePlaylistStore((state) => state.deletePlaylist);
 
   useEffect(() => {
     fetchPlaylists();
@@ -91,6 +106,35 @@ export default function PlaylistsPage() {
       });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!playlistToDelete) return;
+    
+    try {
+      const success = await deletePlaylist(playlistToDelete.id);
+      if (success) {
+        toast({
+          title: I18n.playlists.delete.successTitle,
+          description: I18n.playlists.delete.successDescription.replace('{0}', playlistToDelete.name),
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: I18n.playlists.delete.errorTitle,
+          description: I18n.playlists.delete.cannotDeleteDefault,
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: I18n.playlists.delete.errorTitle,
+        description: error instanceof Error ? error.message : I18n.playlists.delete.errorTitle,
+      });
+    } finally {
+      setPlaylistToDelete(null);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -171,28 +215,31 @@ export default function PlaylistsPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {playlists.map((playlist) => (
-            <Link key={playlist.id} to={`/playlists/${playlist.id}`}>
-              <Card className="overflow-hidden transition-colors hover:bg-accent cursor-pointer">
+          {playlists.map((playlist) => {
+            const canDelete = !isFavoritesPlaylist(playlist) && playlist.canDelete !== false;
+            return (
+              <Card key={playlist.id} className="overflow-hidden transition-colors hover:bg-accent">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
-                    {/* Cover Image - 96px */}
-                    <div className="h-24 w-24 shrink-0 overflow-hidden rounded-md bg-muted">
-                      {playlist.coverUrl ? (
-                        <img
-                          src={playlist.coverUrl}
-                          alt={getPlaylistDisplayName(playlist)}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <Music className="h-10 w-10 text-muted-foreground/30" />
-                        </div>
-                      )}
-                    </div>
+                    {/* Cover Image - 96px (clickable) */}
+                    <Link to={`/playlists/${playlist.id}`} className="shrink-0">
+                      <div className="h-24 w-24 overflow-hidden rounded-md bg-muted">
+                        {playlist.coverUrl ? (
+                          <img
+                            src={playlist.coverUrl}
+                            alt={getPlaylistDisplayName(playlist)}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Music className="h-10 w-10 text-muted-foreground/30" />
+                          </div>
+                        )}
+                      </div>
+                    </Link>
 
-                    {/* Metadata */}
-                    <div className="flex flex-1 flex-col justify-center gap-1 overflow-hidden">
+                    {/* Metadata (clickable) */}
+                    <Link to={`/playlists/${playlist.id}`} className="flex flex-1 flex-col justify-center gap-1 overflow-hidden">
                       <h3 className="truncate font-semibold text-base flex items-center gap-2">
                         {getPlaylistDisplayName(playlist)}
                         {isFavoritesPlaylist(playlist) && (
@@ -210,14 +257,55 @@ export default function PlaylistsPage() {
                           { year: "numeric", month: "short", day: "numeric" }
                         ))}
                       </p>
-                    </div>
+                    </Link>
+
+                    {/* Delete button */}
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setPlaylistToDelete({ id: playlist.id, name: getPlaylistDisplayName(playlist) });
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{I18n.playlists.delete.confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {playlistToDelete
+                ? I18n.playlists.delete.confirmDescription.replace('{0}', playlistToDelete.name)
+                : ''
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{I18n.common.cancelButton}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeletePlaylist}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {I18n.common.deleteButton}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

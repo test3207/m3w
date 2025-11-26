@@ -152,11 +152,19 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     set({ isPlaying: false });
   });
 
-  // Start a timer to update current time
+  // Start a timer to update current time and sync isPlaying state
   setInterval(() => {
-    const state = audioPlayer.getState();
-    if (state.isPlaying) {
-      set({ currentTime: state.currentTime, duration: state.duration });
+    const audioState = audioPlayer.getState();
+    const storeState = get();
+    
+    // Sync isPlaying state if out of sync (e.g., after HMR)
+    if (audioState.isPlaying !== storeState.isPlaying) {
+      set({ isPlaying: audioState.isPlaying });
+    }
+    
+    // Update time/duration when playing
+    if (audioState.isPlaying) {
+      set({ currentTime: audioState.currentTime, duration: audioState.duration });
     }
   }, 500); // Update every 500ms
 

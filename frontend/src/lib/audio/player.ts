@@ -492,25 +492,24 @@ class AudioPlayer {
   }
 }
 
-// Singleton instance
-let playerInstance: AudioPlayer | null = null;
+// Singleton instance - use window to survive HMR
+declare global {
+  interface Window {
+    __AUDIO_PLAYER_INSTANCE__?: AudioPlayer;
+  }
+}
+
+let playerInstance: AudioPlayer | null = window.__AUDIO_PLAYER_INSTANCE__ || null;
 
 export function getAudioPlayer(): AudioPlayer {
   if (!playerInstance) {
     playerInstance = new AudioPlayer();
+    window.__AUDIO_PLAYER_INSTANCE__ = playerInstance;
   }
   return playerInstance;
 }
 
-// Clean up on hot module replacement (HMR) during development
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    if (playerInstance) {
-      logger.info('HMR: Cleaning up audio player instance');
-      playerInstance['unloadHowl']();
-      playerInstance = null;
-    }
-  });
-}
+// Note: We intentionally do NOT unload on HMR to keep audio playing
+// The playerInstance survives via window.__AUDIO_PLAYER_INSTANCE__
 
 export { AudioPlayer };
