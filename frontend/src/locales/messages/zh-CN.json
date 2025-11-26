@@ -1,0 +1,577 @@
+{
+  "app": {
+    "name": "M3W Music"
+  },
+  "home": {
+    "title": "你的音乐，随心而动",
+    "description": "自托管音乐播放器，支持离线播放，完全拥有你的音乐库。",
+    "getStarted": "开始使用",
+    "footer": {
+      "tagline": "开源 • 自托管 • 隐私优先"
+    }
+  },
+  "signin": {
+    "back": "返回",
+    "title": "欢迎来到 M3W",
+    "description": "使用 GitHub 账号登录以继续",
+    "button": "使用 GitHub 登录",
+    "guest": "Offline Mode",
+    "guestDescription": "Use locally without an account",
+    "processing": "处理中...",
+    "terms": "登录即表示您同意我们的服务条款和隐私政策。"
+  },
+  "navigation": {
+    "libraries": "音乐库",
+    "playlists": "播放列表",
+    "settings": "设置"
+  },
+  "defaults": {
+    "library": {
+      "name": "默认音乐库",
+      "badge": "默认"
+    },
+    "playlist": {
+      "name": "我喜欢的音乐",
+      "badge": "收藏"
+    }
+  },
+  "error": {
+    "title": "错误",
+    "unauthorized": "未授权",
+    "noFileProvided": "未提供文件",
+    "libraryIdRequired": "需要提供 libraryId",
+    "invalidFileType": "无效的文件类型。仅支持音频文件。",
+    "fileTooLarge": "文件过大。最大允许 100MB。",
+    "fileUploadFailed": "文件上传失败。请重试。",
+    "invalidInput": "无效的输入",
+    "failedToRetrieveLibraries": "获取音乐库失败",
+    "failedToRetrieveLibrary": "获取音乐库失败",
+    "failedToCreateLibrary": "创建音乐库失败",
+    "libraryNotFound": "音乐库不存在",
+    "failedToUpdateLibrary": "更新音乐库失败",
+    "failedToDeleteLibrary": "删除音乐库失败",
+    "failedToRetrieveSongs": "获取歌曲失败",
+    "failedToGetPlaylist": "获取播放列表失败",
+    "failedToGetPlaylists": "获取播放列表失败",
+    "failedToCreatePlaylist": "创建播放列表失败",
+    "failedToAddSongToPlaylist": "添加歌曲到播放列表失败",
+    "failedToRemoveSongFromPlaylist": "从播放列表移除歌曲失败",
+    "playlistOrSongNotFound": "播放列表或歌曲不存在",
+    "failedToDeletePlaylist": "删除播放列表失败",
+    "playlistNotFound": "播放列表不存在",
+    "playlistNotFoundOrUnauthorized": "播放列表不存在或未授权",
+    "pageNotFound": "您访问的页面不存在",
+    "invalidSongOrder": "无效的歌曲顺序",
+    "failedToReorderSongs": "调整播放列表歌曲顺序失败",
+    "failedToSeedPlayback": "初始化播放失败",
+    "failedToGetPlaybackPreferences": "获取播放偏好设置失败",
+    "failedToUpdatePlaybackPreferences": "更新播放偏好设置失败",
+    "failedToGetPlaybackProgress": "获取播放进度失败",
+    "failedToUpdatePlaybackProgress": "更新播放进度失败",
+    "failedToStreamAudio": "音频流播放失败",
+    "failedToFetchPlaylistTracks": "获取播放列表曲目失败",
+    "songNotFound": "歌曲不存在",
+    "songNotFoundInPlaylist": "播放列表中未找到该歌曲",
+    "uploadFailed": "上传失败。请稍后重试。",
+    "uploadErrorGeneric": "上传过程中出错。请稍后重试。",
+    "noAudioFileSelected": "请选择一个音频文件。",
+    "noLibrarySelected": "请选择一个音乐库来保存歌曲。",
+    "libraryUnavailable": "音乐库不存在",
+    "missingActionParameter": "缺少操作参数",
+    "missingSongId": "缺少 songId",
+    "missingOrInvalidSongIds": "缺少或无效的 songIds 数组",
+    "unauthorizedOrNotFound": "未授权或资源不存在",
+    "invalidSongIdOrDirection": "无效的 songId 或方向",
+    "invalidDirectionForPosition": "当前位置的方向无效",
+    "unknownAction": "未知操作",
+    "internalServerError": "内部服务器错误",
+    "failedToSignOut": "退出登录失败",
+    "sessionExpired": "Session expired",
+    "pleaseSignInAgain": "Please sign in again to continue",
+    "genericTryAgain": "请重试。",
+    "failedToDeleteSong": "删除歌曲失败"
+  },
+  "success": {
+    "title": "成功",
+    "uploadCompleted": "文件上传完成"
+  },
+  "common": {
+    "songsLabel": "歌曲",
+    "manageSongsCta": "管理歌曲",
+    "viewLinkLabel": "查看",
+    "loadingLabel": "加载中...",
+    "notFoundLabel": "未找到",
+    "redirecting": "即将跳转",
+    "errorLabel": "错误",
+    "tryAgainLabel": "重试",
+    "confirmLabel": "确认",
+    "cancelLabel": "取消",
+    "cancelButton": "取消",
+    "deleteButton": "删除",
+    "creatingLabel": "创建中...",
+    "deletingLabel": "删除中...",
+    "uploadingLabel": "上传中...",
+    "savingLabel": "保存中...",
+    "confirmDeletePlaylist": "确定要删除此播放列表吗?",
+    "itemsCount": "{0} 项",
+    "greetingWithName": "你好 {0},欢迎回来!",
+    "dateRange": "从 {0} 到 {1}",
+    "timeAgo": {
+      "justNow": "刚刚",
+      "minutesAgo": "{0}分钟前",
+      "hoursAgo": "{0}小时前",
+      "daysAgo": "{0}天前"
+    }
+  },
+  "networkStatus": {
+    "online": "在线",
+    "offline": "离线",
+    "syncing": "同步中"
+  },
+  "dashboard": {
+    "title": "M3W 控制台",
+    "welcome": {
+      "prefix": "欢迎回来，",
+      "fallback": "您好",
+      "suffix": "！👋",
+      "description": "您的音乐库已就绪。开始上传和整理您的收藏吧！"
+    },
+    "badgeProductionReady": "生产就绪",
+    "navbar": {
+      "title": "M3W 控制台",
+      "goToDashboard": "返回控制台",
+      "signOut": "退出登录"
+    },
+    "cards": {
+      "libraries": {
+        "titleIcon": "🎵",
+        "titleSuffix": "您的音乐库",
+        "description": "点击音乐库管理歌曲，或使用 + 按钮创建新库",
+        "emptyTitle": "您还没有创建任何音乐库。",
+        "createLabel": "创建音乐库",
+        "emptyActionLabel": "创建音乐库"
+      },
+      "playlists": {
+        "titleIcon": "📻",
+        "titleSuffix": "您的播放列表",
+        "description": "点击播放列表编辑它，或按 + 开始新的混音",
+        "emptyTitle": "还没有播放列表。创建一个来开始整理曲目。",
+        "createLabel": "创建播放列表",
+        "emptyActionLabel": "创建播放列表"
+      },
+      "storage": {
+        "titleIcon": "📊",
+        "titleSuffix": "存储概览",
+        "description": "跟踪您在本地同步的数据量",
+        "placeholder": "配置离线缓存后将显示存储指标。"
+      }
+    }
+  },
+  "library": {
+    "manager": {
+      "pageTitle": "音乐库管理",
+      "pageDescription": "创建、查看和删除音乐库。每个音乐库保留自己的元数据和歌曲。",
+      "form": {
+        "title": "创建新音乐库",
+        "nameLabel": "音乐库名称",
+        "namePlaceholder": "爵士乐合集",
+        "descriptionLabel": "描述",
+        "descriptionPlaceholder": "关于此音乐库的可选说明",
+        "submitLabel": "创建音乐库"
+      },
+      "list": {
+        "title": "您的音乐库",
+        "emptyTitle": "还没有音乐库",
+        "emptyDescription": "使用表单创建您的第一个合集。",
+        "emptyActionLabel": "上传歌曲",
+        "songsSuffix": " 首歌曲",
+        "metadataSongsLabel": "歌曲",
+        "metadataCreatedLabel": "创建时间",
+        "metadataUpdatedLabel": "更新时间",
+        "manageSongsCta": "管理歌曲",
+        "deleteButton": "删除",
+        "deleteConfirmTitle": "删除音乐库？",
+        "deleteConfirmDescription": "这将删除音乐库并断开其歌曲与播放列表的连接。此操作无法撤销。",
+        "deleteConfirmCancel": "取消",
+        "deleteConfirmSubmit": "删除",
+        "deleteConfirmPending": "删除中...",
+        "toastDeleteSuccessTitle": "音乐库已删除",
+        "toastDeleteSuccessDescriptionPrefix": "已删除 ",
+        "toastDeleteErrorTitle": "无法删除音乐库",
+        "toastDeleteErrorDescription": "出错了。请重试。",
+        "toastDeleteErrorUnauthorized": "您没有权限删除此音乐库。"
+      }
+    },
+    "detail": {
+      "backToLibraries": "返回音乐库",
+      "titlePrefix": "音乐库：",
+      "description": "管理此音乐库中的歌曲并将它们添加到播放列表。",
+      "uploadSongsCta": "上传歌曲",
+      "songListTitle": "此音乐库中的歌曲",
+      "songListEmpty": "此音乐库中还没有歌曲。",
+      "songListEmptyHelper": "使用【上传歌曲】按钮向此音乐库添加曲目。",
+      "songCountLabel": "歌曲",
+      "songAlbumLabel": "专辑",
+      "songDurationLabel": "时长",
+      "noPlaylistsHelper": "先创建一个播放列表以开始添加歌曲。",
+      "goToPlaylistsLink": "前往播放列表",
+      "sortDateDesc": "添加时间 (最新)",
+      "sortDateAsc": "添加时间 (最旧)",
+      "sortTitleAsc": "标题 A-Z",
+      "sortTitleDesc": "标题 Z-A",
+      "sortArtistAsc": "歌手 A-Z",
+      "sortAlbumAsc": "专辑 A-Z",
+      "loadingLabel": "加载中...",
+      "deleteSong": {
+        "button": "删除歌曲",
+        "successTitle": "删除成功",
+        "successDescription": "已从音乐库中删除\"{0}\"",
+        "errorTitle": "删除失败",
+        "unknownError": "未知错误"
+      }
+    },
+    "addToPlaylist": {
+      "label": "添加到播放列表",
+      "placeholder": "选择播放列表",
+      "submitLabel": "添加",
+      "pendingLabel": "添加中...",
+      "toastSuccessTitle": "已添加到播放列表",
+      "toastSuccessDescription": "歌曲已成功添加。",
+      "toastErrorTitle": "无法添加歌曲",
+      "toastErrorDescription": "请重试。",
+      "selectPlaylistFirst": "请先选择播放列表。"
+    }
+  },
+  "playlist": {
+    "manager": {
+      "pageTitle": "播放列表构建器",
+      "pageDescription": "跨音乐库组合歌曲，设置自定义封面，并保持您喜爱的混音更新。",
+      "form": {
+        "title": "创建新播放列表",
+        "nameLabel": "播放列表名称",
+        "namePlaceholder": "公路旅行混音",
+        "descriptionLabel": "描述",
+        "descriptionPlaceholder": "捕捉此播放列表背后的氛围或故事",
+        "coverLabel": "封面图片 URL",
+        "coverPlaceholder": "https://example.com/cover.jpg",
+        "submitLabel": "创建播放列表"
+      },
+      "list": {
+        "title": "您的播放列表",
+        "emptyTitle": "还没有播放列表。使用表单构建您的第一个混音。",
+        "emptyDescription": "使用表单构建您的第一个混音并立即开始添加曲目。",
+        "emptyActionLabel": "创建播放列表",
+        "metadataSongsLabel": "歌曲",
+        "coverLabel": "封面",
+        "metadataCreatedLabel": "创建时间",
+        "metadataUpdatedLabel": "更新时间",
+        "manageSongsCta": "管理歌曲",
+        "deleteButton": "删除"
+      }
+    },
+    "detail": {
+      "backToPlaylists": "返回播放列表",
+      "titlePrefix": "播放列表：",
+      "description": "查看此播放列表中的歌曲，调整顺序，并删除不再需要的曲目。",
+      "songListTitle": "此播放列表中的歌曲",
+      "songListEmpty": "此播放列表中还没有歌曲。",
+      "addedFromLibraryHelper": "从您的音乐库添加歌曲以构建此播放列表。",
+      "playlistDurationLabel": "总时长",
+      "songCountLabel": "歌曲",
+      "songLibraryLabel": "音乐库",
+      "songAlbumLabel": "专辑",
+      "songDurationLabel": "时长",
+      "manageLibrariesCta": "管理音乐库"
+    },
+    "controls": {
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "removeButton": "移除",
+      "playButtonLabel": "播放",
+      "playButtonLoading": "加载中...",
+      "playButtonAriaPrefix": "播放播放列表 ",
+      "toastMoveSuccessTitle": "顺序已更新",
+      "toastMoveUpDescriptionPrefix": "已上移：",
+      "toastMoveDownDescriptionPrefix": "已下移：",
+      "toastRemoveSuccessTitle": "歌曲已移除",
+      "toastRemoveSuccessDescriptionPrefix": "已移除：",
+      "toastActionErrorTitle": "操作失败",
+      "toastActionErrorDescription": "请重试。"
+    }
+  },
+  "player": {
+    "ariaLabel": "音频播放器控制",
+    "seekLabel": "进度调整",
+    "previousTrack": "上一曲",
+    "nextTrack": "下一曲",
+    "play": "播放",
+    "pause": "暂停",
+    "mute": "静音",
+    "unmute": "取消静音",
+    "volume": "音量",
+    "repeat": {
+      "off": "关闭循环",
+      "all": "循环全部",
+      "one": "单曲循环"
+    },
+    "shuffle": {
+      "enable": "开启随机播放",
+      "disable": "关闭随机播放",
+      "label": "随机"
+    },
+    "favorite": {
+      "label": "喜欢",
+      "added": "已添加到我喜欢的音乐",
+      "removed": "已从我喜欢的音乐中移除",
+      "addError": "添加失败",
+      "removeError": "移除失败"
+    },
+    "state": {
+      "repeatOff": "循环：关闭",
+      "repeatQueue": "循环：队列",
+      "repeatTrack": "循环：单曲",
+      "shuffleOn": "随机：开启",
+      "shuffleOff": "随机：关闭"
+    },
+    "playQueue": {
+      "title": "播放队列",
+      "songsCount": "{0} 首",
+      "playingFrom": "当前播放自：{0}",
+      "nowPlaying": "正在播放",
+      "emptyTitle": "队列为空",
+      "emptyDescription": "从音乐库或播放列表选择歌曲",
+      "fallbackSource": "播放队列",
+      "removeFromQueueTitle": "已从队列移除",
+      "clearQueueTitle": "队列已清空",
+      "savePlaylistInputPlaceholder": "输入播放列表名称",
+      "savePlaylistErrorEmptyName": "请输入播放列表名称",
+      "savePlaylistSuccessTitle": "保存成功",
+      "savePlaylistSuccessDescription": "播放列表\"{0}\"已创建",
+      "savePlaylistErrorTitle": "保存失败",
+      "savePlaylistErrorDescription": "无法保存播放列表",
+      "savePlaylistErrorUnknown": "未知错误",
+      "clearQueueButton": "清空队列",
+      "saveAsPlaylistButton": "保存为播放列表",
+      "savingButton": "保存中...",
+      "saveButton": "保存"
+    }
+  },
+  "upload": {
+    "page": {
+      "title": "上传歌曲",
+      "description": "将音频文件保存到您的库中；系统会自动进行去重和元数据提取。",
+      "cardTitle": "上传音频文件",
+      "emptyState": "暂无可用库。请先在库管理器中创建一个库再上传。"
+    },
+    "form": {
+      "selectLibraryLabel": "选择音乐库",
+      "selectLibraryPlaceholder": "上传的歌曲将保存到此音乐库。",
+      "libraryOptionFallback": "先创建音乐库",
+      "librarySongSuffix": " 首歌曲",
+      "selectFileLabel": "选择音频文件",
+      "selectFilesLabel": "选择音频文件",
+      "fileHelper": "支持 MP3、FLAC、WAV、OGG、M4A、AAC 和其他常见格式。每个文件最大 100 MB。",
+      "multiFileHelper": "选择一个或多个音频文件。系统会自动从 ID3 标签提取元数据。",
+      "selectedFilesTitle": "已选文件",
+      "clearAllButton": "清空全部",
+      "removeButton": "移除",
+      "successLabel": "成功",
+      "errorLabel": "失败",
+      "successUploadedCount": "成功上传 ",
+      "successUploadedSuffix": " 个文件",
+      "errorUploadedSuffix": " 个文件上传失败",
+      "titleLabel": "标题",
+      "titlePlaceholder": "如果留空，将使用文件名或解析的元数据。",
+      "artistLabel": "艺术家",
+      "optionalPlaceholder": "可选",
+      "albumLabel": "专辑",
+      "albumArtistLabel": "专辑艺术家",
+      "genreLabel": "流派",
+      "composerLabel": "作曲家",
+      "yearLabel": "年份",
+      "yearPlaceholder": "可选，例如 2025",
+      "trackNumberLabel": "曲目编号",
+      "discNumberLabel": "碟片编号",
+      "coverLabel": "封面图片 URL",
+      "coverPlaceholder": "可选，提供公开的图片链接",
+      "uploadButton": "上传歌曲",
+      "uploadingLabel": "上传中...",
+      "resetButton": "重置表单",
+      "successPrefix": "\"",
+      "successSuffix": "\" 已添加到 ",
+      "successFallbackLibrary": "所选音乐库",
+      "successDurationPrefix": "时长：",
+      "successDurationFallback": "未知",
+      "successBitratePrefix": "比特率：",
+      "successBitrateFallback": "未知",
+      "durationUnit": " 秒",
+      "bitrateUnit": " kbps"
+    }
+  },
+  "playback": {
+    "startPlayingTitle": "开始播放",
+    "startPlayingDescription": "播放\"{0}\"中的全部歌曲",
+    "playFromLibraryDescription": "从音乐库播放"
+  },
+  "settings": {
+    "title": "设置",
+    "pleaseSignIn": "请先登录",
+    "profile": {
+      "title": "个人信息",
+      "description": "您的账户信息",
+      "username": "用户名：",
+      "usernameNotSet": "未设置用户名",
+      "email": "邮箱：",
+      "loginMethod": "登录方式："
+    },
+    "account": {
+      "title": "账户操作",
+      "description": "退出登录或管理您的账户",
+      "signOut": "退出登录"
+    },
+    "storage": {
+      "title": "存储管理",
+      "loading": "正在加载存储信息...",
+      "pwa": {
+        "title": "PWA 状态",
+        "installed": "已安装",
+        "notInstalled": "未安装",
+        "description": "PWA 应用可实现离线音乐播放",
+        "installPrompt": {
+          "title": "安装 M3W",
+          "description": "安装应用以获得更快的访问速度和离线支持",
+          "install": "安装",
+          "notNow": "稍后再说"
+        },
+        "reloadPrompt": {
+          "newVersionTitle": "新版本可用",
+          "offlineReadyTitle": "已准备好离线使用",
+          "newVersionDescription": "点击重新加载以更新到最新版本",
+          "offlineReadyDescription": "您的音乐库现已可离线使用",
+          "reload": "重新加载",
+          "close": "关闭"
+        }
+      },
+      "globalTitle": "浏览器存储",
+      "globalNote": "此设备上所有账户共享",
+      "clearAllTitle": "清除所有数据",
+      "clearAllDescription": "这将删除此设备上所有用户的数据，包括歌曲、播放列表和设置。",
+      "clearAllButton": "清除所有数据",
+      "clearSuccess": "所有数据已清除",
+      "clearError": "清除失败，请重试",
+      "clearDialog": {
+        "title": "确认清除所有数据",
+        "description": "此操作将删除浏览器中的所有数据，包括所有用户的歌曲、播放列表、设置和缓存。此操作不可撤销。您将被退出登录并跳转到首页。",
+        "cancel": "取消",
+        "confirm": "删除全部",
+        "clearing": "清除中..."
+      }
+    },
+    "toast": {
+      "signOutSuccess": "已退出登录",
+      "signOutDescription": "您已成功退出登录"
+    }
+  },
+  "libraries": {
+    "title": "音乐库",
+    "count": "{0} 个音乐库",
+    "create": {
+      "dialogTitle": "创建新音乐库",
+      "dialogDescription": "为你的音乐创建一个新的收藏集",
+      "nameLabel": "音乐库名称",
+      "namePlaceholder": "例如：我的音乐、工作音乐",
+      "cancel": "取消",
+      "submit": "创建",
+      "submitting": "创建中...",
+      "promptName": "请输入音乐库名称",
+      "successTitle": "创建成功",
+      "successDescription": "音乐库\"{0}\"已创建",
+      "errorTitle": "创建失败",
+      "unknownError": "未知错误"
+    },
+    "empty": {
+      "title": "还没有音乐库",
+      "description": "点击右上角 \"+\" 创建你的第一个音乐库"
+    },
+    "card": {
+      "songsCount": "{0} 首歌曲",
+      "createdAt": "创建于 {0}"
+    },
+    "detail": {
+      "songsCount": "{0} 首歌曲",
+      "playAll": "播放全部",
+      "sort": {
+        "label": "排序方式: {0}",
+        "dateDesc": "添加时间 (最新)",
+        "dateAsc": "添加时间 (最旧)",
+        "titleAsc": "标题 A-Z",
+        "titleDesc": "标题 Z-A",
+        "artistAsc": "歌手 A-Z",
+        "albumAsc": "专辑 A-Z"
+      },
+      "empty": {
+        "title": "还没有歌曲",
+        "description": "点击右下角 \"+\" 上传歌曲到这个音乐库"
+      },
+      "deleteSong": {
+        "button": "删除歌曲",
+        "successTitle": "删除成功",
+        "successDescription": "已从音乐库中删除\"{0}\"",
+        "errorTitle": "删除失败",
+        "unknownError": "未知错误"
+      }
+    }
+  },
+  "playlists": {
+    "title": "播放列表",
+    "count": "{0} 个播放列表",
+    "create": {
+      "dialogTitle": "创建新播放列表",
+      "dialogDescription": "创建一个自定义播放列表",
+      "nameLabel": "播放列表名称",
+      "namePlaceholder": "例如：深夜驾车、运动音乐",
+      "cancel": "取消",
+      "submit": "创建",
+      "submitting": "创建中...",
+      "promptName": "请输入播放列表名称",
+      "successTitle": "创建成功",
+      "successDescription": "播放列表\"{0}\"已创建",
+      "errorTitle": "创建失败",
+      "unknownError": "未知错误"
+    },
+    "empty": {
+      "title": "还没有播放列表",
+      "description": "点击右上角 \"+\" 创建你的第一个播放列表"
+    },
+    "card": {
+      "songsCount": "{0} 首歌曲",
+      "createdAt": "创建于 {0}"
+    },
+    "detail": {
+      "notFound": "播放列表不存在",
+      "songsCount": "{0} 首歌曲",
+      "playAll": "播放全部",
+      "nowPlaying": "正在播放：{0}",
+      "empty": {
+        "title": "播放列表为空",
+        "description": "从音乐库添加歌曲到此播放列表",
+        "browseButton": "浏览音乐库"
+      },
+      "moveSong": {
+        "successTitle": "已移动歌曲",
+        "errorTitle": "移动失败"
+      },
+      "removeSong": {
+        "successTitle": "已移除：{0}",
+        "errorTitle": "移除失败"
+      },
+      "addFromLibrary": "从音乐库添加歌曲到此播放列表"
+    }
+  },
+  "demo": {
+    "bannerMessage": "演示环境 - 数据每小时自动重置",
+    "storageLimitReached": "存储空间已满 (5GB)，请等待下次重置",
+    "storageUsage": "存储",
+    "systemResetting": "系统正在重置，请稍后重试"
+  }
+}

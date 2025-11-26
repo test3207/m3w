@@ -1,0 +1,213 @@
+name: Create RC Branch
+
+on:
+  schedule:
+    # Run every Tuesday at 10:00 AM Beijing time (China Standard Time, UTC+8)
+    # Beijing 10:00 AM = UTC 02:00 AM (10 - 8 = 2)
+    # Day of week: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+    # Status badge: https://github.com/test3207/m3w/actions/workflows/create-rc-branch.yml/badge.svg
+    - cron: '0 2 * * 2'
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  check-commits:
+    name: Check for New Commits
+    runs-on: ubuntu-latest
+    outputs:
+      has_commits: ${{ steps.check.outputs.has_commits }}
+      commit_count: ${{ steps.check.outputs.commit_count }}
+      latest_commit: ${{ steps.check.outputs.latest_commit }}
+    
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      
+      - name: Check for commits since last Tuesday
+        id: check
+        run: |
+          # Check for commits since last Tuesday (7 days ago)
+          COMMIT_COUNT=$(git log --since="7 days ago" --oneline | wc -l)
+          LATEST_COMMIT=$(git log -1 --format=%H)
+          
+          echo "Checking commits since last Tuesday (7 days ago)"
+          echo "Commits found: $COMMIT_COUNT"
+          echo "Latest commit: $LATEST_COMMIT"
+          
+          if [ "$COMMIT_COUNT" -gt 0 ]; then
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+            echo "✅ Found $COMMIT_COUNT commit(s) since last Tuesday"
+          else
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No commits found since last Tuesday, skipping release"
+          fi
+          
+          echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+          echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
+
+  run-pr-checks:
+    name: Run PR Checks
+    needs: check-commits
+    if: needs.check-commits.outputs.has_commits == 'true'
+    uses: ./.github/workflows/pr-check.yml
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+  create-release-branch:
+    name: Create Release Branch
+    runs-on: ubuntu-latest
+    needs: [check-commits, run-pr-checks]
+    if: needs.check-commits.outputs.has_commits == 'true' && needs.run-pr-checks.result == 'success'
+    
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Calculate RC number for current version
+        id: version
+        run: |
+          # Get current version from package.json (no increment)
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Find the highest RC number for this version
+          HIGHEST_RC=0
+          for branch in $(git branch -r | grep "origin/release/v${CURRENT_VERSION}-rc" | sed 's/.*release\/v/v/' || echo ""); do
+            if [[ $branch =~ v${CURRENT_VERSION}-rc([0-9]+) ]]; then
+              RC_NUM=${BASH_REMATCH[1]}
+              if [ "$RC_NUM" -gt "$HIGHEST_RC" ]; then
+                HIGHEST_RC=$RC_NUM
+              fi
+            fi
+          done
+          
+          # Start with rc1 or increment from highest
+          NEXT_RC=$((HIGHEST_RC + 1))
+          RC_VERSION="${CURRENT_VERSION}-rc${NEXT_RC}"
+          
+          echo "Release version: $RC_VERSION"
+          echo "RC number: $NEXT_RC"
+          echo "version=$RC_VERSION" >> $GITHUB_OUTPUT
+          echo "base_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "rc_number=$NEXT_RC" >> $GITHUB_OUTPUT
+      
+      - name: Set release branch name
+        id: branch_check
+        run: |
+          BRANCH_NAME="release/v${{ steps.version.outputs.version }}"
+          
+          # Check if branch exists remotely
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME" > /dev/null 2>&1; then
+            echo "⚠️ Branch $BRANCH_NAME already exists"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Branch $BRANCH_NAME does not exist"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+      
+      - name: Create release branch
+        run: |
+          BRANCH_NAME="${{ steps.branch_check.outputs.branch_name }}"
+          
+          if [ "${{ steps.branch_check.outputs.exists }}" == "true" ]; then
+            echo "❌ Cannot create branch $BRANCH_NAME - already exists"
+            echo "This likely means rc${{ steps.version.outputs.rc_number }} already exists."
+            echo "Please check existing release branches or merge/delete the old one."
+            exit 1
+          fi
+          
+          echo "Creating release branch: $BRANCH_NAME"
+          git checkout -b "$BRANCH_NAME"
+          
+          # No version change - just create the branch from current main
+          # Version will be updated when merging back to main
+          
+          # Push the new branch
+          git push origin "$BRANCH_NAME"
+          
+          echo "✅ Release branch created: $BRANCH_NAME"
+          echo "📦 Base Version: ${{ steps.version.outputs.base_version }}"
+          echo "🏷️ Release Tag: ${{ steps.version.outputs.version }}"
+          echo "🔢 RC Number: ${{ steps.version.outputs.rc_number }}"
+          echo "📝 Commits included: ${{ needs.check-commits.outputs.commit_count }}"
+          echo "🔗 Branch URL: https://github.com/${{ github.repository }}/tree/$BRANCH_NAME"
+      
+      - name: Create summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## 🎉 Release Branch Created
+          
+          - **Branch**: \`${{ steps.branch_check.outputs.branch_name }}\`
+          - **Base Version**: \`${{ steps.version.outputs.base_version }}\` (unchanged in package.json)
+          - **Release Tag**: \`${{ steps.version.outputs.version }}\`
+          - **RC Number**: \`${{ steps.version.outputs.rc_number }}\`
+          - **Base Commit**: \`${{ needs.check-commits.outputs.latest_commit }}\`
+          - **Commits Included**: ${{ needs.check-commits.outputs.commit_count }}
+          
+          ### Next Steps
+          
+          1. Review and test the release branch
+          2. If bugs are found, fix them and merge into this release branch
+          3. For each bug fix merge, a new RC branch (rc$(({{ steps.version.outputs.rc_number }} + 1))) will be created automatically
+          4. When ready, create a Pull Request to merge into \`main\`
+          5. **During merge to main**: Update package.json version to \`${{ steps.version.outputs.base_version }}\` (if needed)
+          6. After merge, tag the release as \`v${{ steps.version.outputs.base_version }}\`
+          
+          ### Branch URL
+          
+          https://github.com/${{ github.repository }}/tree/${{ steps.branch_check.outputs.branch_name }}
+          EOF
+
+  workflow-summary:
+    name: Workflow Summary
+    runs-on: ubuntu-latest
+    needs: [check-commits, run-pr-checks, create-release-branch]
+    if: always()
+    
+    steps:
+      - name: Generate summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## 📊 Scheduled Release Workflow Summary
+          
+          ### Status
+          
+          - **Check Commits**: ${{ needs.check-commits.result }}
+          - **Has New Commits**: ${{ needs.check-commits.outputs.has_commits }}
+          - **Commit Count**: ${{ needs.check-commits.outputs.commit_count }}
+          - **PR Checks**: ${{ needs.run-pr-checks.result }}
+          - **Create Release Branch**: ${{ needs.create-release-branch.result }}
+          
+          ### Workflow Result
+          
+          EOF
+          
+          if [ "${{ needs.check-commits.outputs.has_commits }}" != "true" ]; then
+            echo "ℹ️ **No commits found since last Tuesday. Workflow skipped.**" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.create-release-branch.result }}" == "success" ]; then
+            echo "✅ **Release branch created successfully!**" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.run-pr-checks.result }}" != "success" ]; then
+            echo "❌ **PR checks failed. Release branch not created.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Workflow completed with warnings.**" >> $GITHUB_STEP_SUMMARY
+          fi

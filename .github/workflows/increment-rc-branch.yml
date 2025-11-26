@@ -1,0 +1,131 @@
+name: Increment RC Branch
+
+on:
+  push:
+    branches:
+      - 'release/v*.*.*-rc*'
+
+# Serialize RC branch creation to prevent race conditions
+# when multiple commits are pushed to the same release branch rapidly
+concurrency:
+  group: increment-rc-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  increment-rc:
+    name: Create Next RC Branch
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Parse current branch and calculate next RC
+        id: version
+        run: |
+          CURRENT_BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "Current branch: $CURRENT_BRANCH"
+          
+          # Extract version and RC number from branch name
+          # Format: release/v0.1.0-rc1
+          if [[ $CURRENT_BRANCH =~ release/v([0-9]+\.[0-9]+\.[0-9]+)-rc([0-9]+) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            CURRENT_RC="${BASH_REMATCH[2]}"
+            NEXT_RC=$((CURRENT_RC + 1))
+            
+            echo "Version: $VERSION"
+            echo "Current RC: $CURRENT_RC"
+            echo "Next RC: $NEXT_RC"
+            
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "current_rc=$CURRENT_RC" >> $GITHUB_OUTPUT
+            echo "next_rc=$NEXT_RC" >> $GITHUB_OUTPUT
+            echo "current_branch=$CURRENT_BRANCH" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Branch name does not match expected pattern: release/v*.*.*-rc*"
+            exit 1
+          fi
+      
+      - name: Check if next RC branch already exists
+        id: branch_check
+        run: |
+          NEXT_BRANCH="release/v${{ steps.version.outputs.version }}-rc${{ steps.version.outputs.next_rc }}"
+          
+          if git ls-remote --exit-code --heads origin "$NEXT_BRANCH" > /dev/null 2>&1; then
+            echo "ℹ️ Branch $NEXT_BRANCH already exists, skipping creation"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Branch $NEXT_BRANCH does not exist, will create"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "next_branch=$NEXT_BRANCH" >> $GITHUB_OUTPUT
+      
+      - name: Create next RC branch
+        if: steps.branch_check.outputs.exists == 'false'
+        run: |
+          NEXT_BRANCH="${{ steps.branch_check.outputs.next_branch }}"
+          
+          echo "Creating new RC branch: $NEXT_BRANCH"
+          git checkout -b "$NEXT_BRANCH"
+          
+          # Push the new RC branch
+          git push origin "$NEXT_BRANCH"
+          
+          echo "✅ Release candidate branch created: $NEXT_BRANCH"
+          echo "📦 Version: ${{ steps.version.outputs.version }}"
+          echo "🔢 RC Number: ${{ steps.version.outputs.next_rc }}"
+          echo "📝 Base Branch: ${{ steps.version.outputs.current_branch }}"
+          echo "🔗 Branch URL: https://github.com/${{ github.repository }}/tree/$NEXT_BRANCH"
+      
+      - name: Create summary
+        if: steps.branch_check.outputs.exists == 'false'
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## 🔄 Release Candidate Incremented
+          
+          - **Previous Branch**: \`${{ steps.version.outputs.current_branch }}\`
+          - **New Branch**: \`${{ steps.branch_check.outputs.next_branch }}\`
+          - **Version**: \`${{ steps.version.outputs.version }}\`
+          - **Previous RC**: \`rc${{ steps.version.outputs.current_rc }}\`
+          - **New RC**: \`rc${{ steps.version.outputs.next_rc }}\`
+          
+          ### What Happened
+          
+          A commit was pushed to the release branch \`${{ steps.version.outputs.current_branch }}\`.
+          A new release candidate branch has been created with incremented RC number.
+          
+          ### Next Steps
+          
+          1. Test the new RC branch: \`${{ steps.branch_check.outputs.next_branch }}\`
+          2. If more fixes are needed, merge them into the new RC branch
+          3. Each merge will create another RC increment (rc$(({{ steps.version.outputs.next_rc }} + 1)), etc.)
+          4. When ready for release, create PR from the latest RC to \`main\`
+          
+          ### Branch URL
+          
+          https://github.com/${{ github.repository }}/tree/${{ steps.branch_check.outputs.next_branch }}
+          EOF
+      
+      - name: Skip summary
+        if: steps.branch_check.outputs.exists == 'true'
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## ℹ️ RC Branch Already Exists
+          
+          - **Current Branch**: \`${{ steps.version.outputs.current_branch }}\`
+          - **Next Branch**: \`${{ steps.branch_check.outputs.next_branch }}\`
+          - **Status**: Branch already exists, no action taken
+          
+          The next RC branch already exists. This is normal if multiple commits were pushed in quick succession.
+          EOF

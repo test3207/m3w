@@ -1,0 +1,93 @@
+services:
+  # All-in-One M3W container (Frontend + Backend)
+  m3w:
+    image: ghcr.io/test3207/m3w:latest
+    # For local build: build: 
+    #   context: ../../..
+    #   dockerfile: docker/Dockerfile
+    container_name: m3w
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/m3w?schema=public
+      
+      # MinIO (internal container name)
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_USE_SSL=false
+      - MINIO_BUCKET_NAME=m3w-music
+      
+      # JWT (⚠️ CHANGE THIS!)
+      - JWT_SECRET=your-secret-key-here-please-change
+      - JWT_ACCESS_EXPIRY=6h
+      - JWT_REFRESH_EXPIRY=90d
+      
+      # GitHub OAuth (⚠️ Configure your app)
+      - GITHUB_CLIENT_ID=your-github-client-id
+      - GITHUB_CLIENT_SECRET=your-github-client-secret
+      - GITHUB_CALLBACK_URL=http://localhost:4000/api/auth/callback
+      
+      # Server config (All-in-One: same origin for frontend and backend)
+      - PORT=4000
+      - HOST=0.0.0.0
+      - API_BASE_URL=http://localhost:4000
+      - CORS_ORIGIN=http://localhost:4000
+      - SERVE_FRONTEND=true
+      
+      # Optional: Demo mode (for RC builds)
+      # - DEMO_MODE=true
+      # - DEMO_STORAGE_LIMIT=5368709120  # 5GB
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    # Optional: Run migrations on startup
+    # command: sh -c "npx prisma migrate deploy && node dist/index.js"
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: m3w-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: m3w
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO (S3-compatible object storage)
+  minio:
+    image: minio/minio:latest
+    container_name: m3w-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console UI
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  minio_data:

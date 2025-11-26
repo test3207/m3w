@@ -226,8 +226,8 @@ Combine proxy with mirrors for maximum reliability:
 # Test PostgreSQL image
 podman pull postgres:16-alpine
 
-# Test Redis image
-podman pull redis:7-alpine
+# Test MinIO image
+podman pull minio/minio:latest
 
 ```
 
@@ -363,15 +363,15 @@ If all else fails, you can download images on a machine with internet access:
 ```bash
 # On a machine with internet access
 podman pull postgres:16-alpine
-podman pull redis:7-alpine
+podman pull minio/minio:latest
 
 # Save images to files
 podman save -o postgres-16-alpine.tar postgres:16-alpine
-podman save -o redis-7-alpine.tar redis:7-alpine
+podman save -o minio-latest.tar minio/minio:latest
 
 # Transfer files to your machine, then load:
 podman load -i postgres-16-alpine.tar
-podman load -i redis-7-alpine.tar
+podman load -i minio-latest.tar
 ```
 
 ---

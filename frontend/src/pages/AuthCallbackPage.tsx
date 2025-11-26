@@ -1,0 +1,90 @@
+import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
+import { logger } from "@/lib/logger-client";
+
+export default function AuthCallbackPage() {
+  const navigate = useNavigate();
+  const { setAuth } = useAuthStore();
+  const hasRun = useRef(false);
+
+  useEffect(() => {
+    // Prevent double execution in React StrictMode
+    if (hasRun.current) return;
+    hasRun.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get("success");
+
+    if (success === "true") {
+      // Backend has set HTTP-only cookies with tokens
+      // Add a small delay to ensure cookies are set by the browser
+      // (Redirect from backend may not have completed cookie storage yet)
+      setTimeout(() => {
+        fetchUserInfo();
+      }, 100); // 100ms delay to ensure cookies are ready
+    } else {
+      // Error in auth callback
+      navigate("/signin?error=auth_failed");
+    }
+
+    async function fetchUserInfo() {
+      try {
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_API_URL || "http://localhost:4000"
+          }/api/auth/me`,
+          {
+            credentials: "include", // Send cookies
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok && data.success && data.data) {
+          // Extract tokens from response headers or use a separate endpoint
+          // For now, we need to get tokens to store in frontend
+          // Let's call a new endpoint that returns tokens (non-HttpOnly)
+          const tokenResponse = await fetch(
+            `${
+              import.meta.env.VITE_API_URL || "http://localhost:4000"
+            }/api/auth/session`,
+            {
+              credentials: "include",
+            }
+          );
+
+          const tokenData = await tokenResponse.json();
+
+          if (tokenResponse.ok && tokenData.success && tokenData.data) {
+            setAuth(data.data, {
+              accessToken: tokenData.data.accessToken,
+              refreshToken: tokenData.data.refreshToken,
+              expiresAt: tokenData.data.expiresAt,
+            });
+            navigate("/libraries");
+          } else {
+            logger.error("Failed to get session", { tokenData });
+            navigate("/signin?error=session_failed");
+          }
+        } else {
+          logger.error("Auth failed", { data });
+          navigate("/signin?error=auth_failed");
+        }
+      } catch (error) {
+        logger.error("Fetch user error", { error });
+        navigate("/signin?error=auth_failed");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps array - only run once on mount
+
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <div className="mb-4 animate-spin">⏳</div>
+        <p>Authenticating...</p>
+      </div>
+    </div>
+  );
+}

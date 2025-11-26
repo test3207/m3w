@@ -7,13 +7,18 @@ on:
       - develop
   # Allow manual trigger for testing
   workflow_dispatch:
-  # Allow being called by other workflows
+  # Allow workflow to be called by other workflows
   workflow_call:
 
 # Cancel in-progress runs for the same PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
   code-quality:
@@ -27,29 +32,64 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '25.1.0'
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: Install dependencies (root)
         run: npm ci
       
-      - name: Run ESLint
-        run: npm run lint
+      - name: Install dependencies (frontend)
+        run: npm ci
+        working-directory: frontend
       
-      - name: TypeScript type check
+      - name: Install dependencies (backend)
+        run: npm ci
+        working-directory: backend
+      
+      - name: Install dependencies (shared)
+        run: npm ci
+        working-directory: shared
+      
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        working-directory: backend
+      
+      - name: Build i18n types
+        run: node ../scripts/build-i18n.cjs
+        working-directory: frontend
+      
+      - name: Build Shared Package
+        run: npm run build
+        working-directory: shared
+      
+      - name: Run ESLint (Frontend)
+        run: npm run lint
+        working-directory: frontend
+      
+      - name: Run ESLint (Backend)
+        run: npm run lint
+        working-directory: backend
+      
+      - name: TypeScript type check (Frontend)
         run: npx tsc --noEmit
+        working-directory: frontend
+      
+      - name: TypeScript type check (Backend)
+        run: npx tsc --noEmit
+        working-directory: backend
       
       - name: Validate Prisma schema
         run: npx prisma validate
+        working-directory: backend
         env:
           DATABASE_URL: postgresql://user:pass@localhost:5432/db
       
       - name: Check for migration drift
         run: |
           # Check if there are uncommitted migration files
-          if [ -n "$(git status --porcelain prisma/migrations)" ]; then
+          if [ -n "$(git status --porcelain backend/prisma/migrations)" ]; then
             echo "❌ Error: Uncommitted migration files detected"
-            git status prisma/migrations
+            git status backend/prisma/migrations
             exit 1
           fi
           echo "✅ No migration drift detected"
@@ -65,41 +105,64 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '25.1.0'
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: Install dependencies (root)
         run: npm ci
+      
+      - name: Install dependencies (frontend)
+        run: npm ci
+        working-directory: frontend
+      
+      - name: Install dependencies (backend)
+        run: npm ci
+        working-directory: backend
+      
+      - name: Install dependencies (shared)
+        run: npm ci
+        working-directory: shared
       
       - name: Generate Prisma Client
         run: npx prisma generate
+        working-directory: backend
       
-      - name: Build Next.js application
+      - name: Build i18n types
+        run: node ../scripts/build-i18n.cjs
+        working-directory: frontend
+      
+      - name: Build Shared Package
         run: npm run build
-        env:
-          # Mock environment variables for build
-          DATABASE_URL: postgresql://mock:mock@localhost:5432/mock
-          REDIS_URL: redis://localhost:6379
-          NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: mock-secret-for-build-only
-          GITHUB_CLIENT_ID: mock-client-id
-          GITHUB_CLIENT_SECRET: mock-client-secret
-          MINIO_ENDPOINT: localhost
-          MINIO_PORT: 9000
-          MINIO_ACCESS_KEY: minioadmin
-          MINIO_SECRET_KEY: minioadmin
-          MINIO_USE_SSL: false
-          MINIO_BUCKET_NAME: m3w-music
+        working-directory: shared
       
-      - name: Run tests with coverage
-        run: npm run test -- --coverage
+      - name: Build Frontend (Vite)
+        run: npm run build
+        working-directory: frontend
+        env:
+          VITE_API_URL: http://localhost:4000
+          BUILD_TARGET: prod
+      
+      # Build backend with BUILD_TARGET=prod (demo code tree-shaken out)
+      - name: Build Backend (tsup - Production)
+        run: npm run build:prod
+        working-directory: backend
+        env:
+          BUILD_TARGET: prod
+      
+      - name: Run tests with coverage (Frontend)
+        run: npm run test:coverage
+        working-directory: frontend
+      
+      - name: Run tests (Backend)
+        run: npm run test
+        working-directory: backend
       
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/lcov.info
+          files: ./frontend/coverage/lcov.info
           flags: unittests
           name: codecov-pr-${{ github.event.pull_request.number }}
           fail_ci_if_error: false
@@ -108,7 +171,7 @@ jobs:
         uses: romeovs/lcov-reporter-action@v0.3.1
         if: github.event_name == 'pull_request'
         with:
-          lcov-file: ./coverage/lcov.info
+          lcov-file: ./frontend/coverage/lcov.info
           github-token: ${{ secrets.GITHUB_TOKEN }}
           delete-old-comments: true
 
@@ -124,6 +187,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
+      # Build Docker image with BUILD_TARGET=prod (demo code excluded)
       - name: Build Docker image (amd64 only)
         uses: docker/build-push-action@v5
         with:
@@ -131,14 +195,17 @@ jobs:
           file: ./docker/Dockerfile
           platforms: linux/amd64
           push: false
+          load: true
           tags: m3w:pr-${{ github.event.pull_request.number }}
+          build-args: |
+            BUILD_TARGET=prod
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
       - name: Report build success
         run: |
           echo "✅ Docker image built successfully"
-          echo "Image size: $(docker images m3w:pr-${{ github.event.pull_request.number }} --format '{{.Size}}')"
+          docker images m3w:pr-${{ github.event.pull_request.number }} --format "Image: {{.Repository}}:{{.Tag}}, Size: {{.Size}}"
 
   pr-check-summary:
     name: PR Check Summary

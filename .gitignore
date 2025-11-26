@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -9,12 +9,17 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# vite
+dev-dist/
+dist/
 
 # production
 /build
+
+# build artifacts
+shared/dist/
+backend/dist/
+frontend/dist/
 
 # misc
 .DS_Store
@@ -26,12 +31,19 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env
-.env*.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.docker
+# Backend
+backend/.env
+backend/.env*.local
+backend/.env.docker
+
+# Frontend
+frontend/.env
+frontend/.env*.local
+
+# Legacy/shared (keep examples)
+!backend/.env.example
+!backend/.env.docker.example
+!frontend/.env.example
 
 # Podman/Docker proxy config (user-specific)
 podman-env.ps1
@@ -42,7 +54,6 @@ docker-env.sh
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # prisma
 /src/generated/prisma
@@ -64,3 +75,9 @@ prisma/dev.db-journal
 # OS
 .DS_Store
 Thumbs.db
+
+# Debug and testing artifacts
+.playwright-mcp/
+debug-*.mjs
+debug-*.js
+temp/

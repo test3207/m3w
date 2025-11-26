@@ -1,0 +1,577 @@
+{
+  "app": {
+    "name": "M3W Music"
+  },
+  "home": {
+    "title": "Your Music, Your Way",
+    "description": "Self-hosted music player with offline support and complete library ownership.",
+    "getStarted": "Get Started",
+    "footer": {
+      "tagline": "Open Source • Self-Hosted • Privacy-First"
+    }
+  },
+  "signin": {
+    "back": "Back",
+    "title": "Welcome to M3W",
+    "description": "Sign in with your GitHub account to continue",
+    "button": "Sign in with GitHub",
+    "guest": "Offline Mode",
+    "guestDescription": "Use locally without an account",
+    "processing": "Processing...",
+    "terms": "By signing in, you agree to our Terms of Service and Privacy Policy."
+  },
+  "navigation": {
+    "libraries": "Libraries",
+    "playlists": "Playlists",
+    "settings": "Settings"
+  },
+  "defaults": {
+    "library": {
+      "name": "Default Library",
+      "badge": "Default"
+    },
+    "playlist": {
+      "name": "My Favorites",
+      "badge": "Favorites"
+    }
+  },
+  "error": {
+    "title": "Error",
+    "unauthorized": "Unauthorized",
+    "noFileProvided": "No file provided",
+    "libraryIdRequired": "libraryId is required",
+    "invalidFileType": "Invalid file type. Only audio files are allowed.",
+    "fileTooLarge": "File too large. Maximum size is 100MB.",
+    "fileUploadFailed": "File upload failed. Please try again.",
+    "invalidInput": "Invalid input",
+    "failedToRetrieveLibraries": "Failed to retrieve libraries",
+    "failedToRetrieveLibrary": "Failed to retrieve library",
+    "failedToCreateLibrary": "Failed to create library",
+    "libraryNotFound": "Library not found",
+    "failedToUpdateLibrary": "Failed to update library",
+    "failedToDeleteLibrary": "Failed to delete library",
+    "failedToRetrieveSongs": "Failed to retrieve songs",
+    "failedToGetPlaylist": "Failed to retrieve playlist",
+    "failedToGetPlaylists": "Failed to retrieve playlists",
+    "failedToCreatePlaylist": "Failed to create playlist",
+    "failedToAddSongToPlaylist": "Failed to add song to playlist",
+    "failedToRemoveSongFromPlaylist": "Failed to remove song from playlist",
+    "playlistOrSongNotFound": "Playlist or song not found",
+    "failedToDeletePlaylist": "Failed to delete playlist",
+    "playlistNotFound": "Playlist not found",
+    "playlistNotFoundOrUnauthorized": "Playlist not found or unauthorized",
+    "pageNotFound": "The page you are looking for does not exist",
+    "invalidSongOrder": "Invalid song order",
+    "failedToReorderSongs": "Failed to reorder playlist songs",
+    "failedToSeedPlayback": "Failed to seed playback",
+    "failedToGetPlaybackPreferences": "Failed to retrieve playback preferences",
+    "failedToUpdatePlaybackPreferences": "Failed to update playback preferences",
+    "failedToGetPlaybackProgress": "Failed to retrieve playback progress",
+    "failedToUpdatePlaybackProgress": "Failed to update playback progress",
+    "failedToStreamAudio": "Failed to stream audio",
+    "failedToFetchPlaylistTracks": "Failed to fetch playlist tracks",
+    "songNotFound": "Song not found",
+    "songNotFoundInPlaylist": "Song not found in playlist",
+    "uploadFailed": "Upload failed. Please try again later.",
+    "uploadErrorGeneric": "Something went wrong during upload. Please try again later.",
+    "noAudioFileSelected": "Please select an audio file.",
+    "noLibrarySelected": "Please choose a library to save the song.",
+    "libraryUnavailable": "Library not found",
+    "missingActionParameter": "Missing action parameter",
+    "missingSongId": "Missing songId",
+    "missingOrInvalidSongIds": "Missing or invalid songIds array",
+    "unauthorizedOrNotFound": "Unauthorized or resource not found",
+    "invalidSongIdOrDirection": "Invalid songId or direction",
+    "invalidDirectionForPosition": "Invalid direction for current position",
+    "unknownAction": "Unknown action",
+    "internalServerError": "Internal server error",
+    "failedToSignOut": "Failed to sign out",
+    "sessionExpired": "Session expired",
+    "pleaseSignInAgain": "Please sign in again to continue",
+    "genericTryAgain": "Please try again.",
+    "failedToDeleteSong": "Failed to delete song"
+  },
+  "success": {
+    "title": "Success",
+    "uploadCompleted": "File upload completed"
+  },
+  "common": {
+    "songsLabel": "Songs",
+    "manageSongsCta": "Manage songs",
+    "viewLinkLabel": "View",
+    "loadingLabel": "Loading...",
+    "notFoundLabel": "Not found",
+    "redirecting": "Redirecting in",
+    "errorLabel": "Error",
+    "tryAgainLabel": "Try again",
+    "confirmLabel": "Confirm",
+    "cancelLabel": "Cancel",
+    "cancelButton": "Cancel",
+    "deleteButton": "Delete",
+    "creatingLabel": "Creating...",
+    "deletingLabel": "Deleting...",
+    "uploadingLabel": "Uploading...",
+    "savingLabel": "Saving...",
+    "confirmDeletePlaylist": "Are you sure you want to delete this playlist?",
+    "itemsCount": "{0} items",
+    "greetingWithName": "Hello {0}, welcome back!",
+    "dateRange": "From {0} to {1}",
+    "timeAgo": {
+      "justNow": "Just now",
+      "minutesAgo": "{0} minutes ago",
+      "hoursAgo": "{0} hours ago",
+      "daysAgo": "{0} days ago"
+    }
+  },
+  "networkStatus": {
+    "online": "Online",
+    "offline": "Offline",
+    "syncing": "Syncing"
+  },
+  "dashboard": {
+    "title": "M3W Dashboard",
+    "welcome": {
+      "prefix": "Welcome back, ",
+      "fallback": "there",
+      "suffix": "! 👋",
+      "description": "Your music library is ready. Start uploading and organizing your collection!"
+    },
+    "badgeProductionReady": "Production Ready",
+    "navbar": {
+      "title": "M3W Dashboard",
+      "goToDashboard": "Return to dashboard",
+      "signOut": "Sign Out"
+    },
+    "cards": {
+      "libraries": {
+        "titleIcon": "🎵",
+        "titleSuffix": "Your Libraries",
+        "description": "Click a library to manage songs, or use the + button to create a new one",
+        "emptyTitle": "You have not created any libraries yet.",
+        "createLabel": "Create library",
+        "emptyActionLabel": "Create library"
+      },
+      "playlists": {
+        "titleIcon": "📻",
+        "titleSuffix": "Your Playlists",
+        "description": "Tap a playlist to edit it, or press + to start a new mix",
+        "emptyTitle": "No playlists yet. Create one to start organizing tracks.",
+        "createLabel": "Create playlist",
+        "emptyActionLabel": "Create playlist"
+      },
+      "storage": {
+        "titleIcon": "📊",
+        "titleSuffix": "Storage At A Glance",
+        "description": "Keep track of how much data you sync locally",
+        "placeholder": "Storage metrics will appear once offline caching is configured."
+      }
+    }
+  },
+  "library": {
+    "manager": {
+      "pageTitle": "Library Manager",
+      "pageDescription": "Create, review, and remove music libraries. Each library keeps its own metadata and songs.",
+      "form": {
+        "title": "Create a new library",
+        "nameLabel": "Library name",
+        "namePlaceholder": "Jazz Collection",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Optional notes about this library",
+        "submitLabel": "Create library"
+      },
+      "list": {
+        "title": "Your libraries",
+        "emptyTitle": "No libraries yet",
+        "emptyDescription": "Use the form to create your first collection.",
+        "emptyActionLabel": "Upload Songs",
+        "songsSuffix": " songs",
+        "metadataSongsLabel": "Songs",
+        "metadataCreatedLabel": "Created",
+        "metadataUpdatedLabel": "Updated",
+        "manageSongsCta": "Manage songs",
+        "deleteButton": "Delete",
+        "deleteConfirmTitle": "Delete library?",
+        "deleteConfirmDescription": "This removes the library and disconnects its songs from playlists. You cannot undo this action.",
+        "deleteConfirmCancel": "Cancel",
+        "deleteConfirmSubmit": "Delete",
+        "deleteConfirmPending": "Deleting...",
+        "toastDeleteSuccessTitle": "Library removed",
+        "toastDeleteSuccessDescriptionPrefix": "Deleted ",
+        "toastDeleteErrorTitle": "Unable to delete library",
+        "toastDeleteErrorDescription": "Something went wrong. Please try again.",
+        "toastDeleteErrorUnauthorized": "You do not have permission to delete this library."
+      }
+    },
+    "detail": {
+      "backToLibraries": "Back to libraries",
+      "titlePrefix": "Library: ",
+      "description": "Manage songs in this library and add them to your playlists.",
+      "uploadSongsCta": "Upload songs",
+      "songListTitle": "Songs in this library",
+      "songListEmpty": "No songs found in this library yet.",
+      "songListEmptyHelper": "Use the Upload songs button to add tracks to this library.",
+      "songCountLabel": "Songs",
+      "songAlbumLabel": "Album",
+      "songDurationLabel": "Duration",
+      "noPlaylistsHelper": "Create a playlist first to start adding songs.",
+      "goToPlaylistsLink": "Go to playlists",
+      "sortDateDesc": "Date Added (Newest)",
+      "sortDateAsc": "Date Added (Oldest)",
+      "sortTitleAsc": "Title A-Z",
+      "sortTitleDesc": "Title Z-A",
+      "sortArtistAsc": "Artist A-Z",
+      "sortAlbumAsc": "Album A-Z",
+      "loadingLabel": "Loading...",
+      "deleteSong": {
+        "button": "Delete Song",
+        "successTitle": "Deleted successfully",
+        "successDescription": "Removed \"{0}\" from library",
+        "errorTitle": "Deletion failed",
+        "unknownError": "Unknown error"
+      }
+    },
+    "addToPlaylist": {
+      "label": "Add to playlist",
+      "placeholder": "Select a playlist",
+      "submitLabel": "Add",
+      "pendingLabel": "Adding...",
+      "toastSuccessTitle": "Added to playlist",
+      "toastSuccessDescription": "Song added successfully.",
+      "toastErrorTitle": "Unable to add song",
+      "toastErrorDescription": "Please try again.",
+      "selectPlaylistFirst": "Select a playlist first."
+    }
+  },
+  "playlist": {
+    "manager": {
+      "pageTitle": "Playlist Builder",
+      "pageDescription": "Combine songs across libraries, set custom artwork, and keep your favorite mixes up to date.",
+      "form": {
+        "title": "Create a new playlist",
+        "nameLabel": "Playlist name",
+        "namePlaceholder": "Road Trip Mix",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Capture the mood or story behind this playlist",
+        "coverLabel": "Cover image URL",
+        "coverPlaceholder": "https://example.com/cover.jpg",
+        "submitLabel": "Create playlist"
+      },
+      "list": {
+        "title": "Your playlists",
+        "emptyTitle": "No playlists yet. Use the form to build your first mix.",
+        "emptyDescription": "Use the form to build your first mix and start adding tracks immediately.",
+        "emptyActionLabel": "Create playlist",
+        "metadataSongsLabel": "Songs",
+        "coverLabel": "Cover",
+        "metadataCreatedLabel": "Created",
+        "metadataUpdatedLabel": "Updated",
+        "manageSongsCta": "Manage songs",
+        "deleteButton": "Delete"
+      }
+    },
+    "detail": {
+      "backToPlaylists": "Back to playlists",
+      "titlePrefix": "Playlist: ",
+      "description": "Review songs in this playlist, adjust ordering, and remove tracks you no longer need.",
+      "songListTitle": "Songs in this playlist",
+      "songListEmpty": "No songs in this playlist yet.",
+      "addedFromLibraryHelper": "Add songs from your libraries to build this playlist.",
+      "playlistDurationLabel": "Total duration",
+      "songCountLabel": "Songs",
+      "songLibraryLabel": "Library",
+      "songAlbumLabel": "Album",
+      "songDurationLabel": "Duration",
+      "manageLibrariesCta": "Manage libraries"
+    },
+    "controls": {
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeButton": "Remove",
+      "playButtonLabel": "Play",
+      "playButtonLoading": "Loading...",
+      "playButtonAriaPrefix": "Play playlist ",
+      "toastMoveSuccessTitle": "Order updated",
+      "toastMoveUpDescriptionPrefix": "Moved up: ",
+      "toastMoveDownDescriptionPrefix": "Moved down: ",
+      "toastRemoveSuccessTitle": "Song removed",
+      "toastRemoveSuccessDescriptionPrefix": "Removed: ",
+      "toastActionErrorTitle": "Action failed",
+      "toastActionErrorDescription": "Please try again."
+    }
+  },
+  "player": {
+    "ariaLabel": "Audio player controls",
+    "seekLabel": "Seek",
+    "previousTrack": "Previous track",
+    "nextTrack": "Next track",
+    "play": "Play",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "volume": "Volume",
+    "repeat": {
+      "off": "Repeat off",
+      "all": "Repeat all",
+      "one": "Repeat one"
+    },
+    "shuffle": {
+      "enable": "Enable shuffle",
+      "disable": "Disable shuffle",
+      "label": "Shuffle"
+    },
+    "favorite": {
+      "label": "Favorite",
+      "added": "Added to Favorites",
+      "removed": "Removed from Favorites",
+      "addError": "Failed to add to Favorites",
+      "removeError": "Failed to remove from Favorites"
+    },
+    "state": {
+      "repeatOff": "Repeat: Off",
+      "repeatQueue": "Repeat: Queue",
+      "repeatTrack": "Repeat: Track",
+      "shuffleOn": "Shuffle: On",
+      "shuffleOff": "Shuffle: Off"
+    },
+    "playQueue": {
+      "title": "Play Queue",
+      "songsCount": "{0} songs",
+      "playingFrom": "Playing from: {0}",
+      "nowPlaying": "Now Playing",
+      "emptyTitle": "Queue is empty",
+      "emptyDescription": "Select songs from a library or playlist",
+      "fallbackSource": "Play Queue",
+      "removeFromQueueTitle": "Removed from queue",
+      "clearQueueTitle": "Queue cleared",
+      "savePlaylistInputPlaceholder": "Enter playlist name",
+      "savePlaylistErrorEmptyName": "Please enter playlist name",
+      "savePlaylistSuccessTitle": "Saved successfully",
+      "savePlaylistSuccessDescription": "Playlist \"{0}\" has been created",
+      "savePlaylistErrorTitle": "Save failed",
+      "savePlaylistErrorDescription": "Unable to save playlist",
+      "savePlaylistErrorUnknown": "Unknown error",
+      "clearQueueButton": "Clear Queue",
+      "saveAsPlaylistButton": "Save as Playlist",
+      "savingButton": "Saving...",
+      "saveButton": "Save"
+    }
+  },
+  "upload": {
+    "page": {
+      "title": "Upload Songs",
+      "description": "Save audio files to your library; deduplication and metadata extraction run automatically.",
+      "cardTitle": "Upload Audio File",
+      "emptyState": "No libraries are available yet. Create one in Library Manager before uploading."
+    },
+    "form": {
+      "selectLibraryLabel": "Select library",
+      "selectLibraryPlaceholder": "Uploaded songs will be saved to this library.",
+      "libraryOptionFallback": "Create a library first",
+      "librarySongSuffix": " songs",
+      "selectFileLabel": "Select audio file",
+      "selectFilesLabel": "Select audio files",
+      "fileHelper": "Supports MP3, FLAC, WAV, OGG, M4A, AAC, and other common formats. Max size 100 MB per file.",
+      "multiFileHelper": "Select one or multiple audio files. Metadata will be extracted automatically from ID3 tags.",
+      "selectedFilesTitle": "Selected files",
+      "clearAllButton": "Clear all",
+      "removeButton": "Remove",
+      "successLabel": "Success",
+      "errorLabel": "Failed",
+      "successUploadedCount": "Successfully uploaded ",
+      "successUploadedSuffix": " file(s)",
+      "errorUploadedSuffix": " file(s) failed to upload",
+      "titleLabel": "Title",
+      "titlePlaceholder": "If left blank, the filename or parsed metadata will be used.",
+      "artistLabel": "Artist",
+      "optionalPlaceholder": "Optional",
+      "albumLabel": "Album",
+      "albumArtistLabel": "Album artist",
+      "genreLabel": "Genre",
+      "composerLabel": "Composer",
+      "yearLabel": "Year",
+      "yearPlaceholder": "Optional, e.g. 2025",
+      "trackNumberLabel": "Track number",
+      "discNumberLabel": "Disc number",
+      "coverLabel": "Cover image URL",
+      "coverPlaceholder": "Optional, provide a public image link",
+      "uploadButton": "Upload song",
+      "uploadingLabel": "Uploading...",
+      "resetButton": "Reset form",
+      "successPrefix": "\"",
+      "successSuffix": "\" has been added to ",
+      "successFallbackLibrary": "the selected library",
+      "successDurationPrefix": "Duration: ",
+      "successDurationFallback": "Unknown",
+      "successBitratePrefix": "Bitrate: ",
+      "successBitrateFallback": "Unknown",
+      "durationUnit": " s",
+      "bitrateUnit": " kbps"
+    }
+  },
+  "playback": {
+    "startPlayingTitle": "Now Playing",
+    "startPlayingDescription": "Playing all songs from \"{0}\"",
+    "playFromLibraryDescription": "Playing from library"
+  },
+  "settings": {
+    "title": "Settings",
+    "pleaseSignIn": "Please sign in",
+    "profile": {
+      "title": "Personal Information",
+      "description": "Your account information",
+      "username": "Username:",
+      "usernameNotSet": "Username not set",
+      "email": "Email:",
+      "loginMethod": "Login Method:"
+    },
+    "account": {
+      "title": "Account Actions",
+      "description": "Sign out or manage your account",
+      "signOut": "Sign Out"
+    },
+    "storage": {
+      "title": "Storage Management",
+      "loading": "Loading storage information...",
+      "pwa": {
+        "title": "PWA Status",
+        "installed": "Installed",
+        "notInstalled": "Not Installed",
+        "description": "Progressive Web App enables offline music playback",
+        "installPrompt": {
+          "title": "Install M3W",
+          "description": "Install the app for faster access and offline support",
+          "install": "Install",
+          "notNow": "Not Now"
+        },
+        "reloadPrompt": {
+          "newVersionTitle": "New Version Available",
+          "offlineReadyTitle": "App Ready to Work Offline",
+          "newVersionDescription": "Click reload to update to the latest version",
+          "offlineReadyDescription": "Your music library is now available offline",
+          "reload": "Reload",
+          "close": "Close"
+        }
+      },
+      "globalTitle": "Browser Storage",
+      "globalNote": "Shared across all accounts on this device",
+      "clearAllTitle": "Clear All Data",
+      "clearAllDescription": "This will delete all users' data on this device, including songs, playlists, and settings.",
+      "clearAllButton": "Clear All Data",
+      "clearSuccess": "All data cleared successfully",
+      "clearError": "Failed to clear data. Please try again.",
+      "clearDialog": {
+        "title": "Confirm Clear All Data",
+        "description": "This action will delete ALL data from this browser, including all users' songs, playlists, settings, and cache. This cannot be undone. You will be signed out and redirected to the homepage.",
+        "cancel": "Cancel",
+        "confirm": "Delete Everything",
+        "clearing": "Clearing..."
+      }
+    },
+    "toast": {
+      "signOutSuccess": "Signed out successfully",
+      "signOutDescription": "You have been signed out successfully"
+    }
+  },
+  "libraries": {
+    "title": "Libraries",
+    "count": "{0} libraries",
+    "create": {
+      "dialogTitle": "Create New Library",
+      "dialogDescription": "Create a new collection for your music",
+      "nameLabel": "Library Name",
+      "namePlaceholder": "e.g. My Music, Work Music",
+      "cancel": "Cancel",
+      "submit": "Create",
+      "submitting": "Creating...",
+      "promptName": "Please enter library name",
+      "successTitle": "Created successfully",
+      "successDescription": "Library \"{0}\" has been created",
+      "errorTitle": "Creation failed",
+      "unknownError": "Unknown error"
+    },
+    "empty": {
+      "title": "No libraries yet",
+      "description": "Click the \"+\" button in the top right to create your first library"
+    },
+    "card": {
+      "songsCount": "{0} songs",
+      "createdAt": "Created on {0}"
+    },
+    "detail": {
+      "songsCount": "{0} songs",
+      "playAll": "Play All",
+      "sort": {
+        "label": "Sort by: {0}",
+        "dateDesc": "Date Added (Newest)",
+        "dateAsc": "Date Added (Oldest)",
+        "titleAsc": "Title A-Z",
+        "titleDesc": "Title Z-A",
+        "artistAsc": "Artist A-Z",
+        "albumAsc": "Album A-Z"
+      },
+      "empty": {
+        "title": "No songs yet",
+        "description": "Click the \"+\" button in the bottom right to upload songs to this library"
+      },
+      "deleteSong": {
+        "button": "Delete Song",
+        "successTitle": "Deleted successfully",
+        "successDescription": "Removed \"{0}\" from library",
+        "errorTitle": "Deletion failed",
+        "unknownError": "Unknown error"
+      }
+    }
+  },
+  "playlists": {
+    "title": "Playlists",
+    "count": "{0} playlists",
+    "create": {
+      "dialogTitle": "Create New Playlist",
+      "dialogDescription": "Create a custom playlist",
+      "nameLabel": "Playlist Name",
+      "namePlaceholder": "e.g. Night Drive, Workout Music",
+      "cancel": "Cancel",
+      "submit": "Create",
+      "submitting": "Creating...",
+      "promptName": "Please enter playlist name",
+      "successTitle": "Created successfully",
+      "successDescription": "Playlist \"{0}\" has been created",
+      "errorTitle": "Creation failed",
+      "unknownError": "Unknown error"
+    },
+    "empty": {
+      "title": "No playlists yet",
+      "description": "Click the \"+\" button in the top right to create your first playlist"
+    },
+    "card": {
+      "songsCount": "{0} songs",
+      "createdAt": "Created on {0}"
+    },
+    "detail": {
+      "notFound": "Playlist not found",
+      "songsCount": "{0} songs",
+      "playAll": "Play All",
+      "nowPlaying": "Now Playing: {0}",
+      "empty": {
+        "title": "Playlist is empty",
+        "description": "Add songs from your libraries to this playlist",
+        "browseButton": "Browse Libraries"
+      },
+      "moveSong": {
+        "successTitle": "Song moved",
+        "errorTitle": "Move failed"
+      },
+      "removeSong": {
+        "successTitle": "Removed: {0}",
+        "errorTitle": "Removal failed"
+      },
+      "addFromLibrary": "Add songs from your libraries to this playlist"
+    }
+  },
+  "demo": {
+    "bannerMessage": "Demo Environment - Data resets every hour",
+    "storageLimitReached": "Storage limit reached (5GB). Please wait for next reset.",
+    "storageUsage": "Storage",
+    "systemResetting": "System is resetting, please try again later"
+  }
+}

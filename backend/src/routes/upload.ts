@@ -1,0 +1,353 @@
+/**
+ * Upload Routes (Hono Backend)
+ * Admin routes - online only
+ */
+
+import { Hono } from 'hono';
+import crypto from 'crypto';
+import { parseBuffer } from 'music-metadata';
+import type { Context } from 'hono';
+import { prisma } from '../lib/prisma';
+import { getMinioClient } from '../lib/minio-client';
+import { logger } from '../lib/logger';
+import { authMiddleware } from '../lib/auth-middleware';
+import { getUserId } from '../lib/auth-helper';
+import { resolveCoverUrl } from '../lib/cover-url-helper';
+
+// Compile-time constant injected by tsup for tree-shaking
+declare const __IS_DEMO_BUILD__: boolean;
+
+const app = new Hono();
+
+// Apply auth middleware to all routes
+app.use('*', authMiddleware);
+
+// POST /api/upload - Upload audio file to MinIO
+app.post('/', async (c: Context) => {
+  try {
+    const userId = getUserId(c);
+    const formData = await c.req.formData();
+    
+    // 1. Extract file and metadata from form data
+    const file = formData.get('file') as File;
+    const frontendHash = formData.get('hash') as string;
+    const libraryId = formData.get('libraryId') as string;
+    
+    if (!file) {
+      return c.json(
+        {
+          success: false,
+          error: 'No file provided',
+        },
+        400
+      );
+    }
+
+    if (!libraryId) {
+      return c.json(
+        {
+          success: false,
+          error: 'Library ID is required',
+        },
+        400
+      );
+    }
+
+    // Verify library ownership
+    const library = await prisma.library.findFirst({
+      where: { id: libraryId, userId },
+    });
+
+    if (!library) {
+      return c.json(
+        {
+          success: false,
+          error: 'Library not found',
+        },
+        404
+      );
+    }
+
+    // 2. Read file buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // 3. Calculate and verify hash
+    const actualHash = crypto.createHash('sha256').update(buffer).digest('hex');
+    
+    if (frontendHash && frontendHash !== actualHash) {
+      logger.warn({ frontendHash, actualHash }, 'Hash mismatch');
+      return c.json(
+        {
+          success: false,
+          error: 'File integrity check failed',
+        },
+        400
+      );
+    }
+
+    const fileHash = actualHash;
+    logger.info({ fileHash, fileName: file.name, fileSize: file.size }, 'Processing upload');
+
+    // 4. Check if file already exists (deduplication)
+    let fileRecord = await prisma.file.findUnique({
+      where: { hash: fileHash },
+    });
+
+    let isNewFile = false;
+    let coverImageBuffer: Buffer | null = null;
+    let coverImageFormat: string | null = null;
+
+    if (!fileRecord) {
+      isNewFile = true;
+
+      // Check storage limit before processing (Demo mode only)
+      if (__IS_DEMO_BUILD__) {
+        try {
+          const { storageTracker } = await import('../lib/demo/storage-tracker');
+          if (storageTracker.enabled && !storageTracker.canUpload(file.size)) {
+            return c.json({
+              success: false,
+              error: 'Storage limit reached (5GB). Please wait for next reset.',
+            }, 403);
+          }
+        } catch {
+          // Demo modules not available, continue normally
+          logger.debug('Demo modules not available');
+        }
+      }
+
+      // 5. Extract metadata using music-metadata
+      let metadata: {
+        duration?: number;
+        bitrate?: number;
+        sampleRate?: number;
+        channels?: number;
+      } = {};
+
+      try {
+        const parsed = await parseBuffer(buffer, { mimeType: file.type });
+        metadata = {
+          duration: parsed.format.duration ? Math.floor(parsed.format.duration) : undefined,
+          bitrate: parsed.format.bitrate ? Math.floor(parsed.format.bitrate / 1000) : undefined,
+          sampleRate: parsed.format.sampleRate,
+          channels: parsed.format.numberOfChannels,
+        };
+        
+        // Extract cover art from ID3 tags
+        if (parsed.common.picture && parsed.common.picture.length > 0) {
+          const picture = parsed.common.picture[0];
+          coverImageBuffer = Buffer.from(picture.data);
+          coverImageFormat = picture.format; // e.g., 'image/jpeg', 'image/png'
+          logger.info({ format: coverImageFormat, size: coverImageBuffer.length }, 'Cover art extracted');
+        }
+        
+        logger.info(metadata, 'Metadata extracted');
+      } catch (error) {
+        logger.warn({ error }, 'Failed to extract metadata');
+      }
+
+      // 6. Upload to MinIO
+      const minioClient = getMinioClient();
+      const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
+      const objectName = `files/${fileHash}${getFileExtension(file.name)}`;
+
+      // Ensure bucket exists
+      const bucketExists = await minioClient.bucketExists(bucketName);
+      if (!bucketExists) {
+        await minioClient.makeBucket(bucketName);
+        logger.info({ bucketName }, 'Created bucket');
+      }
+
+      // Upload file
+      await minioClient.putObject(
+        bucketName,
+        objectName,
+        buffer,
+        buffer.length,
+        {
+          'Content-Type': file.type,
+        }
+      );
+
+      logger.info({ objectName }, 'File uploaded to MinIO');
+
+      // 7. Create File record
+      fileRecord = await prisma.file.create({
+        data: {
+          hash: fileHash,
+          path: objectName,
+          size: file.size,
+          mimeType: file.type,
+          duration: metadata.duration,
+          bitrate: metadata.bitrate,
+          sampleRate: metadata.sampleRate,
+          channels: metadata.channels,
+          refCount: 0,
+        },
+      });
+
+      logger.info({ fileId: fileRecord.id }, 'File record created');
+      
+      // Increment storage usage (Demo mode only)
+      if (__IS_DEMO_BUILD__) {
+        try {
+          const { storageTracker } = await import('../lib/demo/storage-tracker');
+          if (storageTracker.enabled) {
+            storageTracker.incrementUsage(file.size);
+          }
+        } catch {
+          // Demo modules not available, continue normally
+          logger.debug('Demo modules not available for tracking');
+        }
+      }
+    } else {
+      logger.info({ fileId: fileRecord.id }, 'File already exists, reusing');
+    }
+
+    // 8. Upload cover image to MinIO if extracted
+    let coverUrl: string | null = null;
+    if (isNewFile && coverImageBuffer && coverImageFormat) {
+      try {
+        const minioClient = getMinioClient();
+        const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
+        
+        // Determine file extension from MIME type
+        const coverExt = coverImageFormat === 'image/png' ? 'png' : 'jpg';
+        const coverObjectName = `covers/${fileHash}.${coverExt}`;
+        
+        // Upload cover image
+        await minioClient.putObject(
+          bucketName,
+          coverObjectName,
+          coverImageBuffer,
+          coverImageBuffer.length,
+          {
+            'Content-Type': coverImageFormat,
+          }
+        );
+        
+        logger.info({ coverObjectName }, 'Cover image uploaded to MinIO');
+        // Store as relative path - frontend will use /api/songs/:id/cover
+        coverUrl = coverObjectName;
+      } catch (error) {
+        logger.warn({ error }, 'Failed to upload cover image');
+      }
+    }
+
+    // 9. Extract user-provided metadata
+    const userMetadata: {
+      libraryId: string;
+      title: string;
+      artist?: string;
+      album?: string;
+      albumArtist?: string;
+      genre?: string;
+      composer?: string;
+      coverUrl?: string;
+      year?: number;
+      trackNumber?: number;
+      discNumber?: number;
+    } = {
+      libraryId,
+      title: (formData.get('title') as string) || file.name.replace(/\.[^.]+$/, ''),
+    };
+
+    if (formData.get('artist')) userMetadata.artist = formData.get('artist') as string;
+    if (formData.get('album')) userMetadata.album = formData.get('album') as string;
+    if (formData.get('albumArtist')) userMetadata.albumArtist = formData.get('albumArtist') as string;
+    if (formData.get('genre')) userMetadata.genre = formData.get('genre') as string;
+    if (formData.get('composer')) userMetadata.composer = formData.get('composer') as string;
+    
+    // Use extracted cover if available, otherwise user-provided URL
+    if (coverUrl) {
+      userMetadata.coverUrl = coverUrl;
+    } else if (formData.get('coverUrl')) {
+      userMetadata.coverUrl = formData.get('coverUrl') as string;
+    }
+    
+    if (formData.get('year')) userMetadata.year = parseInt(formData.get('year') as string, 10);
+    if (formData.get('trackNumber')) userMetadata.trackNumber = parseInt(formData.get('trackNumber') as string, 10);
+    if (formData.get('discNumber')) userMetadata.discNumber = parseInt(formData.get('discNumber') as string, 10);
+
+    // 10. Check if song already exists in this library
+    const existingSong = await prisma.song.findFirst({
+      where: {
+        libraryId,
+        fileId: fileRecord!.id,
+      },
+      include: {
+        file: true,
+      },
+    });
+
+    if (existingSong) {
+      logger.info({ songId: existingSong.id, libraryId }, 'Song already exists in this library');
+      return c.json(
+        {
+          success: false,
+          error: 'This song already exists in the selected library',
+          details: `"${existingSong.title}" is already in this library`,
+        },
+        409 // Conflict
+      );
+    }
+
+    // 11. Create Song record and increment refCount
+    const song = await prisma.$transaction(async (tx) => {
+      // Create song
+      const newSong = await tx.song.create({
+        data: {
+          ...userMetadata,
+          fileId: fileRecord!.id,
+        },
+        include: {
+          file: true,
+        },
+      });
+
+      // Increment file refCount
+      await tx.file.update({
+        where: { id: fileRecord!.id },
+        data: { refCount: { increment: 1 } },
+      });
+
+      return newSong;
+    });
+
+    logger.info({ songId: song.id, fileId: fileRecord.id }, 'Song created');
+
+    return c.json({
+      success: true,
+      data: {
+        song: {
+          ...song,
+          coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
+        },
+        file: fileRecord,
+        isNewFile,
+      },
+    });
+  } catch (error) {
+    logger.error(error, 'Upload failed');
+    logger.error(`Error details: ${error instanceof Error ? error.stack : String(error)}`);
+    return c.json(
+      {
+        success: false,
+        error: 'Upload failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500
+    );
+  }
+});
+
+/**
+ * Helper function to extract file extension
+ */
+function getFileExtension(filename: string): string {
+  const match = filename.match(/\.[^.]+$/);
+  return match ? match[0] : '';
+}
+
+export default app;

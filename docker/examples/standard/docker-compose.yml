@@ -1,0 +1,97 @@
+services:
+  # Frontend container with Nginx
+  frontend:
+    image: ghcr.io/test3207/m3w-frontend:latest
+    # For local build: build:
+    #   context: ../../..
+    #   dockerfile: docker/Dockerfile.frontend
+    container_name: m3w-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      # Runtime config: API calls go to /api (proxied by Nginx to backend)
+      - API_BASE_URL=/api
+    depends_on:
+      - backend
+
+  # Backend API container
+  backend:
+    image: ghcr.io/test3207/m3w-backend:latest
+    # For local build: build:
+    #   context: ../../..
+    #   dockerfile: docker/Dockerfile.backend
+    container_name: m3w-backend
+    restart: unless-stopped
+    expose:
+      - "4000"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/m3w?schema=public
+      
+      # MinIO
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_USE_SSL=false
+      - MINIO_BUCKET_NAME=m3w-music
+      
+      # JWT
+      - JWT_SECRET=your-secret-key-here-please-change
+      - JWT_ACCESS_EXPIRY=6h
+      - JWT_REFRESH_EXPIRY=90d
+      
+      # GitHub OAuth
+      - GITHUB_CLIENT_ID=your-github-client-id
+      - GITHUB_CLIENT_SECRET=your-github-client-secret
+      - GITHUB_CALLBACK_URL=http://localhost/api/auth/callback
+      
+      # Server config (frontend at http://localhost, backend internal)
+      - PORT=4000
+      - HOST=0.0.0.0
+      - API_BASE_URL=http://localhost
+      - CORS_ORIGIN=http://localhost
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  # PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: m3w-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: m3w
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: m3w-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  minio_data:

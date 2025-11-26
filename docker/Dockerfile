@@ -1,44 +1,98 @@
-# Production Dockerfile
-FROM node:22-alpine AS base
+# All-in-One Docker Image (Frontend + Backend)
+# Backend serves static frontend files
+# Suitable for simple single-container deployment
 
-# Install dependencies only when needed
+FROM node:25.2.1-alpine AS base
+
+# Install dependencies
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm ci
+# Copy shared package first
+COPY shared/package.json shared/package-lock.json ./shared/
+RUN cd shared && npm ci
 
-# Rebuild the source code only when needed
+# Copy backend package
+COPY backend/package.json backend/package-lock.json ./backend/
+RUN cd backend && npm ci
+
+# Copy frontend package
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN cd frontend && npm ci
+
+# Build shared package
+FROM base AS shared-builder
+WORKDIR /app
+COPY --from=deps /app/shared/node_modules ./shared/node_modules
+COPY shared ./shared
+RUN cd shared && npm run build
+
+# Build frontend
+FROM base AS frontend-builder
+WORKDIR /app
+COPY --from=shared-builder /app/shared ./shared
+COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
+COPY scripts ./scripts
+COPY frontend ./frontend
+RUN cd frontend && npm run build
+
+# Build backend
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+
+# Build target argument (rc or prod)
+ARG BUILD_TARGET=prod
+ENV BUILD_TARGET=${BUILD_TARGET}
+
+COPY --from=deps /app/backend/node_modules ./backend/node_modules
+COPY --from=shared-builder /app/shared ./shared
+COPY backend ./backend
 
 # Generate Prisma Client
-RUN npx prisma generate
+RUN cd backend && npx prisma generate
 
-# Build Next.js
-RUN npm run build
+# Build backend with specified target
+RUN cd backend && npm run build:${BUILD_TARGET}
 
-# Production image, copy all the files and run next
+# Production image
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 honouser
 
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy shared package
+COPY --from=shared-builder --chown=honouser:nodejs /app/shared ./shared
 
-USER nextjs
+# Copy backend
+COPY --from=builder --chown=honouser:nodejs /app/backend/dist ./backend/dist
+COPY --from=builder --chown=honouser:nodejs /app/backend/node_modules ./backend/node_modules
+COPY --from=builder --chown=honouser:nodejs /app/backend/prisma ./backend/prisma
+COPY --from=builder --chown=honouser:nodejs /app/backend/package.json ./backend/
 
-EXPOSE 3000
+# Copy frontend dist (backend will serve it)
+COPY --from=frontend-builder --chown=honouser:nodejs /app/frontend/dist ./backend/public
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+# Copy entrypoint script for runtime config injection
+COPY --chown=honouser:nodejs docker/docker-entrypoint-allinone.sh ./backend/
+RUN chmod +x ./backend/docker-entrypoint-allinone.sh
 
-CMD ["node", "server.js"]
+USER honouser
+
+EXPOSE 4000
+
+ENV PORT=4000
+ENV HOST="0.0.0.0"
+ENV SERVE_FRONTEND=true
+
+# Health check - verify backend API is responding
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+WORKDIR /app/backend
+
+ENTRYPOINT ["./docker-entrypoint-allinone.sh"]
+CMD ["node", "dist/index.js"]
