@@ -590,6 +590,7 @@
       "songsCount": "{0} songs",
       "playAll": "Play All",
       "nowPlaying": "Now Playing: {0}",
+      "fromLibrary": "From: {0}",
       "empty": {
         "title": "Playlist is empty",
         "description": "Add songs from your libraries to this playlist",
