@@ -145,6 +145,14 @@ echo ""
 if [ "$SKIP_ENV" = false ]; then
     echo -e "${CYAN}🔐 Setting up environment variables...${NC}"
     
+    # Root .npmrc
+    if [ ! -f ".npmrc" ]; then
+        cp ".npmrc.example" ".npmrc"
+        echo -e "  ${GREEN}✓ Created .npmrc from template${NC}"
+    else
+        echo -e "  ${BLUE}ℹ️  .npmrc already exists${NC}"
+    fi
+    
     # Backend .env
     if [ ! -f "backend/.env" ]; then
         cp "backend/.env.example" "backend/.env"

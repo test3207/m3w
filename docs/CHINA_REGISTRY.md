@@ -11,12 +11,13 @@ The project’s default `docker-compose.yml` references official Docker Hub imag
 | Registry | Status | Speed | Recommendation |
 |----------|--------|-------|----------------|
 | **Docker Hub** (`docker.io`) | ❌ Blocked | N/A | Configure proxy or mirrors *(default compose relies on this)* |
+| **DaoCloud** (`docker.m.daocloud.io`) | ✅ Working | 🟢 Fast | **Recommended mirror** |
+| **Aliyun** | ✅ Fast | 🟢 Fast | Requires personal accelerator URL |
 | **Quay.io** | ⚠️ Unstable | 🔴 Slow | Not recommended |
-| **Aliyun/Tencent** | ✅ Fast | 🟢 Fast | Good for mirrors |
 
 ### Best Strategy
 
-1. **Ensure access to Docker Hub** via proxy or China-based mirrors (official images, default compose)
+1. **Use the bundled config file** `podman-mirrors.conf` for quick setup
 2. **Combine proxies and mirrors** for the most reliable pulls
 3. **Keep offline tarballs available** if network outages are common
 
@@ -28,14 +29,73 @@ Before making manual changes, try the bundled scripts: `./setup.ps1` (PowerShell
 
 If connectivity issues persist, apply one or more of the following strategies:
 
-1. **Proxy** - Route Docker Hub traffic through a proxy (most reliable for default compose)
-2. **Mirror Registries** - Add China-based mirrors that cache Docker Hub images
+1. **Quick Config** - Use the bundled `scripts/podman-mirrors.conf` file (recommended)
+2. **Proxy** - Route Docker Hub traffic through a proxy
 3. **Offline Cache** - Pre-download images on another host and import them locally
 4. **Hybrid** - Combine the above for best reliability
 
 ---
 
-## Method 1: Configure Mirror Registries
+## Method 1: Use Bundled Mirror Configuration (Recommended)
+
+The project includes a pre-configured `scripts/podman-mirrors.conf` file with verified working mirrors.
+
+### One-Line Setup (PowerShell)
+
+```powershell
+# Copy config to Podman Machine and restart
+Get-Content .\scripts\podman-mirrors.conf | podman machine ssh "sudo tee /etc/containers/registries.conf.d/mirrors.conf > /dev/null"
+podman machine stop; podman machine start
+```
+
+### Verify Configuration
+
+```powershell
+# Test image pull (should use DaoCloud mirror automatically)
+podman pull postgres:16-alpine
+```
+
+You should see output like:
+
+```text
+Trying to pull docker.m.daocloud.io/library/postgres:16-alpine...
+```
+
+### Manual Setup Steps
+
+If the one-liner doesn't work:
+
+**Step 1**: Access Podman Machine
+
+```powershell
+podman machine ssh
+```
+
+**Step 2**: Create config directory and file
+
+```bash
+sudo mkdir -p /etc/containers/registries.conf.d
+sudo nano /etc/containers/registries.conf.d/mirrors.conf
+```
+
+**Step 3**: Copy content from `podman-mirrors.conf` into the editor, save and exit
+
+**Step 4**: Restart Podman
+
+```bash
+exit
+```
+
+```powershell
+podman machine stop
+podman machine start
+```
+
+---
+
+## Method 2: Configure Mirror Registries Manually
+
+If you prefer manual configuration or need custom mirrors:
 
 ### Step 1: Access Podman Machine
 
@@ -64,24 +124,10 @@ unqualified-search-registries = ["docker.io"]
 [[registry]]
 location = "docker.io"
 
-# China-based mirrors (add multiple for redundancy)
+# DaoCloud mirror (verified working as of Nov 2025)
 [[registry.mirror]]
-location = "dockerpull.com"
-
-[[registry.mirror]]
-location = "dockerproxy.cn"
-
-[[registry.mirror]]
-location = "docker.1panel.live"
-
-[[registry.mirror]]
-location = "docker.rainbond.cc"
-
-[[registry.mirror]]
-location = "docker.fxxk.dedyn.io"
+location = "docker.m.daocloud.io"
 ```
-
-The list above covers popular Docker Hub mirrors. Remove or reorder entries if a mirror proves unreliable.
 
 ### Step 4: Restart Podman
 
@@ -101,9 +147,7 @@ Docker Desktop users can add mirrors via `daemon.json`:
 ```json
 {
   "registry-mirrors": [
-    "https://dockerpull.com",
-    "https://dockerproxy.cn",
-    "https://docker.1panel.live"
+    "https://docker.m.daocloud.io"
   ]
 }
 ```
@@ -116,7 +160,7 @@ Steps:
 
 ---
 
-## Method 2: Configure Proxy (Recommended)
+## Method 3: Configure Proxy
 
 ### Option A: Podman Desktop GUI
 
@@ -208,13 +252,13 @@ podman machine start
 
 ---
 
-## Method 3: Hybrid Configuration (Best Reliability)
+## Method 4: Hybrid Configuration (Best Reliability)
 
 Combine proxy with mirrors for maximum reliability:
 
-1. **Configure proxy** (as shown in Method 2)
-2. **Configure mirrors** (as shown in Method 1)
-3. Podman will try proxy first, then fall back to mirrors
+1. **Configure mirrors** using `podman-mirrors.conf` (Method 1)
+2. **Configure proxy** (Method 3) as backup
+3. Podman will try mirrors first, then fall back to proxy
 
 ---
 
@@ -231,7 +275,7 @@ podman pull minio/minio:latest
 
 ```
 
-### Verify Configuration
+### Verify Registry and Proxy Settings
 
 ```powershell
 # SSH into Podman Machine
@@ -329,11 +373,11 @@ exit
 
 **Environment Variables for Scripts**:
 
-Create a file `podman-env.ps1` in your project:
+Copy `scripts/podman-env.ps1.example` to `podman-env.ps1` and adjust settings:
 
 ```powershell
-# podman-env.ps1
-# Source this file before running Podman commands
+cp .\scripts\podman-env.ps1.example .\podman-env.ps1
+# Edit podman-env.ps1 to configure your proxy port
 
 $env:HTTP_PROXY="http://127.0.0.1:7890"
 $env:HTTPS_PROXY="http://127.0.0.1:7890"
