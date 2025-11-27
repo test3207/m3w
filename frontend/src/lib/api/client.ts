@@ -1,6 +1,7 @@
 import { HttpStatusCode } from '@/lib/constants/http-status';
 import { logger } from '@/lib/logger-client';
 import { routeRequest } from './router';
+import { API_BASE_URL } from './config';
 
 export class ApiError extends Error {
   constructor(
@@ -211,20 +212,4 @@ class ApiClient {
  * - `mainApiClient` for JSON API calls
  * - `streamApiClient` for binary/stream data
  */
-// Get API base URL with runtime config support
-// Priority: Runtime config (Docker) > Build-time env var > Dev default
-// In AIO mode: empty string means same-origin (relative URLs)
-const getApiBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const runtimeUrl = (window as any).__API_BASE_URL__;
-    // If runtime config is set and not the placeholder
-    if (runtimeUrl && runtimeUrl !== '__API_BASE_URL__') {
-      return runtimeUrl;
-    }
-  }
-  // Fallback to build-time env or dev default
-  return import.meta.env.VITE_API_URL || 'http://localhost:4000';
-};
-
-export const apiClient = new ApiClient(getApiBaseUrl());
+export const apiClient = new ApiClient(API_BASE_URL);

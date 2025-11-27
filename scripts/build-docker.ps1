@@ -77,12 +77,16 @@ if (-not $SkipArtifacts) {
     }
     New-Item -ItemType Directory -Path $OutputDir | Out-Null
     
+    # Determine build target based on type
+    $buildTarget = if ($Type -eq "rc") { "rc" } else { "prod" }
+    
     # Run build in container
-    Write-Host "   Running container build..." -ForegroundColor Gray
+    Write-Host "   Running container build (BUILD_TARGET=$buildTarget)..." -ForegroundColor Gray
     
     podman run --rm `
         -v "${ProjectRoot}:/app:ro" `
         -v "${OutputDir}:/output" `
+        -e "BUILD_TARGET=$buildTarget" `
         node:25.2.1-alpine `
         sh -c "mkdir -p /build && sh /app/scripts/docker-build.sh"
     

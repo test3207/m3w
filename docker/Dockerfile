@@ -34,9 +34,7 @@ RUN apk add --no-cache openssl dumb-init && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 honouser
 
-# Copy pre-built shared package
-COPY --chown=honouser:nodejs shared/dist ./shared/dist
-COPY --chown=honouser:nodejs shared/package.json ./shared/
+# Note: @m3w/shared is bundled into backend dist via tsup noExternal config
 
 # Copy pre-built backend (includes node_modules with Prisma client)
 COPY --chown=honouser:nodejs backend/dist ./backend/dist
@@ -59,7 +57,7 @@ ENV PORT=4000
 ENV HOST="0.0.0.0"
 ENV SERVE_FRONTEND=true
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
   CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 
 WORKDIR /app/backend

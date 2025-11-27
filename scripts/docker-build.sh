@@ -8,22 +8,29 @@
 # 3. Copies only dist and production node_modules back to /app/docker-build-output
 #
 # Usage:
+#   # Production build (default)
 #   podman run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
-#     -w /build node:25.2.1-alpine sh /app/scripts/docker-build.sh
+#     node:25.2.1-alpine sh /app/scripts/docker-build.sh
+#
+#   # RC build (includes demo mode code)
+#   podman run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
+#     -e BUILD_TARGET=rc node:25.2.1-alpine sh /app/scripts/docker-build.sh
 #
 # Output (in docker-build-output/):
-#   - shared/dist/           (compiled shared package)
-#   - shared/package.json
 #   - backend/dist/          (compiled backend)
-#   - backend/node_modules/  (Linux production dependencies)
+#   - backend/node_modules/  (Linux production dependencies with Prisma)
 #   - backend/prisma/
 #   - backend/package.json
 #   - frontend/dist/         (compiled frontend)
 
 set -e
 
+# Build target: prod (default) or rc (includes demo mode)
+BUILD_TARGET="${BUILD_TARGET:-prod}"
+
 echo "🔨 M3W Docker Build Script"
 echo "=========================="
+echo "   Build Target: $BUILD_TARGET"
 
 # Step 1: Copy source files to isolated build directory (exclude node_modules)
 echo ""
@@ -57,7 +64,15 @@ cd backend && npm ci && cd ..
 # Step 3: Build all packages
 echo ""
 echo "🔨 Step 3: Building application..."
-npm run build
+
+# Build shared and frontend (same for all targets)
+npm run build:shared
+npm run build:frontend
+
+# Build backend with target-specific config (affects demo mode tree-shaking)
+cd backend
+BUILD_TARGET=$BUILD_TARGET npm run build:$BUILD_TARGET
+cd ..
 
 # Step 4: Prepare backend production dependencies
 echo ""
@@ -73,8 +88,8 @@ npm ci --omit=dev
 npx prisma generate
 
 # Clean up unnecessary packages after Prisma generation
+# Keep 'prisma' CLI for running migrations in container (npx prisma migrate deploy)
 echo "   Cleaning up unnecessary packages..."
-rm -rf node_modules/prisma
 rm -rf node_modules/typescript
 rm -rf node_modules/@types
 rm -rf node_modules/effect
@@ -90,10 +105,8 @@ echo "📤 Step 5: Copying build output..."
 # Clean output directory
 rm -rf /output/*
 
-# Copy shared
-mkdir -p /output/shared
-cp -r /build/shared/dist /output/shared/
-cp /build/shared/package.json /output/shared/
+# Note: shared package is bundled into backend via tsup noExternal config
+# No need to copy shared separately
 
 # Copy backend
 mkdir -p /output/backend
@@ -117,7 +130,6 @@ echo ""
 echo "✅ Build complete!"
 echo ""
 echo "📊 Output sizes:"
-du -sh /output/shared/dist
 du -sh /output/backend/dist
 du -sh /output/backend/node_modules
 du -sh /output/frontend/dist

@@ -95,21 +95,26 @@ if [[ "$SKIP_ARTIFACTS" == "false" ]]; then
     rm -rf "$OUTPUT_DIR"
     mkdir -p "$OUTPUT_DIR"
     
+    # Determine build target based on type
+    BUILD_TARGET="prod"
+    [[ "$TYPE" == "rc" ]] && BUILD_TARGET="rc"
+    
     # Check if we're already in a container (CI) or need to spawn one
     if [[ -f /.dockerenv ]] || [[ -n "$CI" ]]; then
         # Running in container or CI - build directly
-        echo "   Running build directly (CI/container environment)..."
+        echo "   Running build directly (CI/container environment, BUILD_TARGET=$BUILD_TARGET)..."
         cd "$PROJECT_ROOT"
         
-        # Run the build script
-        sh "$PROJECT_ROOT/scripts/docker-build.sh"
+        # Run the build script with BUILD_TARGET
+        BUILD_TARGET=$BUILD_TARGET sh "$PROJECT_ROOT/scripts/docker-build.sh"
     else
         # Running on host - use container for consistency
-        echo "   Running build in container..."
+        echo "   Running build in container (BUILD_TARGET=$BUILD_TARGET)..."
         
         docker run --rm \
             -v "$PROJECT_ROOT:/app:ro" \
             -v "$OUTPUT_DIR:/output" \
+            -e "BUILD_TARGET=$BUILD_TARGET" \
             node:25.2.1-alpine \
             sh -c "mkdir -p /build && sh /app/scripts/docker-build.sh"
     fi
