@@ -1,13 +1,20 @@
 name: Create RC Branch
 
+# Creates a new RC branch from main for release candidate testing
+#
+# TODO: Re-enable scheduled trigger after full CI/CD testing is complete
+# See: https://github.com/test3207/m3w/issues/83
+
 on:
-  schedule:
-    # Run every Tuesday at 10:00 AM Beijing time (China Standard Time, UTC+8)
-    # Beijing 10:00 AM = UTC 02:00 AM (10 - 8 = 2)
-    # Day of week: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
-    # Status badge: https://github.com/test3207/m3w/actions/workflows/create-rc-branch.yml/badge.svg
-    - cron: '0 2 * * 2'
-  # Allow manual trigger for testing
+  # TEMPORARILY DISABLED - Uncomment after testing complete
+  # schedule:
+  #   # Run every Tuesday at 10:00 AM Beijing time (China Standard Time, UTC+8)
+  #   # Beijing 10:00 AM = UTC 02:00 AM (10 - 8 = 2)
+  #   # Day of week: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+  #   # Status badge: https://github.com/test3207/m3w/actions/workflows/create-rc-branch.yml/badge.svg
+  #   - cron: '0 2 * * 2'
+  
+  # Manual trigger for testing
   workflow_dispatch:
 
 permissions:
