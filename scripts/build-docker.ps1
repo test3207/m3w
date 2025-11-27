@@ -43,7 +43,7 @@ $OutputDir = Join-Path $ProjectRoot "docker-build-output"
 function Get-ContainerRuntime {
     # Try docker first
     if (Get-Command "docker" -ErrorAction SilentlyContinue) {
-        $dockerInfo = docker info 2>&1
+        docker info 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
             return "docker"
         }
@@ -51,7 +51,7 @@ function Get-ContainerRuntime {
     
     # Try podman
     if (Get-Command "podman" -ErrorAction SilentlyContinue) {
-        $podmanInfo = podman info 2>&1
+        podman info 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
             return "podman"
         }
