@@ -15,12 +15,19 @@ API_BASE_URL="${API_BASE_URL:-}"
 
 INDEX_FILE="/app/backend/public/index.html"
 
+# Escape special characters for sed replacement (|, &, \, /)
+escape_sed() {
+  printf '%s' "$1" | sed 's/[|\&/\]/\\&/g'
+}
+
 if [ -f "$INDEX_FILE" ]; then
   if [ -n "$API_BASE_URL" ]; then
     echo "   API_BASE_URL: $API_BASE_URL"
+    # Escape the URL for safe sed replacement
+    ESCAPED_URL=$(escape_sed "$API_BASE_URL")
     # Replace only the value inside quotes, not the variable name
     # Pattern: '__API_BASE_URL__' -> '$API_BASE_URL'
-    sed -i "s|'__API_BASE_URL__'|'$API_BASE_URL'|g" "$INDEX_FILE"
+    sed -i "s|'__API_BASE_URL__'|'$ESCAPED_URL'|g" "$INDEX_FILE"
     echo "✅ Configuration injected successfully"
   else
     # Default: use empty string (frontend will use relative URLs)

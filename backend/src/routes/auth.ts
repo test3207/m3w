@@ -51,6 +51,9 @@ function getFrontendUrl(c: Context): string {
     const host = c.req.header('host');
     const protocol = c.req.header('x-forwarded-proto') || 'http';
     if (host) return `${protocol}://${host}`;
+    
+    // Fallback: AIO mode but no origin/host headers (unusual)
+    logger.warn('AIO mode but no origin/host headers found, falling back to CORS_ORIGIN');
   }
   
   // Separated mode: use configured CORS_ORIGIN

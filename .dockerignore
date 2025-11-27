@@ -77,7 +77,6 @@ Dockerfile*
 # Misc
 README.md
 INTEGRATION_TESTING.md
-podman-env.ps1.example
 setup.ps1
 setup.sh
 temp

@@ -103,6 +103,9 @@ echo ""
 echo "📤 Step 5: Copying build output..."
 
 # Clean output directory
+# Note: This runs inside a container with /output as a mounted volume.
+# The container isolation ensures this is safe. If running outside container,
+# ensure OUTPUT_DIR is properly set and validated.
 rm -rf /output/*
 
 # Note: shared package is bundled into backend via tsup noExternal config

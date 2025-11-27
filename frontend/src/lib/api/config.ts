@@ -18,7 +18,8 @@ export const getApiBaseUrl = (): string => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const runtimeUrl = (window as any).__API_BASE_URL__;
     // If runtime config is set and not the placeholder
-    if (runtimeUrl && runtimeUrl !== '__API_BASE_URL__') {
+    // Note: Empty string is valid for AIO mode (relative URLs), so use !== undefined
+    if (runtimeUrl !== undefined && runtimeUrl !== '__API_BASE_URL__') {
       return runtimeUrl;
     }
   }

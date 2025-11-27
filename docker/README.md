@@ -332,9 +332,9 @@ Image sizes after optimization ([Issue #60](https://github.com/test3207/m3w/issu
 
 | Image | Before | After | Savings |
 |-------|--------|-------|---------|
-| `m3w` (All-in-One) | ~626 MB | ~320 MB | ~49% |
-| `m3w-backend` | ~580 MB | ~280 MB | ~52% |
-| `m3w-frontend` | ~50 MB | ~25 MB | ~50% |
+| `m3w` (All-in-One) | ~626 MB | ~402 MB | ~36% |
+| `m3w-backend` | ~580 MB | ~400 MB | ~31% |
+| `m3w-frontend` | N/A | ~57 MB | N/A |
 
 **Optimization techniques applied**:
 

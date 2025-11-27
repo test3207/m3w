@@ -108,6 +108,11 @@ if [[ "$SKIP_ARTIFACTS" == "false" ]]; then
     [[ "$TYPE" == "rc" ]] && BUILD_TARGET="rc"
     
     # Check if we're already in a container (CI) or need to spawn one
+    # Note: $CI is set by GitHub Actions. For other CI systems, you may need to add:
+    #   - GitHub Actions: $GITHUB_ACTIONS
+    #   - GitLab CI: $GITLAB_CI
+    #   - Jenkins: $JENKINS_HOME
+    #   - CircleCI: $CIRCLECI
     if [[ -f /.dockerenv ]] || [[ -n "$CI" ]]; then
         # Running in container or CI - build directly
         echo "   Running build directly (CI/container environment, BUILD_TARGET=$BUILD_TARGET)..."
