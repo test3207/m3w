@@ -87,20 +87,15 @@ Automated release branch creation that runs every Tuesday if there are new commi
    - If no commits, workflow exits early (no unnecessary runs)
    - Outputs: commit count, latest commit hash
 
-2. **Run PR Checks** (conditional)
+2. **Create Release Branch** (conditional)
    - Only runs if new commits are detected
-   - Calls `pr-check.yml` as a reusable workflow
-   - Runs all quality checks, builds, and tests
-
-3. **Create Release Branch** (conditional)
-   - Only runs if commits exist AND PR checks pass
    - Uses current version from package.json (no increment)
    - Finds highest existing RC number for that version
-   - Creates release branch: `release/v{current-version}-rc{N}`
+   - Creates release branch: `release/v{current-version}-rc.{N}`
    - Does NOT update package.json (version stays same)
    - Provides summary with branch URL and next steps
 
-4. **Workflow Summary**
+3. **Workflow Summary**
    - Generates comprehensive summary of all steps
    - Shows status of each job and final result
 

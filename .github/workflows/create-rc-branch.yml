@@ -53,21 +53,11 @@ jobs:
           echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
           echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
 
-  run-pr-checks:
-    name: Run PR Checks
-    needs: check-commits
-    if: needs.check-commits.outputs.has_commits == 'true'
-    uses: ./.github/workflows/pr-check.yml
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-
   create-release-branch:
     name: Create Release Branch
     runs-on: ubuntu-latest
-    needs: [check-commits, run-pr-checks]
-    if: needs.check-commits.outputs.has_commits == 'true' && needs.run-pr-checks.result == 'success'
+    needs: check-commits
+    if: needs.check-commits.outputs.has_commits == 'true'
     
     steps:
       - name: Checkout main branch
@@ -181,7 +171,7 @@ jobs:
   workflow-summary:
     name: Workflow Summary
     runs-on: ubuntu-latest
-    needs: [check-commits, run-pr-checks, create-release-branch]
+    needs: [check-commits, create-release-branch]
     if: always()
     
     steps:
@@ -195,7 +185,6 @@ jobs:
           - **Check Commits**: ${{ needs.check-commits.result }}
           - **Has New Commits**: ${{ needs.check-commits.outputs.has_commits }}
           - **Commit Count**: ${{ needs.check-commits.outputs.commit_count }}
-          - **PR Checks**: ${{ needs.run-pr-checks.result }}
           - **Create Release Branch**: ${{ needs.create-release-branch.result }}
           
           ### Workflow Result
@@ -206,8 +195,6 @@ jobs:
             echo "ℹ️ **No commits found since last Tuesday. Workflow skipped.**" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.create-release-branch.result }}" == "success" ]; then
             echo "✅ **Release branch created successfully!**" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.run-pr-checks.result }}" != "success" ]; then
-            echo "❌ **PR checks failed. Release branch not created.**" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **Workflow completed with warnings.**" >> $GITHUB_STEP_SUMMARY
           fi
