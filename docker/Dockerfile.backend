@@ -1,86 +1,46 @@
 # Backend-only Docker Image
-# Suitable for separated deployment or when frontend is served elsewhere
+# Suitable for separated deployment where frontend is served by CDN/Nginx
+#
+# IMPORTANT: This Dockerfile expects PRE-BUILT artifacts in build context
+# Build context should be: docker-build-output/
+#
+# Prerequisites (built by scripts/build-docker.ps1 or build-docker-linux.sh):
+#   - shared/dist/           (compiled shared package)
+#   - shared/package.json
+#   - backend/dist/          (compiled backend)
+#   - backend/node_modules/  (production dependencies with Prisma client)
+#   - backend/prisma/        (schema for migrations)
+#
+# Usage:
+#   # Windows (full pipeline)
+#   .\scripts\build-docker.ps1 -Type prod
+#
+#   # Linux/CI (full pipeline)
+#   ./scripts/build-docker-linux.sh prod
+#
+#   # Manual (after artifacts built)
+#   docker build -f docker/Dockerfile.backend -t m3w-backend:latest docker-build-output/
 
-FROM node:25.2.1-alpine AS base
+FROM node:25.2.1-alpine
 
-# ============================================
-# Stage 1: Install dependencies
-# ============================================
-FROM base AS deps
-RUN apk add --no-cache libc6-compat openssl
-WORKDIR /app
-
-# Copy shared package
-COPY shared/package.json shared/package-lock.json ./shared/
-RUN cd shared && npm ci
-
-# Copy backend package
-COPY backend/package.json backend/package-lock.json ./backend/
-RUN cd backend && npm ci
-
-# ============================================
-# Stage 2: Build shared package
-# ============================================
-FROM base AS shared-builder
-WORKDIR /app
-COPY --from=deps /app/shared/node_modules ./shared/node_modules
-COPY shared ./shared
-RUN cd shared && npm run build
-
-# ============================================
-# Stage 3: Build backend
-# ============================================
-FROM base AS builder
-WORKDIR /app
-
-# Build target: 'prod' (no demo) or 'rc' (with demo)
-ARG BUILD_TARGET=prod
-ENV BUILD_TARGET=${BUILD_TARGET}
-
-COPY --from=deps /app/backend/node_modules ./backend/node_modules
-COPY --from=shared-builder /app/shared ./shared
-COPY backend ./backend
-
-# Generate Prisma Client and build
-RUN cd backend && npx prisma generate
-RUN cd backend && npm run build:${BUILD_TARGET}
-
-# ============================================
-# Stage 4: Production runtime
-# ============================================
-FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Install openssl for Prisma
-RUN apk add --no-cache openssl
-
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
+# Install runtime dependencies and create non-root user
+RUN apk add --no-cache openssl dumb-init && \
+    addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 honouser
 
-# Copy shared package (needed as local dependency)
-COPY --from=shared-builder --chown=honouser:nodejs /app/shared ./shared
+# Copy pre-built shared package
+COPY --chown=honouser:nodejs shared/dist ./shared/dist
+COPY --chown=honouser:nodejs shared/package.json ./shared/
 
-# Copy backend package files and Prisma schema
-COPY --from=builder --chown=honouser:nodejs /app/backend/package.json /app/backend/package-lock.json ./backend/
-COPY --from=builder --chown=honouser:nodejs /app/backend/prisma ./backend/prisma
-
-# Install production dependencies, generate Prisma client, then cleanup
-# All in one layer to minimize image size
-RUN cd backend && \
-    npm ci --omit=dev && \
-    npx prisma generate && \
-    # Remove prisma CLI (~67MB), typescript (~23MB), and @types after generation
-    rm -rf node_modules/prisma node_modules/typescript node_modules/@types && \
-    # Remove effect package (~34MB) - only needed by prisma CLI
-    rm -rf node_modules/effect node_modules/fast-check && \
-    npm cache clean --force && \
-    rm -rf /root/.npm /tmp/*
-
-# Copy built backend
-COPY --from=builder --chown=honouser:nodejs /app/backend/dist ./backend/dist
+# Copy pre-built backend (includes node_modules with Prisma client)
+COPY --chown=honouser:nodejs backend/dist ./backend/dist
+COPY --chown=honouser:nodejs backend/node_modules ./backend/node_modules
+COPY --chown=honouser:nodejs backend/prisma ./backend/prisma
+COPY --chown=honouser:nodejs backend/package.json ./backend/
 
 USER honouser
 
@@ -89,10 +49,10 @@ EXPOSE 4000
 ENV PORT=4000
 ENV HOST="0.0.0.0"
 
-# Health check - verify API is responding
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 
 WORKDIR /app/backend
 
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/index.js"]

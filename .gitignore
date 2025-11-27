@@ -21,6 +21,11 @@ shared/dist/
 backend/dist/
 frontend/dist/
 
+# Docker build output
+docker-build-output/
+backend/node_modules.linux/
+backend/node_modules.windows/
+
 # misc
 .DS_Store
 *.pem

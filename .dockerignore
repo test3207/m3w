@@ -1,23 +1,37 @@
-# Node modules
+# .dockerignore for M3W Docker images
+# 
+# All Dockerfiles use COPY-only approach (no npm install inside)
+# Build artifacts must be prepared before `docker build`:
+#   podman run --rm -v "${PWD}:/app" -w /app node:25.2.1-alpine sh scripts/docker-build.sh
+#
+# Required artifacts:
+#   - shared/dist/
+#   - shared/package.json
+#   - backend/dist/
+#   - backend/node_modules/ (production deps with Prisma client)
+#   - backend/prisma/
+#   - frontend/dist/
+
+# Node modules (except backend production deps)
 node_modules
-*/node_modules
-**/node_modules
+shared/node_modules
+frontend/node_modules
+# Allow backend/node_modules (production deps built by docker-build.sh)
+!backend/node_modules
 
-# Build outputs
-dist
-*/dist
-**/dist
-build
-*/build
-**/build
-.next
-out
-
-# Development files
-dev-dist
+# Exclude dist by default, then whitelist what we need
+# The * pattern doesn't match nested paths, so we're specific
 *.log
 npm-debug.log*
 *.tsbuildinfo
+
+# Development output
+dev-dist
+
+# Source files (we only need compiled dist)
+frontend/src
+backend/src
+shared/src
 
 # Environment files
 .env
@@ -35,30 +49,35 @@ npm-debug.log*
 *.swp
 *.swo
 
-# Test
+# Test files
 coverage
 *.test.ts
 *.test.tsx
 *.spec.ts
 *.spec.tsx
+__tests__
+**/test
+**/tests
 
 # Docs and assets
 docs
 assets
 
-# Note: scripts excluded by default, included in specific Dockerfiles as needed
-# All-in-One: needs scripts for frontend i18n build
-# Backend-only: excludes scripts (uses .dockerignore.backend)
-# scripts
+# Build scripts (not needed in image)
+scripts
 
-# Docker
+# Docker files (avoid recursive copy)
 docker-compose.yml
 Dockerfile*
-.dockerignore
-# Keep entrypoint scripts
+.dockerignore*
+# Keep entrypoint scripts needed in image
 !docker/*.sh
+!docker/nginx.conf
 
 # Misc
 README.md
-*.md
-!backend/README.md
+INTEGRATION_TESTING.md
+podman-env.ps1.example
+setup.ps1
+setup.sh
+temp

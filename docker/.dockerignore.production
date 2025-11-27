@@ -1,0 +1,68 @@
+# .dockerignore for Dockerfile.production
+# Allows pre-built dist and node_modules to be copied
+# Usage: podman build -f docker/Dockerfile.production --ignorefile docker/.dockerignore.production .
+
+# Only exclude non-essential node_modules (frontend/shared don't need theirs)
+frontend/node_modules
+shared/node_modules
+
+# Development files
+dev-dist
+*.log
+npm-debug.log*
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test files
+coverage
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+test
+tests
+
+# Source files (we only need dist)
+frontend/src
+backend/src
+shared/src
+
+# Docs and assets
+docs
+assets
+
+# Scripts (not needed for production runtime)
+scripts
+
+# Docker files
+docker-compose.yml
+Dockerfile*
+.dockerignore*
+# Keep entrypoint scripts
+!docker/*.sh
+
+# Misc
+README.md
+*.md
+!backend/README.md
+INTEGRATION_TESTING.md
+podman-env.ps1.example
+setup.ps1
+setup.sh
+temp

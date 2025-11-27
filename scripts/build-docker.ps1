@@ -1,6 +1,14 @@
-# Docker Image Build Script
-# Usage: .\scripts\build-docker.ps1 -Type rc -RcNumber 1
-# Usage: .\scripts\build-docker.ps1 -Type prod
+# Docker Image Build Script for Windows
+# 
+# This script:
+# 1. Builds artifacts in a Linux container (cross-platform compatible)
+# 2. Builds Docker images from the artifacts
+#
+# Usage:
+#   .\scripts\build-docker.ps1 -Type prod              # Production build
+#   .\scripts\build-docker.ps1 -Type rc -RcNumber 1    # RC build
+#   .\scripts\build-docker.ps1 -Type prod -Push        # Build and push
+#   .\scripts\build-docker.ps1 -Type prod -SkipArtifacts  # Skip artifact build
 
 param(
     [Parameter(Mandatory=$true)]
@@ -11,158 +19,177 @@ param(
     [int]$RcNumber = 1,
     
     [Parameter(Mandatory=$false)]
-    [string]$Registry = "ghcr.io/test3207"
+    [string]$Registry = "ghcr.io/test3207",
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$Push,
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$SkipArtifacts
 )
 
+$ErrorActionPreference = "Stop"
+
+# Paths
+$ProjectRoot = (Get-Item $PSScriptRoot).Parent.FullName
+$OutputDir = Join-Path $ProjectRoot "docker-build-output"
+
 # Read version from package.json
-$packageJson = Get-Content "package.json" | ConvertFrom-Json
+$packageJson = Get-Content (Join-Path $ProjectRoot "package.json") | ConvertFrom-Json
 $baseVersion = $packageJson.version
 
 # Build version string and tags
 if ($Type -eq "rc") {
     $version = "v${baseVersion}-rc.${RcNumber}"
-    $buildTarget = "rc"
-    # RC build: only update 'rc' tag, not 'latest'
     $additionalTags = @("rc")
 } else {
     $version = "v${baseVersion}"
-    $buildTarget = "prod"
-    # Production build: update 'latest' and version tags
-    $minorVersion = $baseVersion -replace '\.\d+$', ''  # 0.1.0 -> 0.1
-    $majorVersion = $baseVersion -replace '\.\d+\.\d+$', ''  # 0.1.0 -> 0
+    $minorVersion = $baseVersion -replace '\.\d+$', ''
+    $majorVersion = $baseVersion -replace '\.\d+\.\d+$', ''
     $additionalTags = @("v${minorVersion}", "v${majorVersion}", "latest")
 }
 
-Write-Host "🔨 Building M3W Docker Images" -ForegroundColor Cyan
-Write-Host "   Version: $version" -ForegroundColor Green
-Write-Host "   Type: $Type" -ForegroundColor Green
-Write-Host "   Registry: $Registry" -ForegroundColor Green
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  M3W Docker Build Script (Windows)" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  Version:  $version" -ForegroundColor Green
+Write-Host "  Type:     $Type" -ForegroundColor Green
+Write-Host "  Registry: $Registry" -ForegroundColor Green
 Write-Host ""
 
-# 1. Build All-in-One image
-Write-Host "📦 Building All-in-One image..." -ForegroundColor Yellow
-
-# Build main version tag
-$buildCmd = "podman build -t `"${Registry}/m3w:${version}`""
-
-# Add additional tags
-foreach ($tag in $additionalTags) {
-    $buildCmd += " -t `"${Registry}/m3w:${tag}`""
-}
-
-$buildCmd += " -f docker/Dockerfile --build-arg BUILD_TARGET=$buildTarget ."
-
-# Execute build
-Invoke-Expression $buildCmd
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ All-in-One build failed!" -ForegroundColor Red
-    exit 1
-}
-Write-Host "✅ All-in-One image built successfully" -ForegroundColor Green
-Write-Host ""
-
-# 2. Build Backend-only image
-Write-Host "📦 Building Backend-only image..." -ForegroundColor Yellow
-
-# Build main version tag
-$buildCmd = "podman build -t `"${Registry}/m3w-backend:${version}`""
-
-# Add additional tags
-foreach ($tag in $additionalTags) {
-    $buildCmd += " -t `"${Registry}/m3w-backend:${tag}`""
-}
-
-$buildCmd += " -f docker/Dockerfile.backend --build-arg BUILD_TARGET=$buildTarget ."
-
-# Execute build
-Invoke-Expression $buildCmd
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Backend build failed!" -ForegroundColor Red
-    exit 1
-}
-Write-Host "✅ Backend image built successfully" -ForegroundColor Green
-Write-Host ""
-
-# 3. Build frontend static files
-Write-Host "📦 Building Frontend static files..." -ForegroundColor Yellow
-Push-Location frontend
-npm run build
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Frontend build failed!" -ForegroundColor Red
-    Pop-Location
-    exit 1
-}
-Pop-Location
-
-# Compress frontend dist directory
-$frontendArchive = "m3w-frontend-${version}.tar.gz"
-tar -czf $frontendArchive -C frontend/dist .
-Write-Host "✅ Frontend archive created: $frontendArchive" -ForegroundColor Green
-Write-Host ""
-
-# Display build results
-Write-Host "🎉 Build completed successfully!" -ForegroundColor Green
-Write-Host ""
-Write-Host "📋 Built images:" -ForegroundColor Cyan
-Write-Host "   All-in-One:" -ForegroundColor White
-Write-Host "     - ${Registry}/m3w:${version}" -ForegroundColor Gray
-foreach ($tag in $additionalTags) {
-    Write-Host "     - ${Registry}/m3w:${tag}" -ForegroundColor Gray
-}
-Write-Host ""
-Write-Host "   Backend-only:" -ForegroundColor White
-Write-Host "     - ${Registry}/m3w-backend:${version}" -ForegroundColor Gray
-foreach ($tag in $additionalTags) {
-    Write-Host "     - ${Registry}/m3w-backend:${tag}" -ForegroundColor Gray
-}
-Write-Host ""
-Write-Host "📦 Frontend archive:" -ForegroundColor Cyan
-Write-Host "   - $frontendArchive" -ForegroundColor White
-Write-Host ""
-
-# Ask whether to push
-$push = Read-Host "Push images to registry? (y/N)"
-if ($push -eq "y" -or $push -eq "Y") {
+# ============================================
+# Step 1: Build artifacts in container
+# ============================================
+if (-not $SkipArtifacts) {
+    Write-Host "📦 Step 1: Building artifacts in Linux container..." -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "🚀 Pushing images..." -ForegroundColor Yellow
     
-    # Push all tags
-    podman push "${Registry}/m3w:${version}"
-    foreach ($tag in $additionalTags) {
-        podman push "${Registry}/m3w:${tag}"
+    # Clean output directory
+    if (Test-Path $OutputDir) {
+        Remove-Item -Recurse -Force $OutputDir
     }
+    New-Item -ItemType Directory -Path $OutputDir | Out-Null
     
-    podman push "${Registry}/m3w-backend:${version}"
-    foreach ($tag in $additionalTags) {
-        podman push "${Registry}/m3w-backend:${tag}"
-    }
+    # Run build in container
+    Write-Host "   Running container build..." -ForegroundColor Gray
     
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Images pushed successfully!" -ForegroundColor Green
-        
-        # For Production builds, prompt to update version
-        if ($Type -eq "prod") {
-            Write-Host ""
-            Write-Host "📌 Next steps:" -ForegroundColor Cyan
-            Write-Host "   1. Bump version for next release:" -ForegroundColor White
-            Write-Host "      .\scripts\bump-version.ps1 -Type patch|minor|major" -ForegroundColor Yellow
-            Write-Host "   2. Push the version commit:" -ForegroundColor White
-            Write-Host "      git push" -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host "❌ Push failed!" -ForegroundColor Red
+    podman run --rm `
+        -v "${ProjectRoot}:/app:ro" `
+        -v "${OutputDir}:/output" `
+        node:25.2.1-alpine `
+        sh -c "mkdir -p /build && sh /app/scripts/docker-build.sh"
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Artifact build failed!" -ForegroundColor Red
         exit 1
     }
+    
+    Write-Host ""
+    Write-Host "✅ Artifacts built successfully" -ForegroundColor Green
+    Write-Host ""
+} else {
+    Write-Host "⏭️  Skipping artifact build (-SkipArtifacts)" -ForegroundColor Yellow
+    Write-Host ""
+    
+    if (-not (Test-Path $OutputDir)) {
+        Write-Host "❌ Output directory not found: $OutputDir" -ForegroundColor Red
+        Write-Host "   Run without -SkipArtifacts first" -ForegroundColor Red
+        exit 1
+    }
+}
+
+# ============================================
+# Step 2: Build Docker images
+# ============================================
+Write-Host "🐳 Step 2: Building Docker images..." -ForegroundColor Yellow
+Write-Host ""
+
+# All tags for this version
+$allTags = @($version) + $additionalTags
+
+# Function to build image with tags
+function Build-DockerImage {
+    param(
+        [string]$Name,
+        [string]$Dockerfile
+    )
+    
+    Write-Host "  Building $Name..." -ForegroundColor Cyan
+    
+    $tagArgs = @()
+    foreach ($tag in $allTags) {
+        $tagArgs += "-t"
+        $tagArgs += "${Registry}/${Name}:${tag}"
+    }
+    
+    $dockerfilePath = Join-Path $ProjectRoot $Dockerfile
+    
+    # Build from output directory
+    podman build @tagArgs -f $dockerfilePath $OutputDir
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Failed to build $Name" -ForegroundColor Red
+        exit 1
+    }
+    
+    Write-Host "  ✅ $Name built" -ForegroundColor Green
+}
+
+# Build all images
+Build-DockerImage -Name "m3w" -Dockerfile "docker/Dockerfile"
+Build-DockerImage -Name "m3w-backend" -Dockerfile "docker/Dockerfile.backend"
+Build-DockerImage -Name "m3w-frontend" -Dockerfile "docker/Dockerfile.frontend"
+
+Write-Host ""
+Write-Host "✅ All images built successfully" -ForegroundColor Green
+
+# ============================================
+# Step 3: Show results
+# ============================================
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Build Results" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Show image sizes
+Write-Host "📊 Image sizes:" -ForegroundColor Yellow
+podman images --filter "reference=${Registry}/m3w*" --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | Select-Object -First 12
+
+Write-Host ""
+Write-Host "📋 Built tags:" -ForegroundColor Yellow
+foreach ($img in @("m3w", "m3w-backend", "m3w-frontend")) {
+    Write-Host "  ${Registry}/${img}: $($allTags -join ', ')" -ForegroundColor Gray
+}
+
+# ============================================
+# Step 4: Push (optional)
+# ============================================
+if ($Push) {
+    Write-Host ""
+    Write-Host "🚀 Pushing images to registry..." -ForegroundColor Yellow
+    Write-Host ""
+    
+    foreach ($img in @("m3w", "m3w-backend", "m3w-frontend")) {
+        foreach ($tag in $allTags) {
+            Write-Host "  Pushing ${Registry}/${img}:${tag}..." -ForegroundColor Gray
+            podman push "${Registry}/${img}:${tag}"
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "❌ Failed to push ${img}:${tag}" -ForegroundColor Red
+                exit 1
+            }
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "✅ All images pushed" -ForegroundColor Green
 } else {
     Write-Host ""
-    Write-Host "⏭️  Skipping push. Images are only local." -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "To push manually:" -ForegroundColor Cyan
-    Write-Host "   podman push ${Registry}/m3w:${version}" -ForegroundColor White
-    Write-Host "   podman push ${Registry}/m3w-backend:${version}" -ForegroundColor White
+    Write-Host "💡 To push: .\scripts\build-docker.ps1 -Type $Type -Push" -ForegroundColor Yellow
 }
 
 Write-Host ""
 Write-Host "✨ Done!" -ForegroundColor Green
+Write-Host ""
