@@ -42,7 +42,7 @@ export default defineConfig({
     'node-cron',
     'pino',
     'pino-pretty',
-    'pinyin',
+    'pinyin-pro',
     'zod',
   ],
   // Bundle these packages into the output (resolve at build time, not runtime)
