@@ -264,14 +264,16 @@ Frontend `API_BASE_URL` can be configured at runtime:
 
 ## Database Migrations
 
-Run migrations before first startup:
+**Auto-migration (default)**: All entrypoint scripts automatically run `prisma migrate deploy` on startup. No manual action required.
+
+For manual migration control:
 
 ```bash
-# Option 1: One-time command
-docker exec m3w-backend npx prisma migrate deploy
+# Skip auto-migration (if needed)
+docker run -e SKIP_MIGRATIONS=true m3w:latest
 
-# Option 2: Add to docker-compose.yml command
-command: sh -c "npx prisma migrate deploy && node dist/index.js"
+# Manual migration
+docker exec m3w-backend npx prisma migrate deploy
 ```
 
 ## Environment Variables
@@ -332,16 +334,18 @@ Image sizes after optimization ([Issue #60](https://github.com/test3207/m3w/issu
 
 | Image | Before | After | Savings |
 |-------|--------|-------|---------|
-| `m3w` (All-in-One) | ~626 MB | ~402 MB | ~36% |
-| `m3w-backend` | ~580 MB | ~400 MB | ~31% |
+| `m3w` (All-in-One) | ~626 MB | ~382 MB | ~39% |
+| `m3w-backend` | ~580 MB | ~379 MB | ~35% |
 | `m3w-frontend` | N/A | ~57 MB | N/A |
 
 **Optimization techniques applied**:
 
 1. **COPY-only Dockerfiles**: No npm install in containers, only copy pre-built artifacts
 2. **Production dependencies only**: `npm ci --omit=dev` (saves ~200 MB)
-3. **Post-generation cleanup**: Remove `prisma`, `typescript`, `effect`, `fast-check`, `@types/*` after Prisma Client generation (saves ~130 MB)
-4. **Single-layer optimization**: Build artifacts once, copy into minimal runtime image
+3. **Lightweight pinyin library**: Replaced `pinyin` (59MB) with `pinyin-pro` (927KB) for Chinese sorting (98% size reduction)
+4. **Prisma engine cleanup**: Remove unused database engines (MySQL, SQLite, SQL Server, CockroachDB)
+5. **Post-generation cleanup**: Remove `prisma`, `typescript`, `@types/*` after Prisma Client generation
+6. **Single-layer optimization**: Build artifacts once, copy into minimal runtime image
 
 ## Troubleshooting
 
