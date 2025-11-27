@@ -55,19 +55,19 @@ This ensures:
 
 ```bash
 # Build all images
-./scripts/build-docker-linux.sh prod
+./scripts/build-docker.sh prod
 
 # Build RC version
-./scripts/build-docker-linux.sh rc 1
+./scripts/build-docker.sh rc 1
 
 # Build and test AIO image
-./scripts/build-docker-linux.sh prod test
+./scripts/build-docker.sh prod test
 
 # Skip artifact build
-./scripts/build-docker-linux.sh prod skip-artifacts
+./scripts/build-docker.sh prod skip-artifacts
 
 # Build and push
-./scripts/build-docker-linux.sh prod push
+./scripts/build-docker.sh prod push
 ```
 
 ## Local Testing
@@ -81,7 +81,7 @@ Use the `-Test` flag to automatically test built images:
 
 ```bash
 # Linux: Build and test
-./scripts/build-docker-linux.sh prod test
+./scripts/build-docker.sh prod test
 ```
 
 This will:

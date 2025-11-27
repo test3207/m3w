@@ -7,13 +7,13 @@
 # 2. Installs Linux dependencies and builds
 # 3. Copies only dist and production node_modules back to /app/docker-build-output
 #
-# Usage (image version from docker/.docker-version):
+# Usage (with docker or podman - image version from docker/.docker-version):
 #   # Production build (default)
-#   podman run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
+#   docker run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
 #     <NODE_IMAGE> sh /app/scripts/docker-build.sh
 #
 #   # RC build (includes demo mode code)
-#   podman run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
+#   docker run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
 #     -e BUILD_TARGET=rc <NODE_IMAGE> sh /app/scripts/docker-build.sh
 #
 # Output (in docker-build-output/):
@@ -159,4 +159,4 @@ echo "📁 Output location: docker-build-output/"
 echo ""
 echo "🐳 Ready to build Docker images with:"
 echo "   Windows: .\\scripts\\build-docker.ps1 -Type prod -SkipArtifacts"
-echo "   Linux:   ./scripts/build-docker-linux.sh prod skip-artifacts"
+echo "   Linux:   ./scripts/build-docker.sh prod skip-artifacts"

@@ -1,13 +1,20 @@
 name: Create RC Branch
 
+# Creates a new RC branch from main for release candidate testing
+#
+# TODO: Re-enable scheduled trigger after full CI/CD testing is complete
+# See: https://github.com/test3207/m3w/issues/83
+
 on:
-  schedule:
-    # Run every Tuesday at 10:00 AM Beijing time (China Standard Time, UTC+8)
-    # Beijing 10:00 AM = UTC 02:00 AM (10 - 8 = 2)
-    # Day of week: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
-    # Status badge: https://github.com/test3207/m3w/actions/workflows/create-rc-branch.yml/badge.svg
-    - cron: '0 2 * * 2'
-  # Allow manual trigger for testing
+  # TEMPORARILY DISABLED - Uncomment after testing complete
+  # schedule:
+  #   # Run every Tuesday at 10:00 AM Beijing time (China Standard Time, UTC+8)
+  #   # Beijing 10:00 AM = UTC 02:00 AM (10 - 8 = 2)
+  #   # Day of week: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+  #   # Status badge: https://github.com/test3207/m3w/actions/workflows/create-rc-branch.yml/badge.svg
+  #   - cron: '0 2 * * 2'
+  
+  # Manual trigger for testing
   workflow_dispatch:
 
 permissions:
@@ -53,21 +60,11 @@ jobs:
           echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
           echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
 
-  run-pr-checks:
-    name: Run PR Checks
-    needs: check-commits
-    if: needs.check-commits.outputs.has_commits == 'true'
-    uses: ./.github/workflows/pr-check.yml
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-
   create-release-branch:
     name: Create Release Branch
     runs-on: ubuntu-latest
-    needs: [check-commits, run-pr-checks]
-    if: needs.check-commits.outputs.has_commits == 'true' && needs.run-pr-checks.result == 'success'
+    needs: check-commits
+    if: needs.check-commits.outputs.has_commits == 'true'
     
     steps:
       - name: Checkout main branch
@@ -90,8 +87,8 @@ jobs:
           
           # Find the highest RC number for this version
           HIGHEST_RC=0
-          for branch in $(git branch -r | grep "origin/release/v${CURRENT_VERSION}-rc" | sed 's/.*release\/v/v/' || echo ""); do
-            if [[ $branch =~ v${CURRENT_VERSION}-rc([0-9]+) ]]; then
+          for branch in $(git branch -r | grep "origin/release/v${CURRENT_VERSION}-rc\." | sed 's/.*release\/v/v/' || echo ""); do
+            if [[ $branch =~ v${CURRENT_VERSION}-rc\.([0-9]+) ]]; then
               RC_NUM=${BASH_REMATCH[1]}
               if [ "$RC_NUM" -gt "$HIGHEST_RC" ]; then
                 HIGHEST_RC=$RC_NUM
@@ -101,7 +98,7 @@ jobs:
           
           # Start with rc1 or increment from highest
           NEXT_RC=$((HIGHEST_RC + 1))
-          RC_VERSION="${CURRENT_VERSION}-rc${NEXT_RC}"
+          RC_VERSION="${CURRENT_VERSION}-rc.${NEXT_RC}"
           
           echo "Release version: $RC_VERSION"
           echo "RC number: $NEXT_RC"
@@ -181,7 +178,7 @@ jobs:
   workflow-summary:
     name: Workflow Summary
     runs-on: ubuntu-latest
-    needs: [check-commits, run-pr-checks, create-release-branch]
+    needs: [check-commits, create-release-branch]
     if: always()
     
     steps:
@@ -195,7 +192,6 @@ jobs:
           - **Check Commits**: ${{ needs.check-commits.result }}
           - **Has New Commits**: ${{ needs.check-commits.outputs.has_commits }}
           - **Commit Count**: ${{ needs.check-commits.outputs.commit_count }}
-          - **PR Checks**: ${{ needs.run-pr-checks.result }}
           - **Create Release Branch**: ${{ needs.create-release-branch.result }}
           
           ### Workflow Result
@@ -206,8 +202,6 @@ jobs:
             echo "ℹ️ **No commits found since last Tuesday. Workflow skipped.**" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.create-release-branch.result }}" == "success" ]; then
             echo "✅ **Release branch created successfully!**" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.run-pr-checks.result }}" != "success" ]; then
-            echo "❌ **PR checks failed. Release branch not created.**" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **Workflow completed with warnings.**" >> $GITHUB_STEP_SUMMARY
           fi

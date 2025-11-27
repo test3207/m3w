@@ -87,32 +87,32 @@ Automated release branch creation that runs every Tuesday if there are new commi
    - If no commits, workflow exits early (no unnecessary runs)
    - Outputs: commit count, latest commit hash
 
-2. **Run PR Checks** (conditional)
+2. **Create Release Branch** (conditional)
    - Only runs if new commits are detected
-   - Calls `pr-check.yml` as a reusable workflow
-   - Runs all quality checks, builds, and tests
-
-3. **Create Release Branch** (conditional)
-   - Only runs if commits exist AND PR checks pass
    - Uses current version from package.json (no increment)
    - Finds highest existing RC number for that version
-   - Creates release branch: `release/v{current-version}-rc{N}`
+   - Creates release branch: `release/v{current-version}-rc.{N}`
    - Does NOT update package.json (version stays same)
    - Provides summary with branch URL and next steps
 
-4. **Workflow Summary**
+3. **Workflow Summary**
    - Generates comprehensive summary of all steps
    - Shows status of each job and final result
 
 **Version Naming:**
 
 - Uses **current** version from package.json: `MAJOR.MINOR.PATCH`
-- Appends `-rcN` suffix (N starts at 1)
-- Example: If package.json has `0.1.0`:
-  - First release: `release/v0.1.0-rc1`
-  - After bug fix: `release/v0.1.0-rc2`
-  - After another fix: `release/v0.1.0-rc3`
-- **Version in package.json is NOT changed** until merge back to main
+- **Branch name**: `release/v{version}-rc.{N}` (with dot, SemVer compliant)
+  - Example: `release/v0.1.0-rc.1`, `release/v0.1.0-rc.2`
+- **Docker tag**: `v{version}-rc.{N}` (same format as branch)
+  - Example: `v0.1.0-rc.1`, `v0.1.0-rc.2`
+- **Version in package.json is NOT changed** until production release
+
+**Example Branch Names:**
+
+- First RC: `release/v0.1.0-rc.1`
+- After bug fix: `release/v0.1.0-rc.2`
+- After another fix: `release/v0.1.0-rc.3`
 
 **Example Flow:**
 
@@ -125,22 +125,22 @@ Week 1 Tuesday 00:00 UTC: Timer triggers
   ✓ Run all PR checks
   ✓ Read version: 0.1.0 (no increment)
   ✓ Check for existing RCs: none found
-  ✓ Create branch: release/v0.1.0-rc1
+  ✓ Create branch: release/v0.1.0-rc.1
   ✓ package.json still shows: 0.1.0
   ✓ Push branch
 
-Week 1 Wednesday: Bug found in rc1, fix merged to release/v0.1.0-rc1
+Week 1 Wednesday: Bug found in rc.1, fix merged to release/v0.1.0-rc.1
   → RC increment workflow triggers
-  ✓ Create branch: release/v0.1.0-rc2
+  ✓ Create branch: release/v0.1.0-rc.2
   ✓ package.json still shows: 0.1.0
 
-Week 1 Thursday: Another fix merged to release/v0.1.0-rc2
+Week 1 Thursday: Another fix merged to release/v0.1.0-rc.2
   → RC increment workflow triggers
-  ✓ Create branch: release/v0.1.0-rc3
+  ✓ Create branch: release/v0.1.0-rc.3
   ✓ package.json still shows: 0.1.0
 
-Week 1 Friday: rc3 tested and approved
-  → Create PR from release/v0.1.0-rc3 to main
+Week 1 Friday: rc.3 tested and approved
+  → Create PR from release/v0.1.0-rc.3 to main
   → Merge (version stays 0.1.0 or manually bump to 0.1.1)
   → Tag: v0.1.0 or v0.1.1
 
@@ -157,7 +157,7 @@ Week 3 Tuesday 00:00 UTC: Timer triggers
 git log --since="7 days ago" --oneline
 
 # Check existing RC branches for a version
-git branch -r | grep "release/v0.1.1-rc"
+git branch -r | grep "release/v0.1.1-rc\."
 
 # Trigger workflow manually
 # Go to: Actions → Scheduled Release → Run workflow
@@ -195,43 +195,43 @@ Automatically creates the next RC branch when changes are merged into a release 
 ```text
 Scenario: Bug fix workflow (package.json version: 0.1.0)
 
-1. Initial release branch created: release/v0.1.0-rc1
+1. Initial release branch created: release/v0.1.0-rc.1
    - package.json still shows: 0.1.0
    
 2. Testing reveals a bug
 
 3. Developer creates fix branch: fix/button-crash
 
-4. PR created: fix/button-crash → release/v0.1.0-rc1
+4. PR created: fix/button-crash → release/v0.1.0-rc.1
 
-5. PR merged → Push to release/v0.1.0-rc1
+5. PR merged → Push to release/v0.1.0-rc.1
 
 6. Workflow triggers automatically:
-   ✓ Detects push to release/v0.1.0-rc1
+   ✓ Detects push to release/v0.1.0-rc.1
    ✓ Parses version: 0.1.0, RC: 1
    ✓ Calculates next RC: 2
-   ✓ Creates branch: release/v0.1.0-rc2
+   ✓ Creates branch: release/v0.1.0-rc.2
    ✓ package.json still shows: 0.1.0
    
-7. QA tests release/v0.1.0-rc2
+7. QA tests release/v0.1.0-rc.2
 
-8. If more fixes needed, repeat from step 3 (targets rc2)
+8. If more fixes needed, repeat from step 3 (targets rc.2)
 
-9. When ready, merge release/v0.1.0-rc{final} to main
+9. When ready, merge release/v0.1.0-rc.{final} to main
    - Optionally bump version in package.json during merge
    - Tag the release: v0.1.0 or v0.1.1
 ```
 
 **Branch Naming Pattern:**
 
-- Format: `release/v{MAJOR}.{MINOR}.{PATCH}-rc{N}`
+- Format: `release/v{MAJOR}.{MINOR}.{PATCH}-rc.{N}` (SemVer compliant)
 - Uses **current** version from package.json (no auto-increment)
 - Examples (package.json shows 0.1.0):
-  - `release/v0.1.0-rc1` (first RC)
-  - `release/v0.1.0-rc2` (after first bug fix)
-  - `release/v0.1.0-rc3` (after second bug fix)
+  - `release/v0.1.0-rc.1` (first RC)
+  - `release/v0.1.0-rc.2` (after first bug fix)
+  - `release/v0.1.0-rc.3` (after second bug fix)
 - Examples (package.json shows 1.0.0):
-  - `release/v1.0.0-rc1` (major version, first RC)
+  - `release/v1.0.0-rc.1` (major version, first RC)
 
 **Important Notes:**
 

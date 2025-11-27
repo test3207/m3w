@@ -1,0 +1,155 @@
+name: Build RC Images
+
+# Build Docker images when a release candidate branch is created or updated
+# Triggered by: create-rc-branch.yml or increment-rc-branch.yml
+
+on:
+  push:
+    branches:
+      - 'release/v*.*.*-rc*'
+
+# Prevent concurrent builds for the same branch
+concurrency:
+  group: build-rc-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    name: Build RC Images
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Parse version from branch
+        id: version
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "Branch: $BRANCH"
+          
+          # Extract version components from branch name
+          # Branch format: release/v0.1.0-rc.1 (with dot, SemVer compliant)
+          if [[ $BRANCH =~ release/v([0-9]+\.[0-9]+\.[0-9]+)-rc\.([0-9]+) ]]; then
+            BASE_VERSION="${BASH_REMATCH[1]}"
+            RC_NUMBER="${BASH_REMATCH[2]}"
+            VERSION="v${BASE_VERSION}-rc.${RC_NUMBER}"
+            
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "rc_number=$RC_NUMBER" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Branch name does not match expected pattern"
+            exit 1
+          fi
+      
+      - name: Get Node.js version from config
+        id: node
+        run: |
+          NODE_VERSION=$(grep '^NODE_IMAGE=' docker/docker-version.conf | sed 's/.*node:\([0-9.]*\).*/\1/')
+          if [ -z "$NODE_VERSION" ]; then
+            echo "❌ Failed to extract Node.js version from docker-version.conf"
+            exit 1
+          fi
+          echo "version=$NODE_VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push images
+        env:
+          DOCKER_REGISTRY: ghcr.io/${{ github.repository_owner }}
+        run: |
+          chmod +x scripts/build-docker.sh
+          ./scripts/build-docker.sh rc ${{ steps.version.outputs.rc_number }} push
+      
+      - name: Create release archives
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Create archives from docker-build-output
+          cd docker-build-output
+          
+          # AIO (all files)
+          tar -czvf "../m3w-${VERSION}.tar.gz" .
+          zip -r "../m3w-${VERSION}.zip" .
+          
+          # Backend only
+          tar -czvf "../m3w-backend-${VERSION}.tar.gz" backend/ package.json package-lock.json prisma/
+          zip -r "../m3w-backend-${VERSION}.zip" backend/ package.json package-lock.json prisma/
+          
+          # Frontend only
+          tar -czvf "../m3w-frontend-${VERSION}.tar.gz" frontend/
+          zip -r "../m3w-frontend-${VERSION}.zip" frontend/
+          
+          cd ..
+          ls -la *.tar.gz *.zip
+      
+      - name: Create GitHub Pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release Candidate ${{ steps.version.outputs.version }}
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            ## ⚠️ Release Candidate
+            
+            This is a **pre-release** version for testing. Do not use in production.
+            
+            ### Docker Images
+            
+            ```bash
+            docker pull ghcr.io/${{ github.repository_owner }}/m3w:${{ steps.version.outputs.version }}
+            ```
+            
+            ### Download Archives
+            
+            | Package | Description |
+            |---------|-------------|
+            | `m3w-${{ steps.version.outputs.version }}.tar.gz` | All-in-One (Frontend + Backend) |
+            | `m3w-backend-${{ steps.version.outputs.version }}.tar.gz` | Backend only |
+            | `m3w-frontend-${{ steps.version.outputs.version }}.tar.gz` | Frontend static files |
+          files: |
+            m3w-${{ steps.version.outputs.version }}.tar.gz
+            m3w-${{ steps.version.outputs.version }}.zip
+            m3w-backend-${{ steps.version.outputs.version }}.tar.gz
+            m3w-backend-${{ steps.version.outputs.version }}.zip
+            m3w-frontend-${{ steps.version.outputs.version }}.tar.gz
+            m3w-frontend-${{ steps.version.outputs.version }}.zip
+      
+      - name: Generate summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## 🐳 RC Build Complete
+          
+          ### Docker Images
+          | Image | Tags |
+          |-------|------|
+          | \`ghcr.io/${{ github.repository_owner }}/m3w\` | \`$VERSION\`, \`rc\` |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w-backend\` | \`$VERSION\`, \`rc\` |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w-frontend\` | \`$VERSION\`, \`rc\` |
+          
+          ### Release Archives
+          | File | Size |
+          |------|------|
+          | m3w-${VERSION}.tar.gz | $(du -h m3w-${VERSION}.tar.gz | cut -f1) |
+          | m3w-backend-${VERSION}.tar.gz | $(du -h m3w-backend-${VERSION}.tar.gz | cut -f1) |
+          | m3w-frontend-${VERSION}.tar.gz | $(du -h m3w-frontend-${VERSION}.tar.gz | cut -f1) |
+          
+          ### GitHub Release
+          [View Release](https://github.com/${{ github.repository }}/releases/tag/$VERSION)
+          EOF
