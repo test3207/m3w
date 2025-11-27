@@ -53,18 +53,34 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Install openssl for Prisma
+RUN apk add --no-cache openssl
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 honouser
 
-# Copy shared package
+# Copy shared package (needed as local dependency)
 COPY --from=shared-builder --chown=honouser:nodejs /app/shared ./shared
 
-# Copy backend
-COPY --from=builder --chown=honouser:nodejs /app/backend/dist ./backend/dist
-COPY --from=builder --chown=honouser:nodejs /app/backend/node_modules ./backend/node_modules
+# Copy backend package files and Prisma schema
+COPY --from=builder --chown=honouser:nodejs /app/backend/package.json /app/backend/package-lock.json ./backend/
 COPY --from=builder --chown=honouser:nodejs /app/backend/prisma ./backend/prisma
-COPY --from=builder --chown=honouser:nodejs /app/backend/package.json ./backend/
+
+# Install production dependencies, generate Prisma client, then cleanup
+# All in one layer to minimize image size
+RUN cd backend && \
+    npm ci --omit=dev && \
+    npx prisma generate && \
+    # Remove prisma CLI (~67MB), typescript (~23MB), and @types after generation
+    rm -rf node_modules/prisma node_modules/typescript node_modules/@types && \
+    # Remove effect package (~34MB) - only needed by prisma CLI
+    rm -rf node_modules/effect node_modules/fast-check && \
+    npm cache clean --force && \
+    rm -rf /root/.npm /tmp/*
+
+# Copy built backend
+COPY --from=builder --chown=honouser:nodejs /app/backend/dist ./backend/dist
 
 USER honouser
 
