@@ -41,6 +41,9 @@ This ensures:
 # Build RC version
 .\scripts\build-docker.ps1 -Type rc -RcNumber 1
 
+# Build and test AIO image
+.\scripts\build-docker.ps1 -Type prod -Test
+
 # Skip artifact build (use existing docker-build-output/)
 .\scripts\build-docker.ps1 -Type prod -SkipArtifacts
 
@@ -57,11 +60,63 @@ This ensures:
 # Build RC version
 ./scripts/build-docker-linux.sh rc 1
 
+# Build and test AIO image
+./scripts/build-docker-linux.sh prod test
+
 # Skip artifact build
 ./scripts/build-docker-linux.sh prod skip-artifacts
 
 # Build and push
 ./scripts/build-docker-linux.sh prod push
+```
+
+## Local Testing
+
+Use the `-Test` flag to automatically test built images:
+
+```powershell
+# Windows: Build and test
+.\scripts\build-docker.ps1 -Type prod -Test
+```
+
+```bash
+# Linux: Build and test
+./scripts/build-docker-linux.sh prod test
+```
+
+This will:
+
+1. Check for `backend/.env.docker` (creates from `.env` if missing)
+2. Ensure PostgreSQL and MinIO are running (starts docker-compose if needed)
+3. Start the AIO container with correct network settings
+4. Run health checks on API and frontend
+5. Report test results
+
+**Prerequisites for testing**:
+
+- `backend/.env.docker` with GitHub OAuth credentials
+- Docker network `m3w_default` (created by main docker-compose.yml)
+
+**Manual testing** (if not using `-Test` flag):
+
+```bash
+# 1. Create .env.docker from template
+cp backend/.env.docker.example backend/.env.docker
+# Edit with your credentials
+
+# 2. Start dependencies
+docker-compose up -d
+
+# 3. Run test container
+docker-compose -f docker/docker-compose.test.yml up -d
+
+# 4. Check logs
+docker logs -f m3w-test
+
+# 5. Open http://localhost:4000
+
+# 6. Cleanup
+docker-compose -f docker/docker-compose.test.yml down
 ```
 
 ## Manual Build Steps

@@ -211,6 +211,20 @@ class ApiClient {
  * - `mainApiClient` for JSON API calls
  * - `streamApiClient` for binary/stream data
  */
-// Use VITE_API_URL from environment for base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-export const apiClient = new ApiClient(API_BASE_URL);
+// Get API base URL with runtime config support
+// Priority: Runtime config (Docker) > Build-time env var > Dev default
+// In AIO mode: empty string means same-origin (relative URLs)
+const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runtimeUrl = (window as any).__API_BASE_URL__;
+    // If runtime config is set and not the placeholder
+    if (runtimeUrl && runtimeUrl !== '__API_BASE_URL__') {
+      return runtimeUrl;
+    }
+  }
+  // Fallback to build-time env or dev default
+  return import.meta.env.VITE_API_URL || 'http://localhost:4000';
+};
+
+export const apiClient = new ApiClient(getApiBaseUrl());

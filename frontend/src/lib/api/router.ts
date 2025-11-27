@@ -11,12 +11,22 @@ import { logger } from '../logger-client';
 
 // Backend API base URL
 // Priority: Runtime config (Docker) > Build-time env var > Dev default
-const API_BASE_URL = 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (typeof window !== 'undefined' && (window as any).__API_BASE_URL__ !== '__API_BASE_URL__') 
+// In AIO mode: empty string means same-origin (relative URLs)
+// In separated mode: full URL to backend
+const getRuntimeApiUrl = (): string => {
+  if (typeof window !== 'undefined') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? (window as any).__API_BASE_URL__ 
-    : (import.meta.env.VITE_API_URL || 'http://localhost:4000');
+    const runtimeUrl = (window as any).__API_BASE_URL__;
+    // If runtime config is set and not the placeholder
+    if (runtimeUrl && runtimeUrl !== '__API_BASE_URL__') {
+      return runtimeUrl;
+    }
+  }
+  // Fallback to build-time env or dev default
+  return import.meta.env.VITE_API_URL || 'http://localhost:4000';
+};
+
+const API_BASE_URL = getRuntimeApiUrl();
 
 // Track backend reachability
 let isBackendReachable = true;
