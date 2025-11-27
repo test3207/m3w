@@ -151,6 +151,7 @@ jobs:
       
       - name: Create summary
         run: |
+          NEXT_RC=$((${{ steps.version.outputs.rc_number }} + 1))
           cat >> $GITHUB_STEP_SUMMARY <<EOF
           ## 🎉 Release Branch Created
           
@@ -165,7 +166,7 @@ jobs:
           
           1. Review and test the release branch
           2. If bugs are found, fix them and merge into this release branch
-          3. For each bug fix merge, a new RC branch (rc$(({{ steps.version.outputs.rc_number }} + 1))) will be created automatically
+          3. For each bug fix merge, a new RC branch (rc.${NEXT_RC}) will be created automatically
           4. When ready, create a Pull Request to merge into \`main\`
           5. **During merge to main**: Update package.json version to \`${{ steps.version.outputs.base_version }}\` (if needed)
           6. After merge, tag the release as \`v${{ steps.version.outputs.base_version }}\`
