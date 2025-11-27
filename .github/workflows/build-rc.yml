@@ -1,0 +1,190 @@
+name: Build RC Images
+
+# Build Docker images when a release candidate branch is created or updated
+# Triggered by: create-rc-branch.yml or increment-rc-branch.yml
+
+on:
+  push:
+    branches:
+      - 'release/v*.*.*-rc*'
+
+# Prevent concurrent builds for the same branch
+concurrency:
+  group: build-rc-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # Extract version info from branch name
+  prepare:
+    name: Prepare Build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      base_version: ${{ steps.version.outputs.base_version }}
+      rc_number: ${{ steps.version.outputs.rc_number }}
+    
+    steps:
+      - name: Parse version from branch
+        id: version
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "Branch: $BRANCH"
+          
+          # Extract version components from branch name
+          # Format: release/v0.1.0-rc1 or release/v0.1.0-rc.1
+          if [[ $BRANCH =~ release/v([0-9]+\.[0-9]+\.[0-9]+)-rc\.?([0-9]+) ]]; then
+            BASE_VERSION="${BASH_REMATCH[1]}"
+            RC_NUMBER="${BASH_REMATCH[2]}"
+            VERSION="v${BASE_VERSION}-rc.${RC_NUMBER}"
+            
+            echo "Base version: $BASE_VERSION"
+            echo "RC number: $RC_NUMBER"
+            echo "Full version: $VERSION"
+            
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+            echo "rc_number=$RC_NUMBER" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Branch name does not match expected pattern"
+            exit 1
+          fi
+
+  # Build artifacts in a container (same as local build)
+  build-artifacts:
+    name: Build Artifacts
+    runs-on: ubuntu-latest
+    needs: prepare
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Build artifacts in container
+        run: |
+          echo "Building artifacts with BUILD_TARGET=rc..."
+          
+          # Create output directory
+          mkdir -p docker-build-output
+          
+          # Run the same build script used locally
+          docker run --rm \
+            -v "$PWD:/app:ro" \
+            -v "$PWD/docker-build-output:/output" \
+            -e BUILD_TARGET=rc \
+            node:25.2.1-alpine \
+            sh -c "sh /app/scripts/docker-build.sh"
+          
+          echo "✅ Artifacts built successfully"
+          ls -la docker-build-output/
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-build-output
+          path: docker-build-output/
+          retention-days: 1
+
+  # Build and push Docker images
+  build-images:
+    name: Build ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    needs: [prepare, build-artifacts]
+    
+    strategy:
+      matrix:
+        include:
+          - image: m3w
+            dockerfile: docker/Dockerfile
+            description: All-in-One (Frontend + Backend)
+          - image: m3w-backend
+            dockerfile: docker/Dockerfile.backend
+            description: Backend API only
+          - image: m3w-frontend
+            dockerfile: docker/Dockerfile.frontend
+            description: Frontend static files
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-build-output
+          path: docker-build-output/
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker-build-output
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ needs.prepare.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:rc
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+  # Summary job
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [prepare, build-images]
+    if: always()
+    
+    steps:
+      - name: Generate summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ## 🐳 RC Images Build Summary
+          
+          ### Version Info
+          | Property | Value |
+          |----------|-------|
+          | Version | \`${{ needs.prepare.outputs.version }}\` |
+          | Base Version | \`${{ needs.prepare.outputs.base_version }}\` |
+          | RC Number | \`${{ needs.prepare.outputs.rc_number }}\` |
+          | Commit | \`${{ github.sha }}\` |
+          
+          ### Built Images
+          | Image | Tags |
+          |-------|------|
+          | \`ghcr.io/${{ github.repository_owner }}/m3w\` | \`${{ needs.prepare.outputs.version }}\`, \`rc\` |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w-backend\` | \`${{ needs.prepare.outputs.version }}\`, \`rc\` |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w-frontend\` | \`${{ needs.prepare.outputs.version }}\`, \`rc\` |
+          
+          ### Pull Commands
+          \`\`\`bash
+          # All-in-One (recommended for simple deployments)
+          docker pull ghcr.io/${{ github.repository_owner }}/m3w:${{ needs.prepare.outputs.version }}
+          
+          # Backend only
+          docker pull ghcr.io/${{ github.repository_owner }}/m3w-backend:${{ needs.prepare.outputs.version }}
+          
+          # Frontend only
+          docker pull ghcr.io/${{ github.repository_owner }}/m3w-frontend:${{ needs.prepare.outputs.version }}
+          \`\`\`
+          
+          ### Next Steps
+          1. Test the RC images
+          2. If issues found, push fixes to the release branch
+          3. When ready, create a production release via \`build-release.yml\`
+          EOF
