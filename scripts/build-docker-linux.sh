@@ -58,6 +58,14 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="$PROJECT_ROOT/docker-build-output"
 REGISTRY="${DOCKER_REGISTRY:-ghcr.io/test3207}"
 
+# Read NODE_IMAGE from docker/.docker-version
+NODE_IMAGE="node:25.2.1-alpine"  # fallback
+DOCKER_VERSION_FILE="$PROJECT_ROOT/docker/.docker-version"
+if [[ -f "$DOCKER_VERSION_FILE" ]]; then
+    NODE_IMAGE=$(grep "^NODE_IMAGE=" "$DOCKER_VERSION_FILE" | cut -d'=' -f2 | tr -d ' ')
+    NODE_IMAGE="${NODE_IMAGE:-node:25.2.1-alpine}"
+fi
+
 # Read version from package.json
 BASE_VERSION=$(node -p "require('$PROJECT_ROOT/package.json').version")
 
@@ -115,7 +123,7 @@ if [[ "$SKIP_ARTIFACTS" == "false" ]]; then
             -v "$PROJECT_ROOT:/app:ro" \
             -v "$OUTPUT_DIR:/output" \
             -e "BUILD_TARGET=$BUILD_TARGET" \
-            node:25.2.1-alpine \
+            $NODE_IMAGE \
             sh -c "mkdir -p /build && sh /app/scripts/docker-build.sh"
     fi
     

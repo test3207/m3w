@@ -1,0 +1,6 @@
+# Docker base image configuration
+# This file is the single source of truth for base images used in builds
+# Update this file when upgrading Node.js version
+
+# Node.js base image for building and runtime
+NODE_IMAGE=node:25.2.1-alpine

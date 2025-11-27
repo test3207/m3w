@@ -7,14 +7,14 @@
 # 2. Installs Linux dependencies and builds
 # 3. Copies only dist and production node_modules back to /app/docker-build-output
 #
-# Usage:
+# Usage (image version from docker/.docker-version):
 #   # Production build (default)
 #   podman run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
-#     node:25.2.1-alpine sh /app/scripts/docker-build.sh
+#     <NODE_IMAGE> sh /app/scripts/docker-build.sh
 #
 #   # RC build (includes demo mode code)
 #   podman run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
-#     -e BUILD_TARGET=rc node:25.2.1-alpine sh /app/scripts/docker-build.sh
+#     -e BUILD_TARGET=rc <NODE_IMAGE> sh /app/scripts/docker-build.sh
 #
 # Output (in docker-build-output/):
 #   - backend/dist/          (compiled backend)

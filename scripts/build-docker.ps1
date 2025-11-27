@@ -39,6 +39,16 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = (Get-Item $PSScriptRoot).Parent.FullName
 $OutputDir = Join-Path $ProjectRoot "docker-build-output"
 
+# Read NODE_IMAGE from docker/.docker-version
+$dockerVersionFile = Join-Path $ProjectRoot "docker/.docker-version"
+$NodeImage = "node:25.2.1-alpine"  # fallback
+if (Test-Path $dockerVersionFile) {
+    $content = Get-Content $dockerVersionFile | Where-Object { $_ -match "^NODE_IMAGE=" }
+    if ($content) {
+        $NodeImage = ($content -split "=", 2)[1].Trim()
+    }
+}
+
 # Read version from package.json
 $packageJson = Get-Content (Join-Path $ProjectRoot "package.json") | ConvertFrom-Json
 $baseVersion = $packageJson.version
@@ -87,7 +97,7 @@ if (-not $SkipArtifacts) {
         -v "${ProjectRoot}:/app:ro" `
         -v "${OutputDir}:/output" `
         -e "BUILD_TARGET=$buildTarget" `
-        node:25.2.1-alpine `
+        $NodeImage `
         sh -c "mkdir -p /build && sh /app/scripts/docker-build.sh"
     
     if ($LASTEXITCODE -ne 0) {
