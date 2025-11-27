@@ -2,11 +2,30 @@ name: Build RC Images
 
 # Build Docker images when a release candidate branch is created or updated
 # Triggered by: create-rc-branch.yml or increment-rc-branch.yml
+#
+# Note: Push events from workflows using GITHUB_TOKEN don't trigger other workflows.
+# This workflow is called directly via workflow_call from create-rc-branch.yml
 
 on:
   push:
     branches:
       - 'release/v*.*.*-rc*'
+  
+  # Called by create-rc-branch.yml after branch creation
+  workflow_call:
+    inputs:
+      branch:
+        description: 'RC branch name'
+        required: true
+        type: string
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'RC branch to build (e.g., release/v0.1.0-rc.1)'
+        required: true
+        type: string
 
 # Prevent concurrent builds for the same branch
 concurrency:
@@ -23,13 +42,29 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Determine branch
+        id: branch
+        run: |
+          # Support multiple trigger types:
+          # - push: use GITHUB_REF
+          # - workflow_call/workflow_dispatch: use inputs.branch
+          if [ -n "${{ inputs.branch }}" ]; then
+            BRANCH="${{ inputs.branch }}"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Using branch: $BRANCH"
+      
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch.outputs.branch }}
       
       - name: Parse version from branch
         id: version
         run: |
-          BRANCH="${GITHUB_REF#refs/heads/}"
+          BRANCH="${{ steps.branch.outputs.branch }}"
           echo "Branch: $BRANCH"
           
           # Extract version components from branch name
@@ -42,7 +77,8 @@ jobs:
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "rc_number=$RC_NUMBER" >> $GITHUB_OUTPUT
           else
-            echo "❌ Branch name does not match expected pattern"
+            echo "❌ Branch name does not match expected pattern: $BRANCH"
+            echo "   Expected format: release/v0.1.0-rc.1"
             exit 1
           fi
       

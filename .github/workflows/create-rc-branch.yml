@@ -65,6 +65,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: check-commits
     if: needs.check-commits.outputs.has_commits == 'true'
+    outputs:
+      branch_name: ${{ steps.branch_check.outputs.branch_name }}
+      version: ${{ steps.version.outputs.version }}
+      rc_number: ${{ steps.version.outputs.rc_number }}
     
     steps:
       - name: Checkout main branch
@@ -175,6 +179,17 @@ jobs:
           
           https://github.com/${{ github.repository }}/tree/${{ steps.branch_check.outputs.branch_name }}
           EOF
+
+  # Trigger RC build after branch creation
+  # Note: Push events from GITHUB_TOKEN don't trigger other workflows,
+  # so we need to explicitly call build-rc.yml
+  trigger-build:
+    name: Trigger RC Build
+    needs: create-release-branch
+    uses: ./.github/workflows/build-rc.yml
+    with:
+      branch: ${{ needs.create-release-branch.outputs.branch_name }}
+    secrets: inherit
 
   workflow-summary:
     name: Workflow Summary

@@ -18,6 +18,9 @@ jobs:
   increment-rc:
     name: Create Next RC Branch
     runs-on: ubuntu-latest
+    outputs:
+      next_branch: ${{ steps.branch_check.outputs.next_branch }}
+      created: ${{ steps.branch_check.outputs.exists == 'false' }}
     
     steps:
       - name: Checkout release branch
@@ -109,7 +112,7 @@ jobs:
           
           1. Test the new RC branch: \`${{ steps.branch_check.outputs.next_branch }}\`
           2. If more fixes are needed, merge them into the new RC branch
-          3. Each merge will create another RC increment (rc$(({{ steps.version.outputs.next_rc }} + 1)), etc.)
+          3. Each merge will create another RC increment
           4. When ready for release, create PR from the latest RC to \`main\`
           
           ### Branch URL
@@ -129,3 +132,14 @@ jobs:
           
           The next RC branch already exists. This is normal if multiple commits were pushed in quick succession.
           EOF
+
+  # Trigger RC build after branch creation
+  # Note: Push events from GITHUB_TOKEN don't trigger other workflows
+  trigger-build:
+    name: Trigger RC Build
+    needs: increment-rc
+    if: needs.increment-rc.outputs.created == 'true'
+    uses: ./.github/workflows/build-rc.yml
+    with:
+      branch: ${{ needs.increment-rc.outputs.next_branch }}
+    secrets: inherit
