@@ -113,25 +113,8 @@ jobs:
       
       - name: Create release archives
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          
-          # Create archives from docker-build-output
-          cd docker-build-output
-          
-          # AIO (all files)
-          tar -czvf "../m3w-${VERSION}.tar.gz" .
-          zip -r "../m3w-${VERSION}.zip" .
-          
-          # Backend only
-          tar -czvf "../m3w-backend-${VERSION}.tar.gz" backend/ package.json package-lock.json prisma/
-          zip -r "../m3w-backend-${VERSION}.zip" backend/ package.json package-lock.json prisma/
-          
-          # Frontend only
-          tar -czvf "../m3w-frontend-${VERSION}.tar.gz" frontend/
-          zip -r "../m3w-frontend-${VERSION}.zip" frontend/
-          
-          cd ..
-          ls -la *.tar.gz *.zip
+          chmod +x scripts/create-archives.sh
+          ./scripts/create-archives.sh ${{ steps.version.outputs.version }}
       
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
