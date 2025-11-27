@@ -28,22 +28,41 @@ set -e
 # Build target: prod (default) or rc (includes demo mode)
 BUILD_TARGET="${BUILD_TARGET:-prod}"
 
+# Determine paths based on environment
+# - In container: /app (source), /build (temp), /output (output)
+# - In CI/host: current dir (source), ./build-temp (temp), ./docker-build-output (output)
+if [ -d "/app" ] && [ -d "/output" ]; then
+    # Running in container with mounted volumes
+    SOURCE_DIR="/app"
+    BUILD_DIR="/build"
+    OUTPUT_DIR="/output"
+else
+    # Running directly on CI/host
+    SOURCE_DIR="$(pwd)"
+    BUILD_DIR="$(pwd)/build-temp"
+    OUTPUT_DIR="$(pwd)/docker-build-output"
+fi
+
 echo "🔨 M3W Docker Build Script"
 echo "=========================="
 echo "   Build Target: $BUILD_TARGET"
+echo "   Source Dir: $SOURCE_DIR"
+echo "   Build Dir: $BUILD_DIR"
+echo "   Output Dir: $OUTPUT_DIR"
 
 # Step 1: Copy source files to isolated build directory (exclude node_modules)
 echo ""
-echo "📋 Step 1: Copying source files to /build..."
-mkdir -p /build
-cd /app
+echo "📋 Step 1: Copying source files to $BUILD_DIR..."
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
+cd "$SOURCE_DIR"
 
 # Copy files using tar to exclude node_modules and dist
 tar -c --exclude='node_modules' --exclude='dist' --exclude='.git' \
     -f - shared frontend backend scripts package.json package-lock.json | \
-    tar -x -C /build -f -
+    tar -x -C "$BUILD_DIR" -f -
 
-cd /build
+cd "$BUILD_DIR"
 
 # Step 2: Install all dependencies
 echo ""
@@ -114,45 +133,49 @@ fi
 
 cd ..
 
-# Step 5: Copy output to /output directory
+# Step 5: Copy output to output directory
 echo ""
 echo "📤 Step 5: Copying build output..."
 
 # Clean output directory
-# Note: This runs inside a container with /output as a mounted volume.
-# The container isolation ensures this is safe. If running outside container,
-# ensure OUTPUT_DIR is properly set and validated.
-rm -rf /output/*
+rm -rf "$OUTPUT_DIR"/*
+mkdir -p "$OUTPUT_DIR"
 
 # Note: shared package is bundled into backend via tsup noExternal config
 # No need to copy shared separately
 
 # Copy backend
-mkdir -p /output/backend
-cp -r /build/backend/dist /output/backend/
-cp -r /build/backend/node_modules /output/backend/
-cp -r /build/backend/prisma /output/backend/
-cp /build/backend/package.json /output/backend/
+mkdir -p "$OUTPUT_DIR/backend"
+cp -r "$BUILD_DIR/backend/dist" "$OUTPUT_DIR/backend/"
+cp -r "$BUILD_DIR/backend/node_modules" "$OUTPUT_DIR/backend/"
+cp -r "$BUILD_DIR/backend/prisma" "$OUTPUT_DIR/backend/"
+cp "$BUILD_DIR/backend/package.json" "$OUTPUT_DIR/backend/"
 
 # Copy frontend
-mkdir -p /output/frontend
-cp -r /build/frontend/dist /output/frontend/
+mkdir -p "$OUTPUT_DIR/frontend"
+cp -r "$BUILD_DIR/frontend/dist" "$OUTPUT_DIR/frontend/"
 
 # Copy docker entrypoint scripts
-mkdir -p /output/docker
-cp /app/docker/docker-entrypoint-allinone.sh /output/docker/ 2>/dev/null || true
-cp /app/docker/docker-entrypoint-backend.sh /output/docker/ 2>/dev/null || true
-cp /app/docker/docker-entrypoint-frontend.sh /output/docker/ 2>/dev/null || true
-cp /app/docker/nginx.conf /output/docker/ 2>/dev/null || true
+mkdir -p "$OUTPUT_DIR/docker"
+cp "$SOURCE_DIR/docker/docker-entrypoint-allinone.sh" "$OUTPUT_DIR/docker/" 2>/dev/null || true
+cp "$SOURCE_DIR/docker/docker-entrypoint-backend.sh" "$OUTPUT_DIR/docker/" 2>/dev/null || true
+cp "$SOURCE_DIR/docker/docker-entrypoint-frontend.sh" "$OUTPUT_DIR/docker/" 2>/dev/null || true
+cp "$SOURCE_DIR/docker/nginx.conf" "$OUTPUT_DIR/docker/" 2>/dev/null || true
+
+# Clean up build directory if not in container (CI environment)
+if [ "$BUILD_DIR" != "/build" ]; then
+    echo "   Cleaning up temporary build directory..."
+    rm -rf "$BUILD_DIR"
+fi
 
 # Step 6: Report results
 echo ""
 echo "✅ Build complete!"
 echo ""
 echo "📊 Output sizes:"
-du -sh /output/backend/dist
-du -sh /output/backend/node_modules
-du -sh /output/frontend/dist
+du -sh "$OUTPUT_DIR/backend/dist"
+du -sh "$OUTPUT_DIR/backend/node_modules"
+du -sh "$OUTPUT_DIR/frontend/dist"
 
 echo ""
 echo "📁 Output location: docker-build-output/"
