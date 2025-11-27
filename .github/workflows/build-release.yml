@@ -103,7 +103,29 @@ jobs:
             ./scripts/build-docker.sh prod push
           fi
       
-      - name: Commit version bump and create release
+      - name: Create release archives
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          
+          # Create archives from docker-build-output
+          cd docker-build-output
+          
+          # AIO (all files)
+          tar -czvf "../m3w-${VERSION}.tar.gz" .
+          zip -r "../m3w-${VERSION}.zip" .
+          
+          # Backend only
+          tar -czvf "../m3w-backend-${VERSION}.tar.gz" backend/ package.json package-lock.json prisma/
+          zip -r "../m3w-backend-${VERSION}.zip" backend/ package.json package-lock.json prisma/
+          
+          # Frontend only
+          tar -czvf "../m3w-frontend-${VERSION}.tar.gz" frontend/
+          zip -r "../m3w-frontend-${VERSION}.zip" frontend/
+          
+          cd ..
+          ls -la *.tar.gz *.zip
+      
+      - name: Commit version bump and create tag
         if: ${{ !inputs.dry_run }}
         run: |
           git config user.name "github-actions[bot]"
@@ -120,18 +142,48 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Release ${{ steps.version.outputs.tag }}
+          prerelease: false
           generate_release_notes: true
           body: |
-            ## Docker Images
+            ## 🚀 Production Release
+            
+            ### Docker Images
             
             ```bash
+            # All-in-One (recommended)
             docker pull ghcr.io/${{ github.repository_owner }}/m3w:${{ steps.version.outputs.tag }}
             # Or use latest
             docker pull ghcr.io/${{ github.repository_owner }}/m3w:latest
+            
+            # Backend only
+            docker pull ghcr.io/${{ github.repository_owner }}/m3w-backend:${{ steps.version.outputs.tag }}
+            
+            # Frontend only
+            docker pull ghcr.io/${{ github.repository_owner }}/m3w-frontend:${{ steps.version.outputs.tag }}
             ```
+            
+            ### Download Archives
+            
+            | Package | Description |
+            |---------|-------------|
+            | `m3w-${{ steps.version.outputs.tag }}.tar.gz` | All-in-One (Frontend + Backend) |
+            | `m3w-backend-${{ steps.version.outputs.tag }}.tar.gz` | Backend only |
+            | `m3w-frontend-${{ steps.version.outputs.tag }}.tar.gz` | Frontend static files |
+            
+            ### Quick Start
+            
+            See [deployment documentation](https://github.com/${{ github.repository }}/blob/main/docker/README.md) for setup instructions.
+          files: |
+            m3w-${{ steps.version.outputs.tag }}.tar.gz
+            m3w-${{ steps.version.outputs.tag }}.zip
+            m3w-backend-${{ steps.version.outputs.tag }}.tar.gz
+            m3w-backend-${{ steps.version.outputs.tag }}.zip
+            m3w-frontend-${{ steps.version.outputs.tag }}.tar.gz
+            m3w-frontend-${{ steps.version.outputs.tag }}.zip
       
       - name: Generate summary
         run: |
+          VERSION="${{ steps.version.outputs.tag }}"
           cat >> $GITHUB_STEP_SUMMARY <<EOF
           ## 🚀 Production Release
           
@@ -141,10 +193,20 @@ jobs:
           | New | \`${{ steps.version.outputs.new }}\` |
           | Dry Run | \`${{ inputs.dry_run }}\` |
           
-          ### Images
+          ### Docker Images
           | Image | Tags |
           |-------|------|
-          | \`ghcr.io/${{ github.repository_owner }}/m3w\` | \`${{ steps.version.outputs.tag }}\`, \`latest\` |
-          | \`ghcr.io/${{ github.repository_owner }}/m3w-backend\` | Same |
-          | \`ghcr.io/${{ github.repository_owner }}/m3w-frontend\` | Same |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w\` | \`$VERSION\`, \`latest\` |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w-backend\` | \`$VERSION\`, \`latest\` |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w-frontend\` | \`$VERSION\`, \`latest\` |
+          
+          ### Release Archives
+          | File | Size |
+          |------|------|
+          | m3w-${VERSION}.tar.gz | $(du -h m3w-${VERSION}.tar.gz | cut -f1) |
+          | m3w-backend-${VERSION}.tar.gz | $(du -h m3w-backend-${VERSION}.tar.gz | cut -f1) |
+          | m3w-frontend-${VERSION}.tar.gz | $(du -h m3w-frontend-${VERSION}.tar.gz | cut -f1) |
+          
+          ### GitHub Release
+          $(if [ "${{ inputs.dry_run }}" != "true" ]; then echo "[View Release](https://github.com/${{ github.repository }}/releases/tag/$VERSION)"; else echo "Dry run - no release created"; fi)
           EOF

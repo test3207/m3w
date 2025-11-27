@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -71,19 +71,81 @@ jobs:
           chmod +x scripts/build-docker.sh
           ./scripts/build-docker.sh rc ${{ steps.version.outputs.rc_number }} push
       
+      - name: Create release archives
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Create archives from docker-build-output
+          cd docker-build-output
+          
+          # AIO (all files)
+          tar -czvf "../m3w-${VERSION}.tar.gz" .
+          zip -r "../m3w-${VERSION}.zip" .
+          
+          # Backend only
+          tar -czvf "../m3w-backend-${VERSION}.tar.gz" backend/ package.json package-lock.json prisma/
+          zip -r "../m3w-backend-${VERSION}.zip" backend/ package.json package-lock.json prisma/
+          
+          # Frontend only
+          tar -czvf "../m3w-frontend-${VERSION}.tar.gz" frontend/
+          zip -r "../m3w-frontend-${VERSION}.zip" frontend/
+          
+          cd ..
+          ls -la *.tar.gz *.zip
+      
+      - name: Create GitHub Pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release Candidate ${{ steps.version.outputs.version }}
+          prerelease: true
+          generate_release_notes: true
+          body: |
+            ## ⚠️ Release Candidate
+            
+            This is a **pre-release** version for testing. Do not use in production.
+            
+            ### Docker Images
+            
+            ```bash
+            docker pull ghcr.io/${{ github.repository_owner }}/m3w:${{ steps.version.outputs.version }}
+            ```
+            
+            ### Download Archives
+            
+            | Package | Description |
+            |---------|-------------|
+            | `m3w-${{ steps.version.outputs.version }}.tar.gz` | All-in-One (Frontend + Backend) |
+            | `m3w-backend-${{ steps.version.outputs.version }}.tar.gz` | Backend only |
+            | `m3w-frontend-${{ steps.version.outputs.version }}.tar.gz` | Frontend static files |
+          files: |
+            m3w-${{ steps.version.outputs.version }}.tar.gz
+            m3w-${{ steps.version.outputs.version }}.zip
+            m3w-backend-${{ steps.version.outputs.version }}.tar.gz
+            m3w-backend-${{ steps.version.outputs.version }}.zip
+            m3w-frontend-${{ steps.version.outputs.version }}.tar.gz
+            m3w-frontend-${{ steps.version.outputs.version }}.zip
+      
       - name: Generate summary
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           cat >> $GITHUB_STEP_SUMMARY <<EOF
-          ## 🐳 RC Images Built
+          ## 🐳 RC Build Complete
           
+          ### Docker Images
           | Image | Tags |
           |-------|------|
           | \`ghcr.io/${{ github.repository_owner }}/m3w\` | \`$VERSION\`, \`rc\` |
           | \`ghcr.io/${{ github.repository_owner }}/m3w-backend\` | \`$VERSION\`, \`rc\` |
           | \`ghcr.io/${{ github.repository_owner }}/m3w-frontend\` | \`$VERSION\`, \`rc\` |
           
-          \`\`\`bash
-          docker pull ghcr.io/${{ github.repository_owner }}/m3w:$VERSION
-          \`\`\`
+          ### Release Archives
+          | File | Size |
+          |------|------|
+          | m3w-${VERSION}.tar.gz | $(du -h m3w-${VERSION}.tar.gz | cut -f1) |
+          | m3w-backend-${VERSION}.tar.gz | $(du -h m3w-backend-${VERSION}.tar.gz | cut -f1) |
+          | m3w-frontend-${VERSION}.tar.gz | $(du -h m3w-frontend-${VERSION}.tar.gz | cut -f1) |
+          
+          ### GitHub Release
+          [View Release](https://github.com/${{ github.repository }}/releases/tag/$VERSION)
           EOF
