@@ -24,6 +24,16 @@ Write-Host "===================" -ForegroundColor Cyan
 $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $projectRoot
 
+# Read NODE_IMAGE from docker/.docker-version (single source of truth)
+$dockerVersionFile = Join-Path $projectRoot "docker/.docker-version"
+$NodeImage = "node:25.2.1-alpine"  # fallback
+if (Test-Path $dockerVersionFile) {
+    $content = Get-Content $dockerVersionFile | Where-Object { $_ -match "^NODE_IMAGE=" }
+    if ($content) {
+        $NodeImage = ($content -split "=", 2)[1].Trim()
+    }
+}
+
 # Create output directory
 $outputDir = Join-Path $projectRoot "docker-build-output"
 if (!(Test-Path $outputDir)) {
@@ -32,14 +42,14 @@ if (!(Test-Path $outputDir)) {
 
 Write-Host ""
 Write-Host "📦 Step 1: Building artifacts in container..." -ForegroundColor Yellow
-Write-Host "   This may take a few minutes on first run." -ForegroundColor Gray
+Write-Host "   Using image: $NodeImage" -ForegroundColor Gray
 
 # Run build script in container
 # Source is mounted read-only, output goes to docker-build-output/
 $cmd = "podman run --rm " +
        "-v `"${projectRoot}:/app:ro`" " +
        "-v `"${outputDir}:/output`" " +
-       "node:25.2.1-alpine " +
+       "$NodeImage " +
        "sh -c `"mkdir -p /build && sh /app/scripts/docker-build.sh`""
 
 Invoke-Expression $cmd
