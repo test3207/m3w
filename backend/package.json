@@ -29,7 +29,7 @@
     "node-cron": "^4.2.1",
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.2",
-    "pinyin": "^4.0.0",
+    "pinyin-pro": "^3.27.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -37,7 +37,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.0",
     "@types/node-cron": "^3.0.11",
-    "@types/pinyin": "^2.10.2",
     "@typescript-eslint/eslint-plugin": "^8.46.4",
     "@typescript-eslint/parser": "^8.46.4",
     "@vitest/coverage-v8": "^4.0.8",

@@ -1,33 +1,28 @@
 # Frontend-only Docker Image with Nginx
-# Supports runtime API_BASE_URL configuration via environment variable
+# Serves static files with API reverse proxy support
+#
+# IMPORTANT: This Dockerfile expects PRE-BUILT artifacts in build context
+# Build context should be: docker-build-output/
+#
+# Prerequisites (built by scripts/build-docker.ps1 or build-docker-linux.sh):
+#   - frontend/dist/         (compiled frontend)
+#   - docker/nginx.conf
+#   - docker/docker-entrypoint-frontend.sh
+#
+# Usage:
+#   # Windows (full pipeline)
+#   .\scripts\build-docker.ps1 -Type prod
+#
+#   # Linux/CI (full pipeline)
+#   ./scripts/build-docker-linux.sh prod
+#
+#   # Manual (after artifacts built)
+#   docker build -f docker/Dockerfile.frontend -t m3w-frontend:latest docker-build-output/
 
-FROM node:25.2.1-alpine AS builder
-
-WORKDIR /app
-
-# ============================================
-# Build shared package
-# ============================================
-COPY shared/package.json shared/package-lock.json ./shared/
-RUN cd shared && npm ci
-COPY shared ./shared
-RUN cd shared && npm run build
-
-# ============================================
-# Build frontend
-# ============================================
-COPY frontend/package.json frontend/package-lock.json ./frontend/
-RUN cd frontend && npm ci
-COPY frontend ./frontend
-RUN cd frontend && npm run build
-
-# ============================================
-# Production stage with Nginx
-# ============================================
 FROM nginx:alpine
 
-# Copy built files
-COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+# Copy pre-built frontend
+COPY frontend/dist /usr/share/nginx/html
 
 # Copy Nginx configuration
 COPY docker/nginx.conf /etc/nginx/nginx.conf

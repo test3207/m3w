@@ -5,13 +5,13 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
-import pinyin from 'pinyin';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 import { updateSongSchema, songIdSchema, toSongResponse, toSongListResponse } from '@m3w/shared';
 import { resolveCoverUrl } from '../lib/cover-url-helper';
+import { getPinyinSort } from '../lib/pinyin-helper';
 import type { Context } from 'hono';
 import type { ApiResponse, Song, SongSortOption, SongInput, SongPlaylistCount } from '@m3w/shared';
 
@@ -19,16 +19,6 @@ const app = new Hono();
 
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
-
-/**
- * Helper function: Convert text to Pinyin for sorting
- * Used for Chinese character support in alphabetical sorting
- */
-function getPinyinSort(text: string): string {
-  // Convert Chinese characters to Pinyin, flatten array, and join
-  const pinyinArray = pinyin(text, { style: pinyin.STYLE_NORMAL });
-  return pinyinArray.flat().join('').toLowerCase();
-}
 
 /**
  * Helper function: Sort songs by given option

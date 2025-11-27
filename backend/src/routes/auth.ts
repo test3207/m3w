@@ -34,6 +34,32 @@ interface GitHubEmail {
   visibility: string | null;
 }
 
+// AIO mode: backend serves frontend, so we can use request origin for redirects
+const SERVE_FRONTEND = process.env.SERVE_FRONTEND === 'true';
+
+/**
+ * Get frontend URL for redirects
+ * In AIO mode, use request origin (same origin as backend)
+ * In separated mode, use CORS_ORIGIN env var
+ */
+function getFrontendUrl(c: Context): string {
+  if (SERVE_FRONTEND) {
+    // AIO mode: use request origin or host header
+    const origin = c.req.header('origin');
+    if (origin) return origin;
+    
+    const host = c.req.header('host');
+    const protocol = c.req.header('x-forwarded-proto') || 'http';
+    if (host) return `${protocol}://${host}`;
+    
+    // Fallback: AIO mode but no origin/host headers (unusual)
+    logger.warn('AIO mode but no origin/host headers found, falling back to CORS_ORIGIN');
+  }
+  
+  // Separated mode: use configured CORS_ORIGIN
+  return process.env.CORS_ORIGIN || 'http://localhost:3000';
+}
+
 /**
  * Create default resources for first-time users
  * - Default Library: "默认音乐库" (cannot be deleted)
@@ -251,7 +277,7 @@ app.get('/callback', async (c: Context) => {
     });
 
     // Redirect to frontend success page (tokens are in HTTP-only cookies)
-    const frontendUrl = new URL(process.env.CORS_ORIGIN || 'http://localhost:3000');
+    const frontendUrl = new URL(getFrontendUrl(c));
     frontendUrl.pathname = '/auth/callback';
     frontendUrl.searchParams.set('success', 'true');
 
@@ -260,7 +286,7 @@ app.get('/callback', async (c: Context) => {
     logger.error({ error }, 'OAuth callback error');
     
     // Redirect to frontend with error
-    const frontendUrl = new URL(process.env.CORS_ORIGIN || 'http://localhost:3000');
+    const frontendUrl = new URL(getFrontendUrl(c));
     frontendUrl.pathname = '/signin';
     frontendUrl.searchParams.set('error', 'auth_failed');
     

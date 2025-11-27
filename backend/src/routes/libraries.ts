@@ -5,11 +5,11 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { pinyin } from 'pinyin';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { resolveCoverUrl } from '../lib/cover-url-helper';
+import { getPinyinSort } from '../lib/pinyin-helper';
 import {
   createLibrarySchema,
   updateLibrarySchema,
@@ -338,12 +338,6 @@ app.delete('/:id', async (c: Context) => {
     );
   }
 });
-
-// Helper function to get Pinyin for sorting
-function getPinyinSort(text: string): string {
-  const pinyinArray = pinyin(text || '');
-  return pinyinArray.flat().join('').toLowerCase();
-}
 
 // Helper function to sort songs
 // Using a generic interface for sorting that works with Prisma results

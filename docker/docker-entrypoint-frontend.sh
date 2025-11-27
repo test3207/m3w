@@ -12,11 +12,18 @@ API_BASE_URL="${API_BASE_URL:-/api}"
 
 echo "   API_BASE_URL: $API_BASE_URL"
 
+# Escape special characters for sed replacement (|, &, \, /)
+escape_sed() {
+  printf '%s' "$1" | sed 's/[|\&/\]/\\&/g'
+}
+
 # Replace placeholder in index.html
+# Only replace the value inside quotes to preserve variable name
 INDEX_FILE="/usr/share/nginx/html/index.html"
 
 if [ -f "$INDEX_FILE" ]; then
-  sed -i "s|__API_BASE_URL__|$API_BASE_URL|g" "$INDEX_FILE"
+  ESCAPED_URL=$(escape_sed "$API_BASE_URL")
+  sed -i "s|'__API_BASE_URL__'|'$ESCAPED_URL'|g" "$INDEX_FILE"
   echo "✅ Configuration injected successfully"
 else
   echo "⚠️  Warning: index.html not found at $INDEX_FILE"

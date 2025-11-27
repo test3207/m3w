@@ -1,0 +1,45 @@
+# Docker Compose for Local Testing
+# 
+# This file is used by build-docker.ps1 -Test to validate built images.
+# It starts the AIO container with proper network configuration.
+#
+# Prerequisites:
+#   - PostgreSQL and MinIO running (via main docker-compose.yml)
+#   - backend/.env.docker exists (copy from .env.docker.example)
+#   - Image built (set M3W_IMAGE env var or use default 'latest')
+#
+# Usage:
+#   docker-compose -f docker/docker-compose.test.yml up -d
+#   docker-compose -f docker/docker-compose.test.yml logs -f
+#   docker-compose -f docker/docker-compose.test.yml down
+#
+# To test a specific version:
+#   M3W_IMAGE=ghcr.io/test3207/m3w:v0.1.0 docker-compose -f docker/docker-compose.test.yml up -d
+
+services:
+  m3w-test:
+    image: ${M3W_IMAGE:-ghcr.io/test3207/m3w:latest}
+    container_name: m3w-test
+    ports:
+      - "4000:4000"
+    env_file:
+      - ../backend/.env.docker
+    environment:
+      # Override to ensure Docker network addresses are used
+      - DATABASE_URL=postgresql://postgres:postgres@m3w-postgres:5432/m3w
+      - MINIO_ENDPOINT=m3w-minio
+      - NODE_ENV=production
+    networks:
+      - m3w_default
+    depends_on: []
+    healthcheck:
+      # Use node for health check (wget not available in Alpine Node image)
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  m3w_default:
+    external: true

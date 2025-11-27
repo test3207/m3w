@@ -1,6 +1,7 @@
 import { HttpStatusCode } from '@/lib/constants/http-status';
 import { logger } from '@/lib/logger-client';
 import { routeRequest } from './router';
+import { API_BASE_URL } from './config';
 
 export class ApiError extends Error {
   constructor(
@@ -211,6 +212,4 @@ class ApiClient {
  * - `mainApiClient` for JSON API calls
  * - `streamApiClient` for binary/stream data
  */
-// Use VITE_API_URL from environment for base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 export const apiClient = new ApiClient(API_BASE_URL);

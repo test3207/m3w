@@ -1,84 +1,53 @@
 # All-in-One Docker Image (Frontend + Backend)
 # Backend serves static frontend files
 # Suitable for simple single-container deployment
+#
+# IMPORTANT: This Dockerfile expects PRE-BUILT artifacts in build context
+# Build context should be: docker-build-output/
+#
+# Prerequisites (built by scripts/build-docker.ps1 or build-docker-linux.sh):
+#   - shared/dist/           (compiled shared package)
+#   - shared/package.json
+#   - backend/dist/          (compiled backend)
+#   - backend/node_modules/  (production dependencies with Prisma client)
+#   - backend/prisma/        (schema for migrations)
+#   - frontend/dist/         (compiled frontend)
+#
+# Usage:
+#   # Windows (full pipeline)
+#   .\scripts\build-docker.ps1 -Type prod
+#
+#   # Linux/CI (full pipeline)
+#   ./scripts/build-docker-linux.sh prod
+#
+#   # Manual (after artifacts built)
+#   docker build -f docker/Dockerfile -t m3w:latest docker-build-output/
 
-FROM node:25.2.1-alpine AS base
+FROM node:25.2.1-alpine
 
-# Install dependencies
-FROM base AS deps
-RUN apk add --no-cache libc6-compat openssl
-WORKDIR /app
-
-# Copy shared package first
-COPY shared/package.json shared/package-lock.json ./shared/
-RUN cd shared && npm ci
-
-# Copy backend package
-COPY backend/package.json backend/package-lock.json ./backend/
-RUN cd backend && npm ci
-
-# Copy frontend package
-COPY frontend/package.json frontend/package-lock.json ./frontend/
-RUN cd frontend && npm ci
-
-# Build shared package
-FROM base AS shared-builder
-WORKDIR /app
-COPY --from=deps /app/shared/node_modules ./shared/node_modules
-COPY shared ./shared
-RUN cd shared && npm run build
-
-# Build frontend
-FROM base AS frontend-builder
-WORKDIR /app
-COPY --from=shared-builder /app/shared ./shared
-COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
-COPY scripts ./scripts
-COPY frontend ./frontend
-RUN cd frontend && npm run build
-
-# Build backend
-FROM base AS builder
-WORKDIR /app
-
-# Build target argument (rc or prod)
-ARG BUILD_TARGET=prod
-ENV BUILD_TARGET=${BUILD_TARGET}
-
-COPY --from=deps /app/backend/node_modules ./backend/node_modules
-COPY --from=shared-builder /app/shared ./shared
-COPY backend ./backend
-
-# Generate Prisma Client
-RUN cd backend && npx prisma generate
-
-# Build backend with specified target
-RUN cd backend && npm run build:${BUILD_TARGET}
-
-# Production image
-FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN addgroup --system --gid 1001 nodejs && \
+# Install runtime dependencies and create non-root user
+RUN apk add --no-cache openssl dumb-init && \
+    addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 honouser
 
-# Copy shared package
-COPY --from=shared-builder --chown=honouser:nodejs /app/shared ./shared
+# Note: @m3w/shared is bundled into backend dist via tsup noExternal config
 
-# Copy backend
-COPY --from=builder --chown=honouser:nodejs /app/backend/dist ./backend/dist
-COPY --from=builder --chown=honouser:nodejs /app/backend/node_modules ./backend/node_modules
-COPY --from=builder --chown=honouser:nodejs /app/backend/prisma ./backend/prisma
-COPY --from=builder --chown=honouser:nodejs /app/backend/package.json ./backend/
+# Copy pre-built backend (includes node_modules with Prisma client)
+COPY --chown=honouser:nodejs backend/dist ./backend/dist
+COPY --chown=honouser:nodejs backend/node_modules ./backend/node_modules
+COPY --chown=honouser:nodejs backend/prisma ./backend/prisma
+COPY --chown=honouser:nodejs backend/package.json ./backend/
 
-# Copy frontend dist (backend will serve it)
-COPY --from=frontend-builder --chown=honouser:nodejs /app/frontend/dist ./backend/public
+# Copy pre-built frontend (served by backend)
+COPY --chown=honouser:nodejs frontend/dist ./backend/public
 
-# Copy entrypoint script for runtime config injection
-COPY --chown=honouser:nodejs docker/docker-entrypoint-allinone.sh ./backend/
-RUN chmod +x ./backend/docker-entrypoint-allinone.sh
+# Copy entrypoint script
+COPY --chown=honouser:nodejs docker/docker-entrypoint-allinone.sh ./backend/docker-entrypoint.sh
+RUN chmod +x ./backend/docker-entrypoint.sh
 
 USER honouser
 
@@ -88,11 +57,10 @@ ENV PORT=4000
 ENV HOST="0.0.0.0"
 ENV SERVE_FRONTEND=true
 
-# Health check - verify backend API is responding
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+# Health check should be configured by orchestrator (docker-compose, Kubernetes)
+# Example: GET /api/health returns 200 when healthy
 
 WORKDIR /app/backend
 
-ENTRYPOINT ["./docker-entrypoint-allinone.sh"]
+ENTRYPOINT ["dumb-init", "--", "./docker-entrypoint.sh"]
 CMD ["node", "dist/index.js"]

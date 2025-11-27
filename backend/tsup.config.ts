@@ -42,11 +42,11 @@ export default defineConfig({
     'node-cron',
     'pino',
     'pino-pretty',
-    'pinyin',
+    'pinyin-pro',
     'zod',
   ],
-  // Skip node_modules bundling
-  noExternal: [],
+  // Bundle these packages into the output (resolve at build time, not runtime)
+  noExternal: ['@m3w/shared'],
   // Don't minify for easier debugging
   minify: false,
 });

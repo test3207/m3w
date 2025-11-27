@@ -7,7 +7,7 @@ Production-grade self-hosted music player built with Vite, Hono, and PostgreSQL.
 ### Frontend
 
 - **Framework**: Vite 5
-- **Runtime**: React 19 + Node.js 25.1.0
+- **Runtime**: React 19 + Node.js 25.2.1
 - **Language**: TypeScript 5
 - **Routing**: React Router 6
 - **UI**: shadcn/ui + Tailwind CSS v4
@@ -17,7 +17,7 @@ Production-grade self-hosted music player built with Vite, Hono, and PostgreSQL.
 
 ### Backend
 
-- **Framework**: Hono 4 (Node.js 25.1.0)
+- **Framework**: Hono 4 (Node.js 25.2.1)
 - **Language**: TypeScript 5
 - **Database**: PostgreSQL 16 (Prisma ORM)
 - **Storage**: MinIO (S3-compatible)

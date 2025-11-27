@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '25.1.0'
+          node-version: '25.2.1'
           cache: 'npm'
       
       - name: Install dependencies (root)
@@ -105,7 +105,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '25.1.0'
+          node-version: '25.2.1'
           cache: 'npm'
       
       - name: Install dependencies (root)
@@ -184,21 +184,71 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25.2.1'
+          cache: 'npm'
+      
+      # Build artifacts first (new COPY-only Dockerfile requires pre-built artifacts)
+      - name: Build artifacts
+        run: |
+          # Install dependencies
+          npm ci
+          cd shared && npm ci && npm run build && cd ..
+          cd backend && npm ci && npx prisma generate && cd ..
+          cd frontend && npm ci && cd ..
+          
+          # Build with BUILD_TARGET=prod
+          export BUILD_TARGET=prod
+          cd frontend && npm run build && cd ..
+          cd backend && npm run build:prod && cd ..
+          
+          # Prepare output directory structure for Docker build
+          mkdir -p docker-build-output/backend
+          mkdir -p docker-build-output/frontend
+          mkdir -p docker-build-output/docker
+          
+          # Copy artifacts
+          cp -r backend/dist docker-build-output/backend/
+          cp -r backend/prisma docker-build-output/backend/
+          cp backend/package.json docker-build-output/backend/
+          cp backend/package-lock.json docker-build-output/backend/
+          cp -r frontend/dist docker-build-output/frontend/
+          
+          # Copy docker entrypoint scripts
+          cp docker/docker-entrypoint-allinone.sh docker-build-output/docker/
+          cp docker/docker-entrypoint-backend.sh docker-build-output/docker/
+          cp docker/docker-entrypoint-frontend.sh docker-build-output/docker/
+          cp docker/nginx.conf docker-build-output/docker/
+          
+          # Install production dependencies for backend
+          cd docker-build-output/backend
+          npm ci --omit=dev
+          npx prisma generate
+          cd ../..
+          
+          echo "✅ Artifacts built successfully"
+          ls -la docker-build-output/
+          ls -la docker-build-output/backend/
+          ls -la docker-build-output/frontend/
+          ls -la docker-build-output/docker/
+        env:
+          BUILD_TARGET: prod
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
-      # Build Docker image with BUILD_TARGET=prod (demo code excluded)
+      # Build Docker image from pre-built artifacts
       - name: Build Docker image (amd64 only)
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./docker-build-output
           file: ./docker/Dockerfile
           platforms: linux/amd64
           push: false
           load: true
           tags: m3w:pr-${{ github.event.pull_request.number }}
-          build-args: |
-            BUILD_TARGET=prod
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
