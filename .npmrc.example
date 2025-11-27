@@ -1,0 +1,8 @@
+# npm registry configuration
+# This file is copied to .npmrc during setup (setup.ps1)
+#
+# Default: Official npm registry (uncomment to use)
+registry=https://registry.npmjs.org/
+
+# China mirror (npmmirror.com, recommended for users in China)
+# registry=https://registry.npmmirror.com/

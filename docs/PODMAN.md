@@ -192,6 +192,9 @@ If you cannot pull images due to network restrictions:
 3. **Load proxy before pulling**:
 
    ```powershell
+   # Copy example and configure
+   cp .\scripts\podman-env.ps1.example .\podman-env.ps1
+   # Edit podman-env.ps1, then source it
    . .\podman-env.ps1
    podman pull postgres:16-alpine
    ```

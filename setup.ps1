@@ -158,6 +158,14 @@ Write-Host ""
 if (-not $SkipEnv) {
     Write-Host "🔐 Setting up environment variables..." -ForegroundColor Cyan
     
+    # Root .npmrc
+    if (-not (Test-Path ".npmrc")) {
+        Copy-Item ".npmrc.example" ".npmrc"
+        Write-Host "  ✓ Created .npmrc from template" -ForegroundColor Green
+    } else {
+        Write-Host "  ℹ️  .npmrc already exists" -ForegroundColor Blue
+    }
+    
     # Backend .env
     if (-not (Test-Path "backend\.env")) {
         Copy-Item "backend\.env.example" "backend\.env"

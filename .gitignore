@@ -45,6 +45,9 @@ frontend/.env*.local
 !backend/.env.docker.example
 !frontend/.env.example
 
+# npm registry config (user-specific)
+.npmrc
+
 # Podman/Docker proxy config (user-specific)
 podman-env.ps1
 docker-env.sh
