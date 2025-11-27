@@ -90,8 +90,8 @@ jobs:
           
           # Find the highest RC number for this version
           HIGHEST_RC=0
-          for branch in $(git branch -r | grep "origin/release/v${CURRENT_VERSION}-rc" | sed 's/.*release\/v/v/' || echo ""); do
-            if [[ $branch =~ v${CURRENT_VERSION}-rc([0-9]+) ]]; then
+          for branch in $(git branch -r | grep "origin/release/v${CURRENT_VERSION}-rc\." | sed 's/.*release\/v/v/' || echo ""); do
+            if [[ $branch =~ v${CURRENT_VERSION}-rc\.([0-9]+) ]]; then
               RC_NUM=${BASH_REMATCH[1]}
               if [ "$RC_NUM" -gt "$HIGHEST_RC" ]; then
                 HIGHEST_RC=$RC_NUM
@@ -101,7 +101,7 @@ jobs:
           
           # Start with rc1 or increment from highest
           NEXT_RC=$((HIGHEST_RC + 1))
-          RC_VERSION="${CURRENT_VERSION}-rc${NEXT_RC}"
+          RC_VERSION="${CURRENT_VERSION}-rc.${NEXT_RC}"
           
           echo "Release version: $RC_VERSION"
           echo "RC number: $NEXT_RC"

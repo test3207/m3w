@@ -37,8 +37,8 @@ jobs:
           echo "Current branch: $CURRENT_BRANCH"
           
           # Extract version and RC number from branch name
-          # Format: release/v0.1.0-rc1
-          if [[ $CURRENT_BRANCH =~ release/v([0-9]+\.[0-9]+\.[0-9]+)-rc([0-9]+) ]]; then
+          # Format: release/v0.1.0-rc.1 (SemVer compliant)
+          if [[ $CURRENT_BRANCH =~ release/v([0-9]+\.[0-9]+\.[0-9]+)-rc\.([0-9]+) ]]; then
             VERSION="${BASH_REMATCH[1]}"
             CURRENT_RC="${BASH_REMATCH[2]}"
             NEXT_RC=$((CURRENT_RC + 1))
@@ -59,7 +59,7 @@ jobs:
       - name: Check if next RC branch already exists
         id: branch_check
         run: |
-          NEXT_BRANCH="release/v${{ steps.version.outputs.version }}-rc${{ steps.version.outputs.next_rc }}"
+          NEXT_BRANCH="release/v${{ steps.version.outputs.version }}-rc.${{ steps.version.outputs.next_rc }}"
           
           if git ls-remote --exit-code --heads origin "$NEXT_BRANCH" > /dev/null 2>&1; then
             echo "ℹ️ Branch $NEXT_BRANCH already exists, skipping creation"
