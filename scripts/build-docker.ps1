@@ -281,11 +281,7 @@ if ($Test) {
         Write-Host "   Starting PostgreSQL and MinIO with docker-compose..." -ForegroundColor Gray
         
         Push-Location $ProjectRoot
-        if ($ContainerRuntime -eq "docker") {
-            docker compose up -d
-        } else {
-            podman-compose up -d
-        }
+        Invoke-Expression "$ComposeCommand up -d"
         Pop-Location
         
         Start-Sleep -Seconds 5
@@ -307,11 +303,7 @@ if ($Test) {
     $env:M3W_IMAGE = "${Registry}/m3w:${version}"
     
     Push-Location $ProjectRoot
-    if ($ContainerRuntime -eq "docker") {
-        docker compose -f $testComposeFile up -d
-    } else {
-        podman-compose -f $testComposeFile up -d
-    }
+    Invoke-Expression "$ComposeCommand -f $testComposeFile up -d"
     Pop-Location
     
     if ($LASTEXITCODE -ne 0) {
@@ -368,11 +360,7 @@ if ($Test) {
         Write-Host ""
         Write-Host "  Commands:" -ForegroundColor Gray
         Write-Host "    View logs:  $ContainerRuntime logs -f m3w-test" -ForegroundColor Gray
-        if ($ContainerRuntime -eq "docker") {
-            Write-Host "    Stop:       docker compose -f docker/docker-compose.test.yml down" -ForegroundColor Gray
-        } else {
-            Write-Host "    Stop:       podman-compose -f docker/docker-compose.test.yml down" -ForegroundColor Gray
-        }
+        Write-Host "    Stop:       $ComposeCommand -f docker/docker-compose.test.yml down" -ForegroundColor Gray
         Write-Host ""
     } else {
         Write-Host "   ❌ Health check failed after $maxRetries retries" -ForegroundColor Red

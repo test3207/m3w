@@ -50,6 +50,10 @@ jobs:
         id: node
         run: |
           NODE_VERSION=$(grep '^NODE_IMAGE=' docker/docker-version.conf | sed 's/.*node:\([0-9.]*\).*/\1/')
+          if [ -z "$NODE_VERSION" ]; then
+            echo "❌ Failed to extract Node.js version from docker-version.conf"
+            exit 1
+          fi
           echo "version=$NODE_VERSION" >> $GITHUB_OUTPUT
       
       - name: Setup Node.js
