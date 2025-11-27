@@ -88,11 +88,10 @@ npm ci --omit=dev
 npx prisma generate
 
 # Clean up unnecessary packages after Prisma generation
+# Note: Keep 'effect' and 'fast-check' as they are required by Prisma CLI for migrations
 echo "   Cleaning up unnecessary packages..."
 rm -rf node_modules/typescript
 rm -rf node_modules/@types
-rm -rf node_modules/effect
-rm -rf node_modules/fast-check
 rm -rf node_modules/.cache
 
 # Clean up Prisma runtime - remove unused database engines (keep only PostgreSQL)
@@ -143,6 +142,7 @@ cp -r /build/frontend/dist /output/frontend/
 # Copy docker entrypoint scripts
 mkdir -p /output/docker
 cp /app/docker/docker-entrypoint-allinone.sh /output/docker/ 2>/dev/null || true
+cp /app/docker/docker-entrypoint-backend.sh /output/docker/ 2>/dev/null || true
 cp /app/docker/docker-entrypoint-frontend.sh /output/docker/ 2>/dev/null || true
 cp /app/docker/nginx.conf /output/docker/ 2>/dev/null || true
 

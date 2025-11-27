@@ -207,6 +207,7 @@ jobs:
           # Prepare output directory structure for Docker build
           mkdir -p docker-build-output/backend
           mkdir -p docker-build-output/frontend
+          mkdir -p docker-build-output/docker
           
           # Copy artifacts
           cp -r backend/dist docker-build-output/backend/
@@ -214,6 +215,12 @@ jobs:
           cp backend/package.json docker-build-output/backend/
           cp backend/package-lock.json docker-build-output/backend/
           cp -r frontend/dist docker-build-output/frontend/
+          
+          # Copy docker entrypoint scripts
+          cp docker/docker-entrypoint-allinone.sh docker-build-output/docker/
+          cp docker/docker-entrypoint-backend.sh docker-build-output/docker/
+          cp docker/docker-entrypoint-frontend.sh docker-build-output/docker/
+          cp docker/nginx.conf docker-build-output/docker/
           
           # Install production dependencies for backend
           cd docker-build-output/backend
@@ -225,6 +232,7 @@ jobs:
           ls -la docker-build-output/
           ls -la docker-build-output/backend/
           ls -la docker-build-output/frontend/
+          ls -la docker-build-output/docker/
         env:
           BUILD_TARGET: prod
       

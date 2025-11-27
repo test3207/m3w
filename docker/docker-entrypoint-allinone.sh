@@ -1,10 +1,19 @@
 #!/bin/sh
 # All-in-One runtime configuration injection script
-# Injects API_BASE_URL into frontend index.html before starting backend
+# 1. Runs database migrations
+# 2. Injects API_BASE_URL into frontend index.html
+# 3. Starts backend server
 
 set -e
 
 echo "🚀 M3W All-in-One starting..."
+
+# Step 1: Run database migrations
+echo "📦 Running database migrations..."
+node node_modules/prisma/build/index.js migrate deploy --schema ./prisma/schema.prisma
+echo "✅ Migrations complete"
+
+# Step 2: Inject runtime configuration
 echo "📝 Injecting runtime configuration..."
 
 # Enable AIO mode for backend (affects OAuth redirects)

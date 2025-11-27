@@ -38,6 +38,10 @@ COPY --chown=honouser:nodejs backend/node_modules ./backend/node_modules
 COPY --chown=honouser:nodejs backend/prisma ./backend/prisma
 COPY --chown=honouser:nodejs backend/package.json ./backend/
 
+# Copy entrypoint script
+COPY --chown=honouser:nodejs docker/docker-entrypoint-backend.sh ./backend/docker-entrypoint.sh
+RUN chmod +x ./backend/docker-entrypoint.sh
+
 USER honouser
 
 EXPOSE 4000
@@ -45,10 +49,10 @@ EXPOSE 4000
 ENV PORT=4000
 ENV HOST="0.0.0.0"
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+# Health check should be configured by orchestrator (docker-compose, Kubernetes)
+# Example: GET /api/health returns 200 when healthy
 
 WORKDIR /app/backend
 
-ENTRYPOINT ["dumb-init", "--"]
+ENTRYPOINT ["dumb-init", "--", "./docker-entrypoint.sh"]
 CMD ["node", "dist/index.js"]

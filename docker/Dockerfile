@@ -57,8 +57,8 @@ ENV PORT=4000
 ENV HOST="0.0.0.0"
 ENV SERVE_FRONTEND=true
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+# Health check should be configured by orchestrator (docker-compose, Kubernetes)
+# Example: GET /api/health returns 200 when healthy
 
 WORKDIR /app/backend
 
