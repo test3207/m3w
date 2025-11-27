@@ -107,12 +107,17 @@ Automated release branch creation that runs every Tuesday if there are new commi
 **Version Naming:**
 
 - Uses **current** version from package.json: `MAJOR.MINOR.PATCH`
-- Appends `-rcN` suffix (N starts at 1)
-- Example: If package.json has `0.1.0`:
-  - First release: `release/v0.1.0-rc1`
-  - After bug fix: `release/v0.1.0-rc2`
-  - After another fix: `release/v0.1.0-rc3`
-- **Version in package.json is NOT changed** until merge back to main
+- **Branch name**: `release/v{version}-rc{N}` (no dot before N)
+  - Example: `release/v0.1.0-rc1`, `release/v0.1.0-rc2`
+- **Docker tag/version**: `v{version}-rc.{N}` (with dot, follows SemVer)
+  - Example: `v0.1.0-rc.1`, `v0.1.0-rc.2`
+- **Version in package.json is NOT changed** until production release
+
+**Example Branch Names:**
+
+- First RC: `release/v0.1.0-rc1`
+- After bug fix: `release/v0.1.0-rc2`
+- After another fix: `release/v0.1.0-rc3`
 
 **Example Flow:**
 

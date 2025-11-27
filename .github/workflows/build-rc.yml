@@ -33,7 +33,8 @@ jobs:
           echo "Branch: $BRANCH"
           
           # Extract version components from branch name
-          # Format: release/v0.1.0-rc1 or release/v0.1.0-rc.1
+          # Branch format: release/v0.1.0-rc1 (no dot)
+          # Docker tag format: v0.1.0-rc.1 (with dot, SemVer compliant)
           if [[ $BRANCH =~ release/v([0-9]+\.[0-9]+\.[0-9]+)-rc\.?([0-9]+) ]]; then
             BASE_VERSION="${BASH_REMATCH[1]}"
             RC_NUMBER="${BASH_REMATCH[2]}"
