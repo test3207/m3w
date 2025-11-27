@@ -88,7 +88,6 @@ npm ci --omit=dev
 npx prisma generate
 
 # Clean up unnecessary packages after Prisma generation
-# Note: Keep 'effect' and 'fast-check' as they are required by Prisma CLI for migrations
 echo "   Cleaning up unnecessary packages..."
 rm -rf node_modules/typescript
 rm -rf node_modules/@types

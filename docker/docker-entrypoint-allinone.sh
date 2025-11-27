@@ -8,10 +8,14 @@ set -e
 
 echo "🚀 M3W All-in-One starting..."
 
-# Step 1: Run database migrations
-echo "📦 Running database migrations..."
-node node_modules/prisma/build/index.js migrate deploy --schema ./prisma/schema.prisma
-echo "✅ Migrations complete"
+# Step 1: Run database migrations (skip if SKIP_MIGRATIONS is set)
+if [ "${SKIP_MIGRATIONS:-false}" = "true" ]; then
+  echo "⏭️  Skipping database migrations (SKIP_MIGRATIONS=true)"
+else
+  echo "📦 Running database migrations..."
+  node node_modules/prisma/build/index.js migrate deploy --schema ./prisma/schema.prisma
+  echo "✅ Migrations complete"
+fi
 
 # Step 2: Inject runtime configuration
 echo "📝 Injecting runtime configuration..."
