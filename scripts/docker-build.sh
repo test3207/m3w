@@ -88,13 +88,31 @@ npm ci --omit=dev
 npx prisma generate
 
 # Clean up unnecessary packages after Prisma generation
-# Keep 'prisma' CLI for running migrations in container (npx prisma migrate deploy)
 echo "   Cleaning up unnecessary packages..."
 rm -rf node_modules/typescript
 rm -rf node_modules/@types
 rm -rf node_modules/effect
 rm -rf node_modules/fast-check
 rm -rf node_modules/.cache
+
+# Clean up Prisma runtime - remove unused database engines (keep only PostgreSQL)
+# This saves ~50MB by removing MySQL, SQLite, CockroachDB, SQL Server WASM engines
+echo "   Removing unused Prisma database engines..."
+PRISMA_RUNTIME="node_modules/@prisma/client/runtime"
+if [ -d "$PRISMA_RUNTIME" ]; then
+  # Remove non-PostgreSQL WASM engines (each ~3MB)
+  rm -f "$PRISMA_RUNTIME"/query_engine_bg.mysql.* 2>/dev/null || true
+  rm -f "$PRISMA_RUNTIME"/query_engine_bg.sqlite.* 2>/dev/null || true
+  rm -f "$PRISMA_RUNTIME"/query_engine_bg.cockroachdb.* 2>/dev/null || true
+  rm -f "$PRISMA_RUNTIME"/query_engine_bg.sqlserver.* 2>/dev/null || true
+  rm -f "$PRISMA_RUNTIME"/query_compiler_bg.mysql.* 2>/dev/null || true
+  rm -f "$PRISMA_RUNTIME"/query_compiler_bg.sqlite.* 2>/dev/null || true
+  rm -f "$PRISMA_RUNTIME"/query_compiler_bg.cockroachdb.* 2>/dev/null || true
+  rm -f "$PRISMA_RUNTIME"/query_compiler_bg.sqlserver.* 2>/dev/null || true
+  # Remove sourcemaps (not needed in production)
+  rm -f "$PRISMA_RUNTIME"/*.map 2>/dev/null || true
+  echo "   ✓ Prisma runtime cleaned (kept PostgreSQL only)"
+fi
 
 cd ..
 
