@@ -31,16 +31,9 @@ permissions:
   packages: write
 
 jobs:
-  # Validate and prepare version
-  prepare:
-    name: Prepare Release
+  release:
+    name: Build and Release
     runs-on: ubuntu-latest
-    outputs:
-      current_version: ${{ steps.version.outputs.current }}
-      new_version: ${{ steps.version.outputs.new }}
-      version_tag: ${{ steps.version.outputs.tag }}
-      minor_tag: ${{ steps.version.outputs.minor }}
-      major_tag: ${{ steps.version.outputs.major }}
     
     steps:
       - name: Checkout code
@@ -48,10 +41,16 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Get Node.js version from config
+        id: node
+        run: |
+          NODE_VERSION=$(grep '^NODE_IMAGE=' docker/docker-version.conf | sed 's/.*node:\([0-9.]*\).*/\1/')
+          echo "version=$NODE_VERSION" >> $GITHUB_OUTPUT
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '25.2.1'
+          node-version: ${{ steps.node.outputs.version }}
       
       - name: Calculate new version
         id: version
@@ -66,134 +65,24 @@ jobs:
           # Calculate new version based on bump type
           case "${{ inputs.bump_type }}" in
             major)
-              NEW_MAJOR=$((MAJOR + 1))
-              NEW_VERSION="${NEW_MAJOR}.0.0"
+              NEW_VERSION="$((MAJOR + 1)).0.0"
               ;;
             minor)
-              NEW_MINOR=$((MINOR + 1))
-              NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+              NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
               ;;
             patch)
-              NEW_PATCH=$((PATCH + 1))
-              NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+              NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
               ;;
           esac
           
           echo "New version: $NEW_VERSION"
-          echo "Bump type: ${{ inputs.bump_type }}"
-          
-          # Calculate tags
-          VERSION_TAG="v${NEW_VERSION}"
-          MINOR_TAG="v${NEW_VERSION%.*}"
-          MAJOR_TAG="v${NEW_VERSION%%.*}"
-          
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "tag=$VERSION_TAG" >> $GITHUB_OUTPUT
-          echo "minor=$MINOR_TAG" >> $GITHUB_OUTPUT
-          echo "major=$MAJOR_TAG" >> $GITHUB_OUTPUT
-          
-          echo "## Version Calculation" >> $GITHUB_STEP_SUMMARY
-          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Current | \`$CURRENT\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Bump Type | \`${{ inputs.bump_type }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| New Version | \`$NEW_VERSION\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tags | \`$VERSION_TAG\`, \`$MINOR_TAG\`, \`$MAJOR_TAG\`, \`latest\` |" >> $GITHUB_STEP_SUMMARY
-
-  # Build artifacts
-  build-artifacts:
-    name: Build Artifacts
-    runs-on: ubuntu-latest
-    needs: prepare
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '25.2.1'
+          echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
       
       - name: Bump version in package.json files
         run: |
-          echo "Bumping version from ${{ needs.prepare.outputs.current_version }} to ${{ needs.prepare.outputs.new_version }}"
-          npm version ${{ needs.prepare.outputs.new_version }} --no-git-tag-version -ws --include-workspace-root
-          
-          # Verify
-          echo "Updated package.json versions:"
-          node -p "require('./package.json').version"
-          node -p "require('./frontend/package.json').version"
-          node -p "require('./backend/package.json').version"
-          node -p "require('./shared/package.json').version"
-      
-      - name: Build artifacts in container
-        run: |
-          echo "Building production artifacts..."
-          
-          mkdir -p docker-build-output
-          
-          docker run --rm \
-            -v "$PWD:/app:ro" \
-            -v "$PWD/docker-build-output:/output" \
-            -e BUILD_TARGET=prod \
-            node:25.2.1-alpine \
-            sh -c "sh /app/scripts/docker-build.sh"
-          
-          echo "✅ Artifacts built successfully"
-          ls -la docker-build-output/
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-build-output
-          path: docker-build-output/
-          retention-days: 1
-      
-      - name: Upload version-bumped source
-        uses: actions/upload-artifact@v4
-        with:
-          name: source-with-version
-          path: |
-            package.json
-            package-lock.json
-            frontend/package.json
-            backend/package.json
-            shared/package.json
-          retention-days: 1
-
-  # Build and push Docker images
-  build-images:
-    name: Build ${{ matrix.image }}
-    runs-on: ubuntu-latest
-    needs: [prepare, build-artifacts]
-    
-    strategy:
-      matrix:
-        include:
-          - image: m3w
-            dockerfile: docker/Dockerfile
-            description: All-in-One (Frontend + Backend)
-          - image: m3w-backend
-            dockerfile: docker/Dockerfile.backend
-            description: Backend API only
-          - image: m3w-frontend
-            dockerfile: docker/Dockerfile.frontend
-            description: Frontend static files
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-build-output
-          path: docker-build-output/
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          npm version ${{ steps.version.outputs.new }} --no-git-tag-version -ws --include-workspace-root
       
       - name: Login to GitHub Container Registry
         if: ${{ !inputs.dry_run }}
@@ -203,120 +92,59 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Build and push image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./docker-build-output
-          file: ${{ matrix.dockerfile }}
-          push: ${{ !inputs.dry_run }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ needs.prepare.outputs.version_tag }}
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ needs.prepare.outputs.minor_tag }}
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ needs.prepare.outputs.major_tag }}
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
-          labels: |
-            org.opencontainers.image.title=${{ matrix.image }}
-            org.opencontainers.image.description=${{ matrix.description }}
-            org.opencontainers.image.version=${{ needs.prepare.outputs.new_version }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-
-  # Commit version bump and create release
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: [prepare, build-images]
-    if: ${{ !inputs.dry_run }}
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push images
+        env:
+          DOCKER_REGISTRY: ghcr.io/${{ github.repository_owner }}
+        run: |
+          chmod +x scripts/build-docker.sh
+          if [ "${{ inputs.dry_run }}" == "true" ]; then
+            ./scripts/build-docker.sh prod
+          else
+            ./scripts/build-docker.sh prod push
+          fi
       
-      - name: Download version-bumped source
-        uses: actions/download-artifact@v4
-        with:
-          name: source-with-version
-          path: .
-      
-      - name: Commit version bump
+      - name: Commit version bump and create release
+        if: ${{ !inputs.dry_run }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
           git add package.json package-lock.json frontend/package.json backend/package.json shared/package.json
-          git commit -m "chore: release ${{ needs.prepare.outputs.version_tag }}"
-          git tag ${{ needs.prepare.outputs.version_tag }}
+          git commit -m "chore: release ${{ steps.version.outputs.tag }}"
+          git tag ${{ steps.version.outputs.tag }}
           git push origin main --tags
-          
-          echo "✅ Version bump committed and tagged"
       
       - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.prepare.outputs.version_tag }}
-          name: Release ${{ needs.prepare.outputs.version_tag }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
           generate_release_notes: true
           body: |
             ## Docker Images
             
             ```bash
-            # All-in-One (recommended)
-            docker pull ghcr.io/${{ github.repository_owner }}/m3w:${{ needs.prepare.outputs.version_tag }}
-            
+            docker pull ghcr.io/${{ github.repository_owner }}/m3w:${{ steps.version.outputs.tag }}
             # Or use latest
             docker pull ghcr.io/${{ github.repository_owner }}/m3w:latest
             ```
-            
-            ### Image Variants
-            - `m3w` - All-in-One (Frontend + Backend)
-            - `m3w-backend` - Backend API only
-            - `m3w-frontend` - Frontend static files (Nginx)
-            
-            ### Tags
-            - `${{ needs.prepare.outputs.version_tag }}` - This release
-            - `${{ needs.prepare.outputs.minor_tag }}` - Latest patch for this minor
-            - `${{ needs.prepare.outputs.major_tag }}` - Latest minor for this major
-            - `latest` - Latest stable release
-
-  # Summary
-  summary:
-    name: Release Summary
-    runs-on: ubuntu-latest
-    needs: [prepare, build-images, release]
-    if: always()
-    
-    steps:
+      
       - name: Generate summary
         run: |
           cat >> $GITHUB_STEP_SUMMARY <<EOF
-          ## 🚀 Production Release Summary
+          ## 🚀 Production Release
           
-          ### Version Info
           | Property | Value |
           |----------|-------|
-          | Previous Version | \`${{ needs.prepare.outputs.current_version }}\` |
-          | New Version | \`${{ needs.prepare.outputs.new_version }}\` |
-          | Bump Type | \`${{ inputs.bump_type }}\` |
+          | Previous | \`${{ steps.version.outputs.current }}\` |
+          | New | \`${{ steps.version.outputs.new }}\` |
           | Dry Run | \`${{ inputs.dry_run }}\` |
           
-          ### Built Images
+          ### Images
           | Image | Tags |
           |-------|------|
-          | \`ghcr.io/${{ github.repository_owner }}/m3w\` | \`${{ needs.prepare.outputs.version_tag }}\`, \`${{ needs.prepare.outputs.minor_tag }}\`, \`${{ needs.prepare.outputs.major_tag }}\`, \`latest\` |
-          | \`ghcr.io/${{ github.repository_owner }}/m3w-backend\` | Same tags |
-          | \`ghcr.io/${{ github.repository_owner }}/m3w-frontend\` | Same tags |
-          
-          ### Status
+          | \`ghcr.io/${{ github.repository_owner }}/m3w\` | \`${{ steps.version.outputs.tag }}\`, \`latest\` |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w-backend\` | Same |
+          | \`ghcr.io/${{ github.repository_owner }}/m3w-frontend\` | Same |
           EOF
-          
-          if [ "${{ inputs.dry_run }}" == "true" ]; then
-            echo "⚠️ **Dry run mode** - Images were built but NOT pushed. No release created." >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.release.result }}" == "success" ]; then
-            echo "✅ **Release created successfully!**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.version_tag }})" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Release failed or skipped**" >> $GITHUB_STEP_SUMMARY
-          fi

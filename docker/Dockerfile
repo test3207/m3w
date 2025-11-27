@@ -5,7 +5,7 @@
 # IMPORTANT: This Dockerfile expects PRE-BUILT artifacts in build context
 # Build context should be: docker-build-output/
 #
-# Prerequisites (built by scripts/build-docker.ps1 or build-docker-linux.sh):
+# Prerequisites (built by scripts/build-docker.ps1 or build-docker.sh):
 #   - shared/dist/           (compiled shared package)
 #   - shared/package.json
 #   - backend/dist/          (compiled backend)
@@ -18,7 +18,7 @@
 #   .\scripts\build-docker.ps1 -Type prod
 #
 #   # Linux/CI (full pipeline)
-#   ./scripts/build-docker-linux.sh prod
+#   ./scripts/build-docker.sh prod
 #
 #   # Manual (after artifacts built)
 #   docker build -f docker/Dockerfile -t m3w:latest docker-build-output/

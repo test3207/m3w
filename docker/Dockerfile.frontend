@@ -4,7 +4,7 @@
 # IMPORTANT: This Dockerfile expects PRE-BUILT artifacts in build context
 # Build context should be: docker-build-output/
 #
-# Prerequisites (built by scripts/build-docker.ps1 or build-docker-linux.sh):
+# Prerequisites (built by scripts/build-docker.ps1 or build-docker.sh):
 #   - frontend/dist/         (compiled frontend)
 #   - docker/nginx.conf
 #   - docker/docker-entrypoint-frontend.sh
@@ -14,7 +14,7 @@
 #   .\scripts\build-docker.ps1 -Type prod
 #
 #   # Linux/CI (full pipeline)
-#   ./scripts/build-docker-linux.sh prod
+#   ./scripts/build-docker.sh prod
 #
 #   # Manual (after artifacts built)
 #   docker build -f docker/Dockerfile.frontend -t m3w-frontend:latest docker-build-output/

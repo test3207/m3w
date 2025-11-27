@@ -414,8 +414,10 @@ See [Issue #61](https://github.com/test3207/m3w/issues/61) for GitHub Actions wo
 
 ### Using Build Scripts (Recommended)
 
+The build script auto-detects the container runtime (Docker or Podman):
+
 ```powershell
-# Build all image variants (AIO + Backend)
+# Build all image variants (AIO + Backend + Frontend)
 .\scripts\build-docker.ps1 -Type prod
 
 # Build with registry prefix
@@ -423,28 +425,35 @@ See [Issue #61](https://github.com/test3207/m3w/issues/61) for GitHub Actions wo
 
 # Build RC variant
 .\scripts\build-docker.ps1 -Type rc -RcNumber 1
+
+# Build and test
+.\scripts\build-docker.ps1 -Type prod -Test
 ```
 
 See [scripts/build-docker.ps1](../../scripts/build-docker.ps1) for full options.
 
 ### Manual Build and Test
 
-- Build production images with `podman build -t m3w:local -f docker/Dockerfile --build-arg BUILD_TARGET=prod .`
+Use `docker` or `podman` interchangeably:
+
+- Build production images with `docker build -t m3w:local -f docker/Dockerfile docker-build-output/`
 - Use `.env.docker` (created from `.env.docker.example`) for container environments.
 - When using docker-compose services, the container must join the `m3w_default` network to access PostgreSQL and MinIO via their container names (`m3w-postgres`, `m3w-minio`).
-- Run containers with `podman run -d --name m3w-prod --network m3w_default -p 4000:4000 --env-file backend/.env.docker m3w:local`.
+- Run containers with `docker run -d --name m3w-prod --network m3w_default -p 4000:4000 --env-file backend/.env.docker m3w:local`.
 - For standalone containers without compose, use `host.containers.internal` in `.env.docker` to access host services.
 - Verify builds pass type checking, linting, and produce functional containers before deployment.
 - Test authentication flows and database connectivity in the containerized environment.
 
 **Cleanup**:
 ```bash
+docker stop m3w-prod ; docker rm m3w-prod ; docker rmi m3w:local
+# Or with podman:
 podman stop m3w-prod ; podman rm m3w-prod ; podman rmi m3w:local
 ```
 
 **For RC builds** (with demo mode):
 ```bash
 .\scripts\build-docker.ps1 -Type rc -RcNumber 1
-podman run -d --name m3w-rc --network m3w_default -p 4000:4000 \
+docker run -d --name m3w-rc --network m3w_default -p 4000:4000 \
   --env-file backend/.env.docker -e DEMO_MODE=true ghcr.io/test3207/m3w:v0.1.0-rc.1
 ```

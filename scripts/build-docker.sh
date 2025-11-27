@@ -7,11 +7,11 @@
 # 3. Optionally tests the built images
 #
 # Usage:
-#   ./scripts/build-docker-linux.sh prod              # Production build
-#   ./scripts/build-docker-linux.sh rc 1              # RC build (rc.1)
-#   ./scripts/build-docker-linux.sh prod push         # Build and push
-#   ./scripts/build-docker-linux.sh prod test         # Build and test AIO image
-#   ./scripts/build-docker-linux.sh prod skip-artifacts  # Skip artifact build
+#   ./scripts/build-docker.sh prod              # Production build
+#   ./scripts/build-docker.sh rc 1              # RC build (rc.1)
+#   ./scripts/build-docker.sh prod push         # Build and push
+#   ./scripts/build-docker.sh prod test         # Build and test AIO image
+#   ./scripts/build-docker.sh prod skip-artifacts  # Skip artifact build
 
 set -e
 
@@ -58,9 +58,9 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="$PROJECT_ROOT/docker-build-output"
 REGISTRY="${DOCKER_REGISTRY:-ghcr.io/test3207}"
 
-# Read NODE_IMAGE from docker/.docker-version
+# Read NODE_IMAGE from docker/docker-version.conf
 NODE_IMAGE="node:25.2.1-alpine"  # fallback
-DOCKER_VERSION_FILE="$PROJECT_ROOT/docker/.docker-version"
+DOCKER_VERSION_FILE="$PROJECT_ROOT/docker/docker-version.conf"
 if [[ -f "$DOCKER_VERSION_FILE" ]]; then
     NODE_IMAGE=$(grep "^NODE_IMAGE=" "$DOCKER_VERSION_FILE" | cut -d'=' -f2 | tr -d ' ')
     NODE_IMAGE="${NODE_IMAGE:-node:25.2.1-alpine}"

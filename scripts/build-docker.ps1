@@ -39,6 +39,32 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = (Get-Item $PSScriptRoot).Parent.FullName
 $OutputDir = Join-Path $ProjectRoot "docker-build-output"
 
+# Detect container runtime (prefer docker, fallback to podman)
+function Get-ContainerRuntime {
+    # Try docker first
+    if (Get-Command "docker" -ErrorAction SilentlyContinue) {
+        $dockerInfo = docker info 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            return "docker"
+        }
+    }
+    
+    # Try podman
+    if (Get-Command "podman" -ErrorAction SilentlyContinue) {
+        $podmanInfo = podman info 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            return "podman"
+        }
+    }
+    
+    Write-Host "❌ No container runtime found!" -ForegroundColor Red
+    Write-Host "   Please install Docker or Podman" -ForegroundColor Red
+    exit 1
+}
+
+$ContainerRuntime = Get-ContainerRuntime
+$ComposeCommand = if ($ContainerRuntime -eq "docker") { "docker compose" } else { "podman-compose" }
+
 # Read NODE_IMAGE from docker/docker-version.conf
 $dockerVersionFile = Join-Path $ProjectRoot "docker/docker-version.conf"
 $NodeImage = "node:25.2.1-alpine"  # fallback
@@ -72,6 +98,7 @@ Write-Host ""
 Write-Host "  Version:  $version" -ForegroundColor Green
 Write-Host "  Type:     $Type" -ForegroundColor Green
 Write-Host "  Registry: $Registry" -ForegroundColor Green
+Write-Host "  Runtime:  $ContainerRuntime" -ForegroundColor Green
 Write-Host ""
 
 # ============================================
@@ -93,7 +120,7 @@ if (-not $SkipArtifacts) {
     # Run build in container
     Write-Host "   Running container build (BUILD_TARGET=$buildTarget)..." -ForegroundColor Gray
     
-    podman run --rm `
+    & $ContainerRuntime run --rm `
         -v "${ProjectRoot}:/app:ro" `
         -v "${OutputDir}:/output" `
         -e "BUILD_TARGET=$buildTarget" `
@@ -146,7 +173,7 @@ function Build-DockerImage {
     $dockerfilePath = Join-Path $ProjectRoot $Dockerfile
     
     # Build from output directory
-    podman build @tagArgs -f $dockerfilePath $OutputDir
+    & $ContainerRuntime build @tagArgs -f $dockerfilePath $OutputDir
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ Failed to build $Name" -ForegroundColor Red
@@ -175,7 +202,7 @@ Write-Host ""
 
 # Show image sizes
 Write-Host "📊 Image sizes:" -ForegroundColor Yellow
-podman images --filter "reference=${Registry}/m3w*" --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | Select-Object -First 12
+& $ContainerRuntime images --filter "reference=${Registry}/m3w*" --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | Select-Object -First 12
 
 Write-Host ""
 Write-Host "📋 Built tags:" -ForegroundColor Yellow
@@ -194,7 +221,7 @@ if ($Push) {
     foreach ($img in @("m3w", "m3w-backend", "m3w-frontend")) {
         foreach ($tag in $allTags) {
             Write-Host "  Pushing ${Registry}/${img}:${tag}..." -ForegroundColor Gray
-            podman push "${Registry}/${img}:${tag}"
+            & $ContainerRuntime push "${Registry}/${img}:${tag}"
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "❌ Failed to push ${img}:${tag}" -ForegroundColor Red
                 exit 1
@@ -248,24 +275,28 @@ if ($Test) {
     }
     
     # Check if m3w_default network exists
-    $networkExists = podman network ls --format "{{.Name}}" | Select-String -Pattern "^m3w_default$"
+    $networkExists = & $ContainerRuntime network ls --format "{{.Name}}" | Select-String -Pattern "^m3w_default$"
     if (-not $networkExists) {
         Write-Host "⚠️  Docker network 'm3w_default' not found" -ForegroundColor Yellow
         Write-Host "   Starting PostgreSQL and MinIO with docker-compose..." -ForegroundColor Gray
         
         Push-Location $ProjectRoot
-        podman-compose up -d
+        if ($ContainerRuntime -eq "docker") {
+            docker compose up -d
+        } else {
+            podman-compose up -d
+        }
         Pop-Location
         
         Start-Sleep -Seconds 5
     }
     
     # Stop existing test container
-    $existingContainer = podman ps -a --filter "name=m3w-test" --format "{{.Names}}"
+    $existingContainer = & $ContainerRuntime ps -a --filter "name=m3w-test" --format "{{.Names}}"
     if ($existingContainer) {
         Write-Host "   Stopping existing test container..." -ForegroundColor Gray
-        podman stop m3w-test 2>$null
-        podman rm m3w-test 2>$null
+        & $ContainerRuntime stop m3w-test 2>$null
+        & $ContainerRuntime rm m3w-test 2>$null
     }
     
     # Start test container using docker-compose.test.yml
@@ -276,7 +307,11 @@ if ($Test) {
     $env:M3W_IMAGE = "${Registry}/m3w:${version}"
     
     Push-Location $ProjectRoot
-    podman-compose -f $testComposeFile up -d
+    if ($ContainerRuntime -eq "docker") {
+        docker compose -f $testComposeFile up -d
+    } else {
+        podman-compose -f $testComposeFile up -d
+    }
     Pop-Location
     
     if ($LASTEXITCODE -ne 0) {
@@ -332,14 +367,18 @@ if ($Test) {
         Write-Host "  AIO container running at: http://localhost:4000" -ForegroundColor Cyan
         Write-Host ""
         Write-Host "  Commands:" -ForegroundColor Gray
-        Write-Host "    View logs:  podman logs -f m3w-test" -ForegroundColor Gray
-        Write-Host "    Stop:       podman-compose -f docker/docker-compose.test.yml down" -ForegroundColor Gray
+        Write-Host "    View logs:  $ContainerRuntime logs -f m3w-test" -ForegroundColor Gray
+        if ($ContainerRuntime -eq "docker") {
+            Write-Host "    Stop:       docker compose -f docker/docker-compose.test.yml down" -ForegroundColor Gray
+        } else {
+            Write-Host "    Stop:       podman-compose -f docker/docker-compose.test.yml down" -ForegroundColor Gray
+        }
         Write-Host ""
     } else {
         Write-Host "   ❌ Health check failed after $maxRetries retries" -ForegroundColor Red
         Write-Host ""
         Write-Host "   Container logs:" -ForegroundColor Yellow
-        podman logs m3w-test 2>&1 | Select-Object -Last 30
+        & $ContainerRuntime logs m3w-test 2>&1 | Select-Object -Last 30
         exit 1
     }
 }
