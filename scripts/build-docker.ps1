@@ -39,8 +39,8 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = (Get-Item $PSScriptRoot).Parent.FullName
 $OutputDir = Join-Path $ProjectRoot "docker-build-output"
 
-# Read NODE_IMAGE from docker/.docker-version
-$dockerVersionFile = Join-Path $ProjectRoot "docker/.docker-version"
+# Read NODE_IMAGE from docker/docker-version.conf
+$dockerVersionFile = Join-Path $ProjectRoot "docker/docker-version.conf"
 $NodeImage = "node:25.2.1-alpine"  # fallback
 if (Test-Path $dockerVersionFile) {
     $content = Get-Content $dockerVersionFile | Where-Object { $_ -match "^NODE_IMAGE=" }

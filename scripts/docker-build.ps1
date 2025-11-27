@@ -24,8 +24,8 @@ Write-Host "===================" -ForegroundColor Cyan
 $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $projectRoot
 
-# Read NODE_IMAGE from docker/.docker-version (single source of truth)
-$dockerVersionFile = Join-Path $projectRoot "docker/.docker-version"
+# Read NODE_IMAGE from docker/docker-version.conf (single source of truth)
+$dockerVersionFile = Join-Path $projectRoot "docker/docker-version.conf"
 $NodeImage = "node:25.2.1-alpine"  # fallback
 if (Test-Path $dockerVersionFile) {
     $content = Get-Content $dockerVersionFile | Where-Object { $_ -match "^NODE_IMAGE=" }
