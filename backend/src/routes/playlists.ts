@@ -85,6 +85,121 @@ app.get('/', async (c: Context) => {
   }
 });
 
+// GET /api/playlists/by-library/:libraryId - Get playlist linked to library
+// NOTE: Static routes must be defined BEFORE parameterized routes (/:id)
+app.get('/by-library/:libraryId', async (c: Context) => {
+  try {
+    const userId = getUserId(c);
+    const { libraryId } = c.req.param();
+
+    const playlist = await prisma.playlist.findFirst({
+      where: {
+        userId,
+        linkedLibraryId: libraryId,
+      },
+    });
+
+    if (!playlist) {
+      return c.json<ApiResponse<never>>(
+        {
+          success: false,
+          error: 'Playlist not found',
+        },
+        404
+      );
+    }
+
+    // Transform to API response format using shared transformer
+    const input: PlaylistInput = {
+      ...playlist,
+      coverUrl: null,
+    };
+
+    return c.json<ApiResponse<Playlist>>({
+      success: true,
+      data: toPlaylistResponse(input),
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to fetch library playlist');
+    return c.json<ApiResponse<never>>(
+      {
+        success: false,
+        error: 'Failed to fetch library playlist',
+      },
+      500
+    );
+  }
+});
+
+// POST /api/playlists/for-library - Create playlist linked to library
+// NOTE: Static routes must be defined BEFORE parameterized routes (/:id)
+app.post('/for-library', async (c: Context) => {
+  try {
+    const userId = getUserId(c);
+    const body = await c.req.json();
+    const { name, linkedLibraryId, songIds } = body;
+
+    // Validate library belongs to user
+    const library = await prisma.library.findFirst({
+      where: { id: linkedLibraryId, userId },
+    });
+
+    if (!library) {
+      return c.json<ApiResponse<never>>(
+        {
+          success: false,
+          error: 'Library not found',
+        },
+        404
+      );
+    }
+
+    // Create playlist
+    const playlist = await prisma.playlist.create({
+      data: {
+        name,
+        userId,
+        linkedLibraryId,
+        songIds,
+        canDelete: false, // Library playlists cannot be manually deleted
+      },
+    });
+
+    // Create PlaylistSong entries
+    const playlistSongData = songIds.map((songId: string, index: number) => ({
+      playlistId: playlist.id,
+      songId,
+      order: index,
+    }));
+
+    await prisma.playlistSong.createMany({
+      data: playlistSongData,
+    });
+
+    logger.info({ playlistId: playlist.id, linkedLibraryId }, 'Created library playlist');
+
+    // Transform to API response format
+    const input: PlaylistInput = {
+      ...playlist,
+      coverUrl: null,
+    };
+
+    return c.json<ApiResponse<Playlist>>({
+      success: true,
+      data: toPlaylistResponse(input),
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to create library playlist');
+    return c.json<ApiResponse<never>>(
+      {
+        success: false,
+        error: 'Failed to create library playlist',
+      },
+      500
+    );
+  }
+});
+
 // GET /api/playlists/:id - Get playlist by ID
 app.get('/:id', async (c: Context) => {
   try {
@@ -732,119 +847,6 @@ app.put('/:id/songs/reorder', async (c: Context) => {
       {
         success: false,
         error: 'Failed to reorder songs in playlist',
-      },
-      500
-    );
-  }
-});
-
-// GET /api/playlists/by-library/:libraryId - Get playlist linked to library
-app.get('/by-library/:libraryId', async (c: Context) => {
-  try {
-    const userId = getUserId(c);
-    const { libraryId } = c.req.param();
-
-    const playlist = await prisma.playlist.findFirst({
-      where: {
-        userId,
-        linkedLibraryId: libraryId,
-      },
-    });
-
-    if (!playlist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
-    }
-
-    // Transform to API response format using shared transformer
-    const input: PlaylistInput = {
-      ...playlist,
-      coverUrl: null,
-    };
-
-    return c.json<ApiResponse<Playlist>>({
-      success: true,
-      data: toPlaylistResponse(input),
-    });
-  } catch (error) {
-    logger.error({ error }, 'Failed to fetch library playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to fetch library playlist',
-      },
-      500
-    );
-  }
-});
-
-// POST /api/playlists/for-library - Create playlist linked to library
-app.post('/for-library', async (c: Context) => {
-  try {
-    const userId = getUserId(c);
-    const body = await c.req.json();
-    const { name, linkedLibraryId, songIds } = body;
-
-    // Validate library belongs to user
-    const library = await prisma.library.findFirst({
-      where: { id: linkedLibraryId, userId },
-    });
-
-    if (!library) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Library not found',
-        },
-        404
-      );
-    }
-
-    // Create playlist
-    const playlist = await prisma.playlist.create({
-      data: {
-        name,
-        userId,
-        linkedLibraryId,
-        songIds,
-        canDelete: false, // Library playlists cannot be manually deleted
-      },
-    });
-
-    // Create PlaylistSong entries
-    const playlistSongData = songIds.map((songId: string, index: number) => ({
-      playlistId: playlist.id,
-      songId,
-      order: index,
-    }));
-
-    await prisma.playlistSong.createMany({
-      data: playlistSongData,
-    });
-
-    logger.info({ playlistId: playlist.id, linkedLibraryId }, 'Created library playlist');
-
-    // Transform to API response format
-    const input: PlaylistInput = {
-      ...playlist,
-      coverUrl: null,
-    };
-
-    return c.json<ApiResponse<Playlist>>({
-      success: true,
-      data: toPlaylistResponse(input),
-    });
-  } catch (error) {
-    logger.error({ error }, 'Failed to create library playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to create library playlist',
       },
       500
     );
