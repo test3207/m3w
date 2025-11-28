@@ -28,9 +28,14 @@
     "type": "git",
     "url": "git+https://github.com/test3207/m3w.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "music-player",
+    "self-hosted",
+    "pwa",
+    "offline-first"
+  ],
+  "author": "test3207",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/test3207/m3w/issues"
   },
