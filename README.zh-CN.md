@@ -5,8 +5,8 @@
 <h1 align="center">M3W</h1>
 
 <p align="center">
-  <strong>Self-hosted Music Player</strong><br>
-  Own your music. Play anywhere.
+  <strong>自托管音乐播放器</strong><br>
+  你的音乐，随处播放
 </p>
 
 <p align="center">
@@ -16,73 +16,73 @@
 </p>
 
 <p align="center">
-  <a href="./README.zh-CN.md">中文</a> •
-  <a href="#features">Features</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#documentation">Docs</a>
+  <a href="./README.md">English</a> •
+  <a href="#功能特性">功能</a> •
+  <a href="#快速开始">快速开始</a> •
+  <a href="#文档">文档</a>
 </p>
 
 ---
 
-## Features
+## 功能特性
 
-- 🎵 **Multiple Libraries** — Organize music into separate collections
-- 📝 **Cross-Library Playlists** — Mix songs from different libraries
-- 📱 **Mobile-First** — Designed for phones, works on desktop
-- 🔌 **Offline Mode** — Full functionality without an account or internet
-- 🏠 **Self-Hosted** — Your data stays on your server
-- ⚡ **PWA Ready** — Install as an app, play cached music offline
+- 🎵 **多音乐库** — 创建多个独立的音乐库，分类管理
+- 📝 **跨库播放列表** — 从不同音乐库组合歌曲
+- 📱 **移动优先** — 专为手机设计，桌面端同样可用
+- 🔌 **离线模式** — 无需账户或网络即可使用完整功能
+- 🏠 **自托管** — 数据完全存储在你自己的服务器上
+- ⚡ **PWA 支持** — 可安装为应用，离线播放已缓存的音乐
 
-## Quick Start
+## 快速开始
 
-### Option 1: Offline Mode (No Setup Required)
+### 方式一：离线模式（无需配置）
 
-Try M3W instantly without any server setup:
+无需任何服务器配置，即刻体验 M3W：
 
-1. Visit [m3w.test3207.top](https://m3w.test3207.top) or deploy your own instance
-2. Click **"Offline Mode"** on the sign-in page
-3. Import your local music files and start playing
+1. 访问 [m3w.test3207.top](https://m3w.test3207.top) 或部署你自己的实例
+2. 在登录页点击 **"离线模式"**
+3. 导入本地音乐文件，开始播放
 
-All data stays in your browser. No account needed.
+所有数据保存在浏览器中，无需账户。
 
-### Option 2: Docker Deployment
+### 方式二：Docker 部署
 
-For persistent storage and multi-device sync:
+需要持久化存储和多设备同步：
 
 ```bash
-# Download compose file
+# 下载 compose 文件
 curl -sL https://raw.githubusercontent.com/test3207/m3w/main/docker/examples/simple/docker-compose.yml \
   -o docker-compose.yml
 
-# Start services
+# 启动服务
 docker compose up -d
 
-# Visit http://localhost:4000
+# 访问 http://localhost:4000
 ```
 
-> **Note**: The default setup works for local use. For GitHub login (multi-device sync), configure `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in the compose file. See [Deployment Guide](./docker/README.md) for details.
+> **提示**：默认配置适用于本地使用。如需 GitHub 登录（多设备同步），请在 compose 文件中配置 `GITHUB_CLIENT_ID` 和 `GITHUB_CLIENT_SECRET`。详见 [部署指南](./docker/README.md)。
 
-### Option 3: Development Setup
+### 方式三：开发环境
 
 ```bash
 git clone https://github.com/test3207/m3w.git
 cd m3w
 npm install
-docker compose up -d    # Start PostgreSQL + MinIO
+docker compose up -d    # 启动 PostgreSQL + MinIO
 npm run db:migrate
 npm run dev             # http://localhost:3000
 ```
 
-See [Development Guide](./docs/DEVELOPMENT.md) for full instructions.
+完整说明请参考 [开发指南](./docs/DEVELOPMENT.md)。
 
-## Screenshots
+## 截图
 
-<!-- Coming soon -->
+<!-- 即将添加 -->
 <p align="center">
-  <em>Screenshots coming soon</em>
+  <em>截图即将添加</em>
 </p>
 
-## How It Works
+## 工作原理
 
 ```
 +---------------------------------------------+
@@ -105,11 +105,11 @@ See [Development Guide](./docs/DEVELOPMENT.md) for full instructions.
           +----------------------+
 ```
 
-**Offline Mode**: Everything runs in your browser. Music files are cached locally.
+**离线模式**：所有功能在浏览器中运行，音乐文件缓存在本地。
 
-**With Server**: Sync across devices, persistent storage, GitHub authentication.
+**连接服务器**：多设备同步、持久化存储、GitHub 身份验证。
 
-## Tech Stack
+## 技术栈
 
 <p>
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React">
@@ -120,36 +120,37 @@ See [Development Guide](./docs/DEVELOPMENT.md) for full instructions.
   <img src="https://img.shields.io/badge/PWA-Ready-5A0FC8?logo=pwa&logoColor=white" alt="PWA">
 </p>
 
-## Documentation
+## 文档
 
-| Document | Description |
-|----------|-------------|
-| [Deployment Guide](./docker/README.md) | Docker/Podman deployment options |
-| [Development Guide](./docs/DEVELOPMENT.md) | Local development setup |
-| [PWA & Offline](./docs/PWA_OFFLINE_GUIDE.md) | Offline functionality details |
-| [LAN Access](./docs/LAN_ACCESS.md) | Access from other devices |
+| 文档 | 描述 |
+|------|------|
+| [部署指南](./docker/README.md) | Docker/Podman 部署选项 |
+| [开发指南](./docs/DEVELOPMENT.md) | 本地开发环境配置 |
+| [PWA 与离线](./docs/PWA_OFFLINE_GUIDE.md) | 离线功能详解 |
+| [局域网访问](./docs/LAN_ACCESS.md) | 从其他设备访问 |
+| [中国用户](./docs/CHINA_REGISTRY.md) | 镜像源配置 |
 
-## Roadmap
+## 路线图
 
-- [x] Core playback with offline support
-- [x] Multi-library & playlist management
-- [x] PWA with full offline capability
-- [ ] Multi-device sync
-- [ ] Lyrics display
-- [ ] Desktop app (Tauri)
+- [x] 核心播放功能与离线支持
+- [x] 多音乐库与播放列表管理
+- [x] PWA 完整离线能力
+- [ ] 多设备同步
+- [ ] 歌词显示
+- [ ] 桌面应用 (Tauri)
 
-## Contributing
+## 参与贡献
 
-Contributions are welcome! Please read the [Development Guide](./docs/DEVELOPMENT.md) first.
+欢迎贡献！请先阅读 [开发指南](./docs/DEVELOPMENT.md)。
 
 ```bash
-# Fork, clone, then:
+# Fork 并克隆，然后：
 git checkout -b feature/your-feature
 npm run test
 npm run lint
 git commit -m "feat: your feature"
 ```
 
-## License
+## 许可证
 
 [MIT](./LICENSE) © 2025 test3207

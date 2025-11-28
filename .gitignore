@@ -89,3 +89,6 @@ Thumbs.db
 debug-*.mjs
 debug-*.js
 temp/
+
+# Private docs (contains credentials)
+docs/private/
