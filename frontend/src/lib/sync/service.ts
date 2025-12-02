@@ -291,7 +291,10 @@ export class SyncService {
           }
         }
       }
-      // Remove from local DB
+      // Remove from local DB (with cascading to avoid orphaned data)
+      // This is especially important for Guest users who never sync
+      await db.songs.where('libraryId').equals(library.id).delete();
+      await db.playlists.where('linkedLibraryId').equals(library.id).modify({ linkedLibraryId: undefined });
       await db.libraries.delete(library.id);
       return;
     }
