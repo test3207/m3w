@@ -175,10 +175,8 @@ describe('Soft Delete Filter - Libraries', () => {
   it('should treat soft-deleted library as not found', () => {
     const library = createMockLibrary('lib-1', 'Deleted Library', true);
     
-    // Simulating the check: if (!library || library._isDeleted)
-    const isNotFound = !library || library._isDeleted;
-    
-    expect(isNotFound).toBe(true);
+    // Verify the _isDeleted flag is set correctly
+    expect(library._isDeleted).toBe(true);
   });
 });
 
@@ -186,18 +184,15 @@ describe('Soft Delete Filter - Songs', () => {
   it('should treat soft-deleted song as not found', () => {
     const song = createMockSong('song-1', 'lib-1', 'Deleted Song', true);
     
-    // Simulating the check: if (!song || song._isDeleted)
-    const isNotFound = !song || song._isDeleted;
-    
-    expect(isNotFound).toBe(true);
+    // Verify the _isDeleted flag is set correctly
+    expect(song._isDeleted).toBe(true);
   });
 
   it('should return active song normally', () => {
     const song = createMockSong('song-1', 'lib-1', 'Active Song', false);
     
-    const isNotFound = !song || song._isDeleted;
-    
-    expect(isNotFound).toBe(false);
+    // Verify the _isDeleted flag is not set
+    expect(song._isDeleted).toBe(false);
   });
 });
 
@@ -234,9 +229,8 @@ describe('Soft Delete Filter - Playlists', () => {
   it('should treat soft-deleted playlist as not found', () => {
     const playlist = createMockPlaylist('pl-1', 'Deleted Playlist', null, true);
     
-    const isNotFound = !playlist || playlist._isDeleted;
-    
-    expect(isNotFound).toBe(true);
+    // Verify the _isDeleted flag is set correctly
+    expect(playlist._isDeleted).toBe(true);
   });
 
   it('should find active linked playlist excluding soft-deleted ones', () => {
