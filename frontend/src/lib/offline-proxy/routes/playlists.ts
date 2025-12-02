@@ -12,7 +12,7 @@ import {
   toPlaylistResponse,
 } from '@m3w/shared';
 import type { ApiResponse, PlaylistReorderResult } from '@m3w/shared';
-import { getUserId } from '../utils';
+import { getUserId, isGuestUser } from '../utils';
 import { logger } from '../../logger-client';
 
 const app = new Hono();
@@ -167,8 +167,8 @@ app.post('/for-library', async (c: Context) => {
       );
     }
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'playlist',
         entityId: playlist.id,
@@ -278,8 +278,8 @@ app.post('/', async (c: Context) => {
 
     await db.playlists.add(playlist);
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'playlist',
         entityId: playlist.id,
@@ -336,8 +336,8 @@ app.patch('/:id', async (c: Context) => {
 
     await db.playlists.put(updated);
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'playlist',
         entityId: id,
@@ -381,8 +381,8 @@ app.delete('/:id', async (c: Context) => {
 
     await db.playlists.delete(id);
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'playlist',
         entityId: id,
@@ -532,8 +532,8 @@ app.post('/:id/songs', async (c: Context) => {
       ...(wasEmpty && song.coverUrl ? { coverUrl: song.coverUrl } : {}),
     });
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'playlistSong',
         entityId: playlistSong.id,
@@ -696,8 +696,8 @@ app.put('/:id/songs', async (c: Context) => {
     };
     await db.playlists.put(updated);
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'playlist',
         entityId: id,
@@ -764,8 +764,8 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       updatedAt: new Date().toISOString(),
     });
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'playlistSong',
         entityId: playlistSong.id,

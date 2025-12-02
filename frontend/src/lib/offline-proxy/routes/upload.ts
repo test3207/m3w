@@ -1,5 +1,8 @@
 /**
  * Upload routes for offline-proxy
+ * 
+ * All cache operations use /api/ URLs as cache keys.
+ * This ensures cache compatibility when user switches from Guest to Auth mode.
  */
 
 import { Hono } from 'hono';
@@ -8,7 +11,7 @@ import { db } from '../../db/schema';
 import type { OfflineSong } from '../../db/schema';
 import { parseBlob } from 'music-metadata';
 import { calculateFileHash } from '../../utils/hash';
-import { cacheGuestAudio, cacheGuestCover } from '../../pwa/cache-manager';
+import { cacheAudioForOffline, cacheCoverForOffline } from '../../pwa/cache-manager';
 
 const app = new Hono();
 
@@ -59,12 +62,12 @@ app.post('/', async (c: Context) => {
         type: picture.format,
       });
 
-      // Cache cover in Cache Storage and get guest URL
-      coverUrl = await cacheGuestCover(songId, coverBlob);
+      // Cache cover in Cache Storage using unified /api/ URL
+      coverUrl = await cacheCoverForOffline(songId, coverBlob);
     }
 
-    // 6. Cache audio file in Cache Storage
-    const streamUrl = await cacheGuestAudio(songId, file);
+    // 6. Cache audio file in Cache Storage using unified /api/ URL
+    const streamUrl = await cacheAudioForOffline(songId, file);
 
     // 7. Create Song object
     const now = new Date().toISOString();
@@ -83,7 +86,7 @@ app.post('/', async (c: Context) => {
       composer:
         common.composer && common.composer.length > 0 ? common.composer[0] : null,
       coverUrl: coverUrl || null,
-      streamUrl, // Guest URL: /guest/songs/{id}/stream
+      streamUrl, // Unified URL: /api/songs/{id}/stream (works for both Guest and Auth)
       fileId: fileEntity.id, // Reference to File entity
       duration: format.duration || null,
       mimeType: fileEntity.mimeType, // Audio format (audio/mpeg, audio/flac, etc.)

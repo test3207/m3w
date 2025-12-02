@@ -44,7 +44,7 @@ export interface OfflineFile {
 export interface OfflineSong extends Omit<Song, 'fileId' | 'libraryName' | 'mimeType'> {
   _syncStatus?: 'synced' | 'pending' | 'conflict';
   _lastSyncedAt?: Date;
-  /** Audio stream URL (Guest: /guest/songs/:id/stream, Auth: /api/songs/:id/stream) */
+  /** Audio stream URL (/api/songs/:id/stream) */
   streamUrl?: string;
   /** Cache status fields */
   isCached: boolean;

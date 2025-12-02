@@ -1,8 +1,9 @@
 import { db } from './schema';
 import type { OfflineLibrary, OfflinePlaylist } from './schema';
+import { GUEST_USER_ID } from '../constants/guest';
 
 export async function initGuestResources() {
-  const userId = 'guest';
+  const userId = GUEST_USER_ID;
   const now = new Date().toISOString();
 
   // 1. Check if default library exists

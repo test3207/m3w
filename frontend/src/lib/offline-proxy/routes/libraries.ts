@@ -7,7 +7,7 @@ import type { Context } from 'hono';
 import { db, addToSyncQueue } from '../../db/schema';
 import type { OfflineLibrary } from '../../db/schema';
 import { createLibrarySchema, updateLibrarySchema, toLibraryResponse } from '@m3w/shared';
-import { getUserId } from '../utils';
+import { getUserId, isGuestUser } from '../utils';
 import { sortSongsOffline } from '../utils';
 
 const app = new Hono();
@@ -79,7 +79,7 @@ app.get('/:id', async (c: Context) => {
     }
 
     // Check ownership (skip for guest to allow access to guest's own libraries)
-    if (library.userId !== userId && userId !== 'guest') {
+    if (library.userId !== userId && !isGuestUser()) {
       return c.json(
         {
           success: false,
@@ -147,8 +147,8 @@ app.post('/', async (c: Context) => {
 
     await db.libraries.add(library);
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'library',
         entityId: library.id,
@@ -205,8 +205,8 @@ app.patch('/:id', async (c: Context) => {
 
     await db.libraries.put(updated);
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'library',
         entityId: id,
@@ -250,8 +250,8 @@ app.delete('/:id', async (c: Context) => {
 
     await db.libraries.delete(id);
 
-    // Only queue sync for authenticated users
-    if (userId !== 'guest') {
+    // Only queue sync for authenticated users (not guests)
+    if (!isGuestUser()) {
       await addToSyncQueue({
         entityType: 'library',
         entityId: id,

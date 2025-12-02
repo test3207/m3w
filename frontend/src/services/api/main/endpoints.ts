@@ -4,12 +4,20 @@
  */
 
 /**
- * Get stream URL based on current auth context
- * Guest mode: /guest/songs/:id/stream (served by Service Worker from Cache Storage)
- * Auth mode: /api/songs/:id/stream (fetched from backend with token)
+ * Get stream URL for audio files
+ * Always returns /api/songs/:id/stream regardless of auth mode.
+ * Service Worker handles caching for both Guest and Auth scenarios.
  */
-export function getStreamUrl(songId: string, isGuest: boolean): string {
-  return isGuest ? `/guest/songs/${songId}/stream` : `/api/songs/${songId}/stream`;
+export function getStreamUrl(songId: string): string {
+  return `/api/songs/${songId}/stream`;
+}
+
+/**
+ * Get cover URL for album art
+ * Same unified strategy as getStreamUrl
+ */
+export function getCoverUrl(songId: string): string {
+  return `/api/songs/${songId}/cover`;
 }
 
 export const MAIN_API_ENDPOINTS = {
