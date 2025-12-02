@@ -98,7 +98,8 @@ app.post('/', async (c: Context) => {
       lastCacheCheck: Date.now(),
       fileHash: hash, // Keep for quick lookup
       // No longer store blobs in IndexedDB
-      _syncStatus: 'pending',
+      // Guest data is local only, no sync needed
+      _isDirty: false,
     };
 
     // 8. Save song to IndexedDB and increment File refCount

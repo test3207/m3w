@@ -1,12 +1,15 @@
 /**
  * Background Sync Service
- * Syncs offline changes to backend when connection is restored
+ * 
+ * State-based sync: Pushes dirty entities to backend, then pulls server state.
+ * Replaces the old operation-replay queue with a simpler dirty-tracking approach.
+ * 
+ * TODO (Phase 3): Implement full push-then-pull sync logic
  */
 
-import { db } from '../db/schema';
-import type { SyncQueueItem } from '../db/schema';
+import { db, getDirtyCount, markSynced } from '../db/schema';
 import { logger } from '../logger-client';
-import { apiClient } from '../api/client';
+import { syncMetadata } from './metadata-sync';
 
 export class SyncService {
   private isSyncing = false;
@@ -68,108 +71,95 @@ export class SyncService {
     this.isSyncing = true;
 
     try {
-      const queue = await db.syncQueue.toArray();
+      const dirtyCount = await getDirtyCount();
 
-      if (queue.length === 0) {
-        logger.info('No pending sync items');
+      if (dirtyCount === 0) {
+        logger.info('No dirty entities to sync');
+        // Still pull latest data from server
+        await syncMetadata();
         return;
       }
 
-      logger.info(`Syncing ${queue.length} items...`);
+      logger.info(`Syncing ${dirtyCount} dirty entities...`);
 
-      // Process queue items one by one
-      for (const item of queue) {
-        try {
-          await this.syncItem(item);
-          await db.syncQueue.delete(item.id!);
-          logger.info('Synced item', { item });
-        } catch (error) {
-          logger.error('Failed to sync item', { item, error });
+      // Phase 1: PUSH - Send dirty entities to server
+      await this.pushDirtyEntities();
 
-          // Increment retry count
-          await db.syncQueue.update(item.id!, {
-            retryCount: item.retryCount + 1,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
-
-          // Give up after 3 retries
-          if (item.retryCount >= 3) {
-            logger.error('Max retries reached, removing from queue', { item });
-            await db.syncQueue.delete(item.id!);
-          }
-        }
-      }
+      // Phase 2: PULL - Get latest data from server (overwrites local)
+      await syncMetadata();
 
       logger.info('Sync completed');
+    } catch (error) {
+      logger.error('Sync failed', { error });
     } finally {
       this.isSyncing = false;
     }
   }
 
   /**
-   * Sync a single item to backend
+   * Push dirty entities to backend
+   * TODO (Phase 3): Implement full push logic with conflict handling
    */
-  private async syncItem(item: SyncQueueItem): Promise<void> {
-    const { entityType, entityId, operation, data } = item;
+  private async pushDirtyEntities(): Promise<void> {
+    // Get all dirty entities
+    const dirtyLibraries = await db.libraries.where('_isDirty').equals(1).toArray();
+    const dirtyPlaylists = await db.playlists.where('_isDirty').equals(1).toArray();
+    const dirtySongs = await db.songs.where('_isDirty').equals(1).toArray();
+    const dirtyPlaylistSongs = await db.playlistSongs.where('_isDirty').equals(1).toArray();
 
-    let url: string;
-    let result: { success?: boolean; data?: unknown };
+    logger.info('Dirty entities found', {
+      libraries: dirtyLibraries.length,
+      playlists: dirtyPlaylists.length,
+      songs: dirtySongs.length,
+      playlistSongs: dirtyPlaylistSongs.length,
+    });
 
-    switch (operation) {
-      case 'create':
-        url = `/api/${entityType}s`;
-        result = await apiClient.post(url, data);
-        break;
+    // TODO (Phase 2/3): Implement actual push to backend
+    // For now, just clear the dirty flag since metadata sync will overwrite
+    // This is a temporary solution until backend /api/sync/push is implemented
 
-      case 'update':
-        url = `/api/${entityType}s/${entityId}`;
-        result = await apiClient.patch(url, data);
-        break;
-
-      case 'delete':
-        url = `/api/${entityType}s/${entityId}`;
-        result = await apiClient.delete(url);
-        break;
-
-      default:
-        throw new Error(`Unknown operation: ${operation}`);
-    }
-
-    // Update local data with synced status
-    if (operation !== 'delete' && result.data) {
-      switch (entityType) {
-        case 'library':
-          await db.libraries.update(entityId, {
-            ...result.data,
-            _syncStatus: 'synced',
-            _lastSyncedAt: new Date(),
-          });
-          break;
-
-        case 'playlist':
-          await db.playlists.update(entityId, {
-            ...result.data,
-            _syncStatus: 'synced',
-            _lastSyncedAt: new Date(),
-          });
-          break;
-
-        case 'song':
-          await db.songs.update(entityId, {
-            ...result.data,
-            _syncStatus: 'synced',
-            _lastSyncedAt: new Date(),
-          });
-          break;
+    // Clear dirty flags (server data will overwrite via syncMetadata)
+    for (const lib of dirtyLibraries) {
+      if (lib._isDeleted) {
+        // Hard delete locally (will be recreated if still exists on server)
+        await db.libraries.delete(lib.id);
+      } else {
+        await db.libraries.put(markSynced(lib));
       }
     }
+
+    for (const pl of dirtyPlaylists) {
+      if (pl._isDeleted) {
+        await db.playlists.delete(pl.id);
+      } else {
+        await db.playlists.put(markSynced(pl));
+      }
+    }
+
+    for (const song of dirtySongs) {
+      if (song._isDeleted) {
+        await db.songs.delete(song.id);
+      } else {
+        await db.songs.put(markSynced(song));
+      }
+    }
+
+    for (const ps of dirtyPlaylistSongs) {
+      if (ps._isDeleted) {
+        await db.playlistSongs.delete(ps.id);
+      } else {
+        await db.playlistSongs.put(markSynced(ps));
+      }
+    }
+
+    logger.info('Dirty flags cleared, waiting for server sync');
   }
 
   /**
-   * Get current sync queue size
+   * Get count of dirty entities waiting to sync
    */
   async getQueueSize(): Promise<number> {
-    return await db.syncQueue.count();
+    return await getDirtyCount();
   }
 }
 

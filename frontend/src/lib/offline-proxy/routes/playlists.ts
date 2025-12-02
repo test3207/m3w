@@ -4,15 +4,15 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { db, addToSyncQueue } from '../../db/schema';
-import type { OfflinePlaylist } from '../../db/schema';
+import { db, markDirty, markDeleted } from '../../db/schema';
+import type { OfflinePlaylist, PlaylistSongLink } from '../../db/schema';
 import {
   createPlaylistSchema,
   updatePlaylistSchema,
   toPlaylistResponse,
 } from '@m3w/shared';
 import type { ApiResponse, PlaylistReorderResult } from '@m3w/shared';
-import { getUserId, isGuestUser } from '../utils';
+import { getUserId } from '../utils';
 import { logger } from '../../logger-client';
 
 const app = new Hono();
@@ -133,7 +133,7 @@ app.post('/for-library', async (c: Context) => {
     const { name, linkedLibraryId, songIds } = body;
     const userId = getUserId();
 
-    const playlist: OfflinePlaylist = {
+    const playlistData: OfflinePlaylist = {
       id: crypto.randomUUID(),
       name,
       description: null,
@@ -146,35 +146,21 @@ app.post('/for-library', async (c: Context) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       _count: { songs: songIds?.length || 0 },
-      _syncStatus: 'pending',
     };
+    const playlist = markDirty(playlistData);
 
     await db.playlists.add(playlist);
 
     // Add playlist songs (align with backend: no fromLibraryId needed)
     if (songIds && songIds.length > 0) {
-      await Promise.all(
-        songIds.map((songId: string, index: number) =>
-          db.playlistSongs.add({
-            id: crypto.randomUUID(),
-            playlistId: playlist.id,
-            songId,
-            order: index + 1,
-            addedAt: new Date(),
-            _syncStatus: 'pending' as const,
-          })
-        )
-      );
-    }
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'playlist',
-        entityId: playlist.id,
-        operation: 'create',
-        data: playlist,
-      });
+      const playlistSongsData: PlaylistSongLink[] = songIds.map((songId: string, index: number) => ({
+        id: crypto.randomUUID(),
+        playlistId: playlist.id,
+        songId,
+        order: index + 1,
+        addedAt: new Date(),
+      }));
+      await db.playlistSongs.bulkAdd(playlistSongsData.map(ps => markDirty(ps)));
     }
 
     return c.json(
@@ -260,7 +246,7 @@ app.post('/', async (c: Context) => {
     const data = createPlaylistSchema.parse(body);
     const userId = getUserId();
 
-    const playlist: OfflinePlaylist = {
+    const playlistData: OfflinePlaylist = {
       id: crypto.randomUUID(),
       ...data,
       description: data.description ?? null,
@@ -273,20 +259,10 @@ app.post('/', async (c: Context) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       _count: { songs: 0 },
-      _syncStatus: 'pending',
     };
+    const playlist = markDirty(playlistData);
 
     await db.playlists.add(playlist);
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'playlist',
-        entityId: playlist.id,
-        operation: 'create',
-        data: playlist,
-      });
-    }
 
     // Transform to API response format
     return c.json(
@@ -327,24 +303,14 @@ app.patch('/:id', async (c: Context) => {
       );
     }
 
-    const updated: OfflinePlaylist = {
+    const updatedData: OfflinePlaylist = {
       ...playlist,
       ...data,
       updatedAt: new Date().toISOString(),
-      _syncStatus: 'pending',
     };
+    const updated = markDirty(updatedData);
 
     await db.playlists.put(updated);
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'playlist',
-        entityId: id,
-        operation: 'update',
-        data: updated,
-      });
-    }
 
     return c.json({
       success: true,
@@ -379,16 +345,8 @@ app.delete('/:id', async (c: Context) => {
       );
     }
 
-    await db.playlists.delete(id);
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'playlist',
-        entityId: id,
-        operation: 'delete',
-      });
-    }
+    // Soft delete for sync (markDeleted handles guest vs auth internally)
+    await db.playlists.put(markDeleted(playlist));
 
     return c.json({
       success: true,
@@ -510,14 +468,14 @@ app.post('/:id/songs', async (c: Context) => {
         : 0;
 
     // Add to playlist (align with backend: no fromLibraryId)
-    const playlistSong = {
+    const playlistSongData: PlaylistSongLink = {
       id: crypto.randomUUID(),
       playlistId: id,
       songId,
       order: maxOrder + 1,
       addedAt: new Date(),
-      _syncStatus: 'pending' as const,
     };
+    const playlistSong = markDirty(playlistSongData);
 
     await db.playlistSongs.add(playlistSong);
 
@@ -525,22 +483,17 @@ app.post('/:id/songs', async (c: Context) => {
     // Also update coverUrl if playlist was empty (first song added)
     const updatedSongIds = [...playlist.songIds, songId];
     const wasEmpty = playlist.songIds.length === 0;
+    
+    // Use markDirty pattern for playlist update
+    const playlistUpdate = markDirty({ ...playlist, songIds: updatedSongIds, updatedAt: new Date().toISOString() });
     await db.playlists.update(id, {
       songIds: updatedSongIds,
-      updatedAt: new Date().toISOString(),
+      updatedAt: playlistUpdate.updatedAt,
+      _isDirty: playlistUpdate._isDirty,
+      _lastModifiedAt: playlistUpdate._lastModifiedAt,
       // Update coverUrl if this is the first song
       ...(wasEmpty && song.coverUrl ? { coverUrl: song.coverUrl } : {}),
     });
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'playlistSong',
-        entityId: playlistSong.id,
-        operation: 'create',
-        data: playlistSong,
-      });
-    }
 
     // Return response matching backend format
     return c.json(
@@ -673,38 +626,24 @@ app.put('/:id/songs', async (c: Context) => {
 
     // Add new songs (align with backend: no fromLibraryId)
     if (songIds && songIds.length > 0) {
-      await Promise.all(
-        songIds.map((songId: string, index: number) =>
-          db.playlistSongs.add({
-            id: crypto.randomUUID(),
-            playlistId: id,
-            songId,
-            order: index + 1,
-            addedAt: new Date(),
-            _syncStatus: 'pending' as const,
-          })
-        )
-      );
+      const playlistSongsData: PlaylistSongLink[] = songIds.map((songId: string, index: number) => ({
+        id: crypto.randomUUID(),
+        playlistId: id,
+        songId,
+        order: index + 1,
+        addedAt: new Date(),
+      }));
+      await db.playlistSongs.bulkAdd(playlistSongsData.map(ps => markDirty(ps)));
     }
 
     // Update playlist songIds
-    const updated: OfflinePlaylist = {
+    const updatedData: OfflinePlaylist = {
       ...playlist,
       songIds,
       updatedAt: new Date().toISOString(),
-      _syncStatus: 'pending',
     };
+    const updated = markDirty(updatedData);
     await db.playlists.put(updated);
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'playlist',
-        entityId: id,
-        operation: 'update',
-        data: updated,
-      });
-    }
 
     return c.json({
       success: true,
@@ -755,23 +694,20 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       );
     }
 
-    await db.playlistSongs.delete(playlistSong.id);
+    // Soft delete for sync (markDeleted handles guest vs auth internally)
+    await db.playlistSongs.put(markDeleted(playlistSong));
 
     // Update playlist.songIds array to match backend behavior
     const updatedSongIds = playlist.songIds.filter((id) => id !== songId);
+    
+    // Use markDirty pattern for playlist update
+    const playlistUpdate = markDirty({ ...playlist, songIds: updatedSongIds, updatedAt: new Date().toISOString() });
     await db.playlists.update(playlistId, {
       songIds: updatedSongIds,
-      updatedAt: new Date().toISOString(),
+      updatedAt: playlistUpdate.updatedAt,
+      _isDirty: playlistUpdate._isDirty,
+      _lastModifiedAt: playlistUpdate._lastModifiedAt,
     });
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'playlistSong',
-        entityId: playlistSong.id,
-        operation: 'delete',
-      });
-    }
 
     // Return response matching backend format
     return c.json({

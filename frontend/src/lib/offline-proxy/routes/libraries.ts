@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { db, addToSyncQueue } from '../../db/schema';
+import { db, markDirty, markDeleted } from '../../db/schema';
 import type { OfflineLibrary } from '../../db/schema';
 import { createLibrarySchema, updateLibrarySchema, toLibraryResponse } from '@m3w/shared';
 import { getUserId, isGuestUser } from '../utils';
@@ -131,7 +131,7 @@ app.post('/', async (c: Context) => {
     const data = createLibrarySchema.parse(body);
     const userId = getUserId();
 
-    const library: OfflineLibrary = {
+    const libraryData: OfflineLibrary = {
       id: crypto.randomUUID(),
       ...data,
       description: data.description ?? null,
@@ -142,20 +142,10 @@ app.post('/', async (c: Context) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       _count: { songs: 0 },
-      _syncStatus: 'pending',
     };
+    const library = markDirty(libraryData);
 
     await db.libraries.add(library);
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'library',
-        entityId: library.id,
-        operation: 'create',
-        data: library,
-      });
-    }
 
     // Transform to API response format
     return c.json(
@@ -196,24 +186,13 @@ app.patch('/:id', async (c: Context) => {
       );
     }
 
-    const updated: OfflineLibrary = {
+    const updated: OfflineLibrary = markDirty({
       ...library,
       ...data,
       updatedAt: new Date().toISOString(),
-      _syncStatus: 'pending',
-    };
+    });
 
     await db.libraries.put(updated);
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'library',
-        entityId: id,
-        operation: 'update',
-        data: updated,
-      });
-    }
 
     return c.json({
       success: true,
@@ -248,16 +227,8 @@ app.delete('/:id', async (c: Context) => {
       );
     }
 
-    await db.libraries.delete(id);
-
-    // Only queue sync for authenticated users (not guests)
-    if (!isGuestUser()) {
-      await addToSyncQueue({
-        entityType: 'library',
-        entityId: id,
-        operation: 'delete',
-      });
-    }
+    // Soft delete for sync (markDeleted handles guest vs auth internally)
+    await db.libraries.put(markDeleted(library));
 
     return c.json({
       success: true,

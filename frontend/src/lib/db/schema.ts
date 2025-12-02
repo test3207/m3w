@@ -6,30 +6,41 @@
  * - Core Entities: Library, Playlist, Song (extended from @m3w/shared)
  * - Join Tables: LibrarySongLink, PlaylistSongLink (for many-to-many relationships)
  * - Player State: PlayerPreferences, PlayerProgress
- * - Sync: SyncQueueItem (for offline mutations)
+ * 
+ * Sync Strategy: State-Based with Server-Wins
+ * - _isDirty: true when local changes need to be pushed to server
+ * - _isDeleted: true when entity was deleted locally (soft delete for sync)
+ * - _lastModifiedAt: timestamp for conflict detection
  */
 
 import Dexie, { type EntityTable } from 'dexie';
 import type { Library, Playlist, Song } from '@m3w/shared';
+import { isGuestUser } from '../offline-proxy/utils';
+
+// ============================================================
+// Sync Tracking Fields (common to all syncable entities)
+// ============================================================
+export interface SyncTrackingFields {
+  /** True when local changes need to be pushed to server */
+  _isDirty?: boolean;
+  /** True when entity was deleted locally (soft delete for sync) */
+  _isDeleted?: boolean;
+  /** Timestamp of last local modification */
+  _lastModifiedAt?: number;
+}
 
 // ============================================================
 // Core Entities (extended from @m3w/shared)
 // ============================================================
-export interface OfflineLibrary extends Library {
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
-  _lastSyncedAt?: Date;
-}
+export interface OfflineLibrary extends Library, SyncTrackingFields {}
 
-export interface OfflinePlaylist extends Playlist {
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
-  _lastSyncedAt?: Date;
-}
+export interface OfflinePlaylist extends Playlist, SyncTrackingFields {}
 
 /**
  * File entity for deduplication (aligned with backend Prisma File model)
  * Tracks physical audio files with reference counting for garbage collection
  */
-export interface OfflineFile {
+export interface OfflineFile extends SyncTrackingFields {
   id: string;
   hash: string;          // SHA256 hash of file content
   size: number;          // File size in bytes
@@ -37,13 +48,9 @@ export interface OfflineFile {
   duration?: number;     // Duration in seconds
   refCount: number;      // Number of songs referencing this file
   createdAt: Date;
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
-  _lastSyncedAt?: Date;
 }
 
-export interface OfflineSong extends Omit<Song, 'fileId' | 'libraryName' | 'mimeType'> {
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
-  _lastSyncedAt?: Date;
+export interface OfflineSong extends Omit<Song, 'fileId' | 'libraryName' | 'mimeType'>, SyncTrackingFields {
   /** Audio stream URL (/api/songs/:id/stream) */
   streamUrl?: string;
   /** Cache status fields */
@@ -71,14 +78,12 @@ export interface OfflineSong extends Omit<Song, 'fileId' | 'libraryName' | 'mime
 
 // Playlist-Song relationship (join table for ordering)
 // Aligned with backend Prisma PlaylistSong model
-export interface PlaylistSongLink {
+export interface PlaylistSongLink extends SyncTrackingFields {
   id: string;
   playlistId: string;
   songId: string;
   order: number;
   addedAt: Date;
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
-  _lastSyncedAt?: Date;
 }
 
 // ============================================================
@@ -109,22 +114,6 @@ export interface PlayerProgress {
 }
 
 // ============================================================
-// Sync Queue (for offline mutations)
-// ============================================================
-
-// Sync queue for offline changes (future use)
-export interface SyncQueueItem {
-  id?: number;
-  entityType: 'library' | 'playlist' | 'song' | 'playlistSong';
-  entityId: string;
-  operation: 'create' | 'update' | 'delete';
-  data?: unknown;
-  createdAt: Date;
-  retryCount: number;
-  error?: string;
-}
-
-// ============================================================
 // Database Class
 // ============================================================
 
@@ -136,21 +125,19 @@ export class M3WDatabase extends Dexie {
   files!: EntityTable<OfflineFile, 'id'>;
   songs!: EntityTable<OfflineSong, 'id'>;
   playlistSongs!: EntityTable<PlaylistSongLink, 'id'>;
-  syncQueue!: EntityTable<SyncQueueItem, 'id'>;
   playerPreferences!: EntityTable<PlayerPreferences, 'userId'>;
   playerProgress!: EntityTable<PlayerProgress, 'userId'>;
 
   constructor() {
     super('m3w-offline');
 
-    // Schema with File entity for proper deduplication
+    // State-based sync schema (dirty tracking instead of sync queue)
     this.version(1).stores({
-      libraries: 'id, userId, name, createdAt, _syncStatus',
-      playlists: 'id, userId, linkedLibraryId, name, createdAt, _syncStatus',
-      files: 'id, hash, size, refCount, _syncStatus',
-      songs: 'id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck, _syncStatus',
-      playlistSongs: 'id, playlistId, songId, [playlistId+songId], order, _syncStatus',
-      syncQueue: '++id, entityType, entityId, operation, createdAt',
+      libraries: 'id, userId, name, createdAt, _isDirty, _isDeleted',
+      playlists: 'id, userId, linkedLibraryId, name, createdAt, _isDirty, _isDeleted',
+      files: 'id, hash, size, refCount, _isDirty, _isDeleted',
+      songs: 'id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck, _isDirty, _isDeleted',
+      playlistSongs: 'id, playlistId, songId, [playlistId+songId], order, _isDirty, _isDeleted',
       playerPreferences: 'userId, updatedAt',
       playerProgress: 'userId, songId, contextType, contextId, updatedAt',
     });
@@ -172,7 +159,6 @@ export async function clearAllData() {
     db.files.clear(),
     db.songs.clear(),
     db.playlistSongs.clear(),
-    db.syncQueue.clear(),
     db.playerPreferences.clear(),
     db.playerProgress.clear(),
   ]);
@@ -182,14 +168,56 @@ export async function clearAllData() {
   await db.open();
 }
 
-export async function getSyncQueueSize(): Promise<number> {
-  return await db.syncQueue.count();
+/**
+ * Get count of dirty entities that need to be synced
+ */
+export async function getDirtyCount(): Promise<number> {
+  const [libraries, playlists, songs, playlistSongs] = await Promise.all([
+    db.libraries.where('_isDirty').equals(1).count(),
+    db.playlists.where('_isDirty').equals(1).count(),
+    db.songs.where('_isDirty').equals(1).count(),
+    db.playlistSongs.where('_isDirty').equals(1).count(),
+  ]);
+  return libraries + playlists + songs + playlistSongs;
 }
 
-export async function addToSyncQueue(item: Omit<SyncQueueItem, 'id' | 'createdAt' | 'retryCount'>) {
-  await db.syncQueue.add({
-    ...item,
-    createdAt: new Date(),
-    retryCount: 0,
-  });
+/**
+ * Mark entity as dirty (needs sync)
+ * Guest users never need sync, so _isDirty stays false for them.
+ */
+export function markDirty<T extends SyncTrackingFields>(entity: T): T {
+  // Guest users don't need sync - their data is local only
+  const shouldMarkDirty = !isGuestUser();
+  return {
+    ...entity,
+    _isDirty: shouldMarkDirty,
+    _lastModifiedAt: Date.now(),
+  };
+}
+
+/**
+ * Mark entity as synced (no longer dirty)
+ */
+export function markSynced<T extends SyncTrackingFields>(entity: T): T {
+  return {
+    ...entity,
+    _isDirty: false,
+    _isDeleted: false,
+    _lastModifiedAt: Date.now(),
+  };
+}
+
+/**
+ * Mark entity as deleted (soft delete for sync)
+ * Guest users can hard delete immediately since they don't need sync.
+ */
+export function markDeleted<T extends SyncTrackingFields>(entity: T): T {
+  // Guest users don't need sync - their data is local only
+  const shouldMarkDirty = !isGuestUser();
+  return {
+    ...entity,
+    _isDirty: shouldMarkDirty,
+    _isDeleted: true,
+    _lastModifiedAt: Date.now(),
+  };
 }

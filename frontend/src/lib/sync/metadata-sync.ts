@@ -51,7 +51,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     await db.libraries.bulkPut(
       libraries.map((lib) => ({
         ...lib,
-        _syncStatus: 'synced' as const,
+        _isDirty: false,
       }))
     );
     logger.info('Libraries synced', { count: libraries.length });
@@ -62,7 +62,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     await db.playlists.bulkPut(
       playlists.map((playlist) => ({
         ...playlist,
-        _syncStatus: 'synced' as const,
+        _isDirty: false,
       }))
     );
     logger.info('Playlists synced', { count: playlists.length });
@@ -88,7 +88,7 @@ export async function syncMetadata(): Promise<SyncResult> {
               cacheSize: existing?.cacheSize,
               lastCacheCheck: existing?.lastCacheCheck ?? 0,
               fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
-              _syncStatus: 'synced' as const,
+              _isDirty: false,
             };
           })
         );
@@ -115,7 +115,7 @@ export async function syncMetadata(): Promise<SyncResult> {
             songId: song.id,
             order: index, // Use index since Song doesn't have order field
             addedAt: new Date(),
-            _syncStatus: 'synced' as const,
+            _isDirty: false,
           }))
         );
 
@@ -130,7 +130,7 @@ export async function syncMetadata(): Promise<SyncResult> {
               cacheSize: existing?.cacheSize,
               lastCacheCheck: existing?.lastCacheCheck ?? 0,
               fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
-              _syncStatus: 'synced' as const,
+              _isDirty: false,
             };
           })
         );
