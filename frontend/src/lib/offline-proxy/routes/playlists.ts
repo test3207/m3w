@@ -147,7 +147,8 @@ app.post('/for-library', async (c: Context) => {
       updatedAt: new Date().toISOString(),
       _count: { songs: songIds?.length || 0 },
     };
-    const playlist = markDirty(playlistData);
+    // isNew=true marks this as a local-only entity (needs ID mapping on sync)
+    const playlist = markDirty(playlistData, true);
 
     await db.playlists.add(playlist);
 
@@ -260,7 +261,8 @@ app.post('/', async (c: Context) => {
       updatedAt: new Date().toISOString(),
       _count: { songs: 0 },
     };
-    const playlist = markDirty(playlistData);
+    // isNew=true marks this as a local-only entity (needs ID mapping on sync)
+    const playlist = markDirty(playlistData, true);
 
     await db.playlists.add(playlist);
 

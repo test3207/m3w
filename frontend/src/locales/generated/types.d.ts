@@ -239,6 +239,20 @@ export interface Messages {
     /** Syncing */
     syncing: string;
   };
+  sync: {
+    /** Sync completed */
+    completed: string;
+    /** Sync completed with conflicts */
+    conflictsResolved: string;
+    /** conflicts resolved (server version kept) */
+    serverWins: string;
+    /** Sync failed */
+    failed: string;
+    /** Syncing... */
+    inProgress: string;
+    /** pending changes */
+    pendingChanges: string;
+  };
   dashboard: {
     /** M3W Dashboard */
     title: string;

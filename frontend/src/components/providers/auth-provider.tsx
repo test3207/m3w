@@ -1,12 +1,11 @@
 /**
  * Auth Provider Component
- * Wraps app with automatic token refresh, metadata sync, and background sync
+ * Wraps app with automatic token refresh and background sync
  */
 
 import { useEffect } from 'react';
 import { useAuthRefresh } from '@/hooks/useAuthRefresh';
 import { syncService } from '@/lib/sync/service';
-import { startAutoSync, stopAutoSync } from '@/lib/sync/metadata-sync';
 import { useAuthStore } from '@/stores/authStore';
 
 interface AuthProviderProps {
@@ -20,29 +19,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Get auth state
   const { isAuthenticated, isGuest } = useAuthStore();
 
-  // Start metadata auto-sync for authenticated (non-guest) users
-  // Network status is managed internally by metadata-sync service
+  // Start unified sync service for authenticated (non-guest) users
+  // SyncService handles both PUSH (local changes) and PULL (server state)
+  // Triggers: periodic (5min), online event, visibility change
   useEffect(() => {
-    // Only sync metadata for authenticated users who are not guests
-    // Guest users have local-only data in IndexedDB
     if (isAuthenticated && !isGuest) {
-      startAutoSync();
+      syncService.start();
     }
     
     return () => {
-      stopAutoSync();
-    };
-  }, [isAuthenticated, isGuest]);
-
-  // Start background sync service (queue replay)
-  useEffect(() => {
-    syncService.start();
-    
-    return () => {
-      // Cleanup on unmount (though this rarely happens)
       syncService.stop();
     };
-  }, []);
+  }, [isAuthenticated, isGuest]);
 
   return <>{children}</>;
 }

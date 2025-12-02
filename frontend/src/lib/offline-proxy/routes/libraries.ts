@@ -143,7 +143,8 @@ app.post('/', async (c: Context) => {
       updatedAt: new Date().toISOString(),
       _count: { songs: 0 },
     };
-    const library = markDirty(libraryData);
+    // isNew=true marks this as a local-only entity (needs ID mapping on sync)
+    const library = markDirty(libraryData, true);
 
     await db.libraries.add(library);
 

@@ -128,6 +128,14 @@
     "offline": "Offline",
     "syncing": "Syncing"
   },
+  "sync": {
+    "completed": "Sync completed",
+    "conflictsResolved": "Sync completed with conflicts",
+    "serverWins": "conflicts resolved (server version kept)",
+    "failed": "Sync failed",
+    "inProgress": "Syncing...",
+    "pendingChanges": "pending changes"
+  },
   "dashboard": {
     "title": "M3W Dashboard",
     "welcome": {

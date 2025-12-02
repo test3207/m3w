@@ -25,6 +25,8 @@ export interface SyncTrackingFields {
   _isDirty?: boolean;
   /** True when entity was deleted locally (soft delete for sync) */
   _isDeleted?: boolean;
+  /** True when entity was created locally and hasn't been synced yet (needs ID mapping) */
+  _isLocalOnly?: boolean;
   /** Timestamp of last local modification */
   _lastModifiedAt?: number;
 }
@@ -133,10 +135,10 @@ export class M3WDatabase extends Dexie {
 
     // State-based sync schema (dirty tracking instead of sync queue)
     this.version(1).stores({
-      libraries: 'id, userId, name, createdAt, _isDirty, _isDeleted',
-      playlists: 'id, userId, linkedLibraryId, name, createdAt, _isDirty, _isDeleted',
+      libraries: 'id, userId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly',
+      playlists: 'id, userId, linkedLibraryId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly',
       files: 'id, hash, size, refCount, _isDirty, _isDeleted',
-      songs: 'id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck, _isDirty, _isDeleted',
+      songs: 'id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck, _isDirty, _isDeleted, _isLocalOnly',
       playlistSongs: 'id, playlistId, songId, [playlistId+songId], order, _isDirty, _isDeleted',
       playerPreferences: 'userId, updatedAt',
       playerProgress: 'userId, songId, contextType, contextId, updatedAt',
@@ -184,25 +186,28 @@ export async function getDirtyCount(): Promise<number> {
 /**
  * Mark entity as dirty (needs sync)
  * Guest users never need sync, so _isDirty stays false for them.
+ * @param isNew - True if this is a newly created entity (not yet on server)
  */
-export function markDirty<T extends SyncTrackingFields>(entity: T): T {
+export function markDirty<T extends SyncTrackingFields>(entity: T, isNew = false): T {
   // Guest users don't need sync - their data is local only
   const shouldMarkDirty = !isGuestUser();
   return {
     ...entity,
     _isDirty: shouldMarkDirty,
+    _isLocalOnly: isNew ? shouldMarkDirty : entity._isLocalOnly,
     _lastModifiedAt: Date.now(),
   };
 }
 
 /**
- * Mark entity as synced (no longer dirty)
+ * Mark entity as synced (no longer dirty, no longer local-only)
  */
 export function markSynced<T extends SyncTrackingFields>(entity: T): T {
   return {
     ...entity,
     _isDirty: false,
     _isDeleted: false,
+    _isLocalOnly: false,
     _lastModifiedAt: Date.now(),
   };
 }
@@ -220,4 +225,66 @@ export function markDeleted<T extends SyncTrackingFields>(entity: T): T {
     _isDeleted: true,
     _lastModifiedAt: Date.now(),
   };
+}
+
+/**
+ * Get all local-only entities (created offline, need server ID assignment)
+ */
+export async function getLocalOnlyEntities() {
+  const [libraries, playlists, songs] = await Promise.all([
+    db.libraries.where('_isLocalOnly').equals(1).toArray(),
+    db.playlists.where('_isLocalOnly').equals(1).toArray(),
+    db.songs.where('_isLocalOnly').equals(1).toArray(),
+  ]);
+  return { libraries, playlists, songs };
+}
+
+/**
+ * Update entity ID after server assigns a new ID
+ * Also updates all foreign key references
+ */
+export async function updateEntityId(
+  table: 'libraries' | 'playlists' | 'songs',
+  localId: string,
+  serverId: string
+): Promise<void> {
+  await db.transaction('rw', [db.libraries, db.playlists, db.songs, db.playlistSongs], async () => {
+    if (table === 'libraries') {
+      // Get the library
+      const library = await db.libraries.get(localId);
+      if (!library) return;
+      
+      // Update songs that reference this library
+      await db.songs.where('libraryId').equals(localId).modify({ libraryId: serverId });
+      
+      // Update playlists linked to this library
+      await db.playlists.where('linkedLibraryId').equals(localId).modify({ linkedLibraryId: serverId });
+      
+      // Delete old, add new with server ID
+      await db.libraries.delete(localId);
+      await db.libraries.add({ ...library, id: serverId, _isLocalOnly: false });
+      
+    } else if (table === 'playlists') {
+      const playlist = await db.playlists.get(localId);
+      if (!playlist) return;
+      
+      // Update playlistSongs that reference this playlist
+      await db.playlistSongs.where('playlistId').equals(localId).modify({ playlistId: serverId });
+      
+      // Delete old, add new with server ID
+      await db.playlists.delete(localId);
+      await db.playlists.add({ ...playlist, id: serverId, _isLocalOnly: false });
+      
+    } else if (table === 'songs') {
+      const song = await db.songs.get(localId);
+      if (!song) return;
+      
+      // Update playlistSongs that reference this song
+      await db.playlistSongs.where('songId').equals(localId).modify({ songId: serverId });
+      
+      // Delete old, add new with server ID
+      await db.songs.delete(localId);
+      await db.songs.add({ ...song, id: serverId, _isLocalOnly: false });
+    }
+  });
 }
