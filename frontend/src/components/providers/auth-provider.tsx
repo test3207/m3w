@@ -21,34 +21,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { isAuthenticated, isGuest } = useAuthStore();
 
   // Start metadata auto-sync for authenticated (non-guest) users
+  // Network status is managed internally by metadata-sync service
   useEffect(() => {
     // Only sync metadata for authenticated users who are not guests
     // Guest users have local-only data in IndexedDB
-    const shouldSync = isAuthenticated && !isGuest;
-    
-    const handleOnline = () => {
-      if (shouldSync) {
-        startAutoSync();
-      }
-    };
-    
-    const handleOffline = () => {
-      stopAutoSync();
-    };
-    
-    // Start sync if conditions are met
-    if (shouldSync && navigator.onLine) {
+    if (isAuthenticated && !isGuest) {
       startAutoSync();
     }
     
-    // Listen for network status changes
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
     return () => {
       stopAutoSync();
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
     };
   }, [isAuthenticated, isGuest]);
 

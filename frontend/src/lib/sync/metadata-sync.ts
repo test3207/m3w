@@ -3,6 +3,8 @@
  * 
  * Automatically downloads libraries, playlists, and songs metadata from backend
  * to IndexedDB for offline use. Runs on app startup, periodically, and after PWA install.
+ * 
+ * Internally manages network status - automatically pauses when offline and resumes when online.
  */
 
 import { api } from '@/services';
@@ -176,8 +178,22 @@ export function shouldSync(forceSync: boolean = false): boolean {
 
 /**
  * Start automatic periodic sync
+ * Manages its own network status - pauses when offline, resumes when online.
  */
 let syncIntervalId: NodeJS.Timeout | null = null;
+let networkListenersAttached = false;
+
+// Network event handlers
+const handleOnline = () => {
+  logger.info('Network online, triggering sync');
+  if (syncIntervalId && shouldSync()) {
+    syncMetadata().catch((error) => logger.error('Online sync failed', { error }));
+  }
+};
+
+const handleOffline = () => {
+  logger.info('Network offline, sync paused');
+};
 
 export function startAutoSync(): void {
   if (syncIntervalId) {
@@ -187,14 +203,21 @@ export function startAutoSync(): void {
 
   logger.info('Starting auto-sync');
 
-  // Initial sync
-  if (shouldSync()) {
+  // Attach network listeners once
+  if (!networkListenersAttached) {
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    networkListenersAttached = true;
+  }
+
+  // Initial sync (only if online)
+  if (navigator.onLine && shouldSync()) {
     syncMetadata().catch((error) => logger.error('Auto-sync failed', { error }));
   }
 
-  // Periodic sync
+  // Periodic sync (checks online status internally)
   syncIntervalId = setInterval(() => {
-    if (shouldSync()) {
+    if (navigator.onLine && shouldSync()) {
       syncMetadata().catch((error) => logger.error('Auto-sync failed', { error }));
     }
   }, SYNC_INTERVAL);
@@ -208,6 +231,13 @@ export function stopAutoSync(): void {
     clearInterval(syncIntervalId);
     syncIntervalId = null;
     logger.info('Auto-sync stopped');
+  }
+  
+  // Remove network listeners
+  if (networkListenersAttached) {
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+    networkListenersAttached = false;
   }
 }
 
