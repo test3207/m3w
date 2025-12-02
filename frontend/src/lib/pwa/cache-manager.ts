@@ -1,6 +1,10 @@
 /**
- * Cache Manager for Guest Mode
+ * Cache Manager for Offline Storage
  * Handles storing/retrieving media files in Cache Storage API
+ * 
+ * All cache operations use /api/ URLs regardless of Guest or Auth mode.
+ * This ensures same cache key for both modes and simplified codebase.
+ * Service Worker handles auth token injection transparently.
  */
 
 const CACHE_NAME = 'm3w-media-v1';
@@ -17,16 +21,18 @@ export function getCacheName(_type: 'audio' | 'covers'): string {
 }
 
 /**
- * Store audio file in Cache Storage for guest mode
+ * Store audio file in Cache Storage for offline use
+ * Uses unified /api/ URL as cache key (works for both Guest and Auth modes)
+ * 
  * @param songId - Unique song ID
  * @param audioBlob - Audio file blob
- * @returns Guest stream URL
+ * @returns Stream URL (/api/songs/:id/stream)
  */
-export async function cacheGuestAudio(
+export async function cacheAudioForOffline(
   songId: string,
   audioBlob: Blob
 ): Promise<string> {
-  const guestUrl = `/guest/songs/${songId}/stream`;
+  const streamUrl = `/api/songs/${songId}/stream`;
   
   try {
     const cache = await caches.open(CACHE_NAME);
@@ -41,10 +47,10 @@ export async function cacheGuestAudio(
     });
     
     // Store in cache
-    await cache.put(guestUrl, response);
+    await cache.put(streamUrl, response);
     
-    console.log('[CacheManager] ✅ Cached guest audio:', guestUrl);
-    return guestUrl;
+    console.log('[CacheManager] ✅ Cached audio:', streamUrl);
+    return streamUrl;
   } catch (error) {
     console.error('[CacheManager] ❌ Failed to cache audio:', error);
     throw new Error('Failed to cache audio file');
@@ -52,16 +58,18 @@ export async function cacheGuestAudio(
 }
 
 /**
- * Store cover image in Cache Storage for guest mode
+ * Store cover image in Cache Storage for offline use
+ * Uses unified /api/ URL as cache key
+ * 
  * @param songId - Unique song ID
  * @param coverBlob - Cover image blob
- * @returns Guest cover URL
+ * @returns Cover URL (/api/songs/:id/cover)
  */
-export async function cacheGuestCover(
+export async function cacheCoverForOffline(
   songId: string,
   coverBlob: Blob
 ): Promise<string> {
-  const guestUrl = `/guest/songs/${songId}/cover`;
+  const coverUrl = `/api/songs/${songId}/cover`;
   
   try {
     const cache = await caches.open(CACHE_NAME);
@@ -76,15 +84,17 @@ export async function cacheGuestCover(
     });
     
     // Store in cache
-    await cache.put(guestUrl, response);
+    await cache.put(coverUrl, response);
     
-    console.log('[CacheManager] ✅ Cached guest cover:', guestUrl);
-    return guestUrl;
+    console.log('[CacheManager] ✅ Cached cover:', coverUrl);
+    return coverUrl;
   } catch (error) {
     console.error('[CacheManager] ❌ Failed to cache cover:', error);
     throw new Error('Failed to cache cover image');
   }
 }
+
+
 
 /**
  * Check if a media file is cached

@@ -1,5 +1,7 @@
 /**
  * Song routes for offline-proxy
+ * 
+ * All cache operations use /api/ URLs.
  */
 
 import { Hono } from 'hono';
@@ -94,7 +96,7 @@ app.delete('/:id', async (c: Context) => {
 
     // Delete cached audio file from Cache Storage
     try {
-      await deleteFromCache(`/guest/songs/${id}/stream`);
+      await deleteFromCache(`/api/songs/${id}/stream`);
     } catch (cacheError) {
       // Log but don't fail - audio may not be cached
       console.warn('[offline-proxy] Failed to delete cached audio:', cacheError);
@@ -125,8 +127,7 @@ app.delete('/:id', async (c: Context) => {
   }
 });
 
-// GET /songs/:id/stream - Deprecated
-// Guest mode now uses /guest/songs/:id/stream served by Service Worker
-// This route kept for backward compatibility but will return 404
+// GET /songs/:id/stream - Not needed
+// Service Worker serves cached files directly from Cache Storage
 
 export { app as songRoutes };

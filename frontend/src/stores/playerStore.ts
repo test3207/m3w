@@ -6,7 +6,6 @@ import { prefetchAudioBlob } from '@/lib/audio/prefetch';
 import type { Song } from '@m3w/shared';
 import { getStreamUrl } from '@/services/api/main/endpoints';
 import { I18n } from '@/locales/i18n';
-import { useAuthStore } from './authStore';
 
 export type RepeatMode = 'off' | 'one' | 'all';
 export type QueueSource = 'library' | 'playlist' | 'all' | null;
@@ -28,8 +27,6 @@ const setBackupState = (state: PlayerState) => {
 
 // Song → Track converter for AudioPlayer
 function songToTrack(song: Song): Track {
-  const isGuest = useAuthStore.getState().isGuest;
-  
   return {
     id: song.id,
     title: song.title,
@@ -38,7 +35,7 @@ function songToTrack(song: Song): Track {
     coverUrl: song.coverUrl || undefined,
     duration: song.duration || undefined,
     mimeType: song.mimeType || undefined,
-    audioUrl: getStreamUrl(song.id, isGuest),
+    audioUrl: getStreamUrl(song.id),
   };
 }
 
@@ -775,8 +772,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       });
 
       // Preload audio and prime player
-      const isGuest = useAuthStore.getState().isGuest;
-      const audioUrl = getStreamUrl(song.id, isGuest);
+      const audioUrl = getStreamUrl(song.id);
       const objectUrl = await prefetchAudioBlob(audioUrl);
       
       const track = songToTrack(song);

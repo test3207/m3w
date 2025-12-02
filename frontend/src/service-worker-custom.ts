@@ -1,6 +1,9 @@
 /**
  * Custom Service Worker for M3W
  * Handles authentication token injection and media caching
+ * 
+ * All audio/cover requests use /api/songs/:id/stream and /api/songs/:id/cover
+ * regardless of Guest or Auth mode. Service Worker handles auth token injection.
  */
 
 /// <reference lib="webworker" />
@@ -112,7 +115,11 @@ async function handleRangeRequest(cachedResponse: Response, rangeHeader: string)
 
 /**
  * Handle media requests (audio/cover files)
- * Supports both authenticated (/api/songs/*) and guest (/guest/songs/*) URLs
+ * 
+ * Cache-first strategy:
+ * 1. Check cache first (works for both Guest and Auth)
+ * 2. Cache miss + no token (Guest): Return 404 (guest files must be cached during upload)
+ * 3. Cache miss + has token (Auth): Fetch from backend with auth, cache for offline
  */
 async function handleMediaRequest(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -135,34 +142,33 @@ async function handleMediaRequest(request: Request): Promise<Response> {
     return cached;
   }
 
-  // 2. Not cached
-  if (url.pathname.startsWith('/guest/songs/')) {
-    // Guest mode: Should always be cached, return 404 if not found
-    console.error('[SW] ❌ Guest file not found in cache:', url.pathname);
-    return new Response('Guest file not found in cache', { 
+  // 2. Not cached - determine how to handle based on auth state
+  // Check if we have auth token to determine mode
+  const token = await getAuthToken();
+  
+  if (!token) {
+    // No token = Guest mode
+    // In Guest mode, all files should be cached during upload
+    // If we reach here with an /api/ URL and no token, the file isn't available
+    console.log('[SW] ℹ️ Guest mode - file not cached:', url.pathname);
+    return new Response('File not available offline (Guest mode)', { 
       status: 404,
       statusText: 'Not Found',
     });
   }
 
-  // 3. Auth mode: Fetch from backend with token
+  // 4. Auth mode: Fetch from backend with token
   try {
-    const token = await getAuthToken();
-    
-    // Build headers
+    // Build headers with auth token
     const headers = new Headers(request.headers);
-    
-    // Only set Authorization header if token exists
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
+    headers.set('Authorization', `Bearer ${token}`);
     
     // Clone request with new headers
     const authenticatedRequest = new Request(request, {
       headers,
     });
 
-    console.log('[SW] 🌐 Fetching from backend:', url.pathname, token ? '(with token)' : '(no token)');
+    console.log('[SW] 🌐 Fetching from backend:', url.pathname);
     const response = await fetch(authenticatedRequest);
 
     // Cache successful complete responses (200 OK)
