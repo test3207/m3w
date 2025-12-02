@@ -24,12 +24,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     // Only sync metadata for authenticated users who are not guests
     // Guest users have local-only data in IndexedDB
-    if (isAuthenticated && !isGuest && navigator.onLine) {
+    const shouldSync = isAuthenticated && !isGuest;
+    
+    const handleOnline = () => {
+      if (shouldSync) {
+        startAutoSync();
+      }
+    };
+    
+    const handleOffline = () => {
+      stopAutoSync();
+    };
+    
+    // Start sync if conditions are met
+    if (shouldSync && navigator.onLine) {
       startAutoSync();
     }
     
+    // Listen for network status changes
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
     return () => {
       stopAutoSync();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, [isAuthenticated, isGuest]);
 

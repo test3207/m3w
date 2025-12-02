@@ -94,8 +94,6 @@ export async function cacheCoverForOffline(
   }
 }
 
-
-
 /**
  * Check if a media file is cached
  * @param url - Media URL to check

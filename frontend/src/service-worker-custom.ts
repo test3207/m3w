@@ -158,7 +158,7 @@ async function handleMediaRequest(request: Request): Promise<Response> {
     });
   }
 
-  // 4. Auth mode: Fetch from backend with token
+  // 3. Auth mode: Fetch from backend with token
   try {
     // Build headers with auth token
     const headers = new Headers(request.headers);
