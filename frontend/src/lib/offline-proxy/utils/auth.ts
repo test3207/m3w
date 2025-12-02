@@ -2,6 +2,11 @@
  * Auth utilities for offline-proxy
  */
 
+import { GUEST_USER_ID, isGuestUserId } from '../../constants/guest';
+
+// Re-export for convenience
+export { GUEST_USER_ID, isGuestUserId };
+
 /**
  * Get userId from auth store
  * 
@@ -28,7 +33,7 @@ export function getUserId(): string {
  */
 export function isGuestUser(): boolean {
   try {
-    return getUserId() === 'guest';
+    return isGuestUserId(getUserId());
   } catch {
     return false;
   }

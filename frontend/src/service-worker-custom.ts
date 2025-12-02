@@ -126,8 +126,9 @@ async function handleMediaRequest(request: Request): Promise<Response> {
   const cache = await caches.open(CACHE_NAME);
 
   // 1. Check cache first (works for both Auth and Guest)
-  // Note: Use url string without Range header to find full cached response
-  const cacheKey = new Request(request.url);
+  // Use pathname as cache key to handle dev (port 3000) vs prod (port 4000) mismatch
+  // In dev, frontend is :3000 but API responses come from :4000 via proxy
+  const cacheKey = url.pathname;
   const cached = await cache.match(cacheKey);
   
   if (cached) {
@@ -178,7 +179,8 @@ async function handleMediaRequest(request: Request): Promise<Response> {
       const responseToCache = response.clone();
       
       // Cache asynchronously (don't block return)
-      cache.put(request, responseToCache).then(() => {
+      // Use pathname as cache key (same as match) to handle port differences
+      cache.put(cacheKey, responseToCache).then(() => {
         console.log('[SW] ✅ Cached from backend:', url.pathname);
       }).catch((error) => {
         console.error('[SW] ❌ Failed to cache:', error);
@@ -248,9 +250,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Only intercept media requests (audio/cover)
-  const isMediaRequest =
-    url.pathname.match(/\/api\/songs\/[^/]+\/(stream|cover)/) ||
-    url.pathname.match(/\/guest\/songs\/[^/]+\/(stream|cover)/);
+  // Unified URL: /api/songs/:id/stream or /api/songs/:id/cover (works for both Guest and Auth)
+  const isMediaRequest = url.pathname.match(/\/api\/songs\/[^/]+\/(stream|cover)/);
 
   if (isMediaRequest) {
     event.respondWith(handleMediaRequest(event.request));

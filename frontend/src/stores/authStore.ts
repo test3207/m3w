@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
 import { saveTokenToIndexedDB, clearTokenFromIndexedDB } from '@/lib/auth/token-storage';
+import { GUEST_USER_ID } from '@/lib/constants/guest';
 import type { AuthTokens } from '@m3w/shared';
 import type { User as ApiUser } from '@/services/api/main/resources/auth';
 
@@ -58,7 +59,7 @@ export const useAuthStore = create<AuthStore>()(
       loginAsGuest: () => {
         set({
           user: {
-            id: 'guest',
+            id: GUEST_USER_ID,
             name: 'Guest User',
             email: 'guest@local',
             image: null,
