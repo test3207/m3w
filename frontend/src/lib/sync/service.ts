@@ -14,12 +14,13 @@
  */
 
 import { db, getDirtyCount, markSynced, updateEntityId } from '../db/schema';
-import type { OfflineLibrary, OfflinePlaylist } from '../db/schema';
+import type { OfflineLibrary, OfflinePlaylist, OfflinePlaylistSong } from '../db/schema';
 import { logger } from '../logger-client';
 import { syncMetadata } from './metadata-sync';
 import { api } from '@/services';
 import { toast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
+import { isGuestUser } from '../offline-proxy/utils';
 
 // Sync interval: 5 minutes (aligned with metadata-sync)
 const SYNC_INTERVAL = 5 * 60 * 1000;
@@ -49,8 +50,15 @@ export class SyncService {
 
   /**
    * Start background sync service
+   * Does nothing for guest users (they don't need sync)
    */
   start() {
+    // Guest users don't need sync - skip entirely
+    if (isGuestUser()) {
+      logger.info('Sync service skipped for guest user');
+      return;
+    }
+
     if (this.syncInterval) {
       logger.info('Sync service already running');
       return;
@@ -116,25 +124,9 @@ export class SyncService {
     if (!navigator.onLine) return;
 
     // Skip if guest user
-    if (this.isGuestUser()) return;
+    if (isGuestUser()) return;
 
     await this.sync();
-  }
-
-  /**
-   * Check if current user is a guest
-   */
-  private isGuestUser(): boolean {
-    const authStore = localStorage.getItem('auth-storage');
-    if (authStore) {
-      try {
-        const { state } = JSON.parse(authStore);
-        return state?.isGuest === true;
-      } catch {
-        return false;
-      }
-    }
-    return false;
   }
 
   /**
@@ -221,10 +213,10 @@ export class SyncService {
     };
 
     // Get all dirty entities
-    const dirtyLibraries = await db.libraries.where('_isDirty').equals(1).toArray();
-    const dirtyPlaylists = await db.playlists.where('_isDirty').equals(1).toArray();
-    const dirtySongs = await db.songs.where('_isDirty').equals(1).toArray();
-    const dirtyPlaylistSongs = await db.playlistSongs.where('_isDirty').equals(1).toArray();
+    const dirtyLibraries = await db.libraries.filter(e => e._isDirty === true).toArray();
+    const dirtyPlaylists = await db.playlists.filter(e => e._isDirty === true).toArray();
+    const dirtySongs = await db.songs.filter(e => e._isDirty === true).toArray();
+    const dirtyPlaylistSongs = await db.playlistSongs.filter(e => e._isDirty === true).toArray();
 
     logger.info('Pushing dirty entities', {
       libraries: dirtyLibraries.length,
@@ -255,26 +247,30 @@ export class SyncService {
       }
     }
 
-    // Note: Songs are typically created via upload flow, not offline
-    // For now, just clear dirty flags on songs (server state will overwrite)
+    // Note: Songs are typically created via upload flow, not offline.
+    // Dirty songs indicate either:
+    // 1. Soft-deleted songs that need cleanup
+    // 2. Unexpected dirty state (log warning, server state will overwrite)
+    if (dirtySongs.length > 0 && dirtySongs.some(s => !s._isDeleted)) {
+      logger.warn('Dirty songs found during sync - changes will be overwritten by server', {
+        count: dirtySongs.filter(s => !s._isDeleted).length,
+        songIds: dirtySongs.filter(s => !s._isDeleted).map(s => s.id),
+      });
+    }
+    
     for (const song of dirtySongs) {
       if (song._isDeleted) {
         await db.songs.delete(song.id);
       } else {
+        // Clear dirty flag - server state will overwrite on next pull
         await db.songs.put(markSynced(song));
       }
       result.pushed.songs++;
     }
 
     // Push playlist song relationships
-    for (const ps of dirtyPlaylistSongs) {
-      if (ps._isDeleted) {
-        await db.playlistSongs.delete(ps.id);
-      } else {
-        await db.playlistSongs.put(markSynced(ps));
-      }
-      result.pushed.playlistSongs++;
-    }
+    // Strategy: Group by playlistId, then batch update each playlist's songIds
+    await this.pushPlaylistSongs(dirtyPlaylistSongs, result);
 
     return result;
   }
@@ -306,6 +302,11 @@ export class SyncService {
         name: library.name,
         description: library.description || undefined,
       });
+      
+      // Validate server response
+      if (!created?.id) {
+        throw new Error('Server did not return library ID');
+      }
       
       // Update local ID to match server ID
       if (created.id !== library.id) {
@@ -364,6 +365,11 @@ export class SyncService {
         description: playlist.description || undefined,
       });
       
+      // Validate server response
+      if (!created?.id) {
+        throw new Error('Server did not return playlist ID');
+      }
+      
       // Update local ID to match server ID
       if (created.id !== playlist.id) {
         await updateEntityId('playlists', playlist.id, created.id);
@@ -387,6 +393,83 @@ export class SyncService {
         } else {
           throw error;
         }
+      }
+    }
+  }
+
+  /**
+   * Push dirty playlist songs to backend
+   * Groups changes by playlistId and uses batch update API
+   */
+  private async pushPlaylistSongs(
+    dirtyPlaylistSongs: OfflinePlaylistSong[],
+    result: { pushed: SyncResult['pushed']; errors: string[] }
+  ): Promise<void> {
+    if (dirtyPlaylistSongs.length === 0) return;
+
+    // Group by playlistId
+    const groupedByPlaylist = new Map<string, OfflinePlaylistSong[]>();
+    for (const ps of dirtyPlaylistSongs) {
+      const list = groupedByPlaylist.get(ps.playlistId) || [];
+      list.push(ps);
+      groupedByPlaylist.set(ps.playlistId, list);
+    }
+
+    // Process each playlist's changes
+    for (const [playlistId, changes] of groupedByPlaylist) {
+      try {
+        // Check if playlist exists and is not local-only
+        const playlist = await db.playlists.get(playlistId);
+        
+        if (!playlist) {
+          // Playlist was deleted, just clean up the playlistSongs
+          for (const ps of changes) {
+            await db.playlistSongs.delete([ps.playlistId, ps.songId]);
+          }
+          result.pushed.playlistSongs += changes.length;
+          continue;
+        }
+
+        if (playlist._isLocalOnly) {
+          // Playlist hasn't been synced yet
+          // The songIds will be synced when playlist is pushed (via pull after create)
+          // Just clear dirty flags for now
+          for (const ps of changes) {
+            if (ps._isDeleted) {
+              await db.playlistSongs.delete([ps.playlistId, ps.songId]);
+            } else {
+              await db.playlistSongs.put(markSynced(ps));
+            }
+          }
+          result.pushed.playlistSongs += changes.length;
+          logger.info('Skipped playlistSongs sync for local-only playlist', { playlistId });
+          continue;
+        }
+
+        // Get current playlist's complete songIds (excluding deleted ones)
+        const currentSongs = await db.playlistSongs
+          .where('playlistId').equals(playlistId)
+          .filter(ps => !ps._isDeleted)
+          .sortBy('order');
+        
+        const songIds = currentSongs.map(ps => ps.songId);
+
+        // Batch update playlist songs on server
+        await api.main.playlists.updateSongs(playlistId, { songIds });
+        logger.info('Synced playlist songs', { playlistId, songCount: songIds.length });
+
+        // Clean up local state
+        for (const ps of changes) {
+          if (ps._isDeleted) {
+            await db.playlistSongs.delete([ps.playlistId, ps.songId]);
+          } else {
+            await db.playlistSongs.put(markSynced(ps));
+          }
+        }
+        result.pushed.playlistSongs += changes.length;
+      } catch (error) {
+        logger.error('Failed to push playlist songs', { playlistId, error });
+        result.errors.push(`PlaylistSongs for ${playlistId}: ${error instanceof Error ? error.message : 'Failed'}`);
       }
     }
   }

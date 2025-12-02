@@ -16,24 +16,27 @@ const app = new Hono();
 app.get('/', async (c: Context) => {
   try {
     const userId = getUserId();
-    const libraries = await db.libraries
+    const allLibraries = await db.libraries
       .where('userId')
       .equals(userId)
       .reverse()
       .sortBy('createdAt');
+    // Filter out soft-deleted libraries
+    const libraries = allLibraries.filter(lib => !lib._isDeleted);
 
     // Add song counts and coverUrl from last added song
     const librariesWithCounts = await Promise.all(
       libraries.map(async (library) => {
-        const songCount = await db.songs.where('libraryId').equals(library.id).count();
+        // Filter out soft-deleted songs for count and cover
+        const allSongs = await db.songs.where('libraryId').equals(library.id).toArray();
+        const activeSongs = allSongs.filter(s => !s._isDeleted);
+        const songCount = activeSongs.length;
 
         // Get last added song for cover (orderBy createdAt desc, matches backend)
-        const lastSong = await db.songs
-          .where('libraryId')
-          .equals(library.id)
-          .reverse()
-          .sortBy('createdAt')
-          .then((songs) => songs[0]);
+        const sortedSongs = activeSongs.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        const lastSong = sortedSongs[0];
 
         return {
           ...library,
@@ -68,7 +71,8 @@ app.get('/:id', async (c: Context) => {
 
     const library = await db.libraries.get(id);
 
-    if (!library) {
+    // Treat soft-deleted as not found
+    if (!library || library._isDeleted) {
       return c.json(
         {
           success: false,
@@ -228,8 +232,18 @@ app.delete('/:id', async (c: Context) => {
       );
     }
 
-    // Soft delete for sync (markDeleted handles guest vs auth internally)
-    await db.libraries.put(markDeleted(library));
+    if (isGuestUser()) {
+      // Guest user: hard delete with cascade (no sync needed)
+      // Delete all songs in this library
+      await db.songs.where('libraryId').equals(id).delete();
+      // Clear linkedLibraryId from playlists (don't delete playlists, just unlink)
+      await db.playlists.where('linkedLibraryId').equals(id).modify({ linkedLibraryId: undefined });
+      // Delete the library itself
+      await db.libraries.delete(id);
+    } else {
+      // Auth user: soft delete for sync (server will cascade delete)
+      await db.libraries.put(markDeleted(library));
+    }
 
     return c.json({
       success: true,
@@ -265,7 +279,9 @@ app.get('/:id/songs', async (c: Context) => {
     }
 
     // Query songs by libraryId (one-to-many relationship)
-    const songs = await db.songs.where('libraryId').equals(id).toArray();
+    // Filter out soft-deleted songs
+    const allSongs = await db.songs.where('libraryId').equals(id).toArray();
+    const songs = allSongs.filter(song => !song._isDeleted);
 
     // Apply sorting (matches backend logic)
     const sortedSongs = sortSongsOffline(songs, sortParam);

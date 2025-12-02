@@ -9,6 +9,9 @@ node_modules
 # testing
 /coverage
 
+# Vitest browser mode screenshots (generated next to test files)
+**/__screenshots__/
+
 # vite
 dev-dist/
 dist/

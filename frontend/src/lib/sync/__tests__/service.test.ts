@@ -109,7 +109,7 @@ const localStorageMock = {
   removeItem: vi.fn((key: string) => { delete localStorageMock.store[key]; }),
   clear: vi.fn(() => { localStorageMock.store = {}; }),
 };
-Object.defineProperty(global, 'localStorage', { value: localStorageMock });
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 
 describe('SyncService', () => {
   let syncService: SyncService;

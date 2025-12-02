@@ -110,11 +110,10 @@ export async function syncMetadata(): Promise<SyncResult> {
         // Store playlist-song relationships with order
         await db.playlistSongs.bulkPut(
           songs.map((song, index) => ({
-            id: `${playlist.id}_${song.id}`,
             playlistId: playlist.id,
             songId: song.id,
             order: index, // Use index since Song doesn't have order field
-            addedAt: new Date(),
+            addedAt: new Date().toISOString(),
             _isDirty: false,
           }))
         );

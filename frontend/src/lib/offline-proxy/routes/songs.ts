@@ -6,8 +6,9 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { db } from '../../db/schema';
+import { db, markDeleted } from '../../db/schema';
 import { deleteFromCache } from '../../pwa/cache-manager';
+import { isGuestUser } from '../utils';
 
 const app = new Hono();
 
@@ -17,7 +18,8 @@ app.get('/:id', async (c: Context) => {
     const id = c.req.param('id');
     const song = await db.songs.get(id);
 
-    if (!song) {
+    // Treat soft-deleted as not found
+    if (!song || song._isDeleted) {
       return c.json(
         {
           success: false,
@@ -82,10 +84,22 @@ app.delete('/:id', async (c: Context) => {
       );
     }
 
-    // Delete song from IndexedDB
-    await db.songs.delete(id);
+    if (isGuestUser()) {
+      // Guest user: hard delete immediately (no sync needed)
+      await db.songs.delete(id);
+      
+      // Hard delete playlistSongs referencing this song
+      await db.playlistSongs.where('songId').equals(id).delete();
+    } else {
+      // Auth user: soft delete for sync
+      await db.songs.put(markDeleted(song));
+      
+      // Soft delete playlistSongs referencing this song
+      const playlistSongs = await db.playlistSongs.where('songId').equals(id).toArray();
+      await Promise.all(playlistSongs.map(ps => db.playlistSongs.put(markDeleted(ps))));
+    }
 
-    // Remove song from all playlists
+    // Remove song from all playlists' songIds arrays (for both guest and auth)
     const playlists = await db.playlists.toArray();
     for (const playlist of playlists) {
       if (playlist.songIds.includes(id)) {

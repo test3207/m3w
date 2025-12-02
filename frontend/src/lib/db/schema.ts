@@ -4,7 +4,7 @@
  * 
  * Structure:
  * - Core Entities: Library, Playlist, Song (extended from @m3w/shared)
- * - Join Tables: LibrarySongLink, PlaylistSongLink (for many-to-many relationships)
+ * - Join Tables: PlaylistSong (composite key [playlistId, songId])
  * - Player State: PlayerPreferences, PlayerProgress
  * 
  * Sync Strategy: State-Based with Server-Wins
@@ -13,13 +13,18 @@
  * - _lastModifiedAt: timestamp for conflict detection
  */
 
-import Dexie, { type EntityTable } from 'dexie';
-import type { Library, Playlist, Song } from '@m3w/shared';
+import Dexie, { type EntityTable, type Table } from 'dexie';
+import type { Library, Playlist, Song, PlaylistSong } from '@m3w/shared';
 import { isGuestUser } from '../offline-proxy/utils';
 
 // ============================================================
 // Sync Tracking Fields (common to all syncable entities)
 // ============================================================
+/**
+ * Note: Boolean fields should be queried using filter() instead of where().equals()
+ * because IndexedDB boolean indexing behavior varies across environments.
+ * Example: db.libraries.filter(e => e._isDirty === true).toArray()
+ */
 export interface SyncTrackingFields {
   /** True when local changes need to be pushed to server */
   _isDirty?: boolean;
@@ -78,15 +83,11 @@ export interface OfflineSong extends Omit<Song, 'fileId' | 'libraryName' | 'mime
 // Join Tables (for ordering and many-to-many relationships)
 // ============================================================
 
-// Playlist-Song relationship (join table for ordering)
-// Aligned with backend Prisma PlaylistSong model
-export interface PlaylistSongLink extends SyncTrackingFields {
-  id: string;
-  playlistId: string;
-  songId: string;
-  order: number;
-  addedAt: Date;
-}
+/**
+ * Offline PlaylistSong - extends shared PlaylistSong with sync tracking
+ * Composite primary key: [playlistId, songId] (matches backend Prisma model)
+ */
+export interface OfflinePlaylistSong extends PlaylistSong, SyncTrackingFields {}
 
 // ============================================================
 // Player State (Guest mode only, Auth uses backend)
@@ -126,7 +127,8 @@ export class M3WDatabase extends Dexie {
   playlists!: EntityTable<OfflinePlaylist, 'id'>;
   files!: EntityTable<OfflineFile, 'id'>;
   songs!: EntityTable<OfflineSong, 'id'>;
-  playlistSongs!: EntityTable<PlaylistSongLink, 'id'>;
+  // Use Table instead of EntityTable for composite primary key
+  playlistSongs!: Table<OfflinePlaylistSong, [string, string]>;
   playerPreferences!: EntityTable<PlayerPreferences, 'userId'>;
   playerProgress!: EntityTable<PlayerProgress, 'userId'>;
 
@@ -139,7 +141,7 @@ export class M3WDatabase extends Dexie {
       playlists: 'id, userId, linkedLibraryId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly',
       files: 'id, hash, size, refCount, _isDirty, _isDeleted',
       songs: 'id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck, _isDirty, _isDeleted, _isLocalOnly',
-      playlistSongs: 'id, playlistId, songId, [playlistId+songId], order, _isDirty, _isDeleted',
+      playlistSongs: '[playlistId+songId], playlistId, songId, order, _isDirty, _isDeleted',
       playerPreferences: 'userId, updatedAt',
       playerProgress: 'userId, songId, contextType, contextId, updatedAt',
     });
@@ -172,13 +174,14 @@ export async function clearAllData() {
 
 /**
  * Get count of dirty entities that need to be synced
+ * Note: Use filter() for boolean fields as IndexedDB boolean indexing varies by environment
  */
 export async function getDirtyCount(): Promise<number> {
   const [libraries, playlists, songs, playlistSongs] = await Promise.all([
-    db.libraries.where('_isDirty').equals(1).count(),
-    db.playlists.where('_isDirty').equals(1).count(),
-    db.songs.where('_isDirty').equals(1).count(),
-    db.playlistSongs.where('_isDirty').equals(1).count(),
+    db.libraries.filter(e => e._isDirty === true).count(),
+    db.playlists.filter(e => e._isDirty === true).count(),
+    db.songs.filter(e => e._isDirty === true).count(),
+    db.playlistSongs.filter(e => e._isDirty === true).count(),
   ]);
   return libraries + playlists + songs + playlistSongs;
 }
@@ -260,9 +263,9 @@ export async function updateEntityId(
       // Update playlists linked to this library
       await db.playlists.where('linkedLibraryId').equals(localId).modify({ linkedLibraryId: serverId });
       
-      // Delete old, add new with server ID
+      // Delete old, add new with server ID (use markSynced to clear all sync flags)
       await db.libraries.delete(localId);
-      await db.libraries.add({ ...library, id: serverId, _isLocalOnly: false });
+      await db.libraries.add(markSynced({ ...library, id: serverId }));
       
     } else if (table === 'playlists') {
       const playlist = await db.playlists.get(localId);
@@ -271,9 +274,9 @@ export async function updateEntityId(
       // Update playlistSongs that reference this playlist
       await db.playlistSongs.where('playlistId').equals(localId).modify({ playlistId: serverId });
       
-      // Delete old, add new with server ID
+      // Delete old, add new with server ID (use markSynced to clear all sync flags)
       await db.playlists.delete(localId);
-      await db.playlists.add({ ...playlist, id: serverId, _isLocalOnly: false });
+      await db.playlists.add(markSynced({ ...playlist, id: serverId }));
       
     } else if (table === 'songs') {
       const song = await db.songs.get(localId);
@@ -282,9 +285,9 @@ export async function updateEntityId(
       // Update playlistSongs that reference this song
       await db.playlistSongs.where('songId').equals(localId).modify({ songId: serverId });
       
-      // Delete old, add new with server ID
+      // Delete old, add new with server ID (use markSynced to clear all sync flags)
       await db.songs.delete(localId);
-      await db.songs.add({ ...song, id: serverId, _isLocalOnly: false });
+      await db.songs.add(markSynced({ ...song, id: serverId }));
     }
   });
 }

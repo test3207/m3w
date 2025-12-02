@@ -78,7 +78,7 @@ class LibraryService {
 
       // Delete playlistSongs in batch
       await Promise.all(
-        playlistSongs.map(ps => db.playlistSongs.delete(ps.id))
+        playlistSongs.map(ps => db.playlistSongs.delete([ps.playlistId, ps.songId]))
       );
       result.deletedPlaylistSongs = playlistSongs.length;
 

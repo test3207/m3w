@@ -1,10 +1,18 @@
 /**
  * Schema Helper Functions Tests
- * Tests for dirty tracking and sync helpers
+ * Tests for dirty tracking, sync helpers, and Dexie composite primary keys
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { markDirty, markDeleted, markSynced, type SyncTrackingFields } from '../schema';
+import { 
+  db, 
+  clearAllData, 
+  markDirty, 
+  markDeleted, 
+  markSynced, 
+  type SyncTrackingFields,
+  type OfflinePlaylistSong 
+} from '../schema';
 
 // Mock the isGuestUser function
 vi.mock('../../offline-proxy/utils', () => ({
@@ -152,5 +160,179 @@ describe('markSynced', () => {
     
     expect(result.id).toBe('1');
     expect(result.name).toBe('Test');
+  });
+});
+
+/**
+ * Dexie Composite Primary Key Tests
+ * Verifies that [playlistId+songId] composite key works correctly
+ */
+describe('PlaylistSongs Composite Primary Key', () => {
+  beforeEach(async () => {
+    vi.mocked(isGuestUser).mockReturnValue(false);
+    await clearAllData();
+  });
+
+  afterEach(async () => {
+    await clearAllData();
+  });
+
+  const createPlaylistSong = (playlistId: string, songId: string, order: number): OfflinePlaylistSong => ({
+    playlistId,
+    songId,
+    order,
+    addedAt: new Date().toISOString(),
+    _isDirty: false,
+  });
+
+  it('should add and retrieve by composite key', async () => {
+    const ps = createPlaylistSong('playlist-1', 'song-1', 0);
+    
+    await db.playlistSongs.add(ps);
+    
+    // Retrieve by composite key
+    const retrieved = await db.playlistSongs.get(['playlist-1', 'song-1']);
+    
+    expect(retrieved).toBeDefined();
+    expect(retrieved?.playlistId).toBe('playlist-1');
+    expect(retrieved?.songId).toBe('song-1');
+    expect(retrieved?.order).toBe(0);
+  });
+
+  it('should update by composite key', async () => {
+    const ps = createPlaylistSong('playlist-1', 'song-1', 0);
+    await db.playlistSongs.add(ps);
+    
+    // Update using composite key
+    await db.playlistSongs.update(['playlist-1', 'song-1'], { order: 5 });
+    
+    const updated = await db.playlistSongs.get(['playlist-1', 'song-1']);
+    expect(updated?.order).toBe(5);
+  });
+
+  it('should delete by composite key', async () => {
+    const ps = createPlaylistSong('playlist-1', 'song-1', 0);
+    await db.playlistSongs.add(ps);
+    
+    // Verify it exists
+    expect(await db.playlistSongs.get(['playlist-1', 'song-1'])).toBeDefined();
+    
+    // Delete by composite key
+    await db.playlistSongs.delete(['playlist-1', 'song-1']);
+    
+    // Verify it's gone
+    expect(await db.playlistSongs.get(['playlist-1', 'song-1'])).toBeUndefined();
+  });
+
+  it('should enforce uniqueness on composite key', async () => {
+    const ps1 = createPlaylistSong('playlist-1', 'song-1', 0);
+    const ps2 = createPlaylistSong('playlist-1', 'song-1', 1); // Same key, different order
+    
+    await db.playlistSongs.add(ps1);
+    
+    // Adding same composite key should fail
+    await expect(db.playlistSongs.add(ps2)).rejects.toThrow();
+  });
+
+  it('should allow same song in different playlists', async () => {
+    const ps1 = createPlaylistSong('playlist-1', 'song-1', 0);
+    const ps2 = createPlaylistSong('playlist-2', 'song-1', 0); // Same song, different playlist
+    
+    await db.playlistSongs.add(ps1);
+    await db.playlistSongs.add(ps2);
+    
+    // Both should exist
+    expect(await db.playlistSongs.get(['playlist-1', 'song-1'])).toBeDefined();
+    expect(await db.playlistSongs.get(['playlist-2', 'song-1'])).toBeDefined();
+    
+    const count = await db.playlistSongs.count();
+    expect(count).toBe(2);
+  });
+
+  it('should allow different songs in same playlist', async () => {
+    const ps1 = createPlaylistSong('playlist-1', 'song-1', 0);
+    const ps2 = createPlaylistSong('playlist-1', 'song-2', 1);
+    const ps3 = createPlaylistSong('playlist-1', 'song-3', 2);
+    
+    await db.playlistSongs.bulkAdd([ps1, ps2, ps3]);
+    
+    // Query all songs in playlist-1
+    const songs = await db.playlistSongs
+      .where('playlistId')
+      .equals('playlist-1')
+      .toArray();
+    
+    expect(songs.length).toBe(3);
+  });
+
+  it('should use put for upsert (insert or update)', async () => {
+    const ps = createPlaylistSong('playlist-1', 'song-1', 0);
+    
+    // First put - insert
+    await db.playlistSongs.put(ps);
+    expect((await db.playlistSongs.get(['playlist-1', 'song-1']))?.order).toBe(0);
+    
+    // Second put - update (same composite key)
+    await db.playlistSongs.put({ ...ps, order: 10 });
+    expect((await db.playlistSongs.get(['playlist-1', 'song-1']))?.order).toBe(10);
+    
+    // Should still be only 1 record
+    expect(await db.playlistSongs.count()).toBe(1);
+  });
+
+  it('should support bulkPut for batch upsert', async () => {
+    const songs = [
+      createPlaylistSong('playlist-1', 'song-1', 0),
+      createPlaylistSong('playlist-1', 'song-2', 1),
+      createPlaylistSong('playlist-1', 'song-3', 2),
+    ];
+    
+    await db.playlistSongs.bulkPut(songs);
+    expect(await db.playlistSongs.count()).toBe(3);
+    
+    // Update with new order
+    const updatedSongs = songs.map((s, i) => ({ ...s, order: i * 10 }));
+    await db.playlistSongs.bulkPut(updatedSongs);
+    
+    // Should still be 3 records with updated order
+    expect(await db.playlistSongs.count()).toBe(3);
+    expect((await db.playlistSongs.get(['playlist-1', 'song-2']))?.order).toBe(10);
+  });
+
+  it('should support querying by single field index', async () => {
+    await db.playlistSongs.bulkAdd([
+      createPlaylistSong('playlist-1', 'song-1', 0),
+      createPlaylistSong('playlist-1', 'song-2', 1),
+      createPlaylistSong('playlist-2', 'song-1', 0),
+    ]);
+    
+    // Query by playlistId
+    const playlist1Songs = await db.playlistSongs
+      .where('playlistId')
+      .equals('playlist-1')
+      .toArray();
+    expect(playlist1Songs.length).toBe(2);
+    
+    // Query by songId
+    const song1Entries = await db.playlistSongs
+      .where('songId')
+      .equals('song-1')
+      .toArray();
+    expect(song1Entries.length).toBe(2);
+  });
+
+  it('should support filtering by _isDirty flag', async () => {
+    const ps1 = { ...createPlaylistSong('playlist-1', 'song-1', 0), _isDirty: true };
+    const ps2 = { ...createPlaylistSong('playlist-1', 'song-2', 1), _isDirty: false };
+    const ps3 = { ...createPlaylistSong('playlist-2', 'song-1', 0), _isDirty: true };
+    
+    await db.playlistSongs.bulkAdd([ps1, ps2, ps3]);
+    
+    // Query dirty records using filter (works consistently across environments)
+    const dirtySongs = await db.playlistSongs
+      .filter(ps => ps._isDirty === true)
+      .toArray();
+    
+    expect(dirtySongs.length).toBe(2);
   });
 });
