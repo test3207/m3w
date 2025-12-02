@@ -64,28 +64,31 @@ tar -c --exclude='node_modules' --exclude='dist' --exclude='.git' \
 
 cd "$BUILD_DIR"
 
-# Step 2: Install all dependencies
+# Step 2: Install dependencies and build shared package first
 echo ""
 echo "📦 Step 2: Installing dependencies..."
 
 # Install root dependencies
 npm ci
 
-# Install shared package dependencies
+# Install shared package dependencies and BUILD IT FIRST
+# This is critical: frontend depends on @m3w/shared types which require dist/ to exist
 cd shared && npm ci && cd ..
+echo ""
+echo "🔨 Building shared package first (required for frontend type resolution)..."
+npm run build:shared
 
-# Install frontend dependencies
+# NOW install frontend dependencies (file:../shared will resolve correctly with dist/)
 cd frontend && npm ci && cd ..
 
 # Install backend dependencies (full, for build)
 cd backend && npm ci && cd ..
 
-# Step 3: Build all packages
+# Step 3: Build frontend and backend
 echo ""
 echo "🔨 Step 3: Building application..."
 
-# Build shared and frontend (same for all targets)
-npm run build:shared
+# Build frontend (shared already built above)
 npm run build:frontend
 
 # Build backend with target-specific config (affects demo mode tree-shaking)

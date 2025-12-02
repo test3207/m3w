@@ -25,7 +25,8 @@ export async function initGuestResources() {
       createdAt: now,
       updatedAt: now,
       _count: { songs: 0 },
-      _syncStatus: 'synced' // Local data is considered synced in guest mode
+      // Guest data is local only, no sync needed
+      _isDirty: false,
     };
     await db.libraries.add(defaultLibrary);
   }
@@ -51,7 +52,8 @@ export async function initGuestResources() {
       createdAt: now,
       updatedAt: now,
       _count: { songs: 0 },
-      _syncStatus: 'synced'
+      // Guest data is local only, no sync needed
+      _isDirty: false,
     };
     await db.playlists.add(favoritesPlaylist);
   }

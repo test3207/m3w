@@ -24,6 +24,18 @@ export interface Playlist {
   };
 }
 
+/**
+ * PlaylistSong join table entity
+ * Composite primary key: [playlistId, songId]
+ * Used for ordering songs within a playlist
+ */
+export interface PlaylistSong {
+  playlistId: string;
+  songId: string;
+  order: number;
+  addedAt: string; // ISO 8601 string
+}
+
 // ============================================================
 // Playlist Input Types
 // ============================================================

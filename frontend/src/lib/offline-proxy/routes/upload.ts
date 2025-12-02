@@ -7,7 +7,7 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { db } from '../../db/schema';
+import { db, markDirty } from '../../db/schema';
 import type { OfflineSong } from '../../db/schema';
 import { parseBlob } from 'music-metadata';
 import { calculateFileHash } from '../../utils/hash';
@@ -69,10 +69,10 @@ app.post('/', async (c: Context) => {
     // 6. Cache audio file in Cache Storage using unified /api/ URL
     const streamUrl = await cacheAudioForOffline(songId, file);
 
-    // 7. Create Song object
+    // 7. Create Song object with sync tracking
     const now = new Date().toISOString();
 
-    const song: OfflineSong = {
+    const songData: OfflineSong = {
       id: songId,
       libraryId, // ✅ Required field (one-to-many relationship)
       title: common.title || file.name.replace(/\.[^/.]+$/, ''),
@@ -97,9 +97,14 @@ app.post('/', async (c: Context) => {
       cacheSize: file.size, // Set cache size to file size
       lastCacheCheck: Date.now(),
       fileHash: hash, // Keep for quick lookup
-      // No longer store blobs in IndexedDB
-      _syncStatus: 'pending',
+      // Sync tracking: markDirty handles Guest vs Auth users
+      // - Guest: _isDirty=false, _isLocalOnly=false (no sync needed)
+      // - Auth offline: _isDirty=true, _isLocalOnly=true (sync when online)
+      _isDirty: false, // Will be set by markDirty
     };
+
+    // Apply sync tracking based on user type
+    const song = markDirty(songData, true);
 
     // 8. Save song to IndexedDB and increment File refCount
     await db.transaction('rw', [db.songs, db.files], async () => {

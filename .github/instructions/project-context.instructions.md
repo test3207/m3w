@@ -570,22 +570,41 @@ if (isGuest) {
 ```
 
 **Known Issues** (Technical Debt):
-1. **Sync Queue Design**: Current implementation replays API operations (create/update/delete), which causes conflicts and accumulation. Should be refactored to state-based synchronization with three-way merge.
+1. ~~**Sync Queue Design**: Current implementation replays API operations (create/update/delete), which causes conflicts and accumulation. Should be refactored to state-based synchronization with three-way merge.~~ ✅ Resolved in Issue #48
 2. **Storage Quota Monitoring**: No user-facing UI for storage usage (Issue #50).
 3. **Cache Management**: Manual cleanup and statistics utilities needed (Issue #51).
 
-### Offline Sync Strategy (2025-11-20)
+### Offline Sync Strategy (2025-12-02) ✅ **IMPLEMENTED** (Issue #48)
 
-**Current Implementation**: Operation Replay (Sync Queue)
-- Queues API operations (create/update/delete) with full payload
-- Replays operations on reconnect
-- Problems: Conflicts, accumulation, dependency issues
+**Implementation**: State-Based with Server-Wins + Push First
+- Track dirty entities via `_isDirty`, `_isDeleted`, `_isLocalOnly` fields
+- Push local changes to server first, then pull latest
+- Server-Wins conflict resolution (simpler, no data loss)
+- ID mapping for locally-created entities (local ID → server ID)
 
-**Future Direction**: State-Based Synchronization
-- Track dirty entities with timestamps (not operations)
-- Three-way merge: Backend state, Local state, Common ancestor
-- Conflict resolution: Last-Write-Wins or User-Choose
-- Implementation tracked in Milestone 1 technical debt issues
+**Architecture**:
+```
+Local Mutation → markDirty(entity, isNew)
+    ↓
+Sync Triggers: 5min timer | online event | visibilitychange
+    ↓
+Push dirty entities to server (create/update/delete)
+    ↓
+ID Mapping: updateEntityId(table, localId, serverId)
+    ↓
+Pull latest from server (syncMetadata)
+    ↓
+markSynced(entity) - clear all sync flags
+```
+
+**Key Functions** (`frontend/src/lib/db/schema.ts`):
+- `markDirty(entity, isNew)` - Mark entity dirty, set `_isLocalOnly` if new
+- `markSynced(entity)` - Clear sync flags after successful sync
+- `markDeleted(entity)` - Soft delete for sync
+- `updateEntityId(table, localId, serverId)` - Cascading ID update
+- `getDirtyCount()` / `getDirtyEntities()` - Query dirty entities
+
+**Guest Mode**: Guest users bypass dirty tracking entirely (local-only forever)
 
 ### Media Storage Strategy (2025-11-20)
 

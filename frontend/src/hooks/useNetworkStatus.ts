@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getSyncQueueSize } from '../lib/db/schema';
+import { getDirtyCount } from '../lib/db/schema';
 
 export function useNetworkStatus() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -35,14 +35,14 @@ export function useNetworkStatus() {
     window.addEventListener('api-error', handleApiError);
     window.addEventListener('api-success', handleApiSuccess);
 
-    // Check sync queue size periodically
-    const checkSyncQueue = async () => {
-      const count = await getSyncQueueSize();
+    // Check dirty entity count periodically
+    const checkDirtyEntities = async () => {
+      const count = await getDirtyCount();
       setPendingSyncs(count);
     };
 
-    checkSyncQueue();
-    const interval = setInterval(checkSyncQueue, 5000);
+    checkDirtyEntities();
+    const interval = setInterval(checkDirtyEntities, 5000);
 
     return () => {
       window.removeEventListener('online', handleOnline);

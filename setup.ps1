@@ -129,6 +129,12 @@ if ($LASTEXITCODE -ne 0) {
     Pop-Location
     exit 1
 }
+
+Write-Host "  Installing Playwright browsers (for testing)..." -ForegroundColor Gray
+npx playwright install
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ⚠️  Playwright browser install failed (tests may not work)" -ForegroundColor Yellow
+}
 Pop-Location
 
 Write-Host "  Installing backend dependencies..." -ForegroundColor Gray

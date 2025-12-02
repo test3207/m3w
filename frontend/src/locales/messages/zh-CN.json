@@ -128,6 +128,14 @@
     "offline": "离线",
     "syncing": "同步中"
   },
+  "sync": {
+    "completed": "同步完成",
+    "conflictsResolved": "同步完成（存在冲突）",
+    "serverWins": "个冲突已解决（保留服务器版本）",
+    "failed": "同步失败",
+    "inProgress": "同步中...",
+    "pendingChanges": "个待同步更改"
+  },
   "dashboard": {
     "title": "M3W 控制台",
     "welcome": {

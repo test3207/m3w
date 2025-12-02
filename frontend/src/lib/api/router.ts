@@ -9,6 +9,7 @@ import offlineProxy from '../offline-proxy';
 import { isOfflineCapable } from '@m3w/shared';
 import { logger } from '../logger-client';
 import { API_BASE_URL } from './config';
+import { isGuestUser } from '../offline-proxy/utils';
 
 // Track backend reachability
 let isBackendReachable = true;
@@ -87,19 +88,6 @@ function getAuthToken(): string | null {
     return parsed.state?.tokens?.accessToken || null;
   } catch {
     return null;
-  }
-}
-
-// Helper to check if user is guest
-function isGuestUser(): boolean {
-  try {
-    const authStore = localStorage.getItem('auth-storage');
-    if (!authStore) return false;
-
-    const parsed = JSON.parse(authStore);
-    return parsed.state?.isGuest === true;
-  } catch {
-    return false;
   }
 }
 

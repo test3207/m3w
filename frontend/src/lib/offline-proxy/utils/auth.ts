@@ -1,11 +1,27 @@
 /**
  * Auth utilities for offline-proxy
+ * 
+ * Provides cached guest user detection to avoid repeated localStorage parsing.
+ * Cache is invalidated on login/logout via invalidateGuestCache().
  */
 
 import { GUEST_USER_ID, isGuestUserId } from '../../constants/guest';
 
 // Re-export for convenience
 export { GUEST_USER_ID, isGuestUserId };
+
+// ============================================================
+// Guest User Cache
+// ============================================================
+let guestUserCache: boolean | null = null;
+
+/**
+ * Invalidate the guest user cache.
+ * Must be called on login/logout to refresh the cached value.
+ */
+export function invalidateGuestCache(): void {
+  guestUserCache = null;
+}
 
 /**
  * Get userId from auth store
@@ -29,12 +45,29 @@ export function getUserId(): string {
 /**
  * Check if current user is a guest (offline-only user)
  * 
+ * Uses cached value to avoid repeated localStorage parsing.
+ * Cache is invalidated on login/logout.
+ * 
  * @returns true if user is guest, false otherwise
  */
 export function isGuestUser(): boolean {
+  // Return cached value if available
+  if (guestUserCache !== null) {
+    return guestUserCache;
+  }
+  
+  // Compute and cache
   try {
-    return isGuestUserId(getUserId());
+    const authStore = localStorage.getItem('auth-storage');
+    if (!authStore) {
+      guestUserCache = false;
+      return false;
+    }
+    const { state } = JSON.parse(authStore);
+    guestUserCache = state?.isGuest === true;
+    return guestUserCache;
   } catch {
+    guestUserCache = false;
     return false;
   }
 }

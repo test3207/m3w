@@ -130,7 +130,10 @@ echo -e "  ${GRAY}Installing root dependencies...${NC}"
 npm install
 
 echo -e "  ${GRAY}Installing frontend dependencies...${NC}"
-cd frontend && npm install && cd ..
+cd frontend && npm install
+echo -e "  ${GRAY}Installing Playwright browsers (for testing)...${NC}"
+npx playwright install || echo -e "  ${YELLOW}⚠️  Playwright browser install failed (tests may not work)${NC}"
+cd ..
 
 echo -e "  ${GRAY}Installing backend dependencies...${NC}"
 cd backend && npm install && cd ..
@@ -185,6 +188,12 @@ if [ "$CONTAINER_TOOL" = "podman" ]; then
     podman-compose -f "$COMPOSE_FILE" up -d
 else
     docker-compose -f "$COMPOSE_FILE" up -d
+fi
+
+if [ $? -ne 0 ]; then
+    echo -e "  ${RED}✗ Failed to start containers${NC}"
+    echo -e "  ${YELLOW}💡 Tip: Check if ports 5432 or 6379 are already in use${NC}"
+    exit 1
 fi
 echo -e "  ${GREEN}✓ Containers started${NC}"
 echo ""
