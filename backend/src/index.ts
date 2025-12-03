@@ -10,8 +10,18 @@ import { logger as honoLogger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { serveStatic } from '@hono/node-server/serve-static';
 import 'dotenv/config';
+import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { logger } from './lib/logger';
 import { prisma } from './lib/prisma';
+
+const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+if (proxyUrl) {
+  const proxyAgent = new ProxyAgent(proxyUrl);
+  setGlobalDispatcher(proxyAgent);
+  logger.info({ proxyUrl }, 'HTTP proxy configured for fetch');
+} else {
+  logger.info('No HTTP(S)_PROXY detected, fetch uses direct network routes');
+}
 
 // Helper function to mask sensitive environment variables
 function maskSensitiveValue(key: string, value: string): string {
