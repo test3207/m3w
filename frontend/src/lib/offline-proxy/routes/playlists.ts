@@ -77,9 +77,7 @@ app.get('/', async (c: Context) => {
         return {
           ...playlist,
           songIds,
-          _count: {
-            songs: songIds.length,
-          },
+          songCount: songIds.length,
           coverUrl,
         };
       })
@@ -136,9 +134,7 @@ app.get('/by-library/:libraryId', async (c: Context) => {
       data: {
         ...playlist,
         songIds,
-        _count: {
-          songs: songIds.length,
-        },
+        songCount: songIds.length,
       },
     });
   } catch {
@@ -238,9 +234,7 @@ app.get('/:id', async (c: Context) => {
       data: {
         ...playlist,
         songIds,
-        _count: {
-          songs: songIds.length,
-        },
+        songCount: songIds.length,
         coverUrl,
       },
     });
@@ -538,13 +532,14 @@ app.post('/:id/songs', async (c: Context) => {
       await db.playlistSongs.add(playlistSong);
     }
 
-    // Update playlist timestamp
-    await db.playlists.update(id, {
-      updatedAt: new Date().toISOString(),
-    });
-
     // Get new song count
     const newSongCount = activeSongs.length + 1;
+
+    // Update playlist timestamp and songCount
+    await db.playlists.update(id, {
+      songCount: newSongCount,
+      updatedAt: new Date().toISOString(),
+    });
 
     // Return response matching backend format
     return c.json(
@@ -700,8 +695,9 @@ app.put('/:id/songs', async (c: Context) => {
         await db.playlistSongs.bulkPut(playlistSongsData.map(ps => markDirty(ps)));
       }
 
-      // Update playlist timestamp
+      // Update playlist timestamp and songCount
       await db.playlists.update(id, {
+        songCount: songIds?.length || 0,
         updatedAt: new Date().toISOString(),
       });
     });
@@ -770,8 +766,11 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       await db.playlistSongs.put(markDeleted(playlistSong));
     }
 
-    // Update playlist timestamp
+    const newSongCount = currentCount - 1;
+
+    // Update playlist timestamp and songCount
     await db.playlists.update(playlistId, {
+      songCount: Math.max(0, newSongCount),
       updatedAt: new Date().toISOString(),
     });
 
@@ -781,7 +780,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       data: {
         playlistId,
         songId,
-        newSongCount: currentCount - 1,
+        newSongCount,
       },
     });
   } catch {
