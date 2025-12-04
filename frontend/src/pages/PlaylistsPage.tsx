@@ -249,7 +249,7 @@ export default function PlaylistsPage() {
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {I18n.playlists.card.songsCount.replace('{0}', String(playlist.songIds?.length || 0))}
+                        {I18n.playlists.card.songsCount.replace('{0}', String(playlist.songCount || 0))}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {I18n.playlists.card.createdAt.replace('{0}', new Date(playlist.createdAt).toLocaleDateString(

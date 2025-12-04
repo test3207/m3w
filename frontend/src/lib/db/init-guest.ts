@@ -19,12 +19,12 @@ export async function initGuestResources() {
       name: 'Default Library',
       description: null,
       userId,
+      songCount: 0,
       isDefault: true,
       canDelete: false,
       coverUrl: null,  // No songs yet
       createdAt: now,
       updatedAt: now,
-      _count: { songs: 0 },
       // Guest data is local only, no sync needed
       _isDirty: false,
     };
@@ -44,14 +44,13 @@ export async function initGuestResources() {
       name: 'My Favorites',
       description: null,
       userId,
-      songIds: [],
+      songCount: 0,
       linkedLibraryId: null,
       isDefault: true,
       canDelete: false,
       coverUrl: null,  // No songs yet
       createdAt: now,
       updatedAt: now,
-      _count: { songs: 0 },
       // Guest data is local only, no sync needed
       _isDirty: false,
     };

@@ -50,7 +50,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
       id: library.id,
       name: library.name,
       description: library.description ?? null,
-      songCount: library._count?.songs ?? 0,
+      songCount: library.songCount ?? 0,
     }));
   }, [libraries]);
 

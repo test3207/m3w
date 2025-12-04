@@ -25,13 +25,11 @@ export interface LibraryInput {
   name: string;
   description: string | null;
   userId: string;
+  songCount: number;  // Cached count stored in database
   isDefault: boolean;
   canDelete: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
-  // Optional: song count from _count or manual count
-  _count?: { songs: number };
-  songCount?: number;
   // Optional: last song for cover URL
   coverUrl?: string | null;
 }
@@ -44,16 +42,13 @@ export interface PlaylistInput {
   name: string;
   description: string | null;
   userId: string;
-  songIds: string[];
+  songCount: number;  // Cached count stored in database
   linkedLibraryId: string | null;
   isDefault: boolean;
   canDelete: boolean;
   coverUrl?: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
-  // Optional: song count from _count or manual count
-  _count?: { songs: number };
-  songCount?: number;
 }
 
 /**
@@ -113,14 +108,12 @@ export function toLibraryResponse(input: LibraryInput): Library {
     name: input.name,
     description: input.description,
     userId: input.userId,
+    songCount: input.songCount,
     isDefault: input.isDefault,
     canDelete: input.canDelete,
     coverUrl: input.coverUrl ?? null,
     createdAt: toISOString(input.createdAt),
     updatedAt: toISOString(input.updatedAt),
-    _count: {
-      songs: input._count?.songs ?? input.songCount ?? 0,
-    },
   };
 }
 
@@ -133,16 +126,13 @@ export function toPlaylistResponse(input: PlaylistInput): Playlist {
     name: input.name,
     description: input.description,
     userId: input.userId,
-    songIds: input.songIds ?? [],
+    songCount: input.songCount,
     linkedLibraryId: input.linkedLibraryId ?? null,
     isDefault: input.isDefault,
     canDelete: input.canDelete,
     coverUrl: input.coverUrl ?? null,
     createdAt: toISOString(input.createdAt),
     updatedAt: toISOString(input.updatedAt),
-    _count: {
-      songs: input._count?.songs ?? input.songCount ?? 0,
-    },
   };
 }
 

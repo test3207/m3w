@@ -39,7 +39,7 @@ describe('Playlists Routes Integration', () => {
           userId: 'test-user-123',
           createdAt: new Date(),
           updatedAt: new Date(),
-          _count: { songs: 10 },
+          songCount: 10,
         },
         {
           id: 'playlist-2',
@@ -47,7 +47,7 @@ describe('Playlists Routes Integration', () => {
           userId: 'test-user-123',
           createdAt: new Date(),
           updatedAt: new Date(),
-          _count: { songs: 5 },
+          songCount: 5,
         },
       ];
 
@@ -61,14 +61,14 @@ describe('Playlists Routes Integration', () => {
       const res = await app.request('/playlists');
       const json = await res.json() as { 
         success: boolean; 
-        data: Array<{ name: string; _count: { songs: number } }> 
+        data: Array<{ name: string; songCount: number }> 
       };
 
       expect(res.status).toBe(200);
       expect(json.success).toBe(true);
       expect(json.data).toHaveLength(2);
       expect(json.data[0].name).toBe('Favorites');
-      expect(json.data[0]._count.songs).toBe(10);
+      expect(json.data[0].songCount).toBe(10);
     });
   });
 

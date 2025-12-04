@@ -293,7 +293,7 @@ app.post('/', async (c: Context) => {
       );
     }
 
-    // 11. Create Song record and increment refCount
+    // 11. Create Song record, increment refCount and library songCount
     const song = await prisma.$transaction(async (tx) => {
       // Create song
       const newSong = await tx.song.create({
@@ -310,6 +310,12 @@ app.post('/', async (c: Context) => {
       await tx.file.update({
         where: { id: fileRecord!.id },
         data: { refCount: { increment: 1 } },
+      });
+
+      // Increment library songCount
+      await tx.library.update({
+        where: { id: libraryId },
+        data: { songCount: { increment: 1 } },
       });
 
       return newSong;

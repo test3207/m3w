@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
-import { isFavoritesPlaylist } from '@m3w/shared';
 
 // Utility function for duration formatting
 function formatDuration(seconds: number): string {
@@ -68,6 +67,7 @@ export function FullPlayer() {
   const playlists = usePlaylistStore((state) => state.playlists);
   const toggleFavorite = usePlaylistStore((state) => state.toggleFavorite);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
+  const isSongFavorited = usePlaylistStore((state) => state.isSongFavorited);
   
   // Ensure playlists are loaded when FullPlayer opens
   useEffect(() => {
@@ -76,12 +76,11 @@ export function FullPlayer() {
     }
   }, [isOpen, playlists.length, fetchPlaylists]);
   
-  // Compute isFavorited from playlists state so component re-renders when playlists change
+  // Compute isFavorited using store method
   const isFavorited = useMemo(() => {
     if (!currentSong) return false;
-    const favorites = playlists.find(isFavoritesPlaylist);
-    return favorites?.songIds?.includes(currentSong.id) ?? false;
-  }, [currentSong, playlists]);
+    return isSongFavorited(currentSong.id);
+  }, [currentSong, isSongFavorited]);
 
   const handleToggleFavorite = async () => {
     if (!currentSong) return;

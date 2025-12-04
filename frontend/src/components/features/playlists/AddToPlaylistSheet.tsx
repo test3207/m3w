@@ -38,6 +38,7 @@ export function AddToPlaylistSheet() {
   const addSongToPlaylist = usePlaylistStore((state) => state.addSongToPlaylist);
   const createPlaylist = usePlaylistStore((state) => state.createPlaylist);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
+  const getPlaylistSongIds = usePlaylistStore((state) => state.getPlaylistSongIds);
   
   const [isAdding, setIsAdding] = useState(false);
   const [showNewPlaylist, setShowNewPlaylist] = useState(false);
@@ -71,11 +72,12 @@ export function AddToPlaylistSheet() {
       playlists
         .filter((pl) => {
           // Check if ALL selected songs are already in this playlist
-          return songsToAdd.every(song => pl.songIds.includes(song.id));
+          const songIds = getPlaylistSongIds(pl.id);
+          return songsToAdd.every(song => songIds.includes(song.id));
         })
         .map((pl) => pl.id)
     );
-  }, [playlists, songsToAdd]);
+  }, [playlists, songsToAdd, getPlaylistSongIds]);
 
   // Handle adding songs to a playlist
   const handleAddToPlaylist = async (playlistId: string, playlistName: string) => {
@@ -95,8 +97,7 @@ export function AddToPlaylistSheet() {
       let skippedCount = 0;
       
       // Find the playlist to check existing songs
-      const playlist = playlists.find(pl => pl.id === playlistId);
-      const existingSongIds = new Set(playlist?.songIds || []);
+      const existingSongIds = new Set(getPlaylistSongIds(playlistId));
       
       // Add each song that isn't already in the playlist
       for (const song of songsToAdd) {
@@ -342,7 +343,7 @@ export function AddToPlaylistSheet() {
                     <div className="flex-1 overflow-hidden">
                       <p className="truncate font-medium">{displayName}</p>
                       <p className="text-sm text-muted-foreground">
-                        {I18n.playlists.detail.songsCount.replace('{0}', String(playlist.songIds.length))}
+                        {I18n.playlists.detail.songsCount.replace('{0}', String(playlist.songCount))}
                       </p>
                     </div>
 

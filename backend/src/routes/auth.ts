@@ -72,6 +72,7 @@ async function createDefaultResources(userId: string) {
       data: {
         name: 'Default Library', // Frontend displays i18n translation via getLibraryDisplayName()
         userId,
+        songCount: 0,
         isDefault: true,
         canDelete: false,
       },
@@ -82,7 +83,7 @@ async function createDefaultResources(userId: string) {
       data: {
         name: 'Favorites', // Frontend displays i18n translation via getPlaylistDisplayName()
         userId,
-        songIds: [],
+        songCount: 0,
         isDefault: true,
         canDelete: false,
       },

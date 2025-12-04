@@ -598,10 +598,36 @@ app.delete('/:id', async (c: Context) => {
 
     const fileId = song.fileId;
 
-    // Delete the song (cascade will handle playlist_songs)
-    await prisma.song.delete({
-      where: { id },
+    // Find all playlists containing this song (before deletion)
+    const playlistSongs = await prisma.playlistSong.findMany({
+      where: { songId: id },
+      select: { playlistId: true },
     });
+    const affectedPlaylistIds = playlistSongs.map(ps => ps.playlistId);
+
+    // Use transaction to delete song and update counts atomically
+    await prisma.$transaction([
+      // Delete the song (cascade will delete PlaylistSong entries)
+      prisma.song.delete({
+        where: { id },
+      }),
+      // Decrement library songCount
+      prisma.library.update({
+        where: { id: libraryId },
+        data: { songCount: { decrement: 1 } },
+      }),
+      // Decrement songCount for all affected playlists
+      ...affectedPlaylistIds.map(playlistId =>
+        prisma.playlist.update({
+          where: { id: playlistId },
+          data: { songCount: { decrement: 1 } },
+        })
+      ),
+    ]);
+
+    if (affectedPlaylistIds.length > 0) {
+      logger.info({ songId: id, affectedPlaylistIds }, 'Updated songCount for affected playlists');
+    }
 
     // Decrement file reference count
     const file = await prisma.file.findUnique({

@@ -22,6 +22,23 @@ const app = new Hono();
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
 
+/**
+ * Helper: Get cover URL from first song in playlist
+ */
+async function getPlaylistCoverUrl(playlistId: string): Promise<string | null> {
+  const firstSong = await prisma.playlistSong.findFirst({
+    where: { playlistId },
+    orderBy: { order: 'asc' },
+    include: {
+      song: {
+        select: { id: true, coverUrl: true },
+      },
+    },
+  });
+  if (!firstSong?.song) return null;
+  return resolveCoverUrl({ id: firstSong.song.id, coverUrl: firstSong.song.coverUrl });
+}
+
 // GET /api/playlists - List all playlists for current user
 app.get('/', async (c: Context) => {
   try {
@@ -30,11 +47,8 @@ app.get('/', async (c: Context) => {
     const playlists = await prisma.playlist.findMany({
       where: { userId },
       include: {
-        _count: {
-          select: { songs: true },
-        },
         songs: {
-          take: 4,
+          take: 1,
           include: {
             song: {
               select: {
@@ -57,14 +71,13 @@ app.get('/', async (c: Context) => {
         name: pl.name,
         description: pl.description,
         userId: pl.userId,
-        songIds: pl.songIds,
+        songCount: pl.songCount,
         linkedLibraryId: pl.linkedLibraryId,
         isDefault: pl.isDefault,
         canDelete: pl.canDelete,
         coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
         createdAt: pl.createdAt,
         updatedAt: pl.updatedAt,
-        _count: pl._count,
       };
       return toPlaylistResponse(input);
     });
@@ -112,7 +125,7 @@ app.get('/by-library/:libraryId', async (c: Context) => {
     // Transform to API response format using shared transformer
     const input: PlaylistInput = {
       ...playlist,
-      coverUrl: null,
+      coverUrl: await getPlaylistCoverUrl(playlist.id),
     };
 
     return c.json<ApiResponse<Playlist>>({
@@ -154,34 +167,38 @@ app.post('/for-library', async (c: Context) => {
       );
     }
 
-    // Create playlist
+    const songCount = songIds?.length || 0;
+
+    // Create playlist with songCount
     const playlist = await prisma.playlist.create({
       data: {
         name,
         userId,
         linkedLibraryId,
-        songIds,
+        songCount,
         canDelete: false, // Library playlists cannot be manually deleted
       },
     });
 
     // Create PlaylistSong entries
-    const playlistSongData = songIds.map((songId: string, index: number) => ({
-      playlistId: playlist.id,
-      songId,
-      order: index,
-    }));
+    if (songIds && songIds.length > 0) {
+      const playlistSongData = songIds.map((songId: string, index: number) => ({
+        playlistId: playlist.id,
+        songId,
+        order: index,
+      }));
 
-    await prisma.playlistSong.createMany({
-      data: playlistSongData,
-    });
+      await prisma.playlistSong.createMany({
+        data: playlistSongData,
+      });
+    }
 
-    logger.info({ playlistId: playlist.id, linkedLibraryId }, 'Created library playlist');
+    logger.info({ playlistId: playlist.id, linkedLibraryId, songCount }, 'Created library playlist');
 
     // Transform to API response format
     const input: PlaylistInput = {
       ...playlist,
-      coverUrl: null,
+      coverUrl: await getPlaylistCoverUrl(playlist.id),
     };
 
     return c.json<ApiResponse<Playlist>>({
@@ -209,9 +226,6 @@ app.get('/:id', async (c: Context) => {
     const playlist = await prisma.playlist.findFirst({
       where: { id, userId },
       include: {
-        _count: {
-          select: { songs: true },
-        },
         songs: {
           take: 1,
           include: {
@@ -282,11 +296,7 @@ app.post('/', async (c: Context) => {
       data: {
         ...data,
         userId,
-      },
-      include: {
-        _count: {
-          select: { songs: true },
-        },
+        songCount: 0,
       },
     });
 
@@ -353,9 +363,6 @@ app.patch('/:id', async (c: Context) => {
       where: { id },
       data,
       include: {
-        _count: {
-          select: { songs: true },
-        },
         songs: {
           take: 1,
           include: {
@@ -434,6 +441,7 @@ app.delete('/:id', async (c: Context) => {
       );
     }
 
+    // PlaylistSong entries will be cascade deleted
     await prisma.playlist.delete({
       where: { id },
     });
@@ -485,55 +493,47 @@ app.get('/:id/songs', async (c: Context) => {
       );
     }
 
-    // Fetch songs based on songIds array order
-    if (playlist.songIds.length === 0) {
-      return c.json<ApiResponse<Song[]>>({
-        success: true,
-        data: [],
-      });
-    }
-
-    const songs = await prisma.song.findMany({
-      where: {
-        id: { in: playlist.songIds },
-      },
-      select: {
-        id: true,
-        title: true,
-        artist: true,
-        album: true,
-        albumArtist: true,
-        year: true,
-        genre: true,
-        trackNumber: true,
-        discNumber: true,
-        composer: true,
-        coverUrl: true,
-        fileId: true,
-        libraryId: true,
-        createdAt: true,
-        updatedAt: true,
-        file: {
+    // Fetch songs via PlaylistSong junction table (ordered by order field)
+    const playlistSongs = await prisma.playlistSong.findMany({
+      where: { playlistId: id },
+      orderBy: { order: 'asc' },
+      include: {
+        song: {
           select: {
-            duration: true,
-            mimeType: true,
-          },
-        },
-        library: {
-          select: {
-            name: true,
+            id: true,
+            title: true,
+            artist: true,
+            album: true,
+            albumArtist: true,
+            year: true,
+            genre: true,
+            trackNumber: true,
+            discNumber: true,
+            composer: true,
+            coverUrl: true,
+            fileId: true,
+            libraryId: true,
+            createdAt: true,
+            updatedAt: true,
+            file: {
+              select: {
+                duration: true,
+                mimeType: true,
+              },
+            },
+            library: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
     });
 
-    // Create a map for quick lookup
-    const songMap = new Map(songs.map((s) => [s.id, s]));
-
-    // Build song inputs in the order specified by songIds
-    const orderedSongInputs: SongInput[] = playlist.songIds
-      .map((songId) => songMap.get(songId))
-      .filter((song): song is NonNullable<typeof song> => song !== undefined)
+    // Transform to Song response format (already in correct order)
+    const orderedSongInputs: SongInput[] = playlistSongs
+      .map(ps => ps.song)
       .map((song) => ({
         ...song,
         coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
@@ -611,7 +611,13 @@ app.post('/:id/songs', async (c: Context) => {
     }
 
     // Check if song is already in playlist
-    if (playlist.songIds.includes(songId)) {
+    const existingEntry = await prisma.playlistSong.findUnique({
+      where: {
+        playlistId_songId: { playlistId: id, songId },
+      },
+    });
+
+    if (existingEntry) {
       return c.json<ApiResponse<never>>(
         {
           success: false,
@@ -621,29 +627,25 @@ app.post('/:id/songs', async (c: Context) => {
       );
     }
 
-    // Add song to playlist (append to songIds array)
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id },
-      data: {
-        songIds: {
-          push: songId,
-        },
-      },
-      include: {
-        _count: {
-          select: { songs: true },
-        },
-      },
-    });
+    // Get current max order (use songCount as a faster proxy)
+    const newOrder = playlist.songCount;
 
-    // Also create PlaylistSong entry for consistency (used for cover retrieval)
-    await prisma.playlistSong.create({
-      data: {
-        playlistId: id,
-        songId,
-        order: updatedPlaylist.songIds.length - 1,
-      },
-    });
+    // Use transaction to ensure atomicity
+    await prisma.$transaction([
+      // Create PlaylistSong entry
+      prisma.playlistSong.create({
+        data: {
+          playlistId: id,
+          songId,
+          order: newOrder,
+        },
+      }),
+      // Increment songCount
+      prisma.playlist.update({
+        where: { id },
+        data: { songCount: { increment: 1 } },
+      }),
+    ]);
 
     return c.json<ApiResponse<PlaylistSongOperationResult>>(
       {
@@ -651,7 +653,7 @@ app.post('/:id/songs', async (c: Context) => {
         data: {
           playlistId: id,
           songId,
-          newSongCount: updatedPlaylist.songIds.length,
+          newSongCount: playlist.songCount + 1,
         },
       },
       201
@@ -704,7 +706,13 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
     }
 
     // Check if song is in playlist
-    if (!playlist.songIds.includes(songId)) {
+    const existingEntry = await prisma.playlistSong.findUnique({
+      where: {
+        playlistId_songId: { playlistId: id, songId },
+      },
+    });
+
+    if (!existingEntry) {
       return c.json<ApiResponse<never>>(
         {
           success: false,
@@ -714,30 +722,27 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       );
     }
 
-    // Remove song from playlist (filter out from songIds array)
-    const updatedSongIds = playlist.songIds.filter((id) => id !== songId);
-
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id },
-      data: {
-        songIds: updatedSongIds,
-      },
-    });
-
-    // Also delete PlaylistSong entry for consistency
-    await prisma.playlistSong.deleteMany({
-      where: {
-        playlistId: id,
-        songId,
-      },
-    });
+    // Use transaction to ensure atomicity
+    await prisma.$transaction([
+      // Delete the PlaylistSong entry
+      prisma.playlistSong.delete({
+        where: {
+          playlistId_songId: { playlistId: id, songId },
+        },
+      }),
+      // Decrement songCount
+      prisma.playlist.update({
+        where: { id },
+        data: { songCount: { decrement: 1 } },
+      }),
+    ]);
 
     return c.json<ApiResponse<PlaylistSongOperationResult>>({
       success: true,
       data: {
         playlistId: id,
         songId,
-        newSongCount: updatedPlaylist.songIds.length,
+        newSongCount: playlist.songCount - 1,
       },
     });
   } catch (error) {
@@ -786,32 +791,39 @@ app.put('/:id/songs/reorder', async (c: Context) => {
       );
     }
 
-    // Validate that all songIds exist and belong to user's libraries
-    const songs = await prisma.song.findMany({
-      where: {
-        id: { in: songIds },
-        library: {
-          userId,
-        },
-      },
+    // Validate that all songIds exist in the playlist
+    const existingEntries = await prisma.playlistSong.findMany({
+      where: { playlistId: id },
+      select: { songId: true },
     });
+    const existingSongIds = new Set(existingEntries.map(e => e.songId));
 
-    if (songs.length !== songIds.length) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Invalid song order',
-        },
-        400
-      );
+    for (const songId of songIds) {
+      if (!existingSongIds.has(songId)) {
+        return c.json<ApiResponse<never>>(
+          {
+            success: false,
+            error: 'Invalid song order - song not in playlist',
+          },
+          400
+        );
+      }
     }
 
-    // Update playlist with new order
+    // Batch update order using transaction
+    await prisma.$transaction(
+      songIds.map((songId, index) =>
+        prisma.playlistSong.update({
+          where: { playlistId_songId: { playlistId: id, songId } },
+          data: { order: index },
+        })
+      )
+    );
+
+    // Update playlist timestamp
     const updatedPlaylist = await prisma.playlist.update({
       where: { id },
-      data: {
-        songIds,
-      },
+      data: { updatedAt: new Date() },
     });
 
     logger.debug(
@@ -826,7 +838,7 @@ app.put('/:id/songs/reorder', async (c: Context) => {
       success: true,
       data: {
         playlistId: id,
-        songCount: updatedPlaylist.songIds.length,
+        songCount: songIds.length,
         updatedAt: updatedPlaylist.updatedAt.toISOString(),
       },
     });
@@ -876,29 +888,39 @@ app.put('/:id/songs', async (c: Context) => {
       );
     }
 
-    // Delete existing PlaylistSong entries
-    await prisma.playlistSong.deleteMany({
-      where: { playlistId: id },
+    const newSongCount = songIds?.length || 0;
+
+    // Use transaction to replace all PlaylistSong entries
+    await prisma.$transaction(async (tx) => {
+      // Delete existing PlaylistSong entries
+      await tx.playlistSong.deleteMany({
+        where: { playlistId: id },
+      });
+
+      // Create new PlaylistSong entries
+      if (songIds && songIds.length > 0) {
+        const playlistSongData = songIds.map((songId: string, index: number) => ({
+          playlistId: id,
+          songId,
+          order: index,
+        }));
+
+        await tx.playlistSong.createMany({
+          data: playlistSongData,
+        });
+      }
+
+      // Update playlist timestamp and songCount
+      await tx.playlist.update({
+        where: { id },
+        data: { 
+          updatedAt: new Date(),
+          songCount: newSongCount,
+        },
+      });
     });
 
-    // Create new PlaylistSong entries
-    const playlistSongData = songIds.map((songId: string, index: number) => ({
-      playlistId: id,
-      songId,
-      order: index,
-    }));
-
-    await prisma.playlistSong.createMany({
-      data: playlistSongData,
-    });
-
-    // Update songIds array
-    await prisma.playlist.update({
-      where: { id },
-      data: { songIds },
-    });
-
-    logger.info({ playlistId: id, songCount: songIds.length }, 'Updated playlist songs');
+    logger.info({ playlistId: id, songCount: newSongCount }, 'Updated playlist songs');
 
     return c.json<ApiResponse<null>>({
       success: true,

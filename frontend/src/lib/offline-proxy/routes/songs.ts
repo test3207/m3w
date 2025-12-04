@@ -99,14 +99,8 @@ app.delete('/:id', async (c: Context) => {
       await Promise.all(playlistSongs.map(ps => db.playlistSongs.put(markDeleted(ps))));
     }
 
-    // Remove song from all playlists' songIds arrays (for both guest and auth)
-    const playlists = await db.playlists.toArray();
-    for (const playlist of playlists) {
-      if (playlist.songIds.includes(id)) {
-        const newSongIds = playlist.songIds.filter(songId => songId !== id);
-        await db.playlists.update(playlist.id, { songIds: newSongIds });
-      }
-    }
+    // Note: PlaylistSong entries are already deleted above, no need to update songIds array
+    // (songIds is now computed from PlaylistSong table)
 
     // Delete cached audio file from Cache Storage
     try {

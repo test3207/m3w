@@ -106,6 +106,9 @@ model Library {
   name        String
   description String?
   
+  // Cached count for fast access (updated on add/delete)
+  songCount   Int      @default(0)
+  
   // Default Library flags (for frontend refactor)
   isDefault   Boolean  @default(false)  // Mark default library (auto-created)
   canDelete   Boolean  @default(true)   // Prevent deletion of default library
@@ -190,8 +193,10 @@ model Playlist {
   description String?
   coverUrl    String?
   
-  // Song order management (frontend refactor)
-  songIds     String[] @default([])      // Maintain song order
+  // Cached count for fast access (updated on add/remove)
+  songCount   Int      @default(0)
+  
+  // Flags for default playlist behavior
   isDefault   Boolean  @default(false)   // Mark favorites playlist (auto-created)
   canDelete   Boolean  @default(true)    // Prevent deletion of default playlist
   
@@ -202,6 +207,7 @@ model Playlist {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  // Song relationships via junction table (order maintained by PlaylistSong.order)
   songs       PlaylistSong[]
   
   createdAt   DateTime @default(now())

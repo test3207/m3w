@@ -51,7 +51,7 @@ describe('Libraries Routes Integration', () => {
           userId: 'test-user-123',
           createdAt: new Date(),
           updatedAt: new Date(),
-          _count: { songs: 5 },
+          songCount: 5,
         },
         {
           id: 'lib-2',
@@ -59,7 +59,7 @@ describe('Libraries Routes Integration', () => {
           userId: 'test-user-123',
           createdAt: new Date(),
           updatedAt: new Date(),
-          _count: { songs: 0 },
+          songCount: 0,
         },
       ];
 
@@ -71,13 +71,13 @@ describe('Libraries Routes Integration', () => {
       });
 
       const res = await app.request('/libraries');
-      const json = await res.json() as { success: boolean; data: Array<{ name: string; _count: { songs: number } }> };
+      const json = await res.json() as { success: boolean; data: Array<{ name: string; songCount: number }> };
 
       expect(res.status).toBe(200);
       expect(json.success).toBe(true);
       expect(json.data).toHaveLength(2);
       expect(json.data[0].name).toBe('My Library');
-      expect(json.data[0]._count.songs).toBe(5);
+      expect(json.data[0].songCount).toBe(5);
     });
   });
 
