@@ -169,6 +169,28 @@ app.post('/for-library', async (c: Context) => {
 
     const songCount = songIds?.length || 0;
 
+    // Validate that all songs exist and belong to the linked library
+    if (songIds && songIds.length > 0) {
+      const validSongs = await prisma.song.findMany({
+        where: {
+          id: { in: songIds },
+          libraryId: linkedLibraryId,
+          library: { userId },
+        },
+        select: { id: true },
+      });
+
+      if (validSongs.length !== songIds.length) {
+        return c.json<ApiResponse<never>>(
+          {
+            success: false,
+            error: 'Invalid song IDs or songs do not belong to linked library',
+          },
+          400
+        );
+      }
+    }
+
     // Create playlist with songCount
     const playlist = await prisma.playlist.create({
       data: {
@@ -627,25 +649,31 @@ app.post('/:id/songs', async (c: Context) => {
       );
     }
 
-    // Get current max order (use songCount as a faster proxy)
-    const newOrder = playlist.songCount;
+    // Use transaction to ensure atomicity and avoid race conditions
+    await prisma.$transaction(async (tx) => {
+      // Get current max order inside transaction for consistency
+      const maxOrderEntry = await tx.playlistSong.findFirst({
+        where: { playlistId: id },
+        orderBy: { order: 'desc' },
+        select: { order: true },
+      });
+      const newOrder = (maxOrderEntry?.order ?? -1) + 1;
 
-    // Use transaction to ensure atomicity
-    await prisma.$transaction([
       // Create PlaylistSong entry
-      prisma.playlistSong.create({
+      await tx.playlistSong.create({
         data: {
           playlistId: id,
           songId,
           order: newOrder,
         },
-      }),
+      });
+
       // Increment songCount
-      prisma.playlist.update({
+      await tx.playlist.update({
         where: { id },
         data: { songCount: { increment: 1 } },
-      }),
-    ]);
+      });
+    });
 
     return c.json<ApiResponse<PlaylistSongOperationResult>>(
       {
@@ -797,6 +825,17 @@ app.put('/:id/songs/reorder', async (c: Context) => {
       select: { songId: true },
     });
     const existingSongIds = new Set(existingEntries.map(e => e.songId));
+
+    // Validate song count matches
+    if (songIds.length !== existingEntries.length) {
+      return c.json<ApiResponse<never>>(
+        {
+          success: false,
+          error: 'Song count mismatch - all songs must be included in reorder',
+        },
+        400
+      );
+    }
 
     for (const songId of songIds) {
       if (!existingSongIds.has(songId)) {
