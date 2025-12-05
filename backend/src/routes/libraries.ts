@@ -33,9 +33,6 @@ app.get('/', async (c: Context) => {
     const libraries = await prisma.library.findMany({
       where: { userId: auth.userId },
       include: {
-        _count: {
-          select: { songs: true },
-        },
         songs: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -80,9 +77,6 @@ app.get('/:id', async (c: Context) => {
     const library = await prisma.library.findFirst({
       where: { id, userId: auth.userId },
       include: {
-        _count: {
-          select: { songs: true },
-        },
         songs: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -146,11 +140,7 @@ app.post('/', async (c: Context) => {
       data: {
         ...data,
         userId: auth.userId,
-      },
-      include: {
-        _count: {
-          select: { songs: true },
-        },
+        songCount: 0,
       },
     });
 
@@ -217,9 +207,6 @@ app.patch('/:id', async (c: Context) => {
       where: { id },
       data,
       include: {
-        _count: {
-          select: { songs: true },
-        },
         songs: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -295,11 +282,7 @@ app.delete('/:id', async (c: Context) => {
     }
 
     // Check if library has songs
-    const songCount = await prisma.song.count({
-      where: { libraryId: id },
-    });
-
-    if (songCount > 0) {
+    if (existing.songCount > 0) {
       return c.json<ApiResponse<never>>(
         {
           success: false,

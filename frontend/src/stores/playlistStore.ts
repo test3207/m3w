@@ -1,6 +1,10 @@
 /**
  * Playlist Store
  * Manages playlists state with Zustand
+ * 
+ * Note: songIds are managed separately from Playlist type.
+ * The Playlist type only has songCount for display.
+ * We maintain a local cache of songIds for checking song membership.
  */
 
 import { create } from 'zustand';
@@ -14,6 +18,8 @@ interface PlaylistState {
   currentPlaylist: Playlist | null;
   isLoading: boolean;
   error: string | null;
+  // Local cache of song IDs per playlist (for checking membership)
+  playlistSongIds: Record<string, string[]>;
 }
 
 interface PlaylistActions {
@@ -29,6 +35,11 @@ interface PlaylistActions {
   addSongToPlaylist: (playlistId: string, songId: string, songCoverUrl?: string | null) => Promise<boolean>;
   removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<boolean>;
   reorderPlaylistSongs: (playlistId: string, songIds: string[]) => Promise<boolean>;
+  
+  // Load song IDs for a playlist (for membership check)
+  loadPlaylistSongIds: (playlistId: string) => Promise<string[]>;
+  getPlaylistSongIds: (playlistId: string) => string[];
+  isInPlaylist: (playlistId: string, songId: string) => boolean;
 
   // Favorites
   isSongFavorited: (songId: string) => boolean;
@@ -49,6 +60,7 @@ const initialState: PlaylistState = {
   currentPlaylist: null,
   isLoading: false,
   error: null,
+  playlistSongIds: {},
 };
 
 export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
@@ -56,12 +68,22 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
 
   // Fetch all playlists
   fetchPlaylists: async () => {
-    console.log('[PlaylistStore] fetchPlaylists called');
     set({ isLoading: true, error: null });
     try {
       const playlists = await api.main.playlists.list();
-      console.log('[PlaylistStore] Fetched playlists:', playlists.length);
       set({ playlists, isLoading: false });
+      
+      // Auto-load favorites songIds for isSongFavorited() to work correctly
+      const favorites = playlists.find((pl) => isFavoritesPlaylist(pl));
+      if (favorites) {
+        const songs = await api.main.playlists.getSongs(favorites.id);
+        set((state) => ({
+          playlistSongIds: {
+            ...state.playlistSongIds,
+            [favorites.id]: songs.map(s => s.id),
+          },
+        }));
+      }
 
       logger.info(`Fetched ${playlists.length} playlists`);
     } catch (error) {
@@ -87,6 +109,11 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         playlists: [...state.playlists, newPlaylist],
         currentPlaylist: newPlaylist,
         isLoading: false,
+        // Initialize empty songIds for new playlist
+        playlistSongIds: {
+          ...state.playlistSongIds,
+          [newPlaylist.id]: [],
+        },
       }));
 
       logger.info(`Created playlist: ${name}`, { playlistId: newPlaylist.id });
@@ -114,12 +141,17 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       await api.main.playlists.delete(id);
 
-      // Remove from list and clear current if it was deleted
-      set((state) => ({
-        playlists: state.playlists.filter((pl) => pl.id !== id),
-        currentPlaylist: state.currentPlaylist?.id === id ? null : state.currentPlaylist,
-        isLoading: false,
-      }));
+      // Remove from list, clear current if deleted, and clean up songIds cache
+      set((state) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [id]: _removed, ...remainingSongIds } = state.playlistSongIds;
+        return {
+          playlists: state.playlists.filter((pl) => pl.id !== id),
+          currentPlaylist: state.currentPlaylist?.id === id ? null : state.currentPlaylist,
+          isLoading: false,
+          playlistSongIds: remainingSongIds,
+        };
+      });
 
       logger.info(`Deleted playlist`, { playlistId: id });
       return true;
@@ -137,21 +169,28 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       await api.main.playlists.addSong(playlistId, { songId });
 
-      // Update playlist songIds in state
-      // If playlist was empty, also update coverUrl to the new song's cover
-      set((state) => ({
-        playlists: state.playlists.map((pl) => {
-          if (pl.id !== playlistId) return pl;
-          const wasEmpty = pl.songIds.length === 0;
-          return {
-            ...pl,
-            songIds: [...pl.songIds, songId],
-            // Update coverUrl if playlist was empty and we have a cover
-            coverUrl: wasEmpty && songCoverUrl ? songCoverUrl : pl.coverUrl,
-          };
-        }),
-        isLoading: false,
-      }));
+      // Update playlist songCount and local songIds cache
+      set((state) => {
+        const currentSongIds = state.playlistSongIds[playlistId] || [];
+        const wasEmpty = currentSongIds.length === 0;
+        
+        return {
+          playlists: state.playlists.map((pl) => {
+            if (pl.id !== playlistId) return pl;
+            return {
+              ...pl,
+              songCount: pl.songCount + 1,
+              // Update coverUrl if playlist was empty and we have a cover
+              coverUrl: wasEmpty && songCoverUrl ? songCoverUrl : pl.coverUrl,
+            };
+          }),
+          playlistSongIds: {
+            ...state.playlistSongIds,
+            [playlistId]: [...currentSongIds, songId],
+          },
+          isLoading: false,
+        };
+      });
 
       logger.info('Added song to playlist', { playlistId, songId });
       return true;
@@ -169,15 +208,23 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       await api.main.playlists.removeSong(playlistId, songId);
 
-      // Update playlist songIds in state
-      set((state) => ({
-        playlists: state.playlists.map((pl) =>
-          pl.id === playlistId
-            ? { ...pl, songIds: pl.songIds.filter((id) => id !== songId) }
-            : pl
-        ),
-        isLoading: false,
-      }));
+      // Update playlist songCount and local songIds cache
+      set((state) => {
+        const currentSongIds = state.playlistSongIds[playlistId] || [];
+        
+        return {
+          playlists: state.playlists.map((pl) =>
+            pl.id === playlistId
+              ? { ...pl, songCount: Math.max(0, pl.songCount - 1) }
+              : pl
+          ),
+          playlistSongIds: {
+            ...state.playlistSongIds,
+            [playlistId]: currentSongIds.filter((id) => id !== songId),
+          },
+          isLoading: false,
+        };
+      });
 
       logger.info('Removed song from playlist', { playlistId, songId });
       return true;
@@ -195,11 +242,12 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       await api.main.playlists.reorderSongs(playlistId, { songIds });
 
-      // Update playlist songIds in state
+      // Update local songIds cache with new order
       set((state) => ({
-        playlists: state.playlists.map((pl) =>
-          pl.id === playlistId ? { ...pl, songIds } : pl
-        ),
+        playlistSongIds: {
+          ...state.playlistSongIds,
+          [playlistId]: songIds,
+        },
         isLoading: false,
       }));
 
@@ -213,6 +261,38 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     }
   },
 
+  // Load song IDs for a playlist from API
+  loadPlaylistSongIds: async (playlistId: string) => {
+    try {
+      const songs = await api.main.playlists.getSongs(playlistId);
+      const songIds = songs.map(s => s.id);
+      
+      set((state) => ({
+        playlistSongIds: {
+          ...state.playlistSongIds,
+          [playlistId]: songIds,
+        },
+      }));
+      
+      return songIds;
+    } catch (error) {
+      logger.error('Failed to load playlist songs', { error, playlistId });
+      return [];
+    }
+  },
+
+  // Get cached song IDs for a playlist
+  getPlaylistSongIds: (playlistId: string) => {
+    const { playlistSongIds } = get();
+    return playlistSongIds[playlistId] || [];
+  },
+
+  // Check if a song is in a playlist
+  isInPlaylist: (playlistId: string, songId: string) => {
+    const { getPlaylistSongIds } = get();
+    return getPlaylistSongIds(playlistId).includes(songId);
+  },
+
   // Get favorites playlist (check isDefault flag)
   getFavoritesPlaylist: () => {
     const { playlists } = get();
@@ -221,10 +301,10 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
 
   // Check if a song is in favorites playlist
   isSongFavorited: (songId: string) => {
-    const { getFavoritesPlaylist } = get();
+    const { getFavoritesPlaylist, isInPlaylist } = get();
     const favorites = getFavoritesPlaylist();
     if (!favorites) return false;
-    return favorites.songIds.includes(songId);
+    return isInPlaylist(favorites.id, songId);
   },
 
   // Toggle song favorite status (add/remove from favorites playlist)

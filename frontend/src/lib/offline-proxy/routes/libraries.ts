@@ -40,9 +40,7 @@ app.get('/', async (c: Context) => {
 
         return {
           ...library,
-          _count: {
-            songs: songCount,
-          },
+          songCount,
           coverUrl: lastSong?.coverUrl || null,
         };
       })
@@ -106,9 +104,7 @@ app.get('/:id', async (c: Context) => {
 
     const libraryWithCount = {
       ...library,
-      _count: {
-        songs: songCount,
-      },
+      songCount,
       coverUrl: lastSong?.coverUrl || null,
     };
 
@@ -140,12 +136,12 @@ app.post('/', async (c: Context) => {
       ...data,
       description: data.description ?? null,
       userId,
+      songCount: 0,
       isDefault: false,
       canDelete: true,
       coverUrl: null, // New library has no songs yet
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      _count: { songs: 0 },
     };
     // isNew=true marks this as a local-only entity (needs ID mapping on sync)
     const library = markDirty(libraryData, true);

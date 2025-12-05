@@ -230,7 +230,7 @@ export default function LibrariesPage() {
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {I18n.libraries.card.songsCount.replace('{0}', String(library._count?.songs || 0))}
+                        {I18n.libraries.card.songsCount.replace('{0}', String(library.songCount || 0))}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {I18n.libraries.card.createdAt.replace('{0}', new Date(library.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' }))}

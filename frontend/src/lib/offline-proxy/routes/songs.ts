@@ -84,6 +84,10 @@ app.delete('/:id', async (c: Context) => {
       );
     }
 
+    // Get affected playlist IDs before deletion (for songCount update)
+    const affectedPlaylistSongs = await db.playlistSongs.where('songId').equals(id).toArray();
+    const affectedPlaylistIds = [...new Set(affectedPlaylistSongs.filter(ps => !ps._isDeleted).map(ps => ps.playlistId))];
+
     if (isGuestUser()) {
       // Guest user: hard delete immediately (no sync needed)
       await db.songs.delete(id);
@@ -95,16 +99,24 @@ app.delete('/:id', async (c: Context) => {
       await db.songs.put(markDeleted(song));
       
       // Soft delete playlistSongs referencing this song
-      const playlistSongs = await db.playlistSongs.where('songId').equals(id).toArray();
-      await Promise.all(playlistSongs.map(ps => db.playlistSongs.put(markDeleted(ps))));
+      await Promise.all(affectedPlaylistSongs.map(ps => db.playlistSongs.put(markDeleted(ps))));
     }
 
-    // Remove song from all playlists' songIds arrays (for both guest and auth)
-    const playlists = await db.playlists.toArray();
-    for (const playlist of playlists) {
-      if (playlist.songIds.includes(id)) {
-        const newSongIds = playlist.songIds.filter(songId => songId !== id);
-        await db.playlists.update(playlist.id, { songIds: newSongIds });
+    // Update library songCount
+    const library = await db.libraries.get(libraryId);
+    if (library) {
+      await db.libraries.update(libraryId, {
+        songCount: Math.max(0, (library.songCount || 0) - 1),
+      });
+    }
+
+    // Update affected playlists' songCount
+    for (const playlistId of affectedPlaylistIds) {
+      const playlist = await db.playlists.get(playlistId);
+      if (playlist) {
+        await db.playlists.update(playlistId, {
+          songCount: Math.max(0, (playlist.songCount || 0) - 1),
+        });
       }
     }
 

@@ -163,7 +163,7 @@ export default function LibraryDetailPage() {
 
   // Refresh songs when library songs count changes (after upload)
   const [prevSongCount, setPrevSongCount] = useState<number | undefined>(undefined);
-  const currentSongCount = currentLibrary?._count?.songs;
+  const currentSongCount = currentLibrary?.songCount;
   
   useEffect(() => {
     if (

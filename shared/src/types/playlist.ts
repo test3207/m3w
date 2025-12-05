@@ -12,16 +12,13 @@ export interface Playlist {
   name: string;
   description: string | null;
   userId: string;
-  songIds: string[];  // Song order array
+  songCount: number;  // Cached count, updated on add/remove
   linkedLibraryId: string | null; // Link to library for "Play All" playlists
   isDefault: boolean;
   canDelete: boolean;
   coverUrl: string | null;  // Computed: cover from first songs
   createdAt: string; // ISO 8601 string
   updatedAt: string; // ISO 8601 string
-  _count: {
-    songs: number;
-  };
 }
 
 /**

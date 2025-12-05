@@ -39,12 +39,19 @@ app.get('/progress', async (c: Context) => {
     // Determine context (library or playlist)
     let context = null;
 
-    // Try to find which playlist contains this song
-    const playlists = await db.playlists.where('userId').equals(userId).toArray();
-
-    const playlistWithSong = playlists.find(
-      (p) => p.songIds && p.songIds.includes(song.id)
-    );
+    // Try to find which playlist contains this song via PlaylistSong table
+    const playlistSongEntry = await db.playlistSongs
+      .where('songId')
+      .equals(song.id)
+      .first();
+    
+    let playlistWithSong = null;
+    if (playlistSongEntry && !playlistSongEntry._isDeleted) {
+      const playlist = await db.playlists.get(playlistSongEntry.playlistId);
+      if (playlist && !playlist._isDeleted && playlist.userId === userId) {
+        playlistWithSong = playlist;
+      }
+    }
 
     if (playlistWithSong) {
       context = {
@@ -143,8 +150,17 @@ app.get('/seed', async (c: Context) => {
       .sortBy('createdAt');
 
     for (const playlist of playlists) {
-      if (playlist.songIds && playlist.songIds.length > 0) {
-        const firstSongId = playlist.songIds[0];
+      // Get first song from PlaylistSong table
+      const playlistSongs = await db.playlistSongs
+        .where('playlistId')
+        .equals(playlist.id)
+        .toArray();
+      const activeSongs = playlistSongs
+        .filter(ps => !ps._isDeleted)
+        .sort((a, b) => a.order - b.order);
+      
+      if (activeSongs.length > 0) {
+        const firstSongId = activeSongs[0].songId;
         const song = await db.songs.get(firstSongId);
 
         if (song) {
