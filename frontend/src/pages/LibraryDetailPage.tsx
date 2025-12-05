@@ -4,7 +4,7 @@
  * Supports multi-select mode for batch operations
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -22,6 +22,7 @@ import {
   X,
   CheckSquare,
   Upload,
+  Download,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
@@ -33,6 +34,9 @@ import { isDefaultLibrary } from "@m3w/shared";
 import type { Song, SongSortOption } from "@m3w/shared";
 import { formatDuration } from "@/lib/utils/format-duration";
 import { logger } from "@/lib/logger-client";
+import { getLibraryCacheStats, queueLibraryDownload } from "@/lib/storage/download-manager";
+import { isSongCached, isAudioCacheAvailable } from "@/lib/storage/audio-cache";
+import { CacheStatusIcon } from "@/components/features/songs/CacheStatusIcon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +72,12 @@ export default function LibraryDetailPage() {
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [songToDelete, setSongToDelete] = useState<{ id: string; title: string } | null>(null);
+
+  // Cache state
+  const [cacheStats, setCacheStats] = useState({ total: 0, cached: 0, percentage: 0 });
+  const [songCacheStatus, setSongCacheStatus] = useState<Record<string, boolean>>({});
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [cacheAvailable, setCacheAvailable] = useState(false);
 
   // Long press state
   const longPressTimer = useRef<number | null>(null);
@@ -161,6 +171,64 @@ export default function LibraryDetailPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Effect 4: Check cache availability
+  useEffect(() => {
+    isAudioCacheAvailable().then(setCacheAvailable);
+  }, []);
+
+  // Effect 5: Load cache stats when songs change
+  useEffect(() => {
+    if (!id || songs.length === 0) return;
+
+    const loadCacheStats = async () => {
+      try {
+        const stats = await getLibraryCacheStats(id);
+        setCacheStats(stats);
+
+        // Load individual song cache status
+        const statusMap: Record<string, boolean> = {};
+        for (const song of songs) {
+          statusMap[song.id] = await isSongCached(song.id);
+        }
+        setSongCacheStatus(statusMap);
+      } catch (error) {
+        logger.error('[LibraryDetailPage] Failed to load cache stats:', error);
+      }
+    };
+
+    void loadCacheStats();
+  }, [id, songs]);
+
+  // Handle download all
+  const handleDownloadAll = useCallback(async () => {
+    if (!id || isDownloading) return;
+    
+    setIsDownloading(true);
+    try {
+      // Pass minimal context - download-manager will fetch preferences if needed
+      const queued = await queueLibraryDownload(id, { userPreferences: null, backendLibrary: null });
+      if (queued > 0) {
+        toast({
+          title: I18n.libraries.detail.cache.downloadStarted,
+          description: I18n.libraries.detail.cache.downloadStartedDesc.replace('{0}', String(queued)),
+        });
+      } else {
+        toast({
+          title: I18n.libraries.detail.cache.allCached,
+        });
+      }
+    } catch (error) {
+      logger.error('[LibraryDetailPage] Failed to start download:', error);
+      toast({
+        variant: 'destructive',
+        title: I18n.error.title,
+        description: error instanceof Error ? error.message : I18n.error.genericTryAgain,
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [id, isDownloading, toast]);
 
   // Refresh songs when library songs count changes (after upload)
   const [prevSongCount, setPrevSongCount] = useState<number | undefined>(undefined);
@@ -374,6 +442,13 @@ export default function LibraryDetailPage() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {I18n.libraries.detail.songsCount.replace('{0}', String(songs.length))}
+          {cacheAvailable && cacheStats.total > 0 && (
+            <span className="ml-2">
+              · {I18n.libraries.detail.cache.cachedCount
+                  .replace('{0}', String(cacheStats.cached))
+                  .replace('{1}', String(cacheStats.total))}
+            </span>
+          )}
         </p>
       </div>
 
@@ -387,6 +462,17 @@ export default function LibraryDetailPage() {
           <Play className="mr-2 h-4 w-4" />
           {I18n.libraries.detail.playAll}
         </Button>
+
+        {cacheAvailable && (
+          <Button
+            variant="outline"
+            disabled={songs.length === 0 || isSelectionMode || isDownloading}
+            onClick={handleDownloadAll}
+            title={I18n.libraries.detail.cache.downloadAll}
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        )}
 
         <Button
           variant="outline"
@@ -515,10 +601,17 @@ export default function LibraryDetailPage() {
                   </p>
                 </div>
 
-                {/* Duration */}
-                {song.duration && !isSelectionMode && (
-                  <div className="shrink-0 text-sm text-muted-foreground">
-                    {formatDuration(song.duration)}
+                {/* Duration and Cache Status */}
+                {!isSelectionMode && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {cacheAvailable && (
+                      <CacheStatusIcon isCached={songCacheStatus[song.id] ?? false} />
+                    )}
+                    {song.duration && (
+                      <span className="text-sm text-muted-foreground">
+                        {formatDuration(song.duration)}
+                      </span>
+                    )}
                   </div>
                 )}
 

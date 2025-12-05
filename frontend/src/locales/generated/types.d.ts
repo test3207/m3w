@@ -1035,6 +1035,18 @@ export interface Messages {
         /** Long press to select multiple songs */
         longPressHint: string;
       };
+      cache: {
+        /** {0}/{1} cached */
+        cachedCount: string;
+        /** Download All */
+        downloadAll: string;
+        /** Download Started */
+        downloadStarted: string;
+        /** Queued {0} songs for download */
+        downloadStartedDesc: string;
+        /** All songs already cached */
+        allCached: string;
+      };
     };
   };
   playlists: {

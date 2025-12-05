@@ -575,6 +575,13 @@
         "cancel": "取消",
         "addToPlaylist": "添加到播放列表",
         "longPressHint": "长按选择多首歌曲"
+      },
+      "cache": {
+        "cachedCount": "已缓存 {0}/{1}",
+        "downloadAll": "下载全部",
+        "downloadStarted": "开始下载",
+        "downloadStartedDesc": "已将 {0} 首歌曲加入下载队列",
+        "allCached": "所有歌曲已缓存"
       }
     }
   },

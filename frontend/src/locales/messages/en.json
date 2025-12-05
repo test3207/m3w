@@ -575,6 +575,13 @@
         "cancel": "Cancel",
         "addToPlaylist": "Add to Playlist",
         "longPressHint": "Long press to select multiple songs"
+      },
+      "cache": {
+        "cachedCount": "{0}/{1} cached",
+        "downloadAll": "Download All",
+        "downloadStarted": "Download Started",
+        "downloadStartedDesc": "Queued {0} songs for download",
+        "allCached": "All songs already cached"
       }
     }
   },
