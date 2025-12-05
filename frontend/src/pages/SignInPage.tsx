@@ -15,7 +15,7 @@ import { useLocale } from "@/locales/use-locale";
 import { useAuthStore } from "@/stores/authStore";
 import { initGuestResources } from "@/lib/db/init-guest";
 import { logger } from "@/lib/logger-client";
-import { API_BASE_URL } from "@/lib/api/config";
+import { getApiBaseUrl } from "@/lib/api/config";
 
 export default function SignInPage() {
   useLocale();
@@ -28,7 +28,8 @@ export default function SignInPage() {
     setIsLoading(true);
     try {
       // Redirect to backend GitHub OAuth endpoint (must be full URL)
-      window.location.href = `${API_BASE_URL}/api/auth/github`;
+      // Use getApiBaseUrl() at runtime to read window.__API_BASE_URL__
+      window.location.href = `${getApiBaseUrl()}/api/auth/github`;
     } catch (error) {
       toast({
         title: "Sign-in failed",
