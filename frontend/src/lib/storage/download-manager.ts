@@ -197,17 +197,28 @@ async function processQueue(): Promise<void> {
       processTask(task).finally(() => {
         activeDownloads--;
         logger.debug(`processQueue: finished task, active=${activeDownloads}, pending=${downloadQueue.length}`);
-        // Continue processing after each completion
-        if (downloadQueue.length > 0) {
-          isProcessing = false; // Allow re-entry
-          processQueue();
-        }
+        // Schedule next batch after task completes (avoid race conditions)
+        scheduleNextBatch();
       });
     }
   } finally {
-    isProcessing = downloadQueue.length > 0 && activeDownloads > 0;
-    logger.debug(`processQueue: finished, isProcessing=${isProcessing}`);
+    isProcessing = false;
+    logger.debug(`processQueue: finished loop, active=${activeDownloads}, pending=${downloadQueue.length}`);
   }
+}
+
+// Debounced trigger for next batch to avoid race conditions
+let nextBatchScheduled = false;
+function scheduleNextBatch(): void {
+  if (nextBatchScheduled) return;
+  if (downloadQueue.length === 0) return;
+  
+  nextBatchScheduled = true;
+  // Use queueMicrotask to batch multiple completions into one processQueue call
+  queueMicrotask(() => {
+    nextBatchScheduled = false;
+    processQueue();
+  });
 }
 
 async function processTask(task: DownloadTask): Promise<void> {

@@ -19,13 +19,16 @@ interface BeforeInstallPromptEvent extends Event {
 // Global state for install prompt (shared across components)
 let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
 const installPromptListeners = new Set<() => void>();
+let listenersInitialized = false;
 
 function notifyInstallPromptListeners() {
   installPromptListeners.forEach(fn => fn());
 }
 
-// Initialize listener once
-if (typeof window !== 'undefined') {
+// Initialize listener once (guard prevents duplicate registration during HMR)
+if (typeof window !== 'undefined' && !listenersInitialized) {
+  listenersInitialized = true;
+  
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     globalDeferredPrompt = e as BeforeInstallPromptEvent;
