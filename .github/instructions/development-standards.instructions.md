@@ -141,18 +141,25 @@
 Before committing code, run the following checks to catch issues early:
 
 ### Required Checks (Always Run)
-```bash
-# 1. Lint check
-npm run lint
+```powershell
+# 1. Lint check (from project root)
+npm run lint --workspaces
 
-# 2. Type check (no emit)
-npx tsc --noEmit
+# 2. Type check (run in each workspace - no unified command)
+cd frontend; npx tsc --noEmit; cd ..
+cd backend; npx tsc --noEmit; cd ..
+cd shared; npx tsc --noEmit; cd ..
 
 # 3. Run tests
-npm test
+npm test --workspaces
 
 # 4. Build verification
 npm run build
+```
+
+**Quick One-Liner (PowerShell):**
+```powershell
+npm run lint --workspaces; cd frontend; npx tsc --noEmit; cd ..; cd backend; npx tsc --noEmit; cd ..; npm test --workspaces; npm run build
 ```
 
 ### When to Run Docker Image Testing
@@ -208,20 +215,54 @@ docker run -d --name m3w-rc --network m3w_default -p 4000:4000 \
 ```
 
 ## Git Workflow
-- Branch strategy: `main` for production, `develop` for integration, `feature/*` for new work.
-- **NEVER push directly to `main` branch**. Always create a feature branch and submit a Pull Request.
-- Feature branch naming: `feature/<description>`, `fix/<description>`, `refactor/<description>`.
-- PR workflow:
-  1. Create feature branch from `main` or `develop`
-  2. **Run local pre-commit checks** (lint/type-check/test/build)
-  3. Make commits following Conventional Commits format
-  4. Push feature branch to remote
-  5. Create Pull Request with clear description **in English** (title, body, comments)
-  6. **Monitor PR checks using GitHub CLI and MCP** (see below)
-  7. Wait for review and approval before merging
-- Follow Conventional Commits (for example `feat:`, `fix:`, `docs:`, `refactor:`, `test:`).
-- **All PR content must be in English** (title, description, comments) for consistency and broader collaboration.
-- Only commit or push when explicitly requested; keep the working state ready for commits at all times.
+
+### Branch Protection Rules
+
+- **NEVER push directly to `main` branch**. All changes to `main` must go through Pull Requests.
+- Feature branches can be pushed freely for backup and CI.
+- Only commit or push when explicitly requested by the user; keep the working state ready for commits at all times.
+
+### Mandatory Binding Chain
+
+Every PR must be traceable through the full hierarchy:
+
+```
+PR → Issue → Epic → Milestone
+```
+
+- **No Issue? Create one first.** Even small fixes need an issue for tracking.
+- **No Epic? Find or create one.** Group related issues under domain Epics.
+- **No Milestone? Assign one.** All Epics must belong to a Milestone.
+
+### Branch Naming
+
+- `feature/<description>` - New features
+- `fix/<description>` - Bug fixes
+- `refactor/<description>` - Code refactoring
+- `docs/<description>` - Documentation updates
+- `chore/<description>` - Maintenance tasks
+
+### PR Workflow
+
+1. **Create Issue** (if not exists) with Epic reference in body
+2. **Update Epic checklist** to include new issue
+3. **Create feature branch** from `main`
+4. **Run local pre-commit checks** (lint/type-check/test/build)
+5. **Make commits** following Conventional Commits format
+6. **Push feature branch** to remote
+7. **Create Pull Request** with:
+   - Clear English title and description
+   - `Closes #XX` to auto-close the linked issue
+8. **Monitor PR checks** using `gh pr checks --watch`
+9. **Handle Copilot reviews** (see below)
+10. **Merge** when all checks pass (squash merge preferred)
+11. **Update Epic checklist** to mark issue as completed
+
+### Commit Message Format
+
+Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
+
+**All PR content must be in English** (title, description, comments) for consistency and broader collaboration.
 
 ## Project Management
 
@@ -239,17 +280,17 @@ Milestone (deadline-driven)
 
 | Resource | URL | Purpose |
 |----------|-----|----------|
-| **Milestone 1** | https://github.com/test3207/m3w/milestone/1 | Core Product Release & Deployment Automation (Due: 2025-11-30) |
+| **Milestone 1** | https://github.com/test3207/m3w/milestone/1 | Core Product Release (Closed: 2025-11-30) |
+| **Milestone 2** | https://github.com/test3207/m3w/milestone/2 | Enhanced Offline & Quality (Due: 2025-12-30) |
 | **Project Board** | https://github.com/users/test3207/projects/3 | Kanban view for task tracking |
 
-### Epics (Milestone 1)
+### Active Epics (Milestone 2)
 
 | Epic | Issue # | Description |
 |------|---------|-------------|
-| Epic 1: Core User Experience | #29 | Online & offline features, Guest mode, PWA |
-| Epic 2: Production & Demo | #30 | Docker, demo mode, open source prep |
-| Epic 3: CI/CD Pipeline | #31 | Automated builds, tests, cloud deployment |
-| Epic 4: Quality | #38 | Bug fixes, testing improvements |
+| Epic 5: Auth User Offline | #87 | Offline capabilities for authenticated users |
+| Epic 6: UX Polish | #88 | User experience improvements |
+| Epic 7: Infrastructure & Quality | #89 | Code quality, testing, infrastructure |
 
 ### Issue Management Rules
 
@@ -258,32 +299,63 @@ Milestone (deadline-driven)
 3. **Issue references Epic in body**: Use "Parent Issue: Epic X (#YY)" in issue description
 4. **GitHub auto-calculates progress**: Epic checklist shows completion percentage
 
-### Working with Issues
+### Issue Lifecycle
 
-**Creating a new Issue:**
+#### Creating a New Issue
+
+1. **Create the issue** with proper body referencing parent Epic:
 ```bash
-# Create issue and link to Epic via body text
-gh issue create --title "Feature description" --body "Parent Issue: Epic 1 (#29)"
+gh issue create --title "Feature description" --body "Parent Issue: Epic X (#YY)
 
-# Then update the Epic checklist manually or via MCP
+## Summary
+...
+
+## Acceptance Criteria
+- [ ] ..."
 ```
 
-**Updating Epic progress:**
+2. **Link issue to Epic as sub-issue** (formal parent-child relationship):
 ```typescript
-// Use MCP to update Epic body with new checklist item
+// Use the issue's node ID (from creation response) to add as sub-issue
+mcp_github_sub_issue_write({
+  method: 'add',
+  owner: 'test3207',
+  repo: 'm3w',
+  issue_number: 89,        // Parent Epic number
+  sub_issue_id: 3697251100 // Child issue's numeric ID (not issue number!)
+})
+```
+
+3. **Update the parent Epic's checklist** to include the new issue:
+```typescript
+// Fetch current Epic body, append new checklist item
+mcp_github_issue_read({ method: 'get', owner: 'test3207', repo: 'm3w', issue_number: 89 })
+// Then update with new item added
 mcp_github_issue_write({
   method: 'update',
   owner: 'test3207',
   repo: 'm3w',
-  issue_number: 29,
+  issue_number: 89,
   body: `...existing content...
 - [ ] #XX New sub-issue`
 })
 ```
 
-**Closing an Issue:**
-- Use `Closes #XX` in PR description or commit message
-- Update Epic checklist: change `- [ ] #XX` to `- [x] #XX`
+**Important**: Step 2 creates the formal GitHub sub-issue relationship. Step 3 maintains a human-readable checklist. Both are required.
+
+#### Closing an Issue
+
+When closing an issue (via PR merge or manual close):
+
+1. **Use `Closes #XX`** in PR description or commit message for auto-close
+2. **Update Epic checklist**: Change `- [ ] #XX` to `- [x] #XX` with completion note:
+   ```markdown
+   - [x] #95 Issue title *(closed: resolved in PR #96)*
+   ```
+3. **If not auto-closed**, manually close with comment:
+   ```bash
+   gh issue close 95 --comment "Resolved in PR #96"
+   ```
 
 ### CLI Quick Reference
 
@@ -291,14 +363,14 @@ mcp_github_issue_write({
 # List all issues by state
 gh issue list --state all
 
-# List issues in milestone
-gh api repos/test3207/m3w/milestones
-
 # View Epic details
-gh issue view 29
+gh issue view 89
 
 # Check milestone progress
-gh api repos/test3207/m3w/milestones/1 --jq '{title, open_issues, closed_issues, due_on}'
+gh api repos/test3207/m3w/milestones/2 --jq '{title, open_issues, closed_issues, due_on}'
+
+# Close issue with comment
+gh issue close <number> --comment "Resolved in PR #XX"
 ```
 
 ## Pull Request Management
@@ -364,7 +436,65 @@ All PRs must pass these automated checks:
 - **Use MCP + gh CLI**: Automate PR creation and monitoring
 - **Squash merge**: Keep main branch history clean
 - **Delete branches**: Clean up after merge to avoid clutter
-- **Close linked issues**: Use `Closes #XX` in commit message
+- **Close linked issues**: Use `Closes #XX` in PR description or commit message
+
+### Handling Copilot Code Review
+
+GitHub Copilot automatically reviews PRs and leaves comments. These comments create "review threads" that must be resolved before merging.
+
+#### Workflow for Copilot Reviews
+
+1. **Get unresolved review threads**:
+```bash
+gh api graphql -f query='query { 
+  repository(owner: "test3207", name: "m3w") { 
+    pullRequest(number: 96) { 
+      reviewThreads(first: 20) { 
+        nodes { id isResolved comments(first: 1) { nodes { body } } } 
+      } 
+    } 
+  } 
+}' --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
+```
+
+2. **For each unresolved comment**:
+   - **Analyze**: Determine if it's a valid issue or false positive
+   - **Fix if needed**: Make code changes and push
+   - **Reply**: Explain what was fixed (or why it's not applicable)
+   ```bash
+   echo '{"body": "Fixed in commit abc123.", "in_reply_to": <comment_id>}' | \
+     gh api repos/test3207/m3w/pulls/96/comments --input -
+   ```
+
+3. **Resolve the conversation** (reply alone does NOT resolve):
+```bash
+gh api graphql -f query='mutation { 
+  resolveReviewThread(input: {threadId: "<thread_id>"}) { 
+    thread { isResolved } 
+  } 
+}'
+```
+
+4. **Verify all resolved**:
+```bash
+gh api graphql -f query='...' --jq '... | select(.isResolved == false) | length'
+# Should return 0
+```
+
+#### Quick Reference: Comment IDs vs Thread IDs
+
+- **Comment ID** (`in_reply_to`): Numeric ID like `2589104852`, used for replying
+- **Thread ID** (`threadId`): String ID like `PRRT_kwDONLmAws5kuXB6`, used for resolving
+- Get both from the GraphQL query above
+
+#### Common Copilot Comment Types
+
+| Type | Action |
+|------|--------|
+| Valid bug | Fix code, reply with commit hash |
+| Design suggestion | Acknowledge or explain current design |
+| Nitpick | Acknowledge, fix if trivial |
+| False positive | Reply explaining why it's not applicable |
 
 ## Docker Image Build and Versioning
 
