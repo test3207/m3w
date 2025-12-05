@@ -208,20 +208,54 @@ docker run -d --name m3w-rc --network m3w_default -p 4000:4000 \
 ```
 
 ## Git Workflow
-- Branch strategy: `main` for production, `develop` for integration, `feature/*` for new work.
-- **NEVER push directly to `main` branch**. Always create a feature branch and submit a Pull Request.
-- Feature branch naming: `feature/<description>`, `fix/<description>`, `refactor/<description>`.
-- PR workflow:
-  1. Create feature branch from `main` or `develop`
-  2. **Run local pre-commit checks** (lint/type-check/test/build)
-  3. Make commits following Conventional Commits format
-  4. Push feature branch to remote
-  5. Create Pull Request with clear description **in English** (title, body, comments)
-  6. **Monitor PR checks using GitHub CLI and MCP** (see below)
-  7. Wait for review and approval before merging
-- Follow Conventional Commits (for example `feat:`, `fix:`, `docs:`, `refactor:`, `test:`).
-- **All PR content must be in English** (title, description, comments) for consistency and broader collaboration.
-- Only commit or push when explicitly requested; keep the working state ready for commits at all times.
+
+### Branch Protection Rules
+
+- **NEVER push directly to `main` branch**. All changes to `main` must go through Pull Requests.
+- Feature branches can be pushed freely for backup and CI.
+- Only commit or push when explicitly requested by the user; keep the working state ready for commits at all times.
+
+### Mandatory Binding Chain
+
+Every PR must be traceable through the full hierarchy:
+
+```
+PR → Issue → Epic → Milestone
+```
+
+- **No Issue? Create one first.** Even small fixes need an issue for tracking.
+- **No Epic? Find or create one.** Group related issues under domain Epics.
+- **No Milestone? Assign one.** All Epics must belong to a Milestone.
+
+### Branch Naming
+
+- `feature/<description>` - New features
+- `fix/<description>` - Bug fixes
+- `refactor/<description>` - Code refactoring
+- `docs/<description>` - Documentation updates
+- `chore/<description>` - Maintenance tasks
+
+### PR Workflow
+
+1. **Create Issue** (if not exists) with Epic reference in body
+2. **Update Epic checklist** to include new issue
+3. **Create feature branch** from `main`
+4. **Run local pre-commit checks** (lint/type-check/test/build)
+5. **Make commits** following Conventional Commits format
+6. **Push feature branch** to remote
+7. **Create Pull Request** with:
+   - Clear English title and description
+   - `Closes #XX` to auto-close the linked issue
+8. **Monitor PR checks** using `gh pr checks --watch`
+9. **Handle Copilot reviews** (see below)
+10. **Merge** when all checks pass (squash merge preferred)
+11. **Update Epic checklist** to mark issue as completed
+
+### Commit Message Format
+
+Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
+
+**All PR content must be in English** (title, description, comments) for consistency and broader collaboration.
 
 ## Project Management
 
@@ -239,17 +273,17 @@ Milestone (deadline-driven)
 
 | Resource | URL | Purpose |
 |----------|-----|----------|
-| **Milestone 1** | https://github.com/test3207/m3w/milestone/1 | Core Product Release & Deployment Automation (Due: 2025-11-30) |
+| **Milestone 1** | https://github.com/test3207/m3w/milestone/1 | Core Product Release (Closed: 2025-11-30) |
+| **Milestone 2** | https://github.com/test3207/m3w/milestone/2 | Enhanced Offline & Quality (Due: 2025-12-30) |
 | **Project Board** | https://github.com/users/test3207/projects/3 | Kanban view for task tracking |
 
-### Epics (Milestone 1)
+### Active Epics (Milestone 2)
 
 | Epic | Issue # | Description |
 |------|---------|-------------|
-| Epic 1: Core User Experience | #29 | Online & offline features, Guest mode, PWA |
-| Epic 2: Production & Demo | #30 | Docker, demo mode, open source prep |
-| Epic 3: CI/CD Pipeline | #31 | Automated builds, tests, cloud deployment |
-| Epic 4: Quality | #38 | Bug fixes, testing improvements |
+| Epic 5: Auth User Offline | #87 | Offline capabilities for authenticated users |
+| Epic 6: UX Polish | #88 | User experience improvements |
+| Epic 7: Infrastructure & Quality | #89 | Code quality, testing, infrastructure |
 
 ### Issue Management Rules
 
@@ -273,7 +307,19 @@ gh issue create --title "Feature description" --body "Parent Issue: Epic X (#YY)
 - [ ] ..."
 ```
 
-2. **Update the parent Epic's checklist** to include the new issue:
+2. **Link issue to Epic as sub-issue** (formal parent-child relationship):
+```typescript
+// Use the issue's node ID (from creation response) to add as sub-issue
+mcp_github_sub_issue_write({
+  method: 'add',
+  owner: 'test3207',
+  repo: 'm3w',
+  issue_number: 89,        // Parent Epic number
+  sub_issue_id: 3697251100 // Child issue's numeric ID (not issue number!)
+})
+```
+
+3. **Update the parent Epic's checklist** to include the new issue:
 ```typescript
 // Fetch current Epic body, append new checklist item
 mcp_github_issue_read({ method: 'get', owner: 'test3207', repo: 'm3w', issue_number: 89 })
@@ -287,6 +333,8 @@ mcp_github_issue_write({
 - [ ] #XX New sub-issue`
 })
 ```
+
+**Important**: Step 2 creates the formal GitHub sub-issue relationship. Step 3 maintains a human-readable checklist. Both are required.
 
 #### Closing an Issue
 
