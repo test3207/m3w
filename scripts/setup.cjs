@@ -22,9 +22,10 @@
  *   npm run setup                       # Full setup
  *   npm run setup:skip-env              # Skip env file creation
  *
- * Prerequisites:
- *   - Node.js 20+
- *   - Docker or Podman
+ * Prerequisites (install before running this script):
+ *   - Node.js 25+ (https://nodejs.org/)
+ *   - Docker Desktop or Podman Desktop
+ *   - For Podman: pip install podman-compose
  *
  * Related scripts:
  *   - setup-lan.cjs: Configure LAN access after setup
@@ -240,25 +241,15 @@ async function main() {
   log.info(`📋 Detected OS: ${colors.yellow}${detectedOS}${colors.reset}`);
   console.log('');
 
-  // Check prerequisites
+  // Check Node.js version (script is already running, so Node exists)
   log.info('🔍 Checking prerequisites...');
 
-  // Check Node.js
-  if (commandExists('node')) {
-    const nodeVersion = execOutput('node --version');
-    log.success(`  ✓ Node.js: ${nodeVersion}`);
+  const nodeVersion = process.version; // e.g., 'v25.0.0'
+  const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0], 10);
+  if (majorVersion >= 25) {
+    log.success(`  ✓ Node.js ${nodeVersion}`);
   } else {
-    log.error('  ✗ Node.js not found. Please install Node.js 20+');
-    process.exit(1);
-  }
-
-  // Check npm
-  if (commandExists('npm')) {
-    const npmVersion = execOutput('npm --version');
-    log.success(`  ✓ npm: ${npmVersion}`);
-  } else {
-    log.error('  ✗ npm not found');
-    process.exit(1);
+    log.warn(`  ⚠️  Node.js ${nodeVersion} detected, but v25+ is recommended`);
   }
 
   // Check container runtime

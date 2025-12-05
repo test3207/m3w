@@ -4,11 +4,28 @@ This document covers development setup, project structure, and contribution guid
 
 ## Prerequisites
 
-- **Node.js** 20+ (LTS recommended)
-- **npm** 10+ (comes with Node.js)
-- **Docker** or **Podman** (for PostgreSQL and MinIO)
+- **Node.js** 25+ (see [nodejs.org](https://nodejs.org/))
+- **Docker Desktop** or **Podman Desktop** (for PostgreSQL and MinIO)
+- For Podman users: `pip install podman-compose`
 
 ## Quick Start (Development)
+
+### Option A: Automated Setup (Recommended)
+
+```bash
+git clone https://github.com/test3207/m3w.git
+cd m3w
+node scripts/setup.cjs
+```
+
+This single command will:
+
+- Install all dependencies
+- Create `.env` files from templates
+- Start PostgreSQL and MinIO containers
+- Run database migrations
+
+### Option B: Manual Setup
 
 ### 1. Clone and Install
 
