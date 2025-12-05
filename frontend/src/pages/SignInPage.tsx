@@ -14,6 +14,7 @@ import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
 import { useAuthStore } from "@/stores/authStore";
 import { initGuestResources } from "@/lib/db/init-guest";
+import { logger } from "@/lib/logger-client";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -108,7 +109,7 @@ export default function SignInPage() {
                   loginAsGuest();
                   navigate("/libraries");
                 } catch (error) {
-                  console.error(error);
+                  logger.error('[SignInPage] Failed to initialize guest mode', error);
                   toast({
                     title: "Error",
                     description: "Failed to initialize guest mode",

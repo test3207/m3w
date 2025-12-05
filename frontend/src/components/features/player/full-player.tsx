@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
+import { logger } from '@/lib/logger-client';
 
 // Utility function for duration formatting
 function formatDuration(seconds: number): string {
@@ -68,7 +69,7 @@ export function FullPlayer() {
   const playlistSongIds = usePlaylistStore((state) => state.playlistSongIds);
   const toggleFavorite = usePlaylistStore((state) => state.toggleFavorite);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
-  const isSongFavorited = usePlaylistStore((state) => state.isSongFavorited);
+  const getFavoritesPlaylist = usePlaylistStore((state) => state.getFavoritesPlaylist);
   
   // Ensure playlists are loaded when FullPlayer opens
   useEffect(() => {
@@ -77,11 +78,14 @@ export function FullPlayer() {
     }
   }, [isOpen, playlists.length, fetchPlaylists]);
   
-  // Compute isFavorited using store method (playlistSongIds in deps triggers re-render)
+  // Compute isFavorited directly from playlistSongIds to ensure reactivity
   const isFavorited = useMemo(() => {
     if (!currentSong) return false;
-    return isSongFavorited(currentSong.id);
-  }, [currentSong, isSongFavorited, playlistSongIds]);
+    const favorites = getFavoritesPlaylist();
+    if (!favorites) return false;
+    const songIds = playlistSongIds[favorites.id] || [];
+    return songIds.includes(currentSong.id);
+  }, [currentSong, getFavoritesPlaylist, playlistSongIds]);
 
   const handleToggleFavorite = async () => {
     if (!currentSong) return;
@@ -106,7 +110,7 @@ export function FullPlayer() {
 
   // Debug: Log current repeatMode when next button is clicked
   const handleNext = () => {
-    console.log('[FullPlayer] Next button clicked, current repeatMode:', repeatMode);
+    logger.debug('[FullPlayer] Next button clicked, current repeatMode:', repeatMode);
     next();
   };
 

@@ -7,6 +7,8 @@
  * Service Worker handles auth token injection transparently.
  */
 
+import { logger } from '@/lib/logger-client';
+
 const CACHE_NAME = 'm3w-media-v1';
 
 /**
@@ -49,10 +51,10 @@ export async function cacheAudioForOffline(
     // Store in cache
     await cache.put(streamUrl, response);
     
-    console.log('[CacheManager] ✅ Cached audio:', streamUrl);
+    logger.debug('[CacheManager] ✅ Cached audio:', streamUrl);
     return streamUrl;
   } catch (error) {
-    console.error('[CacheManager] ❌ Failed to cache audio:', error);
+    logger.error('[CacheManager] ❌ Failed to cache audio:', error);
     throw new Error('Failed to cache audio file');
   }
 }
@@ -86,10 +88,10 @@ export async function cacheCoverForOffline(
     // Store in cache
     await cache.put(coverUrl, response);
     
-    console.log('[CacheManager] ✅ Cached cover:', coverUrl);
+    logger.debug('[CacheManager] ✅ Cached cover:', coverUrl);
     return coverUrl;
   } catch (error) {
-    console.error('[CacheManager] ❌ Failed to cache cover:', error);
+    logger.error('[CacheManager] ❌ Failed to cache cover:', error);
     throw new Error('Failed to cache cover image');
   }
 }
@@ -105,7 +107,7 @@ export async function isMediaCached(url: string): Promise<boolean> {
     const response = await cache.match(url);
     return !!response;
   } catch (error) {
-    console.error('[CacheManager] Failed to check cache:', error);
+    logger.error('[CacheManager] Failed to check cache:', error);
     return false;
   }
 }
@@ -118,9 +120,9 @@ export async function deleteFromCache(url: string): Promise<void> {
   try {
     const cache = await caches.open(CACHE_NAME);
     await cache.delete(url);
-    console.log('[CacheManager] 🗑️ Deleted from cache:', url);
+    logger.debug('[CacheManager] 🗑️ Deleted from cache:', url);
   } catch (error) {
-    console.error('[CacheManager] Failed to delete from cache:', error);
+    logger.error('[CacheManager] Failed to delete from cache:', error);
     throw error;
   }
 }
@@ -141,10 +143,10 @@ export async function downloadSongForOffline(
     const audioResponse = await fetch(streamUrl);
     if (audioResponse.ok) {
       await cache.put(streamUrl, audioResponse);
-      console.log('[CacheManager] ✅ Downloaded audio:', streamUrl);
+      logger.debug('[CacheManager] ✅ Downloaded audio:', streamUrl);
     }
   } catch (error) {
-    console.error('[CacheManager] Failed to download audio:', error);
+    logger.error('[CacheManager] Failed to download audio:', error);
     throw error;
   }
   
@@ -154,11 +156,11 @@ export async function downloadSongForOffline(
       const coverResponse = await fetch(coverUrl);
       if (coverResponse.ok) {
         await cache.put(coverUrl, coverResponse);
-        console.log('[CacheManager] ✅ Downloaded cover:', coverUrl);
+        logger.debug('[CacheManager] ✅ Downloaded cover:', coverUrl);
       }
     } catch (error) {
       // Cover download failure is non-fatal
-      console.warn('[CacheManager] Failed to download cover:', error);
+      logger.warn('[CacheManager] Failed to download cover:', error);
     }
   }
 }
@@ -170,9 +172,9 @@ export async function clearAllMediaCache(): Promise<void> {
   try {
     await caches.delete(CACHE_NAME);
     await caches.open(CACHE_NAME); // Recreate empty cache
-    console.log('[CacheManager] ✅ All media cache cleared');
+    logger.debug('[CacheManager] ✅ All media cache cleared');
   } catch (error) {
-    console.error('[CacheManager] Failed to clear cache:', error);
+    logger.error('[CacheManager] Failed to clear cache:', error);
     throw error;
   }
 }

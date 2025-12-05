@@ -9,6 +9,7 @@ import type { OfflineLibrary } from '../../db/schema';
 import { createLibrarySchema, updateLibrarySchema, toLibraryResponse } from '@m3w/shared';
 import { getUserId, isGuestUser } from '../utils';
 import { sortSongsOffline } from '../utils';
+import { logger } from '@/lib/logger-client';
 
 const app = new Hono();
 
@@ -113,7 +114,7 @@ app.get('/:id', async (c: Context) => {
       data: libraryWithCount,
     });
   } catch (error) {
-    console.error('[OfflineProxy] GET /libraries/:id error:', error);
+    logger.error('[OfflineProxy] GET /libraries/:id error:', error);
     return c.json(
       {
         success: false,
