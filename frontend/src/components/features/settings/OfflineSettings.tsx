@@ -34,7 +34,7 @@ import {
   setDownloadTiming,
 } from '@/lib/storage/cache-policy';
 import type { LocalCacheOverride, DownloadTiming } from '@/lib/db/schema';
-import { getQueueStatus } from '@/lib/storage/download-manager';
+import { getQueueStatus, getTotalCacheStats } from '@/lib/storage/download-manager';
 import { isAudioCacheAvailable } from '@/lib/storage/audio-cache';
 import { logger } from '@/lib/logger-client';
 import { isGuestUser } from '@/lib/offline-proxy/utils';
@@ -54,6 +54,9 @@ export default function OfflineSettings() {
   // Queue status
   const [queueStatus, setQueueStatus] = useState({ pending: 0, active: 0, isProcessing: false });
   
+  // Cache stats
+  const [cacheStats, setCacheStats] = useState({ total: 0, cached: 0, percentage: 0 });
+  
   // Cache availability
   const [cacheAvailable, setCacheAvailable] = useState<boolean | null>(null);
   
@@ -67,6 +70,10 @@ export default function OfflineSettings() {
         // Check cache availability
         const available = await isAudioCacheAvailable();
         setCacheAvailable(available);
+
+        // Load cache stats
+        const stats = await getTotalCacheStats();
+        setCacheStats(stats);
 
         // Load local settings
         const [localOvr, timing] = await Promise.all([
@@ -95,14 +102,17 @@ export default function OfflineSettings() {
     loadSettings();
   }, []);
 
-  // Poll queue status
+  // Poll queue status and cache stats
   useEffect(() => {
-    const updateQueueStatus = () => {
+    const updateStatus = async () => {
       setQueueStatus(getQueueStatus());
+      // Update cache stats less frequently (only when queue changes)
+      const stats = await getTotalCacheStats();
+      setCacheStats(stats);
     };
     
-    updateQueueStatus();
-    const interval = setInterval(updateQueueStatus, 2000);
+    updateStatus();
+    const interval = setInterval(updateStatus, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -208,19 +218,31 @@ export default function OfflineSettings() {
           </Select>
         </div>
 
-        {/* Download Queue Status */}
-        {cacheAvailable === false && (
-          <div className="text-sm text-amber-600 dark:text-amber-400">
-            {I18n.settings.offline.cacheNotAvailable}
-          </div>
-        )}
-        {cacheAvailable && (queueStatus.pending > 0 || queueStatus.active > 0) && (
-          <div className="text-sm text-muted-foreground">
-            {I18n.settings.offline.downloadingStatus
-              .replace('{active}', String(queueStatus.active))
-              .replace('{pending}', String(queueStatus.pending))}
-          </div>
-        )}
+        {/* Cache Status */}
+        <div className="pt-2 border-t">
+          {cacheAvailable === false ? (
+            <div className="text-sm text-amber-600 dark:text-amber-400">
+              {I18n.settings.offline.cacheNotAvailable}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {/* Cache stats - always show */}
+              <div className="text-sm text-muted-foreground">
+                {I18n.settings.offline.cacheStatus
+                  .replace('{cached}', String(cacheStats.cached))
+                  .replace('{total}', String(cacheStats.total))}
+              </div>
+              {/* Download progress - only when downloading */}
+              {(queueStatus.pending > 0 || queueStatus.active > 0) && (
+                <div className="text-sm text-primary">
+                  {I18n.settings.offline.downloadingStatus
+                    .replace('{active}', String(queueStatus.active))
+                    .replace('{pending}', String(queueStatus.pending))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

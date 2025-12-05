@@ -302,3 +302,28 @@ export async function getLibraryCacheStats(libraryId: string): Promise<{
     percentage: total > 0 ? Math.round((cached / total) * 100) : 0,
   };
 }
+
+/**
+ * Get overall cache statistics across all songs
+ */
+export async function getTotalCacheStats(): Promise<{
+  total: number;
+  cached: number;
+  percentage: number;
+}> {
+  const songs = await db.songs.toArray();
+  const total = songs.length;
+  let cached = 0;
+
+  for (const song of songs) {
+    if (await isSongCached(song.id)) {
+      cached++;
+    }
+  }
+
+  return {
+    total,
+    cached,
+    percentage: total > 0 ? Math.round((cached / total) * 100) : 0,
+  };
+}

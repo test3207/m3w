@@ -501,6 +501,7 @@
       "timingAlways": "Always Download",
       "timingWifiOnly": "Wi-Fi Only",
       "timingManual": "Manual Only",
+      "cacheStatus": "{cached} / {total} songs cached",
       "downloadingStatus": "Downloading: {active} active, {pending} pending",
       "cacheNotAvailable": "Not enough storage space for offline caching"
     },
