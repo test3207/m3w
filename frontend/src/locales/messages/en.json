@@ -456,6 +456,7 @@
         "installed": "Installed",
         "notInstalled": "Browser",
         "install": "Install App",
+        "installBenefit": "Installing enables persistent storage for reliable offline playback",
         "installSuccess": "App installed successfully",
         "description": "Progressive Web App enables offline music playback",
         "installPrompt": {

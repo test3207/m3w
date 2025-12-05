@@ -186,11 +186,13 @@ export default function LibraryDetailPage() {
         const stats = await getLibraryCacheStats(id);
         setCacheStats(stats);
 
-        // Load individual song cache status
+        // Load individual song cache status in parallel
         const statusMap: Record<string, boolean> = {};
-        for (const song of songs) {
-          statusMap[song.id] = await isSongCached(song.id);
-        }
+        await Promise.all(
+          songs.map(async (song) => {
+            statusMap[song.id] = await isSongCached(song.id);
+          })
+        );
         setSongCacheStatus(statusMap);
       } catch (error) {
         logger.error('[LibraryDetailPage] Failed to load cache stats:', error);
@@ -206,8 +208,8 @@ export default function LibraryDetailPage() {
     
     setIsDownloading(true);
     try {
-      // Pass minimal context - download-manager will fetch preferences if needed
-      const queued = await queueLibraryDownload(id, { userPreferences: null, backendLibrary: null });
+      // Force download - user manually clicked, bypass policy check
+      const queued = await queueLibraryDownload(id, { userPreferences: null, backendLibrary: null }, true);
       if (queued > 0) {
         toast({
           title: I18n.libraries.detail.cache.downloadStarted,

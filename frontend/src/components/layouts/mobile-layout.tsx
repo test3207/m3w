@@ -3,7 +3,7 @@
  * Main layout for mobile-first design with header, bottom navigation and mini player
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { usePlayerStore } from '@/stores/playerStore';
 import { MobileHeader } from '@/components/layouts/mobile-header';
 import { BottomNavigation } from '@/components/features/navigation/bottom-navigation';
@@ -24,6 +24,15 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const savePlaybackProgress = usePlayerStore((state) => state.savePlaybackProgress);
   const hasSong = currentSong !== null;
   const { isEnabled: isDemoMode } = useDemoMode();
+
+  // Memoize content height calculation
+  const contentHeight = useMemo(() => {
+    const baseHeight = 56 + 64; // header + bottom nav
+    const miniPlayerHeight = hasSong ? 72 : 0;
+    const demoBannerHeight = isDemoMode ? DEMO_BANNER_HEIGHT : 0;
+    const totalOffset = baseHeight + miniPlayerHeight + demoBannerHeight;
+    return `calc(100vh - ${totalOffset}px)`;
+  }, [hasSong, isDemoMode]);
 
   // Load playback progress on mount (once)
   useEffect(() => {
@@ -79,15 +88,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       {/* Main content area - fixed height excluding header, bottom nav, mini player, and demo banner */}
       <main 
         className="overflow-hidden"
-        style={{
-          height: (() => {
-            const baseHeight = 56 + 64; // header + bottom nav
-            const miniPlayerHeight = hasSong ? 72 : 0;
-            const demoBannerHeight = isDemoMode ? DEMO_BANNER_HEIGHT : 0;
-            const totalOffset = baseHeight + miniPlayerHeight + demoBannerHeight;
-            return `calc(100vh - ${totalOffset}px)`;
-          })()
-        }}
+        style={{ height: contentHeight }}
       >
         {children}
       </main>

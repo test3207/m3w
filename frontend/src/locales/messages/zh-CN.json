@@ -456,6 +456,7 @@
         "installed": "已安装",
         "notInstalled": "浏览器",
         "install": "安装应用",
+        "installBenefit": "安装后可获得持久化存储，离线播放更稳定",
         "installSuccess": "应用安装成功",
         "description": "PWA 应用可实现离线音乐播放",
         "installPrompt": {

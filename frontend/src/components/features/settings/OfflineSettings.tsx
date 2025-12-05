@@ -102,17 +102,31 @@ export default function OfflineSettings() {
     loadSettings();
   }, []);
 
-  // Poll queue status and cache stats
+  // Poll queue status and cache stats (only poll when downloading)
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
     const updateStatus = async () => {
-      setQueueStatus(getQueueStatus());
+      const status = getQueueStatus();
+      setQueueStatus(status);
       const stats = await getTotalCacheStats();
       setCacheStats(stats);
+
+      // Start/stop polling based on processing state
+      if (status.isProcessing && !interval) {
+        interval = setInterval(updateStatus, 2000);
+      } else if (!status.isProcessing && interval) {
+        clearInterval(interval);
+        interval = null;
+      }
     };
     
+    // Initial load
     updateStatus();
-    const interval = setInterval(updateStatus, 2000);
-    return () => clearInterval(interval);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   // Handle backend cache-all toggle

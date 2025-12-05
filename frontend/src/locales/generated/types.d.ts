@@ -826,6 +826,8 @@ export interface Messages {
         notInstalled: string;
         /** Install App */
         install: string;
+        /** Installing enables persistent storage for reliable offline playback */
+        installBenefit: string;
         /** App installed successfully */
         installSuccess: string;
         /** Progressive Web App enables offline music playback */

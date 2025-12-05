@@ -17,7 +17,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { RefreshCw, Database, AlertTriangle, Trash2, Download } from 'lucide-react';
+import { RefreshCw, Database, AlertTriangle, Trash2, Download, Info } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { useToast } from '@/components/ui/use-toast';
@@ -148,22 +153,37 @@ export default function StorageManager() {
               <Text variant="body" className="font-medium">Storage</Text>
               {/* PWA Status Badge - clickable if can install */}
               {!pwaLoading && (
-                pwaStatus?.isPWAInstalled ? (
-                  <Badge variant="default" className="text-xs h-5">PWA</Badge>
-                ) : canInstall ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-5 px-2 text-xs gap-1"
-                    onClick={handleInstallPWA}
-                    disabled={installing}
-                  >
-                    <Download className="h-3 w-3" />
-                    {installing ? '...' : I18n.settings.storage.pwa.install}
-                  </Button>
-                ) : (
-                  <Badge variant="secondary" className="text-xs h-5">PWA</Badge>
-                )
+                <Stack direction="horizontal" gap="xs" align="center">
+                  {pwaStatus?.isPWAInstalled ? (
+                    <Badge variant="default" className="text-xs h-5">PWA</Badge>
+                  ) : canInstall ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 px-2 text-xs gap-1"
+                      onClick={handleInstallPWA}
+                      disabled={installing}
+                    >
+                      <Download className="h-3 w-3" />
+                      {installing ? '...' : I18n.settings.storage.pwa.install}
+                    </Button>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs h-5">PWA</Badge>
+                  )}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                        <span className="sr-only">Info</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-64">
+                      <Text variant="caption" className="text-muted-foreground">
+                        {I18n.settings.storage.pwa.installBenefit}
+                      </Text>
+                    </PopoverContent>
+                  </Popover>
+                </Stack>
               )}
             </Stack>
             
@@ -196,7 +216,7 @@ export default function StorageManager() {
           {warning && (
             <Alert variant={warning.level === 'critical' ? 'destructive' : 'warning'}>
               <Stack direction="horizontal" gap="sm" align="center">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <AlertDescription>{warning.message}</AlertDescription>
               </Stack>
             </Alert>

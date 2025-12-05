@@ -43,10 +43,12 @@ let isProcessing = false;
 
 /**
  * Queue all songs from a library for download
+ * @param force - If true, bypass policy check (for manual user-initiated downloads)
  */
 export async function queueLibraryDownload(
   libraryId: string,
-  context: CachePolicyContext
+  context: CachePolicyContext,
+  force: boolean = false
 ): Promise<number> {
   // Check if caching is available first (PWA + persistent storage)
   const cacheAvailable = await isAudioCacheAvailable();
@@ -55,11 +57,13 @@ export async function queueLibraryDownload(
     return 0;
   }
 
-  // Check policy
-  const shouldCache = await shouldCacheLibrary(libraryId, context);
-  if (!shouldCache) {
-    logger.debug(`Library ${libraryId} not configured for caching`);
-    return 0;
+  // Check policy (skip if force=true, i.e., user manually triggered download)
+  if (!force) {
+    const shouldCache = await shouldCacheLibrary(libraryId, context);
+    if (!shouldCache) {
+      logger.debug(`Library ${libraryId} not configured for caching`);
+      return 0;
+    }
   }
 
   // Get all songs in library that aren't cached yet
@@ -255,38 +259,6 @@ async function processTask(task: DownloadTask): Promise<void> {
       logger.warn(`Max retries reached for song ${task.songId}`);
     }
   }
-}
-
-// ============================================================
-// Network Change Listener
-// ============================================================
-
-/**
- * Resume downloads when network becomes available
- */
-export function initDownloadManager(): void {
-  // Listen for online events
-  window.addEventListener('online', async () => {
-    const canDownload = await canDownloadNow();
-    if (canDownload && downloadQueue.length > 0) {
-      logger.info('Network available, resuming downloads');
-      processQueue();
-    }
-  });
-
-  // Listen for connection change (wifi-only mode)
-  if ('connection' in navigator) {
-    const connection = (navigator as Navigator & { connection?: EventTarget }).connection;
-    connection?.addEventListener('change', async () => {
-      const canDownload = await canDownloadNow();
-      if (canDownload && downloadQueue.length > 0) {
-        logger.info('Connection changed, checking download policy');
-        processQueue();
-      }
-    });
-  }
-
-  logger.debug('Download manager initialized');
 }
 
 // ============================================================
