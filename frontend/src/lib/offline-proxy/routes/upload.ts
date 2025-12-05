@@ -12,6 +12,7 @@ import type { OfflineSong } from '../../db/schema';
 import { parseBlob } from 'music-metadata';
 import { calculateFileHash } from '../../utils/hash';
 import { cacheAudioForOffline, cacheCoverForOffline } from '../../pwa/cache-manager';
+import { logger } from '@/lib/logger-client';
 
 const app = new Hono();
 
@@ -126,7 +127,7 @@ app.post('/', async (c: Context) => {
       },
     });
   } catch (error) {
-    console.error('Offline upload failed', error);
+    logger.error('[OfflineProxy] Offline upload failed', error);
     return c.json({ success: false, error: 'Upload failed' }, 500);
   }
 });

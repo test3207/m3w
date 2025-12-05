@@ -16,6 +16,7 @@ import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
 import { isFavoritesPlaylist } from "@m3w/shared";
 import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
+import { logger } from "@/lib/logger-client";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +62,7 @@ export default function PlaylistsPage() {
   // Listen for external song changes (delete/upload) that may affect playlists
   useEffect(() => {
     const refetchPlaylists = () => {
-      console.log("[PlaylistsPage] Event triggered, refetching playlists");
+      logger.debug("[PlaylistsPage] Event triggered, refetching playlists");
       fetchPlaylists();
     };
 

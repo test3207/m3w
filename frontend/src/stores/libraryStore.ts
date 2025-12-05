@@ -48,11 +48,11 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
   // Fetch all libraries
   fetchLibraries: async () => {
-    console.log('[LibraryStore] fetchLibraries called');
+    logger.debug('[LibraryStore] fetchLibraries called');
     set({ isLoading: true, error: null });
     try {
       const libraries = await api.main.libraries.list();
-      console.log('[LibraryStore] Fetched libraries:', libraries.length);
+      logger.debug('[LibraryStore] Fetched libraries:', libraries.length);
 
       // Update libraries and refresh currentLibrary if it exists
       set((state) => {
@@ -66,7 +66,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
           }
         }
 
-        console.log('[LibraryStore] Setting new libraries array');
+        logger.debug('[LibraryStore] Setting new libraries array');
         return {
           libraries,
           currentLibrary: updatedCurrentLibrary,

@@ -32,6 +32,7 @@ import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
 import type { Song, SongSortOption } from "@m3w/shared";
 import { formatDuration } from "@/lib/utils/format-duration";
+import { logger } from "@/lib/logger-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,7 +145,7 @@ export default function LibraryDetailPage() {
         const songsData = await api.main.libraries.getSongs(id, sortOption);
         setSongs(songsData);
       } catch (error) {
-        console.error("Failed to fetch songs:", error);
+        logger.error('[LibraryDetailPage] Failed to fetch songs:', error);
       } finally {
         setIsLoadingSongs(false);
       }
@@ -177,7 +178,7 @@ export default function LibraryDetailPage() {
           const songsData = await api.main.libraries.getSongs(id, sortOption);
           setSongs(songsData);
         } catch (error) {
-          console.error("Failed to refresh songs:", error);
+          logger.error('[LibraryDetailPage] Failed to refresh songs:', error);
         }
       };
       void refetchSongs();

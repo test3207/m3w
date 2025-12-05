@@ -5,6 +5,8 @@
  * auth tokens to IndexedDB for SW to inject into API requests.
  */
 
+import { logger } from '@/lib/logger-client';
+
 const AUTH_DB_NAME = 'm3w-auth';
 const AUTH_STORE_NAME = 'tokens';
 const DB_VERSION = 1;
@@ -50,7 +52,7 @@ export async function saveTokenToIndexedDB(accessToken: string): Promise<void> {
       };
     });
   } catch (error) {
-    console.error('[Auth] Failed to save token to IndexedDB:', error);
+    logger.error('[Auth] Failed to save token to IndexedDB:', error);
     throw error;
   }
 }
@@ -77,7 +79,7 @@ export async function clearTokenFromIndexedDB(): Promise<void> {
       };
     });
   } catch (error) {
-    console.error('[Auth] Failed to clear token from IndexedDB:', error);
+    logger.error('[Auth] Failed to clear token from IndexedDB:', error);
     throw error;
   }
 }
@@ -103,7 +105,7 @@ export async function getTokenFromIndexedDB(): Promise<string | null> {
       };
     });
   } catch (error) {
-    console.error('[Auth] Failed to get token from IndexedDB:', error);
+    logger.error('[Auth] Failed to get token from IndexedDB:', error);
     return null;
   }
 }

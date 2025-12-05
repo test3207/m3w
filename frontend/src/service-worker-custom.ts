@@ -21,6 +21,27 @@ const AUTH_DB_NAME = 'm3w-auth';
 const AUTH_STORE_NAME = 'tokens';
 
 /**
+ * Lightweight logger for Service Worker
+ * Service Workers run in isolated context, cannot import main thread modules
+ */
+const swLogger = {
+  debug: (message: string, data?: unknown) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(`[SW Debug] ${message}`, data !== undefined ? data : '');
+    }
+  },
+  info: (message: string, data?: unknown) => {
+    console.info(`[SW Info] ${message}`, data !== undefined ? data : '');
+  },
+  warn: (message: string, data?: unknown) => {
+    console.warn(`[SW Warning] ${message}`, data !== undefined ? data : '');
+  },
+  error: (message: string, data?: unknown) => {
+    console.error(`[SW Error] ${message}`, data !== undefined ? data : '');
+  },
+};
+
+/**
  * Get authentication token from IndexedDB
  * Note: Service Worker cannot access localStorage, must use IndexedDB
  */
@@ -48,7 +69,7 @@ async function getAuthToken(): Promise<string | null> {
       };
 
       getRequest.onerror = () => {
-        console.error('[SW] Failed to get token:', getRequest.error);
+        swLogger.error('Failed to get token:', getRequest.error);
         resolve(null);
       };
     };
@@ -76,7 +97,7 @@ async function handleRangeRequest(cachedResponse: Response, rangeHeader: string)
   // Parse Range header: "bytes=start-end" or "bytes=start-"
   const rangeMatch = rangeHeader.match(/bytes=(\d+)-(\d*)/);
   if (!rangeMatch) {
-    console.error('[SW] Invalid Range header:', rangeHeader);
+    swLogger.error('Invalid Range header:', rangeHeader);
     return new Response('Invalid Range header', { status: 416 });
   }
   
@@ -85,7 +106,7 @@ async function handleRangeRequest(cachedResponse: Response, rangeHeader: string)
   
   // Validate range
   if (start >= totalSize || end >= totalSize || start > end) {
-    console.error('[SW] Range out of bounds:', { start, end, totalSize });
+    swLogger.error('Range out of bounds:', { start, end, totalSize });
     return new Response('Range Not Satisfiable', { 
       status: 416,
       headers: {
@@ -98,7 +119,7 @@ async function handleRangeRequest(cachedResponse: Response, rangeHeader: string)
   const slicedBuffer = arrayBuffer.slice(start, end + 1);
   const contentLength = slicedBuffer.byteLength;
   
-  console.log('[SW] 📊 Range request:', { start, end, contentLength, totalSize });
+  swLogger.debug('📊 Range request:', { start, end, contentLength, totalSize });
   
   // Return 206 Partial Content
   return new Response(slicedBuffer, {
@@ -132,7 +153,7 @@ async function handleMediaRequest(request: Request): Promise<Response> {
   const cached = await cache.match(cacheKey);
   
   if (cached) {
-    console.log('[SW] ✅ Serving from cache:', url.pathname);
+    swLogger.debug('✅ Serving from cache:', url.pathname);
     
     // Handle Range requests (for seeking)
     const rangeHeader = request.headers.get('Range');
@@ -151,7 +172,7 @@ async function handleMediaRequest(request: Request): Promise<Response> {
     // No token = Guest mode
     // In Guest mode, all files should be cached during upload
     // If we reach here with an /api/ URL and no token, the file isn't available
-    console.log('[SW] ℹ️ Guest mode - file not cached:', url.pathname);
+    swLogger.info('ℹ️ Guest mode - file not cached:', url.pathname);
     return new Response('File not available offline (Guest mode)', { 
       status: 404,
       statusText: 'Not Found',
@@ -169,7 +190,7 @@ async function handleMediaRequest(request: Request): Promise<Response> {
       headers,
     });
 
-    console.log('[SW] 🌐 Fetching from backend:', url.pathname);
+    swLogger.debug('🌐 Fetching from backend:', url.pathname);
     const response = await fetch(authenticatedRequest);
 
     // Cache successful complete responses (200 OK)
@@ -181,15 +202,15 @@ async function handleMediaRequest(request: Request): Promise<Response> {
       // Cache asynchronously (don't block return)
       // Use pathname as cache key (same as match) to handle port differences
       cache.put(cacheKey, responseToCache).then(() => {
-        console.log('[SW] ✅ Cached from backend:', url.pathname);
+        swLogger.debug('✅ Cached from backend:', url.pathname);
       }).catch((error) => {
-        console.error('[SW] ❌ Failed to cache:', error);
+        swLogger.error('❌ Failed to cache:', error);
       });
     }
 
     return response;
   } catch (error) {
-    console.error('[SW] ❌ Fetch error:', error);
+    swLogger.error('❌ Fetch error:', error);
     
     // Return offline error
     return new Response('Network error', {
@@ -204,11 +225,11 @@ async function handleMediaRequest(request: Request): Promise<Response> {
  * Note: Use skipWaiting carefully - it can interrupt ongoing operations
  */
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
+  swLogger.info('Installing service worker...');
   
   event.waitUntil(
     caches.open(CACHE_NAME).then(() => {
-      console.log('[SW] ✅ Cache created');
+      swLogger.info('✅ Cache created');
       // Don't skip waiting automatically during install
       // Let the user decide when to update via the reload prompt
       // This prevents interrupting OAuth flows or active playback
@@ -220,7 +241,7 @@ self.addEventListener('install', (event) => {
  * Activate event: Claim clients and cleanup old caches
  */
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker...');
+  swLogger.info('Activating service worker...');
   
   event.waitUntil(
     Promise.all([
@@ -229,7 +250,7 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME && cacheName.startsWith('m3w-media-')) {
-              console.log('[SW] 🗑️ Deleting old cache:', cacheName);
+              swLogger.info('🗑️ Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -238,7 +259,7 @@ self.addEventListener('activate', (event) => {
       // Take control of all clients immediately
       self.clients.claim(),
     ]).then(() => {
-      console.log('[SW] ✅ Service worker activated');
+      swLogger.info('✅ Service worker activated');
     })
   );
 });
@@ -271,7 +292,7 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CLEAR_CACHE') {
     event.waitUntil(
       caches.delete(CACHE_NAME).then(() => {
-        console.log('[SW] ✅ Cache cleared');
+        swLogger.info('✅ Cache cleared');
         return caches.open(CACHE_NAME);
       })
     );

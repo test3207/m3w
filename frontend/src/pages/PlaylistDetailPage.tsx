@@ -82,14 +82,14 @@ export default function PlaylistDetailPage() {
 
     const refetchSongs = async () => {
       try {
-        console.log("[PlaylistDetailPage] Event triggered, refetching songs");
+        logger.debug("[PlaylistDetailPage] Event triggered, refetching songs");
         const songsData = await api.main.playlists.getSongs(id);
         setSongs(songsData);
-        console.log(
+        logger.debug(
           "[PlaylistDetailPage] Songs refreshed due to external changes"
         );
       } catch (error) {
-        console.error("[PlaylistDetailPage] Failed to refresh songs:", error);
+        logger.error("[PlaylistDetailPage] Failed to refresh songs:", error);
       }
     };
 
