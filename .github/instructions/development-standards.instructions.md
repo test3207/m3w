@@ -141,18 +141,25 @@
 Before committing code, run the following checks to catch issues early:
 
 ### Required Checks (Always Run)
-```bash
-# 1. Lint check
-npm run lint
+```powershell
+# 1. Lint check (from project root)
+npm run lint --workspaces
 
-# 2. Type check (no emit)
-npx tsc --noEmit
+# 2. Type check (run in each workspace - no unified command)
+cd frontend; npx tsc --noEmit; cd ..
+cd backend; npx tsc --noEmit; cd ..
+cd shared; npx tsc --noEmit; cd ..
 
 # 3. Run tests
-npm test
+npm test --workspaces
 
 # 4. Build verification
 npm run build
+```
+
+**Quick One-Liner (PowerShell):**
+```powershell
+npm run lint --workspaces; cd frontend; npx tsc --noEmit; cd ..; cd backend; npx tsc --noEmit; cd ..; npm test --workspaces; npm run build
 ```
 
 ### When to Run Docker Image Testing
