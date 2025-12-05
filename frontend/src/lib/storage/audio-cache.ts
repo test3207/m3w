@@ -61,7 +61,7 @@ export async function cacheSong(
 ): Promise<void> {
   const available = await isAudioCacheAvailable();
   if (!available) {
-    throw new Error('Audio caching not available. Please install PWA and grant storage permission.');
+    throw new Error('Audio caching not available: no storage quota');
   }
 
   // Get song metadata from IndexedDB

@@ -161,8 +161,12 @@ export async function getStorageStatus(): Promise<StorageStatus> {
   const persisted = await isStoragePersisted();
   const quota = await getStorageQuota();
 
-  // Can cache if PWA is installed AND storage is persisted AND there's available quota
-  const canCache = pwaInstalled && persisted && (quota ? quota.quota - quota.usage > 0 : false);
+  // Can cache if Cache API is available AND there's available quota
+  // Note: We allow caching even without PWA/persistence - user's choice
+  // The browser may evict cache under storage pressure, but that's acceptable
+  const cacheApiAvailable = 'caches' in window;
+  const hasQuota = quota ? quota.quota - quota.usage > 0 : false;
+  const canCache = cacheApiAvailable && hasQuota;
 
   return {
     isPWAInstalled: pwaInstalled,

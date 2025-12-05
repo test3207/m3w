@@ -502,7 +502,7 @@
       "timingWifiOnly": "Wi-Fi Only",
       "timingManual": "Manual Only",
       "downloadingStatus": "Downloading: {active} active, {pending} pending",
-      "cacheNotAvailable": "Offline caching requires PWA installation and persistent storage permission"
+      "cacheNotAvailable": "Not enough storage space for offline caching"
     },
     "toast": {
       "signOutSuccess": "Signed out successfully",
