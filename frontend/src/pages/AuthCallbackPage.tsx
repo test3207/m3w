@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { logger } from "@/lib/logger-client";
+import { API_BASE_URL } from "@/lib/api/config";
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -31,9 +32,7 @@ export default function AuthCallbackPage() {
     async function fetchUserInfo() {
       try {
         const response = await fetch(
-          `${
-            import.meta.env.VITE_API_URL || "http://localhost:4000"
-          }/api/auth/me`,
+          `${API_BASE_URL}/api/auth/me`,
           {
             credentials: "include", // Send cookies
           }
@@ -46,9 +45,7 @@ export default function AuthCallbackPage() {
           // For now, we need to get tokens to store in frontend
           // Let's call a new endpoint that returns tokens (non-HttpOnly)
           const tokenResponse = await fetch(
-            `${
-              import.meta.env.VITE_API_URL || "http://localhost:4000"
-            }/api/auth/session`,
+            `${API_BASE_URL}/api/auth/session`,
             {
               credentials: "include",
             }

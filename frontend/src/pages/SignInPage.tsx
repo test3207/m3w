@@ -15,8 +15,7 @@ import { useLocale } from "@/locales/use-locale";
 import { useAuthStore } from "@/stores/authStore";
 import { initGuestResources } from "@/lib/db/init-guest";
 import { logger } from "@/lib/logger-client";
-
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+import { API_BASE_URL } from "@/lib/api/config";
 
 export default function SignInPage() {
   useLocale();
@@ -29,7 +28,7 @@ export default function SignInPage() {
     setIsLoading(true);
     try {
       // Redirect to backend GitHub OAuth endpoint (must be full URL)
-      window.location.href = `${BACKEND_URL}/api/auth/github`;
+      window.location.href = `${API_BASE_URL}/api/auth/github`;
     } catch (error) {
       toast({
         title: "Sign-in failed",
