@@ -63,8 +63,9 @@ export function FullPlayer() {
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const toggleRepeat = usePlayerStore((state) => state.toggleRepeat);
 
-  // Favorites functionality - subscribe to playlists to trigger re-render when favorites change
+  // Favorites functionality - subscribe to playlistSongIds to trigger re-render when favorites change
   const playlists = usePlaylistStore((state) => state.playlists);
+  const playlistSongIds = usePlaylistStore((state) => state.playlistSongIds);
   const toggleFavorite = usePlaylistStore((state) => state.toggleFavorite);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
   const isSongFavorited = usePlaylistStore((state) => state.isSongFavorited);
@@ -76,11 +77,11 @@ export function FullPlayer() {
     }
   }, [isOpen, playlists.length, fetchPlaylists]);
   
-  // Compute isFavorited using store method
+  // Compute isFavorited using store method (playlistSongIds in deps triggers re-render)
   const isFavorited = useMemo(() => {
     if (!currentSong) return false;
     return isSongFavorited(currentSong.id);
-  }, [currentSong, isSongFavorited]);
+  }, [currentSong, isSongFavorited, playlistSongIds]);
 
   const handleToggleFavorite = async () => {
     if (!currentSong) return;

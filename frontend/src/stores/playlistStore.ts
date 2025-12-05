@@ -68,12 +68,22 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
 
   // Fetch all playlists
   fetchPlaylists: async () => {
-    console.log('[PlaylistStore] fetchPlaylists called');
     set({ isLoading: true, error: null });
     try {
       const playlists = await api.main.playlists.list();
-      console.log('[PlaylistStore] Fetched playlists:', playlists.length);
       set({ playlists, isLoading: false });
+      
+      // Auto-load favorites songIds for isSongFavorited() to work correctly
+      const favorites = playlists.find((pl) => isFavoritesPlaylist(pl));
+      if (favorites) {
+        const songs = await api.main.playlists.getSongs(favorites.id);
+        set((state) => ({
+          playlistSongIds: {
+            ...state.playlistSongIds,
+            [favorites.id]: songs.map(s => s.id),
+          },
+        }));
+      }
 
       logger.info(`Fetched ${playlists.length} playlists`);
     } catch (error) {

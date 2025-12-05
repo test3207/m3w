@@ -2,9 +2,8 @@
  * Playlist routes for offline-proxy
  * 
  * Data storage strategy:
- * - Playlist metadata stored in `playlists` table
+ * - Playlist metadata (including songCount) stored in `playlists` table
  * - Song relationships stored in `playlistSongs` table (junction table)
- * - songIds computed from playlistSongs for API response compatibility
  */
 
 import { Hono } from 'hono';
@@ -21,21 +20,6 @@ import { getUserId, isGuestUser } from '../utils';
 import { logger } from '../../logger-client';
 
 const app = new Hono();
-
-/**
- * Helper: Get songIds array from PlaylistSong table (ordered by order field)
- */
-async function getPlaylistSongIds(playlistId: string): Promise<string[]> {
-  const playlistSongs = await db.playlistSongs
-    .where('playlistId')
-    .equals(playlistId)
-    .toArray();
-  // Filter soft-deleted and sort by order
-  return playlistSongs
-    .filter(ps => !ps._isDeleted)
-    .sort((a, b) => a.order - b.order)
-    .map(ps => ps.songId);
-}
 
 /**
  * Helper: Get first song's cover URL for a playlist
@@ -68,16 +52,12 @@ app.get('/', async (c: Context) => {
     // Filter out soft-deleted playlists
     const playlists = allPlaylists.filter(pl => !pl._isDeleted);
 
-    // Add song counts, songIds, and coverUrl
+    // Add coverUrl (songCount already stored in playlist)
     const playlistsWithData = await Promise.all(
       playlists.map(async (playlist) => {
-        const songIds = await getPlaylistSongIds(playlist.id);
         const coverUrl = await getPlaylistCoverUrl(playlist.id);
-
         return {
           ...playlist,
-          songIds,
-          songCount: songIds.length,
           coverUrl,
         };
       })
@@ -126,16 +106,9 @@ app.get('/by-library/:libraryId', async (c: Context) => {
       });
     }
 
-    // Get songIds from PlaylistSong table
-    const songIds = await getPlaylistSongIds(playlist.id);
-
     return c.json({
       success: true,
-      data: {
-        ...playlist,
-        songIds,
-        songCount: songIds.length,
-      },
+      data: playlist,
     });
   } catch {
     return c.json(
@@ -225,16 +198,13 @@ app.get('/:id', async (c: Context) => {
       );
     }
 
-    // Get songIds and coverUrl
-    const songIds = await getPlaylistSongIds(id);
+    // Add coverUrl (songCount already stored in playlist)
     const coverUrl = await getPlaylistCoverUrl(id);
 
     return c.json({
       success: true,
       data: {
         ...playlist,
-        songIds,
-        songCount: songIds.length,
         coverUrl,
       },
     });
@@ -322,15 +292,9 @@ app.patch('/:id', async (c: Context) => {
 
     await db.playlists.put(updated);
 
-    // Get songCount for response
-    const songIds = await getPlaylistSongIds(id);
-
     return c.json({
       success: true,
-      data: toPlaylistResponse({
-        ...updated,
-        songCount: songIds.length,
-      }),
+      data: toPlaylistResponse(updated),
     });
   } catch {
     return c.json(
