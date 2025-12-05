@@ -140,6 +140,7 @@ app.post('/', async (c: Context) => {
       songCount: 0,
       isDefault: false,
       canDelete: true,
+      cacheOverride: 'inherit',  // Default: follow global setting
       coverUrl: null, // New library has no songs yet
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

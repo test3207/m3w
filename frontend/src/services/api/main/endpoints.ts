@@ -29,6 +29,10 @@ export const MAIN_API_ENDPOINTS = {
     me: '/api/auth/me',
     logout: '/api/auth/logout',
   },
+  // User
+  user: {
+    preferences: '/api/user/preferences',
+  },
   // Libraries
   libraries: {
     list: '/api/libraries',

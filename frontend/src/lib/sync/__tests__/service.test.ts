@@ -55,7 +55,9 @@ vi.mock('../../db/schema', () => ({
     },
   },
   getDirtyCount: vi.fn(() => Promise.resolve(0)),
+  markDirty: vi.fn((entity, isNew = false) => ({ ...entity, _isDirty: true, _isLocalOnly: isNew })),
   markSynced: vi.fn((entity) => ({ ...entity, _isDirty: false })),
+  markDeleted: vi.fn((entity) => ({ ...entity, _isDeleted: true })),
   updateEntityId: vi.fn(() => Promise.resolve()),
 }));
 

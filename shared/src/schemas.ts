@@ -11,13 +11,22 @@ export const createLibrarySchema = z.object({
   description: z.string().max(1000).optional().nullable(),
 });
 
+// Cache override options: 'inherit' (use global), 'always', 'never'
+export const cacheOverrideSchema = z.enum(['inherit', 'always', 'never']);
+
 export const updateLibrarySchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(1000).optional().nullable(),
+  cacheOverride: cacheOverrideSchema.optional(),
 });
 
 export const libraryIdSchema = z.object({
   id: z.string().min(1, 'Invalid library ID'),
+});
+
+// User preferences schemas
+export const updateUserPreferencesSchema = z.object({
+  cacheAllEnabled: z.boolean().optional(),
 });
 
 // Playlist schemas

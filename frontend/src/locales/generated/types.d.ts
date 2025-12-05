@@ -878,6 +878,38 @@ export interface Messages {
         clearing: string;
       };
     };
+    offline: {
+      /** Offline Settings */
+      title: string;
+      /** Configure how your music is cached for offline playback */
+      description: string;
+      /** Cache All Libraries */
+      cacheAll: string;
+      /** Automatically download all songs for offline playback (synced across devices) */
+      cacheAllDescription: string;
+      /** Local Override */
+      localOverride: string;
+      /** Override the cache setting for this device only */
+      localOverrideDescription: string;
+      /** Follow Account Setting */
+      policyInherit: string;
+      /** Always Cache */
+      policyAlways: string;
+      /** Never Cache */
+      policyNever: string;
+      /** Download Timing */
+      downloadTiming: string;
+      /** When to download songs for offline playback */
+      downloadTimingDescription: string;
+      /** Always Download */
+      timingAlways: string;
+      /** Wi-Fi Only */
+      timingWifiOnly: string;
+      /** Manual Only */
+      timingManual: string;
+      /** Downloading: {active} active, {pending} pending */
+      downloadingStatus: string;
+    };
     toast: {
       /** Signed out successfully */
       signOutSuccess: string;

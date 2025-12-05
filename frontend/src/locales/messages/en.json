@@ -486,6 +486,23 @@
         "clearing": "Clearing..."
       }
     },
+    "offline": {
+      "title": "Offline Settings",
+      "description": "Configure how your music is cached for offline playback",
+      "cacheAll": "Cache All Libraries",
+      "cacheAllDescription": "Automatically download all songs for offline playback (synced across devices)",
+      "localOverride": "Local Override",
+      "localOverrideDescription": "Override the cache setting for this device only",
+      "policyInherit": "Follow Account Setting",
+      "policyAlways": "Always Cache",
+      "policyNever": "Never Cache",
+      "downloadTiming": "Download Timing",
+      "downloadTimingDescription": "When to download songs for offline playback",
+      "timingAlways": "Always Download",
+      "timingWifiOnly": "Wi-Fi Only",
+      "timingManual": "Manual Only",
+      "downloadingStatus": "Downloading: {active} active, {pending} pending"
+    },
     "toast": {
       "signOutSuccess": "Signed out successfully",
       "signOutDescription": "You have been signed out successfully"

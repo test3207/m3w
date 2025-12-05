@@ -12,6 +12,7 @@ import { useLocale } from "@/locales/use-locale";
 import { I18n } from "@/locales/i18n";
 import StorageManager from "@/components/features/settings/StorageManager";
 import PersonalInfo from "@/components/features/settings/PersonalInfo";
+import OfflineSettings from "@/components/features/settings/OfflineSettings";
 
 export default function SettingsPage() {
   useLocale();
@@ -38,6 +39,9 @@ export default function SettingsPage() {
 
       {/* User Profile Section */}
       <PersonalInfo user={user} />
+
+      {/* Offline Settings Section */}
+      <OfflineSettings />
 
       {/* Storage Management Section */}
       <StorageManager />

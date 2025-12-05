@@ -10,7 +10,7 @@
  * - Offline-Proxy: Transform IndexedDB records to match API response shape
  */
 
-import type { Library, Playlist, Song } from './types';
+import type { Library, Playlist, Song, CacheOverride } from './types';
 
 // ============================================================
 // Input Types (Database Models)
@@ -28,6 +28,7 @@ export interface LibraryInput {
   songCount: number;  // Cached count stored in database
   isDefault: boolean;
   canDelete: boolean;
+  cacheOverride?: string;  // Optional for backward compatibility
   createdAt: Date | string;
   updatedAt: Date | string;
   // Optional: last song for cover URL
@@ -103,6 +104,9 @@ function toISOString(date: Date | string): string {
  * Transform database Library to API response Library
  */
 export function toLibraryResponse(input: LibraryInput): Library {
+  // Default to 'inherit' if not set (backward compatibility)
+  const cacheOverride = (input.cacheOverride ?? 'inherit') as CacheOverride;
+  
   return {
     id: input.id,
     name: input.name,
@@ -111,6 +115,7 @@ export function toLibraryResponse(input: LibraryInput): Library {
     songCount: input.songCount,
     isDefault: input.isDefault,
     canDelete: input.canDelete,
+    cacheOverride,
     coverUrl: input.coverUrl ?? null,
     createdAt: toISOString(input.createdAt),
     updatedAt: toISOString(input.updatedAt),

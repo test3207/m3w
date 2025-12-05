@@ -22,6 +22,7 @@ export async function initGuestResources() {
       songCount: 0,
       isDefault: true,
       canDelete: false,
+      cacheOverride: 'inherit',  // Follow global setting
       coverUrl: null,  // No songs yet
       createdAt: now,
       updatedAt: now,

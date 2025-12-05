@@ -486,6 +486,23 @@
         "clearing": "清除中..."
       }
     },
+    "offline": {
+      "title": "离线设置",
+      "description": "配置音乐离线播放的缓存方式",
+      "cacheAll": "缓存所有曲库",
+      "cacheAllDescription": "自动下载所有歌曲以供离线播放（跨设备同步）",
+      "localOverride": "本地覆盖",
+      "localOverrideDescription": "仅为此设备覆盖缓存设置",
+      "policyInherit": "跟随账户设置",
+      "policyAlways": "始终缓存",
+      "policyNever": "从不缓存",
+      "downloadTiming": "下载时机",
+      "downloadTimingDescription": "何时下载歌曲以供离线播放",
+      "timingAlways": "始终下载",
+      "timingWifiOnly": "仅限 Wi-Fi",
+      "timingManual": "仅手动",
+      "downloadingStatus": "下载中：{active} 进行中，{pending} 等待中"
+    },
     "toast": {
       "signOutSuccess": "已退出登录",
       "signOutDescription": "您已成功退出登录"

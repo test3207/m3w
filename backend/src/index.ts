@@ -79,6 +79,7 @@ logger.info({ env: envVars }, 'Environment variables loaded');
 
 // Import routes
 import authRoutes from './routes/auth';
+import userRoutes from './routes/user';
 import librariesRoutes from './routes/libraries';
 import playlistsRoutes from './routes/playlists';
 import songsRoutes from './routes/songs';
@@ -220,6 +221,7 @@ app.get('/api/health', (c) => {
 
 // Routes
 app.route('/api/auth', authRoutes);
+app.route('/api/user', userRoutes);
 app.route('/api/libraries', librariesRoutes);
 app.route('/api/playlists', playlistsRoutes);
 app.route('/api/songs', songsRoutes);

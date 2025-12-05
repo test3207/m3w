@@ -19,6 +19,9 @@ model User {
   image         String?
   emailVerified DateTime?
   
+  // User preferences
+  cacheAllEnabled Boolean @default(false)  // Global cache-all setting (cross-device)
+  
   accounts      Account[]
   sessions      Session[]
   libraries     Library[]
@@ -112,6 +115,9 @@ model Library {
   // Default Library flags (for frontend refactor)
   isDefault   Boolean  @default(false)  // Mark default library (auto-created)
   canDelete   Boolean  @default(true)   // Prevent deletion of default library
+  
+  // Offline cache policy: 'inherit' | 'always' | 'never'
+  cacheOverride String @default("inherit")
   
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
