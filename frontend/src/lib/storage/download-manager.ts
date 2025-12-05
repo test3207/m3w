@@ -50,10 +50,10 @@ export async function queueLibraryDownload(
   context: CachePolicyContext,
   force: boolean = false
 ): Promise<number> {
-  // Check if caching is available first (PWA + persistent storage)
+  // Check if caching is available (requires Cache API and sufficient quota)
   const cacheAvailable = await isAudioCacheAvailable();
   if (!cacheAvailable) {
-    logger.debug('Audio cache not available (not PWA or storage not persisted)');
+    logger.debug('Audio cache not available: no storage quota');
     return 0;
   }
 

@@ -8,6 +8,7 @@
  */
 
 import { api } from '@/services';
+import { useAuthStore } from '@/stores/authStore';
 import { db, type OfflineSong } from '../db/schema';
 import { logger } from '../logger-client';
 
@@ -107,10 +108,14 @@ export async function syncMetadata(): Promise<SyncResult> {
     }
     logger.info('Songs synced', { totalSongs });
     
-    // Delete songs that no longer exist on server (for current user's libraries only)
-    const serverLibraryIds = new Set(libraries.map(lib => lib.id));
+    // Delete songs that no longer exist on server (for current user's owned libraries only)
+    // Filter by userId to ensure we don't delete songs from shared libraries
+    const userId = useAuthStore.getState().user?.id;
+    const ownedLibraryIds = new Set(
+      libraries.filter(lib => lib.userId === userId).map(lib => lib.id)
+    );
     const songsToDelete = existingSongs
-      .filter(song => serverLibraryIds.has(song.libraryId) && !serverSongIds.has(song.id))
+      .filter(song => ownedLibraryIds.has(song.libraryId) && !serverSongIds.has(song.id))
       .map(song => song.id);
     
     if (songsToDelete.length > 0) {

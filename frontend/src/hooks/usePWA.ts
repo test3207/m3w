@@ -28,6 +28,13 @@ function notifyInstallPromptListeners() {
 // Initialize listener once (guard prevents duplicate registration during HMR)
 if (typeof window !== 'undefined' && !listenersInitialized) {
   listenersInitialized = true;
+
+  // HMR: Reset flag on module dispose to allow re-initialization
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      listenersInitialized = false;
+    });
+  }
   
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
