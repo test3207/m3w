@@ -9,6 +9,7 @@ import { songs } from './api/main/resources/songs';
 import { upload } from './api/main/resources/upload';
 import { player } from './api/main/resources/player';
 import { auth } from './api/main/resources/auth';
+import { user } from './api/main/resources/user';
 
 /**
  * Main API services grouped by backend
@@ -20,6 +21,7 @@ const main = {
   upload,
   player,
   auth,
+  user,
 };
 
 /**

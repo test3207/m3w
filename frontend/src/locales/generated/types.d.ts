@@ -822,8 +822,14 @@ export interface Messages {
         title: string;
         /** Installed */
         installed: string;
-        /** Not Installed */
+        /** Browser */
         notInstalled: string;
+        /** Install App */
+        install: string;
+        /** Installing enables persistent storage for reliable offline playback */
+        installBenefit: string;
+        /** App installed successfully */
+        installSuccess: string;
         /** Progressive Web App enables offline music playback */
         description: string;
         installPrompt: {
@@ -851,14 +857,6 @@ export interface Messages {
           close: string;
         };
       };
-      /** Browser Storage */
-      globalTitle: string;
-      /** Shared across all accounts on this device */
-      globalNote: string;
-      /** Clear All Data */
-      clearAllTitle: string;
-      /** This will delete all users' data on this device, including songs, playlists, and settings. */
-      clearAllDescription: string;
       /** Clear All Data */
       clearAllButton: string;
       /** All data cleared successfully */
@@ -877,6 +875,42 @@ export interface Messages {
         /** Clearing... */
         clearing: string;
       };
+    };
+    offline: {
+      /** Offline Settings */
+      title: string;
+      /** Configure how your music is cached for offline playback */
+      description: string;
+      /** Cache All Libraries */
+      cacheAll: string;
+      /** Automatically download all songs for offline playback (synced across devices) */
+      cacheAllDescription: string;
+      /** Local Override */
+      localOverride: string;
+      /** Override the cache setting for this device only */
+      localOverrideDescription: string;
+      /** Follow Account Setting */
+      policyInherit: string;
+      /** Always Cache */
+      policyAlways: string;
+      /** Never Cache */
+      policyNever: string;
+      /** Download Timing */
+      downloadTiming: string;
+      /** When to download songs for offline playback */
+      downloadTimingDescription: string;
+      /** Always Download */
+      timingAlways: string;
+      /** Wi-Fi Only */
+      timingWifiOnly: string;
+      /** Manual Only */
+      timingManual: string;
+      /** {0} / {1} songs cached */
+      cacheStatus: string;
+      /** Downloading: {0} active, {1} pending */
+      downloadingStatus: string;
+      /** Not enough storage space for offline caching */
+      cacheNotAvailable: string;
     };
     toast: {
       /** Signed out successfully */
@@ -998,6 +1032,18 @@ export interface Messages {
         addToPlaylist: string;
         /** Long press to select multiple songs */
         longPressHint: string;
+      };
+      cache: {
+        /** {0}/{1} cached */
+        cachedCount: string;
+        /** Download All */
+        downloadAll: string;
+        /** Download Started */
+        downloadStarted: string;
+        /** Queued {0} songs for download */
+        downloadStartedDesc: string;
+        /** All songs already cached */
+        allCached: string;
       };
     };
   };

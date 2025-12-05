@@ -12,6 +12,7 @@ import { useLocale } from "@/locales/use-locale";
 import { I18n } from "@/locales/i18n";
 import StorageManager from "@/components/features/settings/StorageManager";
 import PersonalInfo from "@/components/features/settings/PersonalInfo";
+import OfflineSettings from "@/components/features/settings/OfflineSettings";
 
 export default function SettingsPage() {
   useLocale();
@@ -33,14 +34,19 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-3 pb-8">
-      <h1 className="text-2xl font-bold mb-2">{I18n.settings.title}</h1>
+    <div className="h-full overflow-y-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">{I18n.settings.title}</h1>
 
-      {/* User Profile Section */}
-      <PersonalInfo user={user} />
+      <div className="flex flex-col gap-3">
+        {/* User Profile Section */}
+        <PersonalInfo user={user} />
 
-      {/* Storage Management Section */}
-      <StorageManager />
+        {/* Offline Settings Section */}
+        <OfflineSettings />
+
+        {/* Storage Management Section */}
+        <StorageManager />
+      </div>
     </div>
   );
 }

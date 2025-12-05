@@ -61,7 +61,7 @@ export async function cacheSong(
 ): Promise<void> {
   const available = await isAudioCacheAvailable();
   if (!available) {
-    throw new Error('Audio caching not available. Please install PWA and grant storage permission.');
+    throw new Error('Audio caching not available: no storage quota');
   }
 
   // Get song metadata from IndexedDB
@@ -85,8 +85,26 @@ export async function cacheSong(
     });
 
     // Fetch the audio file using stream API client (returns Response for binary data)
-    const response = await streamApiClient.get(MAIN_API_ENDPOINTS.songs.stream(songId));
+    let response: Response;
+    try {
+      response = await streamApiClient.get(MAIN_API_ENDPOINTS.songs.stream(songId));
+    } catch (fetchError) {
+      // Handle 404 - song no longer exists on server, clean up local data
+      if (fetchError instanceof Error && fetchError.message.includes('404')) {
+        logger.warn('Song not found on server (404), removing from local cache', { songId });
+        await db.songs.delete(songId);
+        throw new Error(`Song ${songId} not found on server (404)`);
+      }
+      throw fetchError;
+    }
+    
     if (!response.ok) {
+      // Handle 404 - song no longer exists on server, clean up local data
+      if (response.status === 404) {
+        logger.warn('Song not found on server, removing from local cache', { songId });
+        await db.songs.delete(songId);
+        throw new Error(`Song ${songId} not found on server (removed from local cache)`);
+      }
       throw new Error(`Failed to fetch audio: ${response.statusText}`);
     }
 

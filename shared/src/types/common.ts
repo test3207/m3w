@@ -60,6 +60,15 @@ export interface User {
 }
 
 // ============================================================
+// User Preferences
+// ============================================================
+
+export interface UserPreferences {
+  /** Enable automatic caching of all libraries */
+  cacheAllEnabled: boolean;
+}
+
+// ============================================================
 // Demo Mode
 // ============================================================
 

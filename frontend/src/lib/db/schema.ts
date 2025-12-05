@@ -6,6 +6,7 @@
  * - Core Entities: Library, Playlist, Song (extended from @m3w/shared)
  * - Join Tables: PlaylistSong (composite key [playlistId, songId])
  * - Player State: PlayerPreferences, PlayerProgress
+ * - Local Settings: LocalSetting (device-specific preferences)
  * 
  * Sync Strategy: State-Based with Server-Wins
  * - _isDirty: true when local changes need to be pushed to server
@@ -14,7 +15,7 @@
  */
 
 import Dexie, { type EntityTable, type Table } from 'dexie';
-import type { Library, Playlist, Song, PlaylistSong } from '@m3w/shared';
+import type { Library, Playlist, Song, PlaylistSong, CacheOverride } from '@m3w/shared';
 import { isGuestUser } from '../offline-proxy/utils';
 
 // ============================================================
@@ -39,7 +40,17 @@ export interface SyncTrackingFields {
 // ============================================================
 // Core Entities (extended from @m3w/shared)
 // ============================================================
-export interface OfflineLibrary extends Library, SyncTrackingFields {}
+
+/**
+ * Local cache policy override for this device
+ * 'inherit' = follow backend setting, 'always' = always cache, 'never' = never cache
+ */
+export type LocalCacheOverride = CacheOverride;
+
+export interface OfflineLibrary extends Library, SyncTrackingFields {
+  /** Local device override for cache policy (not synced to server) */
+  localCacheOverride?: LocalCacheOverride;
+}
 
 export interface OfflinePlaylist extends Playlist, SyncTrackingFields {}
 
@@ -117,6 +128,26 @@ export interface PlayerProgress {
 }
 
 // ============================================================
+// Local Settings (device-specific, not synced)
+// ============================================================
+
+/**
+ * Local device settings (not synced to server)
+ * Used for device-specific preferences like cache policy
+ */
+export interface LocalSetting {
+  /** Setting key (primary key) */
+  key: string;
+  /** Setting value (JSON stringified for complex values) */
+  value: string;
+  /** Last updated timestamp */
+  updatedAt: Date;
+}
+
+/** Download timing policy */
+export type DownloadTiming = 'always' | 'wifi-only' | 'manual';
+
+// ============================================================
 // Database Class
 // ============================================================
 
@@ -131,6 +162,7 @@ export class M3WDatabase extends Dexie {
   playlistSongs!: Table<OfflinePlaylistSong, [string, string]>;
   playerPreferences!: EntityTable<PlayerPreferences, 'userId'>;
   playerProgress!: EntityTable<PlayerProgress, 'userId'>;
+  localSettings!: EntityTable<LocalSetting, 'key'>;
 
   constructor() {
     super('m3w-offline');
@@ -144,6 +176,7 @@ export class M3WDatabase extends Dexie {
       playlistSongs: '[playlistId+songId], playlistId, songId, order, _isDirty, _isDeleted',
       playerPreferences: 'userId, updatedAt',
       playerProgress: 'userId, songId, contextType, contextId, updatedAt',
+      localSettings: 'key, updatedAt',
     });
   }
 }

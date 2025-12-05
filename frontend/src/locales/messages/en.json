@@ -454,7 +454,10 @@
       "pwa": {
         "title": "PWA Status",
         "installed": "Installed",
-        "notInstalled": "Not Installed",
+        "notInstalled": "Browser",
+        "install": "Install App",
+        "installBenefit": "Installing enables persistent storage for reliable offline playback",
+        "installSuccess": "App installed successfully",
         "description": "Progressive Web App enables offline music playback",
         "installPrompt": {
           "title": "Install M3W",
@@ -471,10 +474,6 @@
           "close": "Close"
         }
       },
-      "globalTitle": "Browser Storage",
-      "globalNote": "Shared across all accounts on this device",
-      "clearAllTitle": "Clear All Data",
-      "clearAllDescription": "This will delete all users' data on this device, including songs, playlists, and settings.",
       "clearAllButton": "Clear All Data",
       "clearSuccess": "All data cleared successfully",
       "clearError": "Failed to clear data. Please try again.",
@@ -485,6 +484,25 @@
         "confirm": "Delete Everything",
         "clearing": "Clearing..."
       }
+    },
+    "offline": {
+      "title": "Offline Settings",
+      "description": "Configure how your music is cached for offline playback",
+      "cacheAll": "Cache All Libraries",
+      "cacheAllDescription": "Automatically download all songs for offline playback (synced across devices)",
+      "localOverride": "Local Override",
+      "localOverrideDescription": "Override the cache setting for this device only",
+      "policyInherit": "Follow Account Setting",
+      "policyAlways": "Always Cache",
+      "policyNever": "Never Cache",
+      "downloadTiming": "Download Timing",
+      "downloadTimingDescription": "When to download songs for offline playback",
+      "timingAlways": "Always Download",
+      "timingWifiOnly": "Wi-Fi Only",
+      "timingManual": "Manual Only",
+      "cacheStatus": "{0} / {1} songs cached",
+      "downloadingStatus": "Downloading: {0} active, {1} pending",
+      "cacheNotAvailable": "Not enough storage space for offline caching"
     },
     "toast": {
       "signOutSuccess": "Signed out successfully",
@@ -556,6 +574,13 @@
         "cancel": "Cancel",
         "addToPlaylist": "Add to Playlist",
         "longPressHint": "Long press to select multiple songs"
+      },
+      "cache": {
+        "cachedCount": "{0}/{1} cached",
+        "downloadAll": "Download All",
+        "downloadStarted": "Download Started",
+        "downloadStartedDesc": "Queued {0} songs for download",
+        "allCached": "All songs already cached"
       }
     }
   },

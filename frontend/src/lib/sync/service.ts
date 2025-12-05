@@ -21,6 +21,9 @@ import { api } from '@/services';
 import { toast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
 import { isGuestUser } from '../offline-proxy/utils';
+import { triggerAutoCacheAfterSync } from '../storage/download-manager';
+import type { CachePolicyContext } from '../storage/cache-policy';
+import { useAuthStore } from '@/stores/authStore';
 
 // Sync interval: 5 minutes (aligned with metadata-sync)
 const SYNC_INTERVAL = 5 * 60 * 1000;
@@ -185,6 +188,9 @@ export class SyncService {
           variant: 'default',
         });
       }
+
+      // Phase 3: Trigger auto-cache for libraries that should be cached
+      await this.triggerAutoCache();
 
       logger.info('Sync completed', result);
       return result;
@@ -474,6 +480,55 @@ export class SyncService {
         logger.error('Failed to push playlist songs', { playlistId, error });
         result.errors.push(`PlaylistSongs for ${playlistId}: ${error instanceof Error ? error.message : 'Failed'}`);
       }
+    }
+  }
+
+  /**
+   * Trigger auto-cache for libraries after sync completes
+   * Respects cache policy configuration
+   */
+  private async triggerAutoCache(): Promise<void> {
+    try {
+      // Get current user ID
+      const { user, isGuest } = useAuthStore.getState();
+      if (isGuest) {
+        logger.debug('Skipping auto-cache for guest user');
+        return;
+      }
+      
+      const userId = user?.id;
+      if (!userId) {
+        logger.debug('No user ID, skipping auto-cache');
+        return;
+      }
+      
+      // Get only current user's libraries
+      const libraries = await db.libraries
+        .filter(lib => lib.userId === userId)
+        .toArray();
+      if (libraries.length === 0) return;
+
+      // Fetch user preferences for cache policy context
+      let userPreferences = null;
+      try {
+        userPreferences = await api.main.user.getPreferences();
+      } catch {
+        logger.debug('Could not fetch user preferences for cache policy');
+      }
+
+      // Build context for each library and trigger cache
+      const context: CachePolicyContext = {
+        userPreferences,
+        backendLibrary: null, // Will be set per-library
+      };
+
+      // Trigger auto-cache (download-manager handles policy checks)
+      await triggerAutoCacheAfterSync(
+        libraries.map(lib => ({ id: lib.id })),
+        context
+      );
+    } catch (error) {
+      logger.warn('Failed to trigger auto-cache after sync', error);
     }
   }
 

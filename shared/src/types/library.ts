@@ -4,6 +4,12 @@
  */
 
 // ============================================================
+// Cache Override Type
+// ============================================================
+
+export type CacheOverride = 'inherit' | 'always' | 'never';
+
+// ============================================================
 // Library API Response
 // ============================================================
 
@@ -15,6 +21,7 @@ export interface Library {
   songCount: number;  // Cached count, updated on add/delete
   isDefault: boolean;
   canDelete: boolean;
+  cacheOverride: CacheOverride;  // Offline cache policy
   coverUrl: string | null;  // Computed: last added song's cover
   createdAt: string; // ISO 8601 string
   updatedAt: string; // ISO 8601 string
@@ -32,4 +39,5 @@ export interface CreateLibraryInput {
 export interface UpdateLibraryInput {
   name?: string;
   description?: string | null;
+  cacheOverride?: CacheOverride;
 }

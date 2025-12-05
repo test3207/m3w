@@ -3,7 +3,7 @@
  * Main layout for mobile-first design with header, bottom navigation and mini player
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { usePlayerStore } from '@/stores/playerStore';
 import { MobileHeader } from '@/components/layouts/mobile-header';
 import { BottomNavigation } from '@/components/features/navigation/bottom-navigation';
@@ -11,6 +11,7 @@ import { MiniPlayer, FullPlayer, PlayQueueDrawer } from '@/components/features/p
 import { UploadDrawer } from '@/components/features/upload/upload-drawer';
 import { AddToPlaylistSheet } from '@/components/features/playlists/AddToPlaylistSheet';
 import { DemoBanner } from '@/components/features/demo/DemoBanner';
+import { useDemoMode, DEMO_BANNER_HEIGHT } from '@/hooks/useDemoMode';
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,16 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const loadPlaybackProgress = usePlayerStore((state) => state.loadPlaybackProgress);
   const savePlaybackProgress = usePlayerStore((state) => state.savePlaybackProgress);
   const hasSong = currentSong !== null;
+  const { isEnabled: isDemoMode } = useDemoMode();
+
+  // Memoize content height calculation
+  const contentHeight = useMemo(() => {
+    const baseHeight = 56 + 64; // header + bottom nav
+    const miniPlayerHeight = hasSong ? 72 : 0;
+    const demoBannerHeight = isDemoMode ? DEMO_BANNER_HEIGHT : 0;
+    const totalOffset = baseHeight + miniPlayerHeight + demoBannerHeight;
+    return `calc(100vh - ${totalOffset}px)`;
+  }, [hasSong, isDemoMode]);
 
   // Load playback progress on mount (once)
   useEffect(() => {
@@ -74,14 +85,10 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       {/* Top Header with status indicators (56px) */}
       <MobileHeader />
 
-      {/* Main content area - fixed height excluding header and bottom elements */}
+      {/* Main content area - fixed height excluding header, bottom nav, mini player, and demo banner */}
       <main 
         className="overflow-hidden"
-        style={{
-          height: hasSong 
-            ? 'calc(100vh - 56px - 64px - 72px)' // viewport - header - bottom nav - mini player
-            : 'calc(100vh - 56px - 64px)' // viewport - header - bottom nav
-        }}
+        style={{ height: contentHeight }}
       >
         {children}
       </main>

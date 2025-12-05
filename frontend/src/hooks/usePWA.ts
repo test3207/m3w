@@ -9,6 +9,88 @@ import { getPWAStatus, type PWAStatus } from '@/lib/pwa';
 import { getStorageQuota, type StorageQuota, monitorStorageQuota } from '@/lib/storage/quota-manager';
 import { cacheSong, cachePlaylist, cacheLibrary, isSongCached, getCachedSongs, type CacheProgress } from '@/lib/storage/audio-cache';
 import { manualSync, type SyncResult } from '@/lib/sync/metadata-sync';
+import { logger } from '@/lib/logger-client';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+// Global state for install prompt (shared across components)
+let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
+const installPromptListeners = new Set<() => void>();
+let listenersInitialized = false;
+
+function notifyInstallPromptListeners() {
+  installPromptListeners.forEach(fn => fn());
+}
+
+// Initialize listener once (guard prevents duplicate registration during HMR)
+if (typeof window !== 'undefined' && !listenersInitialized) {
+  listenersInitialized = true;
+
+  // HMR: Reset flag on module dispose to allow re-initialization
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      listenersInitialized = false;
+    });
+  }
+  
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    globalDeferredPrompt = e as BeforeInstallPromptEvent;
+    logger.info('PWA install prompt available');
+    notifyInstallPromptListeners();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    globalDeferredPrompt = null;
+    logger.info('PWA installed');
+    notifyInstallPromptListeners();
+  });
+}
+
+/**
+ * Hook for PWA installation
+ */
+export function usePWAInstall() {
+  const [canInstall, setCanInstall] = useState(!!globalDeferredPrompt);
+  const [installing, setInstalling] = useState(false);
+
+  useEffect(() => {
+    const listener = () => setCanInstall(!!globalDeferredPrompt);
+    installPromptListeners.add(listener);
+    // Sync initial state
+    setCanInstall(!!globalDeferredPrompt);
+    return () => {
+      installPromptListeners.delete(listener);
+    };
+  }, []);
+
+  const install = useCallback(async () => {
+    if (!globalDeferredPrompt) return false;
+    
+    setInstalling(true);
+    try {
+      await globalDeferredPrompt.prompt();
+      const { outcome } = await globalDeferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        logger.info('User accepted PWA install');
+        globalDeferredPrompt = null;
+        notifyInstallPromptListeners();
+        return true;
+      } else {
+        logger.info('User dismissed PWA install');
+        return false;
+      }
+    } finally {
+      setInstalling(false);
+    }
+  }, []);
+
+  return { canInstall, installing, install };
+}
 
 export function usePWAStatus() {
   const [status, setStatus] = useState<PWAStatus | null>(null);
