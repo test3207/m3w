@@ -82,6 +82,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Fetch all remote branches to detect existing RC branches
+          git fetch origin
       
       - name: Calculate RC number for current version
         id: version
