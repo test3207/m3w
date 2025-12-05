@@ -258,32 +258,49 @@ Milestone (deadline-driven)
 3. **Issue references Epic in body**: Use "Parent Issue: Epic X (#YY)" in issue description
 4. **GitHub auto-calculates progress**: Epic checklist shows completion percentage
 
-### Working with Issues
+### Issue Lifecycle
 
-**Creating a new Issue:**
+#### Creating a New Issue
+
+1. **Create the issue** with proper body referencing parent Epic:
 ```bash
-# Create issue and link to Epic via body text
-gh issue create --title "Feature description" --body "Parent Issue: Epic 1 (#29)"
+gh issue create --title "Feature description" --body "Parent Issue: Epic X (#YY)
 
-# Then update the Epic checklist manually or via MCP
+## Summary
+...
+
+## Acceptance Criteria
+- [ ] ..."
 ```
 
-**Updating Epic progress:**
+2. **Update the parent Epic's checklist** to include the new issue:
 ```typescript
-// Use MCP to update Epic body with new checklist item
+// Fetch current Epic body, append new checklist item
+mcp_github_issue_read({ method: 'get', owner: 'test3207', repo: 'm3w', issue_number: 89 })
+// Then update with new item added
 mcp_github_issue_write({
   method: 'update',
   owner: 'test3207',
   repo: 'm3w',
-  issue_number: 29,
+  issue_number: 89,
   body: `...existing content...
 - [ ] #XX New sub-issue`
 })
 ```
 
-**Closing an Issue:**
-- Use `Closes #XX` in PR description or commit message
-- Update Epic checklist: change `- [ ] #XX` to `- [x] #XX`
+#### Closing an Issue
+
+When closing an issue (via PR merge or manual close):
+
+1. **Use `Closes #XX`** in PR description or commit message for auto-close
+2. **Update Epic checklist**: Change `- [ ] #XX` to `- [x] #XX` with completion note:
+   ```markdown
+   - [x] #95 Issue title *(closed: resolved in PR #96)*
+   ```
+3. **If not auto-closed**, manually close with comment:
+   ```bash
+   gh issue close 95 --comment "Resolved in PR #96"
+   ```
 
 ### CLI Quick Reference
 
@@ -291,14 +308,14 @@ mcp_github_issue_write({
 # List all issues by state
 gh issue list --state all
 
-# List issues in milestone
-gh api repos/test3207/m3w/milestones
-
 # View Epic details
-gh issue view 29
+gh issue view 89
 
 # Check milestone progress
-gh api repos/test3207/m3w/milestones/1 --jq '{title, open_issues, closed_issues, due_on}'
+gh api repos/test3207/m3w/milestones/2 --jq '{title, open_issues, closed_issues, due_on}'
+
+# Close issue with comment
+gh issue close <number> --comment "Resolved in PR #XX"
 ```
 
 ## Pull Request Management
@@ -364,7 +381,65 @@ All PRs must pass these automated checks:
 - **Use MCP + gh CLI**: Automate PR creation and monitoring
 - **Squash merge**: Keep main branch history clean
 - **Delete branches**: Clean up after merge to avoid clutter
-- **Close linked issues**: Use `Closes #XX` in commit message
+- **Close linked issues**: Use `Closes #XX` in PR description or commit message
+
+### Handling Copilot Code Review
+
+GitHub Copilot automatically reviews PRs and leaves comments. These comments create "review threads" that must be resolved before merging.
+
+#### Workflow for Copilot Reviews
+
+1. **Get unresolved review threads**:
+```bash
+gh api graphql -f query='query { 
+  repository(owner: "test3207", name: "m3w") { 
+    pullRequest(number: 96) { 
+      reviewThreads(first: 20) { 
+        nodes { id isResolved comments(first: 1) { nodes { body } } } 
+      } 
+    } 
+  } 
+}' --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
+```
+
+2. **For each unresolved comment**:
+   - **Analyze**: Determine if it's a valid issue or false positive
+   - **Fix if needed**: Make code changes and push
+   - **Reply**: Explain what was fixed (or why it's not applicable)
+   ```bash
+   echo '{"body": "Fixed in commit abc123.", "in_reply_to": <comment_id>}' | \
+     gh api repos/test3207/m3w/pulls/96/comments --input -
+   ```
+
+3. **Resolve the conversation** (reply alone does NOT resolve):
+```bash
+gh api graphql -f query='mutation { 
+  resolveReviewThread(input: {threadId: "<thread_id>"}) { 
+    thread { isResolved } 
+  } 
+}'
+```
+
+4. **Verify all resolved**:
+```bash
+gh api graphql -f query='...' --jq '... | select(.isResolved == false) | length'
+# Should return 0
+```
+
+#### Quick Reference: Comment IDs vs Thread IDs
+
+- **Comment ID** (`in_reply_to`): Numeric ID like `2589104852`, used for replying
+- **Thread ID** (`threadId`): String ID like `PRRT_kwDONLmAws5kuXB6`, used for resolving
+- Get both from the GraphQL query above
+
+#### Common Copilot Comment Types
+
+| Type | Action |
+|------|--------|
+| Valid bug | Fix code, reply with commit hash |
+| Design suggestion | Acknowledge or explain current design |
+| Nitpick | Acknowledge, fix if trivial |
+| False positive | Reply explaining why it's not applicable |
 
 ## Docker Image Build and Versioning
 
