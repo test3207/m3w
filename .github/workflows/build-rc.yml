@@ -107,14 +107,10 @@ jobs:
       - name: Build and push images
         env:
           DOCKER_REGISTRY: ghcr.io/${{ github.repository_owner }}
-        run: |
-          chmod +x scripts/build-docker.sh
-          ./scripts/build-docker.sh rc ${{ steps.version.outputs.rc_number }} push
+        run: node scripts/build-docker.cjs --type rc --rc ${{ steps.version.outputs.rc_number }} --push
       
       - name: Create release archives
-        run: |
-          chmod +x scripts/create-archives.sh
-          ./scripts/create-archives.sh ${{ steps.version.outputs.version }}
+        run: node scripts/create-archives.cjs ${{ steps.version.outputs.version }}
       
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2

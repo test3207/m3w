@@ -32,56 +32,40 @@ This ensures:
 
 ## Quick Start (Recommended)
 
-### Windows
-
-```powershell
-# Build all images (artifacts + Docker images)
-.\scripts\build-docker.ps1 -Type prod
-
-# Build RC version
-.\scripts\build-docker.ps1 -Type rc -RcNumber 1
-
-# Build and test AIO image
-.\scripts\build-docker.ps1 -Type prod -Test
-
-# Skip artifact build (use existing docker-build-output/)
-.\scripts\build-docker.ps1 -Type prod -SkipArtifacts
-
-# Build and push to registry
-.\scripts\build-docker.ps1 -Type prod -Push
-```
-
-### Linux / CI
+All platforms use Node.js scripts for consistency:
 
 ```bash
-# Build all images
-./scripts/build-docker.sh prod
+# Build all images (artifacts + Docker images)
+node scripts/build-docker.cjs --type prod
+# Or via npm: npm run docker:build
 
 # Build RC version
-./scripts/build-docker.sh rc 1
+node scripts/build-docker.cjs --type rc --rc 1
+# Or via npm: npm run docker:build:rc
 
 # Build and test AIO image
-./scripts/build-docker.sh prod test
+node scripts/build-docker.cjs --type prod --test
+# Or via npm: npm run docker:build:test
 
-# Skip artifact build
-./scripts/build-docker.sh prod skip-artifacts
+# Skip artifact build (use existing docker-build-output/)
+node scripts/build-docker.cjs --type prod --skip-artifacts
 
-# Build and push
-./scripts/build-docker.sh prod push
+# Build and push to registry
+node scripts/build-docker.cjs --type prod --push
+
+# Specify custom registry
+node scripts/build-docker.cjs --type prod --registry ghcr.io/test3207
 ```
+
+See full options with: `node scripts/build-docker.cjs --help`
 
 ## Local Testing
 
-Use the `-Test` flag to automatically test built images:
-
-```powershell
-# Windows: Build and test
-.\scripts\build-docker.ps1 -Type prod -Test
-```
+Use the `--test` flag to automatically test built images:
 
 ```bash
-# Linux: Build and test
-./scripts/build-docker.sh prod test
+node scripts/build-docker.cjs --type prod --test
+# Or: npm run docker:build:test
 ```
 
 This will:

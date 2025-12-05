@@ -5,7 +5,7 @@
 # IMPORTANT: This Dockerfile expects PRE-BUILT artifacts in build context
 # Build context should be: docker-build-output/
 #
-# Prerequisites (built by scripts/build-docker.ps1 or build-docker.sh):
+# Prerequisites (built by scripts/build-docker.cjs):
 #   - shared/dist/           (compiled shared package)
 #   - shared/package.json
 #   - backend/dist/          (compiled backend)
@@ -14,11 +14,9 @@
 #   - frontend/dist/         (compiled frontend)
 #
 # Usage:
-#   # Windows (full pipeline)
-#   .\scripts\build-docker.ps1 -Type prod
-#
-#   # Linux/CI (full pipeline)
-#   ./scripts/build-docker.sh prod
+#   # Full pipeline (any platform)
+#   node scripts/build-docker.cjs --type prod
+#   # Or: npm run docker:build
 #
 #   # Manual (after artifacts built)
 #   docker build -f docker/Dockerfile -t m3w:latest docker-build-output/

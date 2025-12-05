@@ -6,13 +6,45 @@
  * Cross-platform script that builds Docker images for M3W.
  * Replaces build-docker.ps1 and build-docker.sh.
  *
+ * Features:
+ *   - Builds artifacts inside Docker container (consistent environment)
+ *   - Creates All-in-One, Backend-only, and Frontend-only images
+ *   - Supports production and release candidate (RC) builds
+ *   - Auto-detects container runtime (Docker or Podman)
+ *   - Optional image testing and registry push
+ *
  * Usage:
- *   node scripts/build-docker.cjs prod              # Production build
- *   node scripts/build-docker.cjs rc 1              # RC build (rc.1)
- *   node scripts/build-docker.cjs prod --push       # Build and push
- *   node scripts/build-docker.cjs prod --test       # Build and test AIO image
- *   node scripts/build-docker.cjs prod --skip-artifacts  # Skip artifact build
- *   node scripts/build-docker.cjs --help            # Show help
+ *   node scripts/build-docker.cjs --type prod              # Production build
+ *   node scripts/build-docker.cjs --type rc --rc 1         # RC build (rc.1)
+ *   node scripts/build-docker.cjs --type prod --push       # Build and push
+ *   node scripts/build-docker.cjs --type prod --test       # Build and test AIO
+ *   node scripts/build-docker.cjs --type prod --skip-artifacts  # Use existing
+ *   node scripts/build-docker.cjs --help                   # Show help
+ *
+ * npm scripts:
+ *   npm run docker:build        # Production build
+ *   npm run docker:build:rc     # RC build
+ *   npm run docker:build:test   # Build and test
+ *
+ * Environment variables:
+ *   DOCKER_REGISTRY    Override default registry (ghcr.io/test3207)
+ *
+ * Build process:
+ *   1. Run docker-build.sh inside container to create artifacts
+ *   2. Copy artifacts to docker-build-output/
+ *   3. Build Docker images using Dockerfiles
+ *   4. Optionally test and/or push images
+ *
+ * Related files:
+ *   - scripts/docker-build.sh: Runs inside container (Linux only)
+ *   - docker/Dockerfile: All-in-One image
+ *   - docker/Dockerfile.backend: Backend-only image
+ *   - docker/Dockerfile.frontend: Frontend-only image
+ *   - docker/docker-version.conf: Node.js image version
+ *
+ * CI Integration:
+ *   - Called by .github/workflows/build-release.yml
+ *   - Called by .github/workflows/build-rc.yml
  */
 
 const { execSync, spawnSync } = require('child_process');
@@ -65,9 +97,15 @@ function parseArgs() {
       result.skipArtifacts = true;
     } else if (arg === '--registry' && args[i + 1]) {
       result.registry = args[++i];
+    } else if (arg === '--type' && args[i + 1]) {
+      result.type = args[++i];
+    } else if (arg === '--rc' && args[i + 1]) {
+      result.rcNumber = parseInt(args[++i], 10);
     } else if (arg === 'prod' || arg === 'rc') {
+      // Legacy positional argument support
       result.type = arg;
     } else if (/^\d+$/.test(arg)) {
+      // Legacy positional RC number
       result.rcNumber = parseInt(arg, 10);
     }
   }
@@ -81,13 +119,11 @@ function showHelp() {
 ${colors.cyan}M3W Docker Image Build Script${colors.reset}
 ==============================
 
-Usage: node scripts/build-docker.cjs <type> [rc-number] [options]
-
-Types:
-  prod    Production build (default)
-  rc      Release candidate build
+Usage: node scripts/build-docker.cjs [options]
 
 Options:
+  --type <type>     Build type: prod (default) or rc
+  --rc <number>     RC number for rc builds (default: 1)
   --push            Push images to registry after build
   --test            Test the AIO image after build
   --skip-artifacts  Skip artifact build (use existing docker-build-output/)
@@ -95,11 +131,25 @@ Options:
   --help, -h        Show this help message
 
 Examples:
-  node scripts/build-docker.cjs prod                    # Production build
-  node scripts/build-docker.cjs rc 1                    # RC build (v0.1.0-rc.1)
-  node scripts/build-docker.cjs prod --push             # Build and push
-  node scripts/build-docker.cjs prod --test             # Build and test
-  node scripts/build-docker.cjs prod --skip-artifacts   # Use existing artifacts
+  node scripts/build-docker.cjs --type prod                   # Production build
+  node scripts/build-docker.cjs --type rc --rc 1              # RC build (v0.1.0-rc.1)
+  node scripts/build-docker.cjs --type prod --push            # Build and push
+  node scripts/build-docker.cjs --type prod --test            # Build and test
+  node scripts/build-docker.cjs --type prod --skip-artifacts  # Use existing artifacts
+
+npm scripts:
+  npm run docker:build        # Production build
+  npm run docker:build:rc     # RC build
+  npm run docker:build:test   # Build and test
+
+Environment:
+  DOCKER_REGISTRY   Override default registry
+
+Build process:
+  1. Builds artifacts inside Docker container (scripts/docker-build.sh)
+  2. Copies artifacts to docker-build-output/
+  3. Builds Docker images (AIO, Backend, Frontend)
+  4. Optionally tests and/or pushes images
 `);
 }
 

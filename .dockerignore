@@ -77,6 +77,5 @@ Dockerfile*
 # Misc
 README.md
 INTEGRATION_TESTING.md
-setup.ps1
-setup.sh
 temp
+

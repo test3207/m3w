@@ -3,14 +3,29 @@
 /**
  * Version Bump Script
  *
- * Bumps the version number in all package.json files.
+ * Bumps the version number in all package.json files across the monorepo.
  * Cross-platform replacement for bump-version.ps1.
  *
+ * Features:
+ *   - Updates version in root, frontend, backend, and shared package.json
+ *   - Supports semantic versioning (patch, minor, major)
+ *   - Optional git commit with version tag
+ *   - Interactive confirmation before changes
+ *
  * Usage:
- *   node scripts/bump-version.cjs patch   # 0.1.0 -> 0.1.1
- *   node scripts/bump-version.cjs minor   # 0.1.0 -> 0.2.0
- *   node scripts/bump-version.cjs major   # 0.1.0 -> 1.0.0
- *   node scripts/bump-version.cjs --help  # Show help
+ *   node scripts/bump-version.cjs patch          # 0.1.0 -> 0.1.1
+ *   node scripts/bump-version.cjs minor          # 0.1.0 -> 0.2.0
+ *   node scripts/bump-version.cjs major          # 0.1.0 -> 1.0.0
+ *   node scripts/bump-version.cjs patch --commit # Bump and git commit
+ *   node scripts/bump-version.cjs --help         # Show help
+ *
+ * npm scripts:
+ *   npm run version:patch                        # Bump patch and commit
+ *   npm run version:minor                        # Bump minor and commit
+ *   npm run version:major                        # Bump major and commit
+ *
+ * Related scripts:
+ *   - build-docker.cjs: Build Docker images after version bump
  */
 
 const fs = require('fs');

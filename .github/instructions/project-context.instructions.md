@@ -274,19 +274,27 @@ m3w/
 │   │   └── types/                # Shared TypeScript types
 │   ├── package.json              # Shared dependencies
 │   └── tsconfig.json             # Shared TypeScript config
-├── scripts/                      # Build and development scripts
+├── scripts/                      # Build and development scripts (Node.js, cross-platform)
+│   ├── setup.cjs                 # Project setup (npm install, env, containers, migrations)
+│   ├── setup-lan.cjs             # LAN access configuration
+│   ├── bump-version.cjs          # Version bumping (patch/minor/major)
+│   ├── build-docker.cjs          # Docker image building
+│   ├── create-archives.cjs       # Release archive creation
 │   ├── build-i18n.cjs            # i18n type generation
 │   ├── watch-i18n.cjs            # i18n watch mode
-│   └── generate-icons.cjs        # PWA icon generation
+│   ├── generate-icons.cjs        # PWA icon generation
+│   ├── reset-local-data.cjs      # Local data reset
+│   └── docker-build.sh           # In-container build (runs inside Docker)
 ├── docker/                       # Container definitions and supporting scripts
-│   ├── Dockerfile                # Backend production image
-│   └── Dockerfile.dev            # Development image (if needed)
+│   ├── Dockerfile                # All-in-one production image
+│   ├── Dockerfile.backend        # Backend-only image
+│   ├── Dockerfile.frontend       # Frontend-only image (Nginx)
+│   └── examples/                 # Deployment examples
 ├── docs/                         # Developer documentation and regional guides
 ├── package.json                  # Root workspace configuration
 ├── docker-compose.yml            # Local development services
 ├── .dockerignore                 # Docker build exclusions
-├── README.md                     # Project documentation
-└── setup.ps1 / setup.sh          # Cross-platform setup scripts
+└── README.md                     # Project documentation
 ```
 
 ### Asset Management

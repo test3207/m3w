@@ -1,20 +1,25 @@
 #!/bin/sh
-# Docker Build Script
-# Builds all artifacts inside a Linux container for consistent cross-platform results
+# Docker Build Script (Linux Only)
 #
-# This script runs INSIDE the container. It:
+# This script runs INSIDE a Linux container to build artifacts.
+# It CANNOT and SHOULD NOT be run directly on Windows or macOS.
+#
+# Purpose:
+# - Ensures consistent builds across all platforms
+# - Generates Linux-specific node_modules (Prisma client)
+# - Produces artifacts ready for Docker image building
+#
+# This script is called by:
+# - scripts/build-docker.cjs (automatically, via Docker container)
+# - GitHub Actions CI (directly on Linux runner)
+#
+# DO NOT call this script directly on your host machine.
+# Use: node scripts/build-docker.cjs --type prod
+#
+# Process:
 # 1. Copies source to /build (isolated from host node_modules)
 # 2. Installs Linux dependencies and builds
-# 3. Copies only dist and production node_modules back to /app/docker-build-output
-#
-# Usage (with docker or podman - image version from docker/.docker-version):
-#   # Production build (default)
-#   docker run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
-#     <NODE_IMAGE> sh /app/scripts/docker-build.sh
-#
-#   # RC build (includes demo mode code)
-#   docker run --rm -v "${PWD}:/app:ro" -v "${PWD}/docker-build-output:/output" \
-#     -e BUILD_TARGET=rc <NODE_IMAGE> sh /app/scripts/docker-build.sh
+# 3. Copies only dist and production node_modules to /output
 #
 # Output (in docker-build-output/):
 #   - backend/dist/          (compiled backend)
@@ -184,5 +189,4 @@ echo ""
 echo "📁 Output location: docker-build-output/"
 echo ""
 echo "🐳 Ready to build Docker images with:"
-echo "   Windows: .\\scripts\\build-docker.ps1 -Type prod -SkipArtifacts"
-echo "   Linux:   ./scripts/build-docker.sh prod skip-artifacts"
+echo "   node scripts/build-docker.cjs --type prod --skip-artifacts"

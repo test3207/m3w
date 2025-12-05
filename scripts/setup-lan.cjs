@@ -6,11 +6,27 @@
  * Configures the application for local area network access.
  * Cross-platform replacement for setup-lan.ps1.
  *
+ * Features:
+ *   - Auto-detects local IP address
+ *   - Updates frontend and backend .env files with LAN IP
+ *   - Configures Windows Firewall rules (Windows only, requires admin)
+ *   - Provides access instructions after configuration
+ *
  * Usage:
- *   node scripts/setup-lan.cjs              # Auto-detect IP
- *   node scripts/setup-lan.cjs --ip 192.168.1.100  # Use specific IP
- *   node scripts/setup-lan.cjs --skip-firewall     # Skip firewall config
- *   node scripts/setup-lan.cjs --help              # Show help
+ *   node scripts/setup-lan.cjs                        # Auto-detect IP
+ *   node scripts/setup-lan.cjs --ip 192.168.1.100     # Use specific IP
+ *   node scripts/setup-lan.cjs --skip-firewall        # Skip firewall config
+ *   node scripts/setup-lan.cjs --help                 # Show help
+ *
+ * npm scripts:
+ *   npm run setup:lan                                 # Auto-detect IP
+ *
+ * Prerequisites:
+ *   - Run setup.cjs first to create .env files
+ *   - Windows: Admin rights for firewall configuration
+ *
+ * Related scripts:
+ *   - setup.cjs: Run this first to create .env files
  */
 
 const fs = require('fs');

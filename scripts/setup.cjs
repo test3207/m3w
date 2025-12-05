@@ -6,11 +6,28 @@
  * Cross-platform setup script that works on Windows, macOS, and Linux.
  * Replaces setup.ps1 and setup.sh with a single Node.js implementation.
  *
+ * Features:
+ *   - Installs npm dependencies (all workspaces)
+ *   - Creates .env files from templates (backend/.env, frontend/.env)
+ *   - Starts infrastructure containers (PostgreSQL, MinIO)
+ *   - Runs database migrations
+ *   - Auto-detects container runtime (Docker or Podman)
+ *
  * Usage:
  *   node scripts/setup.cjs              # Full setup
- *   node scripts/setup.cjs --skip-env   # Skip environment variable setup
+ *   node scripts/setup.cjs --skip-env   # Skip environment file creation
  *   node scripts/setup.cjs --help       # Show help
- *   npm run setup                       # Via npm script
+ *
+ * npm scripts:
+ *   npm run setup                       # Full setup
+ *   npm run setup:skip-env              # Skip env file creation
+ *
+ * Prerequisites:
+ *   - Node.js 20+
+ *   - Docker or Podman
+ *
+ * Related scripts:
+ *   - setup-lan.cjs: Configure LAN access after setup
  */
 
 const { execSync, spawnSync } = require('child_process');

@@ -500,18 +500,23 @@ gh api graphql -f query='...' --jq '... | select(.isResolved == false) | length'
 
 ### Build Scripts
 
-Local builds use PowerShell scripts for consistency:
+All build scripts are cross-platform Node.js scripts:
 
-```powershell
+```bash
 # Build RC images (for demo/testing)
-.\scripts\build-docker.ps1 -Type rc -RcNumber 1
+node scripts/build-docker.cjs --type rc --rc 1
+# Or: npm run docker:build:rc
 
 # Build production images (from current package.json version)
-.\scripts\build-docker.ps1 -Type prod
+node scripts/build-docker.cjs --type prod
+# Or: npm run docker:build
 
 # Bump version for next release
-.\scripts\bump-version.ps1 -Type patch  # or minor, major
+node scripts/bump-version.cjs patch  # or minor, major
+# Or: npm run version:patch
 ```
+
+See `node scripts/build-docker.cjs --help` for all options.
 
 ### Versioning Strategy
 
@@ -546,21 +551,24 @@ See [Issue #61](https://github.com/test3207/m3w/issues/61) for GitHub Actions wo
 
 The build script auto-detects the container runtime (Docker or Podman):
 
-```powershell
+```bash
 # Build all image variants (AIO + Backend + Frontend)
-.\scripts\build-docker.ps1 -Type prod
+node scripts/build-docker.cjs --type prod
+# Or: npm run docker:build
 
 # Build with registry prefix
-.\scripts\build-docker.ps1 -Type prod -Registry ghcr.io/test3207
+node scripts/build-docker.cjs --type prod --registry ghcr.io/test3207
 
 # Build RC variant
-.\scripts\build-docker.ps1 -Type rc -RcNumber 1
+node scripts/build-docker.cjs --type rc --rc 1
+# Or: npm run docker:build:rc
 
 # Build and test
-.\scripts\build-docker.ps1 -Type prod -Test
+node scripts/build-docker.cjs --type prod --test
+# Or: npm run docker:build:test
 ```
 
-See [scripts/build-docker.ps1](../../scripts/build-docker.ps1) for full options.
+See `node scripts/build-docker.cjs --help` for full options.
 
 ### Manual Build and Test
 
@@ -583,7 +591,8 @@ podman stop m3w-prod ; podman rm m3w-prod ; podman rmi m3w:local
 
 **For RC builds** (with demo mode):
 ```bash
-.\scripts\build-docker.ps1 -Type rc -RcNumber 1
+node scripts/build-docker.cjs --type rc --rc 1
 docker run -d --name m3w-rc --network m3w_default -p 4000:4000 \
   --env-file backend/.env.docker -e DEMO_MODE=true ghcr.io/test3207/m3w:v0.1.0-rc.1
 ```
+

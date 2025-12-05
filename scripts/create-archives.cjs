@@ -6,10 +6,19 @@
  * Creates tar.gz and zip archives from docker-build-output/ directory
  * for distribution via GitHub Releases.
  *
+ * Features:
+ *   - Creates archives for All-in-One, Backend-only, and Frontend-only
+ *   - Generates both .tar.gz (Linux/macOS) and .zip (Windows) formats
+ *   - Uses native tar/zip on Unix, PowerShell Compress-Archive on Windows
+ *   - Verifies archive contents after creation
+ *
  * Usage:
  *   node scripts/create-archives.cjs <version>
  *   node scripts/create-archives.cjs v0.1.0-rc.1
  *   node scripts/create-archives.cjs --help
+ *
+ * npm scripts:
+ *   npm run archives                         # Called by CI, requires version arg
  *
  * Output (in project root):
  *   - m3w-<version>.tar.gz          (All-in-One)
@@ -18,6 +27,17 @@
  *   - m3w-backend-<version>.zip
  *   - m3w-frontend-<version>.tar.gz (Frontend only)
  *   - m3w-frontend-<version>.zip
+ *
+ * Prerequisites:
+ *   - docker-build-output/ directory must exist (run build-docker.cjs first)
+ *   - tar command (Unix) or PowerShell (Windows)
+ *
+ * Related scripts:
+ *   - build-docker.cjs: Run first to create docker-build-output/
+ *
+ * CI Integration:
+ *   - Called by .github/workflows/build-release.yml
+ *   - Called by .github/workflows/build-rc.yml
  */
 
 const { execSync } = require('child_process');
