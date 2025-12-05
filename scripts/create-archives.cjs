@@ -63,6 +63,7 @@ const log = {
   error: (msg) => console.log(`${colors.red}${msg}${colors.reset}`),
   gray: (msg) => console.log(`${colors.gray}${msg}${colors.reset}`),
   white: (msg) => console.log(`${colors.white}${msg}${colors.reset}`),
+  blank: () => console.log(''),
 };
 
 // Check if a command exists
@@ -111,32 +112,30 @@ function getFileSize(filePath) {
 
 // Show help message
 function showHelp() {
-  console.log(`
-${colors.cyan}Create Release Archives Script${colors.reset}
-================================
-
-Creates tar.gz and zip archives from docker-build-output/ directory.
-
-Usage: node scripts/create-archives.cjs <version>
-
-Arguments:
-  version    Version string (e.g., v0.1.0-rc.1)
-
-Options:
-  --help, -h    Show this help message
-
-Output files (in project root):
-  m3w-<version>.tar.gz          All-in-One archive
-  m3w-<version>.zip
-  m3w-backend-<version>.tar.gz  Backend only
-  m3w-backend-<version>.zip
-  m3w-frontend-<version>.tar.gz Frontend only
-  m3w-frontend-<version>.zip
-
-Examples:
-  node scripts/create-archives.cjs v0.1.0
-  node scripts/create-archives.cjs v0.1.0-rc.1
-`);
+  log.info('Create Release Archives Script');
+  log.info('================================');
+  log.blank();
+  log.white('Creates tar.gz and zip archives from docker-build-output/ directory.');
+  log.blank();
+  log.white('Usage: node scripts/create-archives.cjs <version>');
+  log.blank();
+  log.white('Arguments:');
+  log.white('  version    Version string (e.g., v0.1.0-rc.1)');
+  log.blank();
+  log.white('Options:');
+  log.white('  --help, -h    Show this help message');
+  log.blank();
+  log.white('Output files (in project root):');
+  log.white('  m3w-<version>.tar.gz          All-in-One archive');
+  log.white('  m3w-<version>.zip');
+  log.white('  m3w-backend-<version>.tar.gz  Backend only');
+  log.white('  m3w-backend-<version>.zip');
+  log.white('  m3w-frontend-<version>.tar.gz Frontend only');
+  log.white('  m3w-frontend-<version>.zip');
+  log.blank();
+  log.white('Examples:');
+  log.white('  node scripts/create-archives.cjs v0.1.0');
+  log.white('  node scripts/create-archives.cjs v0.1.0-rc.1');
 }
 
 // Create tar.gz archive (cross-platform)
@@ -210,12 +209,12 @@ async function main() {
   const projectRoot = path.resolve(__dirname, '..');
   const outputDir = path.join(projectRoot, 'docker-build-output');
 
-  console.log('');
+  log.blank();
   log.info('📦 Creating Release Archives');
   log.info('============================');
   log.white(`   Version: ${version}`);
   log.white(`   Source:  ${outputDir}`);
-  console.log('');
+  log.blank();
 
   // Verify output directory exists
   if (!fs.existsSync(outputDir)) {
@@ -264,9 +263,9 @@ async function main() {
     log.success(`   ✓ ${archive.prefix}-${version}.zip`);
   }
 
-  console.log('');
+  log.blank();
   log.success('✅ Archives created successfully!');
-  console.log('');
+  log.blank();
 
   // Show archive sizes
   log.info('📊 Archive sizes:');
@@ -282,7 +281,7 @@ async function main() {
     }
   }
 
-  console.log('');
+  log.blank();
   log.info('📋 Files created:');
   for (const archive of archives) {
     for (const ext of ['.tar.gz', '.zip']) {
@@ -295,7 +294,7 @@ async function main() {
       }
     }
   }
-  console.log('');
+  log.blank();
 }
 
 main().catch((err) => {

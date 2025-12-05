@@ -53,6 +53,7 @@ const log = {
   error: (msg) => console.log(`${colors.red}${msg}${colors.reset}`),
   gray: (msg) => console.log(`${colors.gray}${msg}${colors.reset}`),
   white: (msg) => console.log(`${colors.white}${msg}${colors.reset}`),
+  blank: () => console.log(''),
 };
 
 // Parse command line arguments
@@ -80,24 +81,22 @@ function parseArgs() {
 
 // Show help message
 function showHelp() {
-  console.log(`
-${colors.cyan}M3W LAN Access Setup Script${colors.reset}
-===========================
-
-Configures the application for local area network access.
-
-Usage: node scripts/setup-lan.cjs [options]
-
-Options:
-  --ip <address>    Use specific IP address
-  --skip-firewall   Skip Windows firewall configuration
-  --help, -h        Show this help message
-
-Examples:
-  node scripts/setup-lan.cjs                    # Auto-detect IP
-  node scripts/setup-lan.cjs --ip 192.168.1.100 # Use specific IP
-  node scripts/setup-lan.cjs --skip-firewall    # Skip firewall setup
-`);
+  log.info('M3W LAN Access Setup Script');
+  log.info('===========================');
+  log.blank();
+  log.white('Configures the application for local area network access.');
+  log.blank();
+  log.white('Usage: node scripts/setup-lan.cjs [options]');
+  log.blank();
+  log.white('Options:');
+  log.white('  --ip <address>    Use specific IP address');
+  log.white('  --skip-firewall   Skip Windows firewall configuration');
+  log.white('  --help, -h        Show this help message');
+  log.blank();
+  log.white('Examples:');
+  log.white('  node scripts/setup-lan.cjs                    # Auto-detect IP');
+  log.white('  node scripts/setup-lan.cjs --ip 192.168.1.100 # Use specific IP');
+  log.white('  node scripts/setup-lan.cjs --skip-firewall    # Skip firewall setup');
 }
 
 // Prompt for user selection
@@ -238,7 +237,7 @@ async function main() {
   process.chdir(projectRoot);
 
   log.info('=== M3W LAN Access Setup ===');
-  console.log('');
+  log.blank();
 
   // Get local IP address
   log.warn('🔍 Detecting local IP address...');
@@ -267,7 +266,7 @@ async function main() {
   }
 
   log.success(`✅ Using IP address: ${localIP}`);
-  console.log('');
+  log.blank();
 
   // Update backend .env
   log.warn('📝 Updating backend/.env...');
@@ -292,7 +291,7 @@ async function main() {
   });
 
   log.success('✅ Backend configuration updated');
-  console.log('');
+  log.blank();
 
   // Update frontend .env
   log.warn('📝 Updating frontend/.env...');
@@ -314,7 +313,7 @@ async function main() {
   });
 
   log.success('✅ Frontend configuration updated');
-  console.log('');
+  log.blank();
 
   // Configure firewall (Windows only)
   if (!args.skipFirewall) {
@@ -323,22 +322,22 @@ async function main() {
     log.warn('⏭️  Skipping firewall configuration');
   }
 
-  console.log('');
+  log.blank();
   log.success('=== Setup Complete ===');
-  console.log('');
+  log.blank();
   log.info('📱 Access URLs:');
   log.white(`   Frontend: http://${localIP}:3000`);
   log.white(`   Backend:  http://${localIP}:4000`);
   log.white(`   Health:   http://${localIP}:4000/health`);
-  console.log('');
+  log.blank();
   log.info('🚀 To start the services, run:');
   log.white('   npm run dev');
-  console.log('');
+  log.blank();
   log.warn('💡 Tips:');
   log.white('   - Make sure Docker services are running (docker-compose up -d)');
   log.white(`   - Test backend: curl http://${localIP}:4000/health`);
   log.white('   - Full documentation: docs/LAN_ACCESS.md');
-  console.log('');
+  log.blank();
 }
 
 main().catch((err) => {

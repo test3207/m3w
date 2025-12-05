@@ -56,6 +56,7 @@ const log = {
   gray: (msg) => console.log(`${colors.gray}${msg}${colors.reset}`),
   blue: (msg) => console.log(`${colors.blue}${msg}${colors.reset}`),
   white: (msg) => console.log(`${colors.white}${msg}${colors.reset}`),
+  blank: () => console.log(''),
 };
 
 // Parse command line arguments
@@ -69,21 +70,19 @@ function parseArgs() {
 
 // Show help message
 function showHelp() {
-  console.log(`
-${colors.cyan}M3W Project Setup Script${colors.reset}
-========================
-
-Usage: node scripts/setup.cjs [options]
-
-Options:
-  --skip-env     Skip environment variable setup
-  --help, -h     Show this help message
-
-Examples:
-  node scripts/setup.cjs            # Full setup
-  node scripts/setup.cjs --skip-env # Skip .env setup
-  npm run setup                     # Via npm script
-`);
+  log.info('M3W Project Setup Script');
+  log.info('========================');
+  log.blank();
+  log.white('Usage: node scripts/setup.cjs [options]');
+  log.blank();
+  log.white('Options:');
+  log.white('  --skip-env     Skip environment variable setup');
+  log.white('  --help, -h     Show this help message');
+  log.blank();
+  log.white('Examples:');
+  log.white('  node scripts/setup.cjs            # Full setup');
+  log.white('  node scripts/setup.cjs --skip-env # Skip .env setup');
+  log.white('  npm run setup                     # Via npm script');
 }
 
 // Detect OS
@@ -115,15 +114,6 @@ function commandExists(cmd) {
   }
 }
 
-// Execute command and return output
-function execOutput(cmd) {
-  try {
-    return execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-  } catch {
-    return '';
-  }
-}
-
 // Execute command with inherited stdio
 function exec(cmd, options = {}) {
   try {
@@ -132,31 +122,6 @@ function exec(cmd, options = {}) {
   } catch {
     return false;
   }
-}
-
-// Detect container runtime
-function getContainerRuntime() {
-  // Check Podman first
-  if (commandExists('podman')) {
-    try {
-      execSync('podman info', { stdio: 'ignore' });
-      return { runtime: 'podman', compose: 'podman-compose' };
-    } catch {
-      // Podman exists but not running
-    }
-  }
-
-  // Check Docker
-  if (commandExists('docker')) {
-    try {
-      execSync('docker info', { stdio: 'ignore' });
-      return { runtime: 'docker', compose: 'docker compose' };
-    } catch {
-      // Docker exists but not running
-    }
-  }
-
-  return null;
 }
 
 // Check if Podman Machine is running (Windows/macOS)
@@ -200,7 +165,7 @@ async function waitForPostgres(runtime, maxRetries = 30) {
 }
 
 // Copy file if destination doesn't exist
-function copyIfNotExists(src, dest, description) {
+function copyIfNotExists(src, dest) {
   const projectRoot = path.resolve(__dirname, '..');
   const srcPath = path.join(projectRoot, src);
   const destPath = path.join(projectRoot, dest);
@@ -220,7 +185,189 @@ function copyIfNotExists(src, dest, description) {
   }
 }
 
-// Main setup function
+// ============================================================================
+// Setup Steps
+// ============================================================================
+
+/**
+ * Check Node.js version meets minimum requirement
+ */
+function checkNodeVersion() {
+  const nodeVersion = process.version;
+  const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0], 10);
+
+  if (majorVersion >= 25) {
+    log.success(`  ✓ Node.js ${nodeVersion}`);
+  } else {
+    log.warn(`  ⚠️  Node.js ${nodeVersion} detected, but v25+ is recommended`);
+  }
+}
+
+/**
+ * Detect and validate container runtime (Podman or Docker)
+ * @returns {{ runtime: string, compose: string }} Container runtime info
+ */
+function detectContainerRuntime() {
+  // Try Podman first
+  if (commandExists('podman')) {
+    log.success('  ✓ Podman detected');
+
+    if (!commandExists('podman-compose')) {
+      log.error('  ✗ podman-compose not found');
+      log.warn('    Please install: pip install podman-compose');
+      process.exit(1);
+    }
+    log.success('  ✓ podman-compose detected');
+
+    if (!checkPodmanMachine()) {
+      log.error('  ✗ Failed to start Podman Machine');
+      process.exit(1);
+    }
+
+    return { runtime: 'podman', compose: 'podman-compose' };
+  }
+
+  // Try Docker
+  if (commandExists('docker')) {
+    try {
+      execSync('docker info', { stdio: 'ignore' });
+      log.success('  ✓ Docker detected');
+      return { runtime: 'docker', compose: 'docker compose' };
+    } catch {
+      log.error('  ✗ Docker detected but not running');
+      log.warn('    Please start Docker Desktop');
+      process.exit(1);
+    }
+  }
+
+  // Neither found
+  log.error('  ✗ Neither Podman nor Docker found');
+  log.warn('    Please install Podman Desktop: https://podman-desktop.io/');
+  log.warn('    Then run: pip install podman-compose');
+  process.exit(1);
+}
+
+/**
+ * Install npm dependencies for all workspaces
+ */
+function installDependencies() {
+  log.info('📦 Installing dependencies...');
+  const projectRoot = path.resolve(__dirname, '..');
+
+  const workspaces = [
+    { name: 'root', cwd: projectRoot },
+    { name: 'frontend', cwd: path.join(projectRoot, 'frontend') },
+    { name: 'backend', cwd: path.join(projectRoot, 'backend') },
+    { name: 'shared', cwd: path.join(projectRoot, 'shared') },
+  ];
+
+  for (const { name, cwd } of workspaces) {
+    log.gray(`  Installing ${name} dependencies...`);
+    if (!exec('npm install', { cwd })) {
+      log.error(`  ✗ ${name} npm install failed`);
+      process.exit(1);
+    }
+  }
+
+  // Optional: Playwright browsers
+  log.gray('  Installing Playwright browsers (for testing)...');
+  exec('npx playwright install', { cwd: path.join(projectRoot, 'frontend') });
+
+  log.success('  ✓ All dependencies installed');
+}
+
+/**
+ * Setup environment files from templates
+ * @returns {boolean} True if backend .env was newly created
+ */
+function setupEnvironmentFiles() {
+  log.info('🔐 Setting up environment variables...');
+
+  copyIfNotExists('.npmrc.example', '.npmrc');
+  const createdBackendEnv = copyIfNotExists('backend/.env.example', 'backend/.env');
+  copyIfNotExists('frontend/.env.example', 'frontend/.env');
+
+  if (createdBackendEnv) {
+    log.warn('  ⚠️  Please edit backend/.env and add your GitHub OAuth credentials');
+    log.gray('     Visit: https://github.com/settings/developers');
+  }
+
+  return createdBackendEnv;
+}
+
+/**
+ * Start container services
+ * @param {{ runtime: string, compose: string }} container
+ */
+function startContainers(container) {
+  log.info('🐳 Starting containers...');
+  log.gray('  Using docker-compose.yml (official images)');
+  log.gray('  China network tips: see docs/CHINA_REGISTRY.md');
+
+  if (!exec(`${container.compose} -f docker-compose.yml up -d`)) {
+    log.error('  ✗ Failed to start containers');
+    log.warn('  💡 Tip: Check if ports 5432 or 6379 are already in use');
+    process.exit(1);
+  }
+
+  log.success('  ✓ Containers started');
+}
+
+/**
+ * Wait for PostgreSQL to be ready and run migrations
+ * @param {string} runtime - Container runtime (podman/docker)
+ */
+async function setupDatabase(runtime) {
+  log.info('⏳ Waiting for PostgreSQL to be ready...');
+
+  const pgReady = await waitForPostgres(runtime);
+  if (!pgReady) {
+    log.error('  ✗ PostgreSQL failed to start');
+    process.exit(1);
+  }
+  log.success('  ✓ PostgreSQL is ready');
+  log.blank();
+
+  log.info('🗄️  Running database migrations...');
+  const projectRoot = path.resolve(__dirname, '..');
+  const backendDir = path.join(projectRoot, 'backend');
+
+  exec('npx prisma generate', { cwd: backendDir });
+
+  if (exec('npx prisma migrate dev --name init', { cwd: backendDir })) {
+    log.success('  ✓ Migrations completed');
+  } else {
+    log.warn('  ⚠️  Migration failed - this is normal for first run');
+  }
+}
+
+/**
+ * Print success message and next steps
+ */
+function printSuccessMessage() {
+  log.success('✅ Setup complete!');
+  log.blank();
+
+  log.info('Next steps:');
+  log.white('  1. Edit backend/.env and add GitHub OAuth credentials');
+  log.white('  2. Run: npm run dev');
+  log.white('  3. Frontend: http://localhost:3000');
+  log.white('  4. Backend API: http://localhost:4000');
+  log.blank();
+
+  log.info('Useful commands:');
+  log.white('  npm run dev              - Start both frontend and backend');
+  log.white('  npm run dev:frontend     - Start frontend only');
+  log.white('  npm run dev:backend      - Start backend only');
+  log.white('  npm run db:studio        - Open Prisma Studio');
+  log.white('  npm run podman:down      - Stop containers');
+  log.white('  npm run podman:logs      - View container logs');
+}
+
+// ============================================================================
+// Main Entry Point
+// ============================================================================
+
 async function main() {
   const args = parseArgs();
 
@@ -229,173 +376,45 @@ async function main() {
     process.exit(0);
   }
 
+  // Initialize
   const projectRoot = path.resolve(__dirname, '..');
   process.chdir(projectRoot);
 
   log.success('🚀 M3W Project Setup');
   log.success('===================');
-  console.log('');
+  log.blank();
 
-  // Detect OS
-  const detectedOS = getOS();
-  log.info(`📋 Detected OS: ${colors.yellow}${detectedOS}${colors.reset}`);
-  console.log('');
+  // Step 1: Show environment info
+  log.info(`📋 Detected OS: ${colors.yellow}${getOS()}${colors.reset}`);
+  log.blank();
 
-  // Check Node.js version (script is already running, so Node exists)
+  // Step 2: Check prerequisites
   log.info('🔍 Checking prerequisites...');
+  checkNodeVersion();
+  const container = detectContainerRuntime();
+  log.blank();
 
-  const nodeVersion = process.version; // e.g., 'v25.0.0'
-  const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0], 10);
-  if (majorVersion >= 25) {
-    log.success(`  ✓ Node.js ${nodeVersion}`);
-  } else {
-    log.warn(`  ⚠️  Node.js ${nodeVersion} detected, but v25+ is recommended`);
-  }
+  // Step 3: Install dependencies
+  installDependencies();
+  log.blank();
 
-  // Check container runtime
-  let container = null;
-
-  if (commandExists('podman')) {
-    log.success('  ✓ Podman detected');
-
-    // Check podman-compose
-    if (commandExists('podman-compose')) {
-      log.success('  ✓ podman-compose detected');
-    } else {
-      log.error('  ✗ podman-compose not found');
-      log.warn('    Please install: pip install podman-compose');
-      process.exit(1);
-    }
-
-    // Check Podman Machine on Windows/macOS
-    if (!checkPodmanMachine()) {
-      log.error('  ✗ Failed to start Podman Machine');
-      process.exit(1);
-    }
-
-    container = { runtime: 'podman', compose: 'podman-compose' };
-  } else if (commandExists('docker')) {
-    try {
-      execSync('docker info', { stdio: 'ignore' });
-      log.success('  ✓ Docker detected');
-      container = { runtime: 'docker', compose: 'docker compose' };
-    } catch {
-      log.error('  ✗ Docker detected but not running');
-      log.warn('    Please start Docker Desktop');
-      process.exit(1);
-    }
-  } else {
-    log.error('  ✗ Neither Podman nor Docker found');
-    log.warn('    Please install Podman Desktop: https://podman-desktop.io/');
-    log.warn('    Then run: pip install podman-compose');
-    process.exit(1);
-  }
-
-  console.log('');
-
-  // Install dependencies
-  log.info('📦 Installing dependencies...');
-
-  log.gray('  Installing root dependencies...');
-  if (!exec('npm install')) {
-    log.error('  ✗ npm install failed');
-    process.exit(1);
-  }
-
-  log.gray('  Installing frontend dependencies...');
-  if (!exec('npm install', { cwd: path.join(projectRoot, 'frontend') })) {
-    log.error('  ✗ frontend npm install failed');
-    process.exit(1);
-  }
-
-  log.gray('  Installing Playwright browsers (for testing)...');
-  exec('npx playwright install', { cwd: path.join(projectRoot, 'frontend') });
-
-  log.gray('  Installing backend dependencies...');
-  if (!exec('npm install', { cwd: path.join(projectRoot, 'backend') })) {
-    log.error('  ✗ backend npm install failed');
-    process.exit(1);
-  }
-
-  log.gray('  Installing shared dependencies...');
-  if (!exec('npm install', { cwd: path.join(projectRoot, 'shared') })) {
-    log.error('  ✗ shared npm install failed');
-    process.exit(1);
-  }
-
-  log.success('  ✓ All dependencies installed');
-  console.log('');
-
-  // Setup environment variables
+  // Step 4: Setup environment files
   if (!args.skipEnv) {
-    log.info('🔐 Setting up environment variables...');
-
-    copyIfNotExists('.npmrc.example', '.npmrc', '.npmrc');
-
-    const createdBackendEnv = copyIfNotExists('backend/.env.example', 'backend/.env', 'backend/.env');
-    if (createdBackendEnv) {
-      log.warn('  ⚠️  Please edit backend/.env and add your GitHub OAuth credentials');
-      log.gray('     Visit: https://github.com/settings/developers');
-    }
-
-    copyIfNotExists('frontend/.env.example', 'frontend/.env', 'frontend/.env');
-
-    console.log('');
+    setupEnvironmentFiles();
+    log.blank();
   }
 
-  // Start containers
-  log.success('  Using docker-compose.yml (official images)');
-  log.warn('  China network tips: see docs/CHINA_REGISTRY.md for proxy/mirror guidance');
-  console.log('');
+  // Step 5: Start containers
+  startContainers(container);
+  log.blank();
 
-  log.info('🐳 Starting containers...');
-  if (!exec(`${container.compose} -f docker-compose.yml up -d`)) {
-    log.error('  ✗ Failed to start containers');
-    log.warn('  💡 Tip: Check if ports 5432 or 6379 are already in use');
-    process.exit(1);
-  }
-  log.success('  ✓ Containers started');
-  console.log('');
+  // Step 6: Setup database
+  await setupDatabase(container.runtime);
+  log.blank();
 
-  // Wait for PostgreSQL
-  log.info('⏳ Waiting for PostgreSQL to be ready...');
-  const pgReady = await waitForPostgres(container.runtime);
-  if (pgReady) {
-    log.success('  ✓ PostgreSQL is ready');
-  } else {
-    log.error('  ✗ PostgreSQL failed to start');
-    process.exit(1);
-  }
-  console.log('');
-
-  // Run Prisma migrations
-  log.info('🗄️  Running database migrations...');
-  exec('npx prisma generate', { cwd: path.join(projectRoot, 'backend') });
-  const migrateResult = exec('npx prisma migrate dev --name init', { cwd: path.join(projectRoot, 'backend') });
-  if (migrateResult) {
-    log.success('  ✓ Migrations completed');
-  } else {
-    log.warn('  ⚠️  Migration failed - this is normal for first run');
-  }
-  console.log('');
-
-  // Success message
-  log.success('✅ Setup complete!');
-  console.log('');
-  log.info('Next steps:');
-  log.white('  1. Edit backend/.env and add GitHub OAuth credentials');
-  log.white('  2. Run: npm run dev');
-  log.white('  3. Frontend: http://localhost:3000');
-  log.white('  4. Backend API: http://localhost:4000');
-  console.log('');
-  log.info('Useful commands:');
-  log.white('  npm run dev              - Start both frontend and backend');
-  log.white('  npm run dev:frontend     - Start frontend only');
-  log.white('  npm run dev:backend      - Start backend only');
-  log.white('  npm run db:studio        - Open Prisma Studio');
-  log.white('  npm run podman:down      - Stop containers');
-  log.white('  npm run podman:logs      - View container logs');
-  console.log('');
+  // Step 7: Done!
+  printSuccessMessage();
+  log.blank();
 }
 
 main().catch((err) => {

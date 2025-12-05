@@ -49,6 +49,7 @@ const log = {
   warn: (msg) => console.log(`${colors.yellow}${msg}${colors.reset}`),
   error: (msg) => console.log(`${colors.red}${msg}${colors.reset}`),
   white: (msg) => console.log(`${colors.white}${msg}${colors.reset}`),
+  blank: () => console.log(''),
 };
 
 // Prompt for user input
@@ -66,27 +67,38 @@ async function prompt(question) {
   });
 }
 
+// Parse command line arguments
+function parseArgs() {
+  const args = process.argv.slice(2);
+  return {
+    type: args.find(a => ['patch', 'minor', 'major'].includes(a.toLowerCase()))?.toLowerCase() || null,
+    yes: args.includes('--yes') || args.includes('-y'),
+    commit: args.includes('--commit'),
+    help: args.includes('--help') || args.includes('-h'),
+  };
+}
+
 // Show help message
 function showHelp() {
-  console.log(`
-${colors.cyan}Version Bump Script${colors.reset}
-===================
-
-Usage: node scripts/bump-version.cjs <type>
-
-Types:
-  patch    Bump patch version (0.1.0 -> 0.1.1)
-  minor    Bump minor version (0.1.0 -> 0.2.0)
-  major    Bump major version (0.1.0 -> 1.0.0)
-
-Options:
-  --help, -h   Show this help message
-
-Examples:
-  node scripts/bump-version.cjs patch
-  node scripts/bump-version.cjs minor
-  node scripts/bump-version.cjs major
-`);
+  log.info('Version Bump Script');
+  log.info('===================');
+  log.blank();
+  log.white('Usage: node scripts/bump-version.cjs <type> [options]');
+  log.blank();
+  log.white('Types:');
+  log.white('  patch    Bump patch version (0.1.0 -> 0.1.1)');
+  log.white('  minor    Bump minor version (0.1.0 -> 0.2.0)');
+  log.white('  major    Bump major version (0.1.0 -> 1.0.0)');
+  log.blank();
+  log.white('Options:');
+  log.white('  --yes, -y    Skip confirmation prompts (for CI)');
+  log.white('  --commit     Create git commit after bump');
+  log.white('  --help, -h   Show this help message');
+  log.blank();
+  log.white('Examples:');
+  log.white('  node scripts/bump-version.cjs patch              # Interactive');
+  log.white('  node scripts/bump-version.cjs patch --yes        # Non-interactive');
+  log.white('  node scripts/bump-version.cjs minor -y --commit  # CI mode');
 }
 
 // Parse version string
@@ -135,20 +147,15 @@ function updatePackageJson(filePath, newVersion) {
 }
 
 async function main() {
-  const args = process.argv.slice(2);
+  const args = parseArgs();
 
   // Show help
-  if (args.includes('--help') || args.includes('-h') || args.length === 0) {
+  if (args.help || !args.type) {
     showHelp();
-    process.exit(args.length === 0 ? 1 : 0);
+    process.exit(args.help ? 0 : 1);
   }
 
-  const type = args[0].toLowerCase();
-  if (!['patch', 'minor', 'major'].includes(type)) {
-    log.error(`❌ Invalid bump type: ${type}`);
-    log.white('   Valid types: patch, minor, major');
-    process.exit(1);
-  }
+  const type = args.type;
 
   const projectRoot = path.resolve(__dirname, '..');
   process.chdir(projectRoot);
@@ -164,13 +171,15 @@ async function main() {
   const newVersion = bumpVersion(currentVersion, type);
 
   log.success(`🆕 New version: v${newVersion}`);
-  console.log('');
+  log.blank();
 
-  // Confirm
-  const answer = await prompt(`Update package.json files to v${newVersion}? (y/N) `);
-  if (answer !== 'y') {
-    log.warn('❌ Aborted');
-    process.exit(0);
+  // Confirm (skip if --yes)
+  if (!args.yes) {
+    const answer = await prompt(`Update package.json files to v${newVersion}? (y/N) `);
+    if (answer !== 'y') {
+      log.warn('❌ Aborted');
+      process.exit(0);
+    }
   }
 
   // Update all package.json files
@@ -189,17 +198,17 @@ async function main() {
   }
 
   log.success('✅ Updated package.json files');
-  console.log('');
+  log.blank();
 
-  // Ask whether to create git commit
-  const commitAnswer = await prompt('Create git commit? (y/N) ');
-  if (commitAnswer === 'y') {
+  // Git commit (auto if --commit, ask otherwise)
+  const shouldCommit = args.commit || (!args.yes && (await prompt('Create git commit? (y/N) ')) === 'y');
+  if (shouldCommit) {
     try {
       execSync(`git add ${packageFiles.join(' ')}`, { stdio: 'inherit' });
       execSync(`git commit -m "chore: bump version to v${newVersion}"`, { stdio: 'inherit' });
 
       log.success('✅ Committed version bump');
-      console.log('');
+      log.blank();
       log.info('📌 Next steps:');
       log.white('   1. Review the commit: git log -1');
       log.white('   2. Push to remote: git push');
@@ -208,13 +217,13 @@ async function main() {
     }
   } else {
     log.warn('⏭️  Skipped git commit');
-    console.log('');
+    log.blank();
     log.info('📌 Remember to commit manually:');
     log.white(`   git add ${packageFiles.join(' ')}`);
     log.white(`   git commit -m "chore: bump version to v${newVersion}"`);
   }
 
-  console.log('');
+  log.blank();
   log.success(`✨ Done! Version bumped from v${currentVersion} to v${newVersion}`);
 }
 

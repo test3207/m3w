@@ -70,6 +70,7 @@ const log = {
   error: (msg) => console.log(`${colors.red}${msg}${colors.reset}`),
   gray: (msg) => console.log(`${colors.gray}${msg}${colors.reset}`),
   white: (msg) => console.log(`${colors.white}${msg}${colors.reset}`),
+  blank: () => console.log(''),
 };
 
 // Parse command line arguments
@@ -115,42 +116,40 @@ function parseArgs() {
 
 // Show help message
 function showHelp() {
-  console.log(`
-${colors.cyan}M3W Docker Image Build Script${colors.reset}
-==============================
-
-Usage: node scripts/build-docker.cjs [options]
-
-Options:
-  --type <type>     Build type: prod (default) or rc
-  --rc <number>     RC number for rc builds (default: 1)
-  --push            Push images to registry after build
-  --test            Test the AIO image after build
-  --skip-artifacts  Skip artifact build (use existing docker-build-output/)
-  --registry <url>  Override registry (default: ghcr.io/test3207)
-  --help, -h        Show this help message
-
-Examples:
-  node scripts/build-docker.cjs --type prod                   # Production build
-  node scripts/build-docker.cjs --type rc --rc 1              # RC build (v0.1.0-rc.1)
-  node scripts/build-docker.cjs --type prod --push            # Build and push
-  node scripts/build-docker.cjs --type prod --test            # Build and test
-  node scripts/build-docker.cjs --type prod --skip-artifacts  # Use existing artifacts
-
-npm scripts:
-  npm run docker:build        # Production build
-  npm run docker:build:rc     # RC build
-  npm run docker:build:test   # Build and test
-
-Environment:
-  DOCKER_REGISTRY   Override default registry
-
-Build process:
-  1. Builds artifacts inside Docker container (scripts/docker-build.sh)
-  2. Copies artifacts to docker-build-output/
-  3. Builds Docker images (AIO, Backend, Frontend)
-  4. Optionally tests and/or pushes images
-`);
+  log.info('M3W Docker Image Build Script');
+  log.info('==============================');
+  log.blank();
+  log.white('Usage: node scripts/build-docker.cjs [options]');
+  log.blank();
+  log.white('Options:');
+  log.white('  --type <type>     Build type: prod (default) or rc');
+  log.white('  --rc <number>     RC number for rc builds (default: 1)');
+  log.white('  --push            Push images to registry after build');
+  log.white('  --test            Test the AIO image after build');
+  log.white('  --skip-artifacts  Skip artifact build (use existing docker-build-output/)');
+  log.white('  --registry <url>  Override registry (default: ghcr.io/test3207)');
+  log.white('  --help, -h        Show this help message');
+  log.blank();
+  log.white('Examples:');
+  log.white('  node scripts/build-docker.cjs --type prod                   # Production build');
+  log.white('  node scripts/build-docker.cjs --type rc --rc 1              # RC build (v0.1.0-rc.1)');
+  log.white('  node scripts/build-docker.cjs --type prod --push            # Build and push');
+  log.white('  node scripts/build-docker.cjs --type prod --test            # Build and test');
+  log.white('  node scripts/build-docker.cjs --type prod --skip-artifacts  # Use existing artifacts');
+  log.blank();
+  log.white('npm scripts:');
+  log.white('  npm run docker:build        # Production build');
+  log.white('  npm run docker:build:rc     # RC build');
+  log.white('  npm run docker:build:test   # Build and test');
+  log.blank();
+  log.white('Environment:');
+  log.white('  DOCKER_REGISTRY   Override default registry');
+  log.blank();
+  log.white('Build process:');
+  log.white('  1. Builds artifacts inside Docker container (scripts/docker-build.sh)');
+  log.white('  2. Copies artifacts to docker-build-output/');
+  log.white('  3. Builds Docker images (AIO, Backend, Frontend)');
+  log.white('  4. Optionally tests and/or pushes images');
 }
 
 // Detect container runtime (docker or podman)
@@ -285,23 +284,23 @@ async function main() {
   const baseVersion = getVersion(projectRoot);
   const { version, allTags } = getVersionTags(baseVersion, args.type, args.rcNumber);
 
-  console.log('');
+  log.blank();
   log.info('========================================');
   log.info('  M3W Docker Build Script');
   log.info('========================================');
-  console.log('');
+  log.blank();
   log.success(`  Version:  ${version}`);
   log.success(`  Type:     ${args.type}`);
   log.success(`  Registry: ${args.registry}`);
   log.success(`  Runtime:  ${container.runtime}`);
-  console.log('');
+  log.blank();
 
   // ============================================
   // Step 1: Build artifacts
   // ============================================
   if (!args.skipArtifacts) {
     log.warn('📦 Step 1: Building artifacts in Linux container...');
-    console.log('');
+    log.blank();
 
     // Clean output directory
     if (fs.existsSync(outputDir)) {
@@ -339,12 +338,12 @@ async function main() {
       }
     }
 
-    console.log('');
+    log.blank();
     log.success('✅ Artifacts built successfully');
-    console.log('');
+    log.blank();
   } else {
     log.warn('⏭️  Skipping artifact build (--skip-artifacts)');
-    console.log('');
+    log.blank();
 
     if (!fs.existsSync(outputDir)) {
       log.error(`❌ Output directory not found: ${outputDir}`);
@@ -357,30 +356,39 @@ async function main() {
   // Step 2: Build Docker images
   // ============================================
   log.warn('🐳 Step 2: Building Docker images...');
-  console.log('');
+  log.blank();
 
   // Build all images
   buildImage(container, args.registry, 'm3w', 'docker/Dockerfile', outputDir, allTags, projectRoot);
   buildImage(container, args.registry, 'm3w-backend', 'docker/Dockerfile.backend', outputDir, allTags, projectRoot);
   buildImage(container, args.registry, 'm3w-frontend', 'docker/Dockerfile.frontend', outputDir, allTags, projectRoot);
 
-  console.log('');
+  log.blank();
   log.success('✅ All images built successfully');
 
   // ============================================
   // Step 3: Show results
   // ============================================
-  console.log('');
+  log.blank();
   log.info('========================================');
   log.info('  Build Results');
   log.info('========================================');
-  console.log('');
+  log.blank();
 
-  // Show image sizes
+  // Show image sizes (cross-platform: avoid piping to head)
   log.warn('📊 Image sizes:');
-  exec(`${container.runtime} images --filter "reference=${args.registry}/m3w*" --format "table {{.Repository}}:{{.Tag}}\\t{{.Size}}" | head -12`);
+  try {
+    const result = execSync(
+      `${container.runtime} images --filter "reference=${args.registry}/m3w*" --format "{{.Repository}}:{{.Tag}}\\t{{.Size}}"`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    const lines = result.trim().split('\n').slice(0, 12);
+    lines.forEach(line => log.gray(`  ${line}`));
+  } catch {
+    log.gray('  (Unable to retrieve image sizes)');
+  }
 
-  console.log('');
+  log.blank();
   log.warn('📋 Built tags:');
   for (const img of ['m3w', 'm3w-backend', 'm3w-frontend']) {
     log.gray(`  ${args.registry}/${img}: ${allTags.join(', ')}`);
@@ -390,9 +398,9 @@ async function main() {
   // Step 4: Push (optional)
   // ============================================
   if (args.push) {
-    console.log('');
+    log.blank();
     log.warn('🚀 Pushing images to registry...');
-    console.log('');
+    log.blank();
 
     for (const img of ['m3w', 'm3w-backend', 'm3w-frontend']) {
       for (const tag of allTags) {
@@ -404,10 +412,10 @@ async function main() {
       }
     }
 
-    console.log('');
+    log.blank();
     log.success('✅ All images pushed');
   } else {
-    console.log('');
+    log.blank();
     log.warn(`💡 To push: node scripts/build-docker.cjs ${args.type} --push`);
   }
 
@@ -415,11 +423,11 @@ async function main() {
   // Step 5: Test (optional)
   // ============================================
   if (args.test) {
-    console.log('');
+    log.blank();
     log.info('========================================');
     log.info('  Testing AIO Image');
     log.info('========================================');
-    console.log('');
+    log.blank();
 
     // Check prerequisites
     const envDockerFile = path.join(projectRoot, 'backend', '.env.docker');
@@ -468,7 +476,7 @@ async function main() {
     }
 
     // Start test container using docker-compose.test.yml
-    console.log('');
+    log.blank();
     log.warn('🚀 Starting AIO container...');
 
     const testComposeFile = path.join(projectRoot, 'docker', 'docker-compose.test.yml');
@@ -484,7 +492,7 @@ async function main() {
     await sleep(5000);
 
     // Health check
-    console.log('');
+    log.blank();
     log.warn('🔍 Running health checks...');
 
     const maxRetries = 10;
@@ -517,29 +525,29 @@ async function main() {
         log.warn('   ⚠️  Frontend check failed');
       }
 
-      console.log('');
+      log.blank();
       log.success('========================================');
       log.success('  Test Passed! 🎉');
       log.success('========================================');
-      console.log('');
+      log.blank();
       log.info('  AIO container running at: http://localhost:4000');
-      console.log('');
+      log.blank();
       log.gray('  Commands:');
       log.gray(`    View logs:  ${container.runtime} logs -f m3w-test`);
       log.gray(`    Stop:       ${container.compose} -f docker/docker-compose.test.yml down`);
-      console.log('');
+      log.blank();
     } else {
       log.error(`   ❌ Health check failed after ${maxRetries} retries`);
-      console.log('');
+      log.blank();
       log.warn('   Container logs:');
       exec(`${container.runtime} logs m3w-test 2>&1 | tail -30`);
       process.exit(1);
     }
   }
 
-  console.log('');
+  log.blank();
   log.success('✨ Done!');
-  console.log('');
+  log.blank();
 }
 
 function sleep(ms) {
