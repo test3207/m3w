@@ -35,6 +35,7 @@ import {
 } from '@/lib/storage/cache-policy';
 import type { LocalCacheOverride, DownloadTiming } from '@/lib/db/schema';
 import { getQueueStatus } from '@/lib/storage/download-manager';
+import { isAudioCacheAvailable } from '@/lib/storage/audio-cache';
 import { logger } from '@/lib/logger-client';
 import { isGuestUser } from '@/lib/offline-proxy/utils';
 import { useAuthStore } from '@/stores/authStore';
@@ -53,6 +54,9 @@ export default function OfflineSettings() {
   // Queue status
   const [queueStatus, setQueueStatus] = useState({ pending: 0, active: 0, isProcessing: false });
   
+  // Cache availability
+  const [cacheAvailable, setCacheAvailable] = useState<boolean | null>(null);
+  
   // Loading states
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +64,10 @@ export default function OfflineSettings() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
+        // Check cache availability
+        const available = await isAudioCacheAvailable();
+        setCacheAvailable(available);
+
         // Load local settings
         const [localOvr, timing] = await Promise.all([
           getLocalCacheAllOverride(),
@@ -201,7 +209,12 @@ export default function OfflineSettings() {
         </div>
 
         {/* Download Queue Status */}
-        {queueStatus.isProcessing && (
+        {cacheAvailable === false && (
+          <div className="text-sm text-amber-600 dark:text-amber-400">
+            {I18n.settings.offline.cacheNotAvailable}
+          </div>
+        )}
+        {cacheAvailable && (queueStatus.pending > 0 || queueStatus.active > 0) && (
           <div className="text-sm text-muted-foreground">
             {I18n.settings.offline.downloadingStatus
               .replace('{active}', String(queueStatus.active))

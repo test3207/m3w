@@ -501,7 +501,8 @@
       "timingAlways": "Always Download",
       "timingWifiOnly": "Wi-Fi Only",
       "timingManual": "Manual Only",
-      "downloadingStatus": "Downloading: {active} active, {pending} pending"
+      "downloadingStatus": "Downloading: {active} active, {pending} pending",
+      "cacheNotAvailable": "Offline caching requires PWA installation and persistent storage permission"
     },
     "toast": {
       "signOutSuccess": "Signed out successfully",

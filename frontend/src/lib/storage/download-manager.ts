@@ -9,7 +9,7 @@
  */
 
 import { db } from '../db/schema';
-import { cacheSong, isSongCached } from './audio-cache';
+import { cacheSong, isSongCached, isAudioCacheAvailable } from './audio-cache';
 import { canDownloadNow, shouldCacheLibrary, type CachePolicyContext } from './cache-policy';
 import { logger } from '../logger-client';
 
@@ -46,7 +46,14 @@ export async function queueLibraryDownload(
   libraryId: string,
   context: CachePolicyContext
 ): Promise<number> {
-  // Check policy first
+  // Check if caching is available first (PWA + persistent storage)
+  const cacheAvailable = await isAudioCacheAvailable();
+  if (!cacheAvailable) {
+    logger.debug('Audio cache not available (not PWA or storage not persisted)');
+    return 0;
+  }
+
+  // Check policy
   const shouldCache = await shouldCacheLibrary(libraryId, context);
   if (!shouldCache) {
     logger.debug(`Library ${libraryId} not configured for caching`);
@@ -155,6 +162,14 @@ async function processQueue(): Promise<void> {
   isProcessing = true;
 
   try {
+    // Check if caching is available
+    const cacheAvailable = await isAudioCacheAvailable();
+    if (!cacheAvailable) {
+      logger.debug('Cache not available, clearing queue');
+      downloadQueue = [];
+      return;
+    }
+
     while (downloadQueue.length > 0 && activeDownloads < MAX_CONCURRENT_DOWNLOADS) {
       // Check if we can still download
       const canDownload = await canDownloadNow();
@@ -201,15 +216,24 @@ async function processTask(task: DownloadTask): Promise<void> {
 
     logger.debug(`Successfully cached song ${task.songId}`);
   } catch (error) {
-    logger.warn(`Failed to cache song ${task.songId}`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.warn(`Failed to cache song ${task.songId}: ${errorMessage}`);
     
-    // Retry logic
+    // Don't retry if cache is not available (permanent failure)
+    if (errorMessage.includes('not available') || errorMessage.includes('not found')) {
+      logger.debug(`Permanent failure for song ${task.songId}, not retrying`);
+      return;
+    }
+    
+    // Retry logic for transient failures
     if (task.retries < MAX_RETRIES) {
       task.retries++;
       setTimeout(() => {
         addToQueue(task);
         processQueue();
       }, DOWNLOAD_RETRY_DELAY * task.retries);
+    } else {
+      logger.warn(`Max retries reached for song ${task.songId}`);
     }
   }
 }

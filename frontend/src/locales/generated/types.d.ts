@@ -909,6 +909,8 @@ export interface Messages {
       timingManual: string;
       /** Downloading: {active} active, {pending} pending */
       downloadingStatus: string;
+      /** Offline caching requires PWA installation and persistent storage permission */
+      cacheNotAvailable: string;
     };
     toast: {
       /** Signed out successfully */
