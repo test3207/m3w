@@ -67,9 +67,7 @@ docker compose up -d
 ```bash
 git clone https://github.com/test3207/m3w.git
 cd m3w
-npm install
-docker compose up -d    # 启动 PostgreSQL + MinIO
-npm run db:migrate
+node scripts/setup.cjs  # 安装依赖、启动容器、运行迁移
 npm run dev             # http://localhost:3000
 ```
 
