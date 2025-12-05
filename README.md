@@ -67,13 +67,11 @@ docker compose up -d
 ```bash
 git clone https://github.com/test3207/m3w.git
 cd m3w
-npm install
-docker compose up -d    # Start PostgreSQL + MinIO
-npm run db:migrate
-npm run dev             # http://localhost:3000
+node scripts/setup.cjs   # Installs deps, starts containers, runs migrations
+npm run dev              # http://localhost:3000
 ```
 
-See [Development Guide](./docs/DEVELOPMENT.md) for full instructions.
+Requires Node.js 25+ and Docker/Podman. See [Development Guide](./docs/DEVELOPMENT.md) for details.
 
 ## Screenshots
 

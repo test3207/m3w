@@ -91,8 +91,7 @@ jobs:
           echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
       
       - name: Bump version in package.json files
-        run: |
-          npm version ${{ steps.version.outputs.new }} --no-git-tag-version -ws --include-workspace-root
+        run: node scripts/bump-version.cjs ${{ inputs.bump_type }} --yes
       
       - name: Login to GitHub Container Registry
         if: ${{ !inputs.dry_run }}
@@ -106,17 +105,14 @@ jobs:
         env:
           DOCKER_REGISTRY: ghcr.io/${{ github.repository_owner }}
         run: |
-          chmod +x scripts/build-docker.sh
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            ./scripts/build-docker.sh prod
+            node scripts/build-docker.cjs --type prod
           else
-            ./scripts/build-docker.sh prod push
+            node scripts/build-docker.cjs --type prod --push
           fi
       
       - name: Create release archives
-        run: |
-          chmod +x scripts/create-archives.sh
-          ./scripts/create-archives.sh ${{ steps.version.outputs.tag }}
+        run: node scripts/create-archives.cjs ${{ steps.version.outputs.tag }}
       
       - name: Commit version bump and create tag
         if: ${{ !inputs.dry_run }}

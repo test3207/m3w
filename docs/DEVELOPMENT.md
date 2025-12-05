@@ -4,13 +4,30 @@ This document covers development setup, project structure, and contribution guid
 
 ## Prerequisites
 
-- **Node.js** 20+ (LTS recommended)
-- **npm** 10+ (comes with Node.js)
-- **Docker** or **Podman** (for PostgreSQL and MinIO)
+- **Node.js** 25+ (see [nodejs.org](https://nodejs.org/))
+- **Docker Desktop** or **Podman Desktop** (for PostgreSQL and MinIO)
+- For Podman users: `pip install podman-compose`
 
 ## Quick Start (Development)
 
-### 1. Clone and Install
+### Option A: Automated Setup (Recommended)
+
+```bash
+git clone https://github.com/test3207/m3w.git
+cd m3w
+node scripts/setup.cjs
+```
+
+This single command will:
+
+- Install all dependencies
+- Create `.env` files from templates
+- Start PostgreSQL and MinIO containers
+- Run database migrations
+
+### Option B: Manual Setup
+
+#### 1. Clone and Install
 
 ```bash
 git clone https://github.com/test3207/m3w.git
@@ -18,7 +35,7 @@ cd m3w
 npm install
 ```
 
-### 2. Start Infrastructure Services
+#### 2. Start Infrastructure Services
 
 **Docker:**
 
@@ -34,7 +51,7 @@ podman-compose up -d
 
 This starts PostgreSQL (port 5432) and MinIO (ports 9000/9001).
 
-### 3. Configure Environment
+#### 3. Configure Environment
 
 ```bash
 # Backend
@@ -46,13 +63,13 @@ cp frontend/.env.example frontend/.env
 # Usually no changes needed for local dev
 ```
 
-### 4. Initialize Database
+#### 4. Initialize Database
 
 ```bash
 npm run db:migrate
 ```
 
-### 5. Start Development Servers
+#### 5. Start Development Servers
 
 ```bash
 npm run dev
@@ -269,8 +286,8 @@ See [API Client README](../frontend/src/services/api/README.md) for details.
 ### Local Build Test
 
 ```bash
-# Build artifacts in container
-.\scripts\build-docker.ps1 -Type prod
+# Build artifacts and Docker images
+node scripts/build-docker.cjs --type prod
 
 # Or manually:
 docker build -t m3w:local -f docker/Dockerfile docker-build-output/
