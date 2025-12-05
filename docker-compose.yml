@@ -1,3 +1,5 @@
+# Local development environment for M3W
+version: '3.8'
 services:
   postgres:
     # Using official PostgreSQL image

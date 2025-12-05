@@ -24,7 +24,17 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "reset": "node scripts/reset-local-data.cjs",
-    "reset:force": "node scripts/reset-local-data.cjs --force"
+    "reset:force": "node scripts/reset-local-data.cjs --force",
+    "setup": "node scripts/setup.cjs",
+    "setup:skip-env": "node scripts/setup.cjs --skip-env",
+    "setup:lan": "node scripts/setup-lan.cjs",
+    "version:patch": "node scripts/bump-version.cjs patch",
+    "version:minor": "node scripts/bump-version.cjs minor",
+    "version:major": "node scripts/bump-version.cjs major",
+    "archives": "node scripts/create-archives.cjs",
+    "docker:build": "node scripts/build-docker.cjs prod",
+    "docker:build:rc": "node scripts/build-docker.cjs rc",
+    "docker:build:test": "node scripts/build-docker.cjs prod --test"
   },
   "repository": {
     "type": "git",
