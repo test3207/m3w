@@ -158,14 +158,18 @@ function addToQueue(task: DownloadTask): void {
 }
 
 async function processQueue(): Promise<void> {
-  if (isProcessing) return;
+  if (isProcessing) {
+    logger.debug('processQueue: already processing, skipping');
+    return;
+  }
   isProcessing = true;
+  logger.debug(`processQueue: starting, queue length=${downloadQueue.length}`);
 
   try {
     // Check if caching is available
     const cacheAvailable = await isAudioCacheAvailable();
     if (!cacheAvailable) {
-      logger.debug('Cache not available, clearing queue');
+      logger.debug('processQueue: cache not available, clearing queue');
       downloadQueue = [];
       return;
     }
@@ -174,25 +178,29 @@ async function processQueue(): Promise<void> {
       // Check if we can still download
       const canDownload = await canDownloadNow();
       if (!canDownload) {
-        logger.debug('Pausing downloads: timing policy not met');
+        logger.debug('processQueue: pausing downloads, timing policy not met');
         break;
       }
 
       const task = downloadQueue.shift();
       if (!task) break;
 
+      logger.debug(`processQueue: starting download for song ${task.songId}`);
       activeDownloads++;
       // Don't await - let it run in parallel
       processTask(task).finally(() => {
         activeDownloads--;
+        logger.debug(`processQueue: finished task, active=${activeDownloads}, pending=${downloadQueue.length}`);
         // Continue processing after each completion
         if (downloadQueue.length > 0) {
+          isProcessing = false; // Allow re-entry
           processQueue();
         }
       });
     }
   } finally {
-    isProcessing = downloadQueue.length > 0;
+    isProcessing = downloadQueue.length > 0 && activeDownloads > 0;
+    logger.debug(`processQueue: finished, isProcessing=${isProcessing}`);
   }
 }
 

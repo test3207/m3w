@@ -216,23 +216,36 @@ export async function getEffectiveCachePolicy(
 export async function canDownloadNow(): Promise<boolean> {
   const timing = await getDownloadTiming();
   
-  if (timing === 'manual') return false;
-  if (timing === 'always') return true;
+  logger.debug(`canDownloadNow: timing=${timing}, online=${navigator.onLine}`);
+  
+  if (timing === 'manual') {
+    logger.debug('canDownloadNow: manual mode, returning false');
+    return false;
+  }
+  if (timing === 'always') {
+    logger.debug('canDownloadNow: always mode, returning true');
+    return true;
+  }
   
   // wifi-only: check connection type
   if ('connection' in navigator) {
     const connection = (navigator as Navigator & { connection?: { type?: string; effectiveType?: string } }).connection;
+    logger.debug(`canDownloadNow: connection type=${connection?.type}, effectiveType=${connection?.effectiveType}`);
+    
     // Consider wifi, ethernet as allowed; cellular as not
     if (connection?.type === 'wifi' || connection?.type === 'ethernet') {
       return true;
     }
-    // If type not available, check effectiveType (4g might be wifi)
-    // Be conservative: only allow if we're sure it's not cellular
+    // Explicitly block cellular
     if (connection?.type === 'cellular') {
       return false;
     }
+    // If type not available but effectiveType suggests good connection, allow it
+    // Desktop browsers often don't have connection.type
   }
   
-  // If we can't determine, default to allowing (user chose wifi-only, assume they know)
+  // If we can't determine connection type (desktop browser), allow download
+  // User chose wifi-only but we're likely on a desktop with good connection
+  logger.debug('canDownloadNow: connection type unknown, defaulting to allow');
   return navigator.onLine;
 }
