@@ -161,10 +161,7 @@ app.post('/for-library', async (c: Context) => {
     return c.json(
       {
         success: true,
-        data: {
-          ...playlist,
-          songIds: songIds || [],
-        },
+        data: playlist,
       },
       201
     );
