@@ -25,7 +25,7 @@ export default function PersonalInfo({ user }: PersonalInfoProps) {
   };
 
   return (
-    <Card className="mb-2">
+    <Card>
       <CardHeader>
         <CardTitle>{I18n.settings.profile.title}</CardTitle>
         <CardDescription>{I18n.settings.profile.description}</CardDescription>

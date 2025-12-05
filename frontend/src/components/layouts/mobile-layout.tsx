@@ -11,6 +11,7 @@ import { MiniPlayer, FullPlayer, PlayQueueDrawer } from '@/components/features/p
 import { UploadDrawer } from '@/components/features/upload/upload-drawer';
 import { AddToPlaylistSheet } from '@/components/features/playlists/AddToPlaylistSheet';
 import { DemoBanner } from '@/components/features/demo/DemoBanner';
+import { useDemoMode, DEMO_BANNER_HEIGHT } from '@/hooks/useDemoMode';
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const loadPlaybackProgress = usePlayerStore((state) => state.loadPlaybackProgress);
   const savePlaybackProgress = usePlayerStore((state) => state.savePlaybackProgress);
   const hasSong = currentSong !== null;
+  const { isEnabled: isDemoMode } = useDemoMode();
 
   // Load playback progress on mount (once)
   useEffect(() => {
@@ -74,13 +76,17 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       {/* Top Header with status indicators (56px) */}
       <MobileHeader />
 
-      {/* Main content area - fixed height excluding header and bottom elements */}
+      {/* Main content area - fixed height excluding header, bottom nav, mini player, and demo banner */}
       <main 
         className="overflow-hidden"
         style={{
-          height: hasSong 
-            ? 'calc(100vh - 56px - 64px - 72px)' // viewport - header - bottom nav - mini player
-            : 'calc(100vh - 56px - 64px)' // viewport - header - bottom nav
+          height: (() => {
+            const baseHeight = 56 + 64; // header + bottom nav
+            const miniPlayerHeight = hasSong ? 72 : 0;
+            const demoBannerHeight = isDemoMode ? DEMO_BANNER_HEIGHT : 0;
+            const totalOffset = baseHeight + miniPlayerHeight + demoBannerHeight;
+            return `calc(100vh - ${totalOffset}px)`;
+          })()
         }}
       >
         {children}

@@ -501,8 +501,8 @@
       "timingAlways": "始终下载",
       "timingWifiOnly": "仅限 Wi-Fi",
       "timingManual": "仅手动",
-      "cacheStatus": "已缓存 {cached} / {total} 首歌曲",
-      "downloadingStatus": "下载中：{active} 进行中，{pending} 等待中",
+      "cacheStatus": "已缓存 {0} / {1} 首歌曲",
+      "downloadingStatus": "下载中：{0} 进行中，{1} 等待中",
       "cacheNotAvailable": "存储空间不足，无法进行离线缓存"
     },
     "toast": {

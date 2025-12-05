@@ -148,7 +148,7 @@ export default function OfflineSettings() {
 
   if (loading) {
     return (
-      <Card className="mt-4">
+      <Card>
         <CardHeader>
           <CardTitle>{I18n.settings.offline.title}</CardTitle>
         </CardHeader>
@@ -160,7 +160,7 @@ export default function OfflineSettings() {
   }
 
   return (
-    <Card className="mt-4">
+    <Card>
       <CardHeader>
         <CardTitle>{I18n.settings.offline.title}</CardTitle>
         <CardDescription>{I18n.settings.offline.description}</CardDescription>
@@ -229,15 +229,15 @@ export default function OfflineSettings() {
               {/* Cache stats - always show */}
               <div className="text-sm text-muted-foreground">
                 {I18n.settings.offline.cacheStatus
-                  .replace('{cached}', String(cacheStats.cached))
-                  .replace('{total}', String(cacheStats.total))}
+                  .replace('{0}', String(cacheStats.cached))
+                  .replace('{1}', String(cacheStats.total))}
               </div>
               {/* Download progress - only when downloading */}
               {(queueStatus.pending > 0 || queueStatus.active > 0) && (
                 <div className="text-sm text-primary">
                   {I18n.settings.offline.downloadingStatus
-                    .replace('{active}', String(queueStatus.active))
-                    .replace('{pending}', String(queueStatus.pending))}
+                    .replace('{0}', String(queueStatus.active))
+                    .replace('{1}', String(queueStatus.pending))}
                 </div>
               )}
             </div>

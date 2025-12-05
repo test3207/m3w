@@ -12,6 +12,8 @@ import { db } from '../db/schema';
 import { cacheSong, isSongCached, isAudioCacheAvailable } from './audio-cache';
 import { canDownloadNow, shouldCacheLibrary, type CachePolicyContext } from './cache-policy';
 import { logger } from '../logger-client';
+import { useAuthStore } from '@/stores/authStore';
+import { GUEST_USER_ID } from '@/lib/constants/guest';
 
 // ============================================================
 // Configuration
@@ -206,6 +208,13 @@ async function processQueue(): Promise<void> {
 
 async function processTask(task: DownloadTask): Promise<void> {
   try {
+    // Check if song still exists in IndexedDB (may have been deleted by sync)
+    const songExists = await db.songs.get(task.songId);
+    if (!songExists) {
+      logger.debug(`Song ${task.songId} no longer exists in IndexedDB, skipping`);
+      return;
+    }
+    
     // Check if already cached
     const cached = await isSongCached(task.songId);
     if (cached) {
@@ -227,8 +236,10 @@ async function processTask(task: DownloadTask): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.warn(`Failed to cache song ${task.songId}: ${errorMessage}`);
     
-    // Don't retry if cache is not available (permanent failure)
-    if (errorMessage.includes('not available') || errorMessage.includes('not found')) {
+    // Don't retry for permanent failures (404, not found, not available)
+    if (errorMessage.includes('not available') || 
+        errorMessage.includes('not found') || 
+        errorMessage.includes('404')) {
       logger.debug(`Permanent failure for song ${task.songId}, not retrying`);
       return;
     }
@@ -312,14 +323,32 @@ export async function getLibraryCacheStats(libraryId: string): Promise<{
 }
 
 /**
- * Get overall cache statistics across all songs
+ * Get overall cache statistics across all songs for the current user
  */
 export async function getTotalCacheStats(): Promise<{
   total: number;
   cached: number;
   percentage: number;
 }> {
-  const songs = await db.songs.toArray();
+  // Get current user's libraries
+  const { user, isGuest } = useAuthStore.getState();
+  const userId = isGuest ? GUEST_USER_ID : user?.id;
+  
+  if (!userId) {
+    return { total: 0, cached: 0, percentage: 0 };
+  }
+  
+  // Get user's library IDs
+  const userLibraries = await db.libraries
+    .filter(lib => lib.userId === userId)
+    .toArray();
+  const userLibraryIds = new Set(userLibraries.map(lib => lib.id));
+  
+  // Get songs only from user's libraries
+  const songs = await db.songs
+    .filter(song => userLibraryIds.has(song.libraryId))
+    .toArray();
+  
   const total = songs.length;
   let cached = 0;
 

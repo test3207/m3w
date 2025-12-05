@@ -23,6 +23,7 @@ import { I18n } from '@/locales/i18n';
 import { isGuestUser } from '../offline-proxy/utils';
 import { triggerAutoCacheAfterSync } from '../storage/download-manager';
 import type { CachePolicyContext } from '../storage/cache-policy';
+import { useAuthStore } from '@/stores/authStore';
 
 // Sync interval: 5 minutes (aligned with metadata-sync)
 const SYNC_INTERVAL = 5 * 60 * 1000;
@@ -488,8 +489,23 @@ export class SyncService {
    */
   private async triggerAutoCache(): Promise<void> {
     try {
-      // Get all libraries
-      const libraries = await db.libraries.toArray();
+      // Get current user ID
+      const { user, isGuest } = useAuthStore.getState();
+      if (isGuest) {
+        logger.debug('Skipping auto-cache for guest user');
+        return;
+      }
+      
+      const userId = user?.id;
+      if (!userId) {
+        logger.debug('No user ID, skipping auto-cache');
+        return;
+      }
+      
+      // Get only current user's libraries
+      const libraries = await db.libraries
+        .filter(lib => lib.userId === userId)
+        .toArray();
       if (libraries.length === 0) return;
 
       // Fetch user preferences for cache policy context

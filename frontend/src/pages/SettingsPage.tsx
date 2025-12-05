@@ -34,17 +34,19 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-3 pb-8">
-      <h1 className="text-2xl font-bold mb-2">{I18n.settings.title}</h1>
+    <div className="h-full overflow-y-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">{I18n.settings.title}</h1>
 
-      {/* User Profile Section */}
-      <PersonalInfo user={user} />
+      <div className="flex flex-col gap-3">
+        {/* User Profile Section */}
+        <PersonalInfo user={user} />
 
-      {/* Offline Settings Section */}
-      <OfflineSettings />
+        {/* Offline Settings Section */}
+        <OfflineSettings />
 
-      {/* Storage Management Section */}
-      <StorageManager />
+        {/* Storage Management Section */}
+        <StorageManager />
+      </div>
     </div>
   );
 }

@@ -71,11 +71,17 @@ export async function syncMetadata(): Promise<SyncResult> {
     const existingSongs = await db.songs.toArray();
     const existingSongsMap = new Map(existingSongs.map(s => [s.id, s]));
 
+    // Collect all valid song IDs from server
+    const serverSongIds = new Set<string>();
+    
     // Fetch songs for each library (batched)
     let totalSongs = 0;
     for (const library of libraries) {
       try {
         const songs = await api.main.libraries.getSongs(library.id);
+
+        // Track server song IDs
+        songs.forEach(song => serverSongIds.add(song.id));
 
         // Merge with existing cache status to preserve offline data
         const mergedSongs: OfflineSong[] = await Promise.all(
@@ -100,6 +106,17 @@ export async function syncMetadata(): Promise<SyncResult> {
       }
     }
     logger.info('Songs synced', { totalSongs });
+    
+    // Delete songs that no longer exist on server (for current user's libraries only)
+    const serverLibraryIds = new Set(libraries.map(lib => lib.id));
+    const songsToDelete = existingSongs
+      .filter(song => serverLibraryIds.has(song.libraryId) && !serverSongIds.has(song.id))
+      .map(song => song.id);
+    
+    if (songsToDelete.length > 0) {
+      await db.songs.bulkDelete(songsToDelete);
+      logger.info('Deleted stale songs from IndexedDB', { count: songsToDelete.length });
+    }
 
     // Fetch playlist songs for each playlist (batched)
     let totalPlaylistSongs = 0;

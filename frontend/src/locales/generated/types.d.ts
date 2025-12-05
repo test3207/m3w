@@ -907,9 +907,9 @@ export interface Messages {
       timingWifiOnly: string;
       /** Manual Only */
       timingManual: string;
-      /** {cached} / {total} songs cached */
+      /** {0} / {1} songs cached */
       cacheStatus: string;
-      /** Downloading: {active} active, {pending} pending */
+      /** Downloading: {0} active, {1} pending */
       downloadingStatus: string;
       /** Not enough storage space for offline caching */
       cacheNotAvailable: string;
