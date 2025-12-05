@@ -1,6 +1,8 @@
 import { User as UserIcon } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Stack } from '@/components/ui/stack';
+import { Text } from '@/components/ui/text';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 
@@ -25,28 +27,25 @@ export default function PersonalInfo({ user }: PersonalInfoProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{I18n.settings.profile.title}</CardTitle>
-        <CardDescription>{I18n.settings.profile.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {/* Avatar and Name */}
-        <div className="flex items-center gap-3">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
-            <AvatarFallback className="text-base">
-              {user.name ? getInitials(user.name) : <UserIcon className="h-6 w-6" />}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <h3 className="text-base font-semibold">
-              {user.name || I18n.settings.profile.usernameNotSet}
-            </h3>
-            {user.email && <p className="text-xs text-muted-foreground">{user.email}</p>}
-          </div>
-        </div>
-      </CardContent>
+    <Card className="p-4">
+      <Stack direction="horizontal" gap="md" align="center">
+        <Avatar className="h-12 w-12">
+          <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
+          <AvatarFallback className="text-sm">
+            {user.name ? getInitials(user.name) : <UserIcon className="h-5 w-5" />}
+          </AvatarFallback>
+        </Avatar>
+        <Stack gap="none">
+          <Text variant="body" className="font-semibold">
+            {user.name || I18n.settings.profile.usernameNotSet}
+          </Text>
+          {user.email && (
+            <Text variant="caption" className="text-muted-foreground">
+              {user.email}
+            </Text>
+          )}
+        </Stack>
+      </Stack>
     </Card>
   );
 }

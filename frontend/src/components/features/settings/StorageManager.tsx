@@ -1,12 +1,10 @@
 /**
  * StorageManager Component - PWA Status & Global Storage Management
  * 
- * Displays:
- * 1. PWA installation status
- * 2. Global browser storage usage (shared across all users)
- * 3. Clear all data option (with confirmation)
- * 
- * Mounted in Settings page
+ * Compact UI for:
+ * 1. PWA installation (clickable badge)
+ * 2. Global browser storage usage
+ * 3. Clear all data option
  */
 
 import { useState, useEffect } from 'react';
@@ -19,11 +17,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { RefreshCw, Database, AlertTriangle, Trash2, Info } from 'lucide-react';
+import { RefreshCw, Database, AlertTriangle, Trash2, Download } from 'lucide-react';
 import { I18n } from '@/locales/i18n';
 import { useLocale } from '@/locales/use-locale';
 import { useToast } from '@/components/ui/use-toast';
-import { usePWAStatus } from '@/hooks/usePWA';
+import { usePWAStatus, usePWAInstall } from '@/hooks/usePWA';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,17 +32,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { db } from '@/lib/db/schema';
 
 export default function StorageManager() {
   useLocale();
   const { toast } = useToast();
   const { status: pwaStatus, loading: pwaLoading } = usePWAStatus();
+  const { canInstall, installing, install } = usePWAInstall();
 
   const [usage, setUsage] = useState<StorageUsage | null>(null);
   const [warning, setWarning] = useState<StorageWarning | null>(null);
@@ -77,6 +71,13 @@ export default function StorageManager() {
 
   const handleRefresh = async () => {
     await loadStorageUsage();
+  };
+
+  const handleInstallPWA = async () => {
+    const success = await install();
+    if (success) {
+      toast({ title: I18n.settings.storage.pwa.installSuccess });
+    }
   };
 
   const handleClearAllData = async () => {
@@ -138,48 +139,36 @@ export default function StorageManager() {
 
   return (
     <>
-      <Card>
-        <Stack gap="sm" className="p-4">
+      <Card className="p-4">
+        <Stack gap="sm">
           {/* Header */}
           <Stack direction="horizontal" align="center" justify="between">
             <Stack direction="horizontal" gap="sm" align="center">
               <Database className="w-4 h-4 text-muted-foreground" />
               <Text variant="body" className="font-medium">Storage</Text>
-              {/* PWA Status Badge */}
+              {/* PWA Status Badge - clickable if can install */}
               {!pwaLoading && (
-                <>
-                  <Badge 
-                    variant={pwaStatus?.isPWAInstalled ? 'default' : 'secondary'}
-                    className="text-xs h-5"
+                pwaStatus?.isPWAInstalled ? (
+                  <Badge variant="default" className="text-xs h-5">PWA</Badge>
+                ) : canInstall ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-5 px-2 text-xs gap-1"
+                    onClick={handleInstallPWA}
+                    disabled={installing}
                   >
-                    PWA
-                  </Badge>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
-                        <Info className="h-3 w-3 text-muted-foreground" />
-                        <span className="sr-only">PWA info</span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-56">
-                      <Stack gap="xs">
-                        <Text variant="caption" className="font-medium text-xs">
-                          {pwaStatus?.isPWAInstalled 
-                            ? I18n.settings.storage.pwa.installed 
-                            : I18n.settings.storage.pwa.notInstalled}
-                        </Text>
-                        <Text variant="caption" className="text-muted-foreground">
-                          {I18n.settings.storage.pwa.description}
-                        </Text>
-                      </Stack>
-                    </PopoverContent>
-                  </Popover>
-                </>
+                    <Download className="h-3 w-3" />
+                    {installing ? '...' : I18n.settings.storage.pwa.install}
+                  </Button>
+                ) : (
+                  <Badge variant="secondary" className="text-xs h-5">PWA</Badge>
+                )
               )}
             </Stack>
             
             <Stack direction="horizontal" gap="xs">
-              {/* Clear All Data Button (Icon only) */}
+              {/* Clear All Data Button */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -196,7 +185,7 @@ export default function StorageManager() {
                 size="icon"
                 onClick={handleRefresh}
                 disabled={isLoading}
-                aria-label="Refresh storage usage"
+                aria-label="Refresh"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
@@ -225,11 +214,6 @@ export default function StorageManager() {
             </Stack>
 
             <Progress value={usage.usagePercent} variant={progressVariant} />
-            
-            {/* Info Note */}
-            <Text variant="caption" className="text-muted-foreground">
-              {I18n.settings.storage.globalNote}
-            </Text>
           </Stack>
         </Stack>
       </Card>

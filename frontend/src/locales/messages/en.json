@@ -454,7 +454,9 @@
       "pwa": {
         "title": "PWA Status",
         "installed": "Installed",
-        "notInstalled": "Not Installed",
+        "notInstalled": "Browser",
+        "install": "Install App",
+        "installSuccess": "App installed successfully",
         "description": "Progressive Web App enables offline music playback",
         "installPrompt": {
           "title": "Install M3W",
@@ -471,10 +473,6 @@
           "close": "Close"
         }
       },
-      "globalTitle": "Browser Storage",
-      "globalNote": "Shared across all accounts on this device",
-      "clearAllTitle": "Clear All Data",
-      "clearAllDescription": "This will delete all users' data on this device, including songs, playlists, and settings.",
       "clearAllButton": "Clear All Data",
       "clearSuccess": "All data cleared successfully",
       "clearError": "Failed to clear data. Please try again.",

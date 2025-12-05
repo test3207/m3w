@@ -454,7 +454,9 @@
       "pwa": {
         "title": "PWA 状态",
         "installed": "已安装",
-        "notInstalled": "未安装",
+        "notInstalled": "浏览器",
+        "install": "安装应用",
+        "installSuccess": "应用安装成功",
         "description": "PWA 应用可实现离线音乐播放",
         "installPrompt": {
           "title": "安装 M3W",
@@ -471,10 +473,6 @@
           "close": "关闭"
         }
       },
-      "globalTitle": "浏览器存储",
-      "globalNote": "此设备上所有账户共享",
-      "clearAllTitle": "清除所有数据",
-      "clearAllDescription": "这将删除此设备上所有用户的数据，包括歌曲、播放列表和设置。",
       "clearAllButton": "清除所有数据",
       "clearSuccess": "所有数据已清除",
       "clearError": "清除失败，请重试",

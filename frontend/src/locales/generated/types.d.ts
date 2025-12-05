@@ -822,8 +822,12 @@ export interface Messages {
         title: string;
         /** Installed */
         installed: string;
-        /** Not Installed */
+        /** Browser */
         notInstalled: string;
+        /** Install App */
+        install: string;
+        /** App installed successfully */
+        installSuccess: string;
         /** Progressive Web App enables offline music playback */
         description: string;
         installPrompt: {
@@ -851,14 +855,6 @@ export interface Messages {
           close: string;
         };
       };
-      /** Browser Storage */
-      globalTitle: string;
-      /** Shared across all accounts on this device */
-      globalNote: string;
-      /** Clear All Data */
-      clearAllTitle: string;
-      /** This will delete all users' data on this device, including songs, playlists, and settings. */
-      clearAllDescription: string;
       /** Clear All Data */
       clearAllButton: string;
       /** All data cleared successfully */
