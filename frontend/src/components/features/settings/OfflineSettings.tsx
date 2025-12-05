@@ -177,11 +177,38 @@ export default function OfflineSettings() {
           </Popover>
         </Stack>
 
-        {/* Backend Cache-All Toggle (only for authenticated users) */}
-        {!isGuest && (
-          <Stack direction="horizontal" align="center" justify="between">
+        {/* Settings List - tighter spacing between items */}
+        <Stack gap="sm">
+          {/* Backend Cache-All Toggle (only for authenticated users) */}
+          {!isGuest && (
+            <Stack direction="horizontal" align="center" justify="between" className="min-h-8">
+              <Stack direction="horizontal" align="center" gap="sm">
+                <Label className="text-sm">{I18n.settings.offline.cacheAll}</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                      <span className="sr-only">Info</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-64">
+                    <Text variant="caption" className="text-muted-foreground">
+                      {I18n.settings.offline.cacheAllDescription}
+                    </Text>
+                  </PopoverContent>
+                </Popover>
+              </Stack>
+              <Switch
+                checked={backendCacheAll}
+                onCheckedChange={handleBackendCacheAllChange}
+              />
+            </Stack>
+          )}
+
+          {/* Local Override - inline */}
+          <Stack direction="horizontal" align="center" justify="between" className="min-h-8">
             <Stack direction="horizontal" align="center" gap="sm">
-              <Label className="text-sm">{I18n.settings.offline.cacheAll}</Label>
+              <Label className="text-sm">{I18n.settings.offline.localOverride}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
@@ -191,84 +218,60 @@ export default function OfflineSettings() {
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-64">
                   <Text variant="caption" className="text-muted-foreground">
-                    {I18n.settings.offline.cacheAllDescription}
+                    {I18n.settings.offline.localOverrideDescription}
                   </Text>
                 </PopoverContent>
               </Popover>
             </Stack>
-            <Switch
-              checked={backendCacheAll}
-              onCheckedChange={handleBackendCacheAllChange}
-            />
+            <Select value={localOverride} onValueChange={handleLocalOverrideChange}>
+              <SelectTrigger className="w-auto min-w-[120px] h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inherit">{I18n.settings.offline.policyInherit}</SelectItem>
+                <SelectItem value="always">{I18n.settings.offline.policyAlways}</SelectItem>
+                <SelectItem value="never">{I18n.settings.offline.policyNever}</SelectItem>
+              </SelectContent>
+            </Select>
           </Stack>
-        )}
 
-        {/* Local Override - inline */}
-        <Stack direction="horizontal" align="center" justify="between">
-          <Stack direction="horizontal" align="center" gap="sm">
-            <Label className="text-sm">{I18n.settings.offline.localOverride}</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
-                  <Info className="h-3 w-3 text-muted-foreground" />
-                  <span className="sr-only">Info</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-64">
-                <Text variant="caption" className="text-muted-foreground">
-                  {I18n.settings.offline.localOverrideDescription}
-                </Text>
-              </PopoverContent>
-            </Popover>
+          {/* Download Timing - inline */}
+          <Stack direction="horizontal" align="center" justify="between" className="min-h-8">
+            <Label className="text-sm">{I18n.settings.offline.downloadTiming}</Label>
+            <Select value={downloadTimingVal} onValueChange={handleDownloadTimingChange}>
+              <SelectTrigger className="w-auto min-w-[100px] h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="always">{I18n.settings.offline.timingAlways}</SelectItem>
+                <SelectItem value="wifi-only">{I18n.settings.offline.timingWifiOnly}</SelectItem>
+                <SelectItem value="manual">{I18n.settings.offline.timingManual}</SelectItem>
+              </SelectContent>
+            </Select>
           </Stack>
-          <Select value={localOverride} onValueChange={handleLocalOverrideChange}>
-            <SelectTrigger className="w-auto min-w-[120px] h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="inherit">{I18n.settings.offline.policyInherit}</SelectItem>
-              <SelectItem value="always">{I18n.settings.offline.policyAlways}</SelectItem>
-              <SelectItem value="never">{I18n.settings.offline.policyNever}</SelectItem>
-            </SelectContent>
-          </Select>
-        </Stack>
 
-        {/* Download Timing - inline */}
-        <Stack direction="horizontal" align="center" justify="between">
-          <Label className="text-sm">{I18n.settings.offline.downloadTiming}</Label>
-          <Select value={downloadTimingVal} onValueChange={handleDownloadTimingChange}>
-            <SelectTrigger className="w-auto min-w-[100px] h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="always">{I18n.settings.offline.timingAlways}</SelectItem>
-              <SelectItem value="wifi-only">{I18n.settings.offline.timingWifiOnly}</SelectItem>
-              <SelectItem value="manual">{I18n.settings.offline.timingManual}</SelectItem>
-            </SelectContent>
-          </Select>
-        </Stack>
-
-        {/* Cache Status - compact */}
-        {cacheAvailable === false ? (
-          <Text variant="caption" className="text-amber-600 dark:text-amber-400">
-            {I18n.settings.offline.cacheNotAvailable}
-          </Text>
-        ) : (
-          <Stack direction="horizontal" align="center" justify="between" className="pt-2 border-t">
-            <Text variant="caption" className="text-muted-foreground">
-              {I18n.settings.offline.cacheStatus
-                .replace('{0}', String(cacheStats.cached))
-                .replace('{1}', String(cacheStats.total))}
+          {/* Cache Status - compact */}
+          {cacheAvailable === false ? (
+            <Text variant="caption" className="text-amber-600 dark:text-amber-400 pt-2 border-t">
+              {I18n.settings.offline.cacheNotAvailable}
             </Text>
-            {isDownloading && (
-              <Text variant="caption" className="text-primary">
-                {I18n.settings.offline.downloadingStatus
-                  .replace('{0}', String(queueStatus.active))
-                  .replace('{1}', String(queueStatus.pending))}
+          ) : (
+            <Stack direction="horizontal" align="center" justify="between" className="pt-2 border-t min-h-6">
+              <Text variant="caption" className="text-muted-foreground">
+                {I18n.settings.offline.cacheStatus
+                  .replace('{0}', String(cacheStats.cached))
+                  .replace('{1}', String(cacheStats.total))}
               </Text>
-            )}
-          </Stack>
-        )}
+              {isDownloading && (
+                <Text variant="caption" className="text-primary">
+                  {I18n.settings.offline.downloadingStatus
+                    .replace('{0}', String(queueStatus.active))
+                    .replace('{1}', String(queueStatus.pending))}
+                </Text>
+              )}
+            </Stack>
+          )}
+        </Stack>
       </Stack>
     </Card>
   );
