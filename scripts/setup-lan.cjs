@@ -161,6 +161,10 @@ function updateEnvFile(filePath, updates) {
     }
   }
 
+  if (!content.endsWith('\n')) {
+    content += '\n';
+  }
+
   fs.writeFileSync(filePath, content);
 }
 

@@ -199,7 +199,9 @@ function checkNodeVersion() {
   if (majorVersion >= 25) {
     log.success(`  ✓ Node.js ${nodeVersion}`);
   } else {
-    log.warn(`  ⚠️  Node.js ${nodeVersion} detected, but v25+ is recommended`);
+    log.error(`  ✗ Node.js ${nodeVersion} detected, but v25+ is required`);
+    log.warn('    Please install Node.js 25 or newer: https://nodejs.org/');
+    process.exit(1);
   }
 }
 

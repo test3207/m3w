@@ -66,20 +66,6 @@ const log = {
   blank: () => console.log(''),
 };
 
-// Check if a command exists
-function commandExists(cmd) {
-  try {
-    if (os.platform() === 'win32') {
-      execSync(`where ${cmd}`, { stdio: 'ignore' });
-    } else {
-      execSync(`which ${cmd}`, { stdio: 'ignore' });
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // Execute command
 function exec(cmd, options = {}) {
   try {

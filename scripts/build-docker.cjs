@@ -47,10 +47,9 @@
  *   - Called by .github/workflows/build-rc.yml
  */
 
-const { execSync, spawnSync } = require('child_process');
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
 // Colors for terminal output
 const colors = {
@@ -540,7 +539,7 @@ async function main() {
       log.error(`   ❌ Health check failed after ${maxRetries} retries`);
       log.blank();
       log.warn('   Container logs:');
-      exec(`${container.runtime} logs m3w-test 2>&1 | tail -30`);
+      exec(`${container.runtime} logs --tail 30 m3w-test`);
       process.exit(1);
     }
   }
