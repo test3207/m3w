@@ -4,6 +4,7 @@
 
 import { mainApiClient } from '../client';
 import { MAIN_API_ENDPOINTS } from '../endpoints';
+import { RepeatMode } from '@m3w/shared';
 
 export interface Track {
   id: string;
@@ -31,7 +32,7 @@ export interface PlaybackProgress {
 
 export interface PlaybackPreferences {
   shuffleEnabled: boolean;
-  repeatMode: 'off' | 'all' | 'one';
+  repeatMode: RepeatMode;
 }
 
 export interface PlaybackSeed {
@@ -49,7 +50,7 @@ export interface UpdateProgressInput {
 
 export interface UpdatePreferencesInput {
   shuffleEnabled?: boolean;
-  repeatMode?: 'off' | 'all' | 'one';
+  repeatMode?: RepeatMode;
 }
 
 export const player = {

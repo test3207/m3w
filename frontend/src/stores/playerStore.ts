@@ -10,17 +10,26 @@ import {
   updateMediaSessionPositionState,
   clearMediaSessionMetadata,
 } from '@/lib/audio/media-session';
-import type { Song } from '@m3w/shared';
+import { type Song, RepeatMode } from '@m3w/shared';
 import { getStreamUrl } from '@/services/api/main/endpoints';
 import { I18n } from '@/locales/i18n';
 
-export type RepeatMode = 'off' | 'one' | 'all';
 export type QueueSource = 'library' | 'playlist' | 'all' | null;
 
-// Store previous state for HMR (use window to survive HMR)
+// ============================================================================
+// HMR (Hot Module Replacement) Support
+// ============================================================================
+// During development, Vite's HMR will re-execute this module when changes occur.
+// We use window globals to preserve state and prevent duplicate setup:
+// - __PLAYER_STATE_BACKUP__: Stores player state to restore after HMR
+// - __PLAYER_STORE_LISTENERS_REGISTERED__: Prevents duplicate event listeners
+// - __PLAYER_STORE_INTERVAL_ID__: Tracks sync interval to prevent accumulation
+
 declare global {
   interface Window {
     __PLAYER_STATE_BACKUP__?: PlayerState;
+    __PLAYER_STORE_LISTENERS_REGISTERED__?: boolean;
+    __PLAYER_STORE_INTERVAL_ID__?: ReturnType<typeof setInterval>;
   }
 }
 
@@ -70,6 +79,7 @@ function updateMediaSessionForSong(song: Song | null): void {
 interface PlayerState {
   // Current playback
   currentSong: Song | null;
+  lastPlayedSong: Song | null; // Keeps last valid song for UI display during exit animations
   queue: Song[];
   currentIndex: number;
   
@@ -142,128 +152,134 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   // Get AudioPlayer instance
   const audioPlayer = getAudioPlayer();
   
-  // Register Media Session handlers for lock screen controls
-  // Note: We register handlers once at store creation. The handlers use get()
-  // to access current state, so they always reflect the latest queue/position.
-  registerMediaSessionHandlers({
-    onPlay: () => {
-      const { currentSong, duration, currentTime } = get();
-      if (currentSong) {
-        // Refresh metadata in case it was cleared (reuse helper function)
-        updateMediaSessionForSong(currentSong);
-        // Also update position state when resuming (if valid)
-        if (isFinite(currentTime) && isFinite(duration) && duration > 0) {
-          updateMediaSessionPositionState(currentTime, duration);
+  // Setup event listeners and Media Session handlers (only once)
+  // This check prevents duplicate listeners during HMR
+  if (!window.__PLAYER_STORE_LISTENERS_REGISTERED__) {
+    window.__PLAYER_STORE_LISTENERS_REGISTERED__ = true;
+
+    // Register Media Session handlers for lock screen controls
+    // Note: We register handlers once at store creation. The handlers use get()
+    // to access current state, so they always reflect the latest queue/position.
+    registerMediaSessionHandlers({
+      onPlay: () => {
+        const { currentSong, duration, currentTime } = usePlayerStore.getState();
+        if (currentSong) {
+          // Refresh metadata in case it was cleared (reuse helper function)
+          updateMediaSessionForSong(currentSong);
+          // Also update position state when resuming (if valid)
+          if (isFinite(currentTime) && isFinite(duration) && duration > 0) {
+            updateMediaSessionPositionState(currentTime, duration);
+          }
+          audioPlayer.resume();
         }
-        audioPlayer.resume();
-      }
-    },
-    onPause: () => {
-      audioPlayer.pause();
-    },
-    onPreviousTrack: () => {
-      // Use get() to call the store's previous() action
-      get().previous();
-    },
-    onNextTrack: () => {
-      // Use get() to call the store's next() action
-      get().next();
-    },
-    onSeekTo: (time: number) => {
-      const { duration } = get();
-      // Validate inputs before seeking
-      if (!isFinite(time) || !isFinite(duration) || duration <= 0) return;
-      const clampedTime = Math.max(0, Math.min(time, duration));
-      audioPlayer.seek(clampedTime);
-      set({ currentTime: clampedTime });
-      updateMediaSessionPositionState(clampedTime, duration);
-    },
-    onSeekBackward: (offset: number) => {
-      const { currentTime, duration } = get();
-      // Validate all inputs before seeking
-      if (!isFinite(offset) || offset <= 0) return;
-      if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
-      const newTime = Math.max(0, currentTime - offset);
-      audioPlayer.seek(newTime);
-      set({ currentTime: newTime });
-      updateMediaSessionPositionState(newTime, duration);
-    },
-    onSeekForward: (offset: number) => {
-      const { currentTime, duration } = get();
-      // Validate all inputs before seeking
-      if (!isFinite(offset) || offset <= 0) return;
-      if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
-      const newTime = Math.min(duration, currentTime + offset);
-      audioPlayer.seek(newTime);
-      set({ currentTime: newTime });
-      updateMediaSessionPositionState(newTime, duration);
-    },
-  });
-  
-  // Setup event listeners for AudioPlayer state changes
-  audioPlayer.on('play', (state) => {
-    set({ isPlaying: true, currentTime: state.currentTime, duration: state.duration });
-    updateMediaSessionPlaybackState('playing');
-    logger.info('AudioPlayer playing');
-  });
-
-  audioPlayer.on('pause', (state) => {
-    set({ isPlaying: false, currentTime: state.currentTime });
-    updateMediaSessionPlaybackState('paused');
-    // Update position state to ensure lock screen reflects current position
-    updateMediaSessionPositionState(state.currentTime, state.duration);
-    logger.info('AudioPlayer paused');
-  });
-
-  audioPlayer.on('end', async () => {
-    const { next, repeatMode } = get();
-    logger.info('Track ended, repeatMode:', repeatMode);
+      },
+      onPause: () => {
+        audioPlayer.pause();
+      },
+      onPreviousTrack: () => {
+        // Use usePlayerStore.getState() to call the store's previous() action
+        usePlayerStore.getState().previous();
+      },
+      onNextTrack: () => {
+        // Use usePlayerStore.getState() to call the store's next() action
+        usePlayerStore.getState().next();
+      },
+      onSeekTo: (time: number) => {
+        const { duration } = usePlayerStore.getState();
+        // Validate inputs before seeking
+        if (!isFinite(time) || !isFinite(duration) || duration <= 0) return;
+        const clampedTime = Math.max(0, Math.min(time, duration));
+        audioPlayer.seek(clampedTime);
+        usePlayerStore.setState({ currentTime: clampedTime });
+        updateMediaSessionPositionState(clampedTime, duration);
+      },
+      onSeekBackward: (offset: number) => {
+        const { currentTime, duration } = usePlayerStore.getState();
+        // Validate all inputs before seeking
+        if (!isFinite(offset) || offset <= 0) return;
+        if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
+        const newTime = Math.max(0, currentTime - offset);
+        audioPlayer.seek(newTime);
+        usePlayerStore.setState({ currentTime: newTime });
+        updateMediaSessionPositionState(newTime, duration);
+      },
+      onSeekForward: (offset: number) => {
+        const { currentTime, duration } = usePlayerStore.getState();
+        // Validate all inputs before seeking
+        if (!isFinite(offset) || offset <= 0) return;
+        if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
+        const newTime = Math.min(duration, currentTime + offset);
+        audioPlayer.seek(newTime);
+        usePlayerStore.setState({ currentTime: newTime });
+        updateMediaSessionPositionState(newTime, duration);
+      },
+    });
     
-    if (repeatMode === 'one') {
-      // Replay current track
-      const { currentSong } = get();
-      if (currentSong) {
-        const track = songToTrack(currentSong);
-        const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
-        const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
-        audioPlayer.play(preparedTrack);
-      }
-    } else {
-      // Play next track
-      await next();
-    }
-  });
+    // Setup event listeners for AudioPlayer state changes
+    audioPlayer.on('play', (state) => {
+      usePlayerStore.setState({ isPlaying: true, currentTime: state.currentTime, duration: state.duration });
+      updateMediaSessionPlaybackState('playing');
+      logger.info('AudioPlayer playing');
+    });
 
-  audioPlayer.on('error', (state) => {
-    logger.error('AudioPlayer error', { track: state.currentTrack });
-    set({ isPlaying: false });
-  });
+    audioPlayer.on('pause', (state) => {
+      usePlayerStore.setState({ isPlaying: false, currentTime: state.currentTime });
+      updateMediaSessionPlaybackState('paused');
+      // Update position state to ensure lock screen reflects current position
+      updateMediaSessionPositionState(state.currentTime, state.duration);
+      logger.info('AudioPlayer paused');
+    });
 
-  // Start a timer to update current time and sync isPlaying state
-  // Note: This interval is intentionally never cleaned up because:
-  // 1. playerStore is a singleton that lives for the entire app lifetime
-  // 2. The AudioPlayer instance is preserved across HMR via window global
-  // 3. Zustand stores are not recreated during HMR
-  setInterval(() => {
-    const audioState = audioPlayer.getState();
-    const storeState = get();
-    
-    // Sync isPlaying state if out of sync (e.g., after HMR)
-    if (audioState.isPlaying !== storeState.isPlaying) {
-      set({ isPlaying: audioState.isPlaying });
-    }
-    
-    // Update time/duration when playing
-    if (audioState.isPlaying) {
-      set({ currentTime: audioState.currentTime, duration: audioState.duration });
+    audioPlayer.on('end', async () => {
+      const { next, repeatMode } = usePlayerStore.getState();
+      logger.info('Track ended, repeatMode:', repeatMode);
       
-      // Update Media Session position state for lock screen seek bar
-      updateMediaSessionPositionState(
-        audioState.currentTime,
-        audioState.duration
-      );
+      if (repeatMode === RepeatMode.One) {
+        // Replay current track
+        const { currentSong } = usePlayerStore.getState();
+        if (currentSong) {
+          const track = songToTrack(currentSong);
+          const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+          const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+          audioPlayer.play(preparedTrack);
+        }
+      } else {
+        // Play next track
+        await next();
+      }
+    });
+
+    audioPlayer.on('error', (state) => {
+      logger.error('AudioPlayer error', { track: state.currentTrack });
+      usePlayerStore.setState({ isPlaying: false });
+    });
+
+    // Start a timer to update current time and sync isPlaying state
+    // Track interval ID globally to prevent accumulation during HMR
+    if (window.__PLAYER_STORE_INTERVAL_ID__) {
+      clearInterval(window.__PLAYER_STORE_INTERVAL_ID__);
     }
-  }, 500); // Update every 500ms
+    window.__PLAYER_STORE_INTERVAL_ID__ = setInterval(() => {
+      const audioState = audioPlayer.getState();
+      const storeState = usePlayerStore.getState();
+      
+      // Sync isPlaying state if out of sync (e.g., after HMR)
+      if (audioState.isPlaying !== storeState.isPlaying) {
+        usePlayerStore.setState({ isPlaying: audioState.isPlaying });
+      }
+      
+      // Update time/duration when playing
+      if (audioState.isPlaying) {
+        usePlayerStore.setState({ currentTime: audioState.currentTime, duration: audioState.duration });
+        
+        // Update Media Session position state for lock screen seek bar
+        updateMediaSessionPositionState(
+          audioState.currentTime,
+          audioState.duration
+        );
+      }
+    }, 500);
+  }
 
   const backupState = getBackupState();
   const audioState = audioPlayer.getState();
@@ -271,6 +287,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   return {
   // Initial state (restore from backup if HMR, otherwise start fresh)
   currentSong: backupState?.currentSong ?? null,
+  lastPlayedSong: backupState?.lastPlayedSong ?? null,
   queue: backupState?.queue ?? [],
   currentIndex: backupState?.currentIndex ?? -1,
   queueSource: backupState?.queueSource ?? null,
@@ -279,7 +296,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   isPlaying: audioState.isPlaying, // Always use AudioPlayer's actual state
   volume: backupState?.volume ?? 0.8,
   isMuted: backupState?.isMuted ?? false,
-  repeatMode: backupState?.repeatMode ?? 'off',
+  repeatMode: backupState?.repeatMode ?? RepeatMode.Off,
   isShuffled: backupState?.isShuffled ?? false,
   currentTime: backupState?.currentTime ?? 0,
   duration: backupState?.duration ?? 0,
@@ -291,7 +308,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     if (song) {
       const track = songToTrack(song);
       audioPlayer.play(track);
-      set({ currentSong: song, isPlaying: true });
+      set({ currentSong: song, lastPlayedSong: song, isPlaying: true });
       // Update Media Session metadata for lock screen display
       updateMediaSessionForSong(song);
       logger.info('Playing song', { songId: song.id, title: song.title });
@@ -341,11 +358,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
   // Queue management
   setQueue: (songs, startIndex = 0) =>
-    set({
+    set((state) => ({
       queue: songs,
       currentIndex: startIndex,
       currentSong: songs[startIndex] || null,
-    }),
+      lastPlayedSong: songs[startIndex] || state.lastPlayedSong,
+    })),
 
   addToQueue: (song) =>
     set((state) => ({
@@ -367,6 +385,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         queue: newQueue,
         currentIndex: newIndex,
         currentSong: newQueue[newIndex] || null,
+        lastPlayedSong: newQueue[newIndex] || state.lastPlayedSong,
       };
     }),
 
@@ -575,6 +594,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       set({
         currentIndex: nextIndex,
         currentSong: nextSong,
+        lastPlayedSong: nextSong,
         currentTime: 0,
         isPlaying: true,
       });
@@ -614,6 +634,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       set({
         currentIndex: prevIndex,
         currentSong: prevSong,
+        lastPlayedSong: prevSong,
         currentTime: 0,
         isPlaying: true,
       });
@@ -638,6 +659,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       set({
         currentIndex: index,
         currentSong: song,
+        lastPlayedSong: song,
         currentTime: 0,
         isPlaying: true,
       });
@@ -678,7 +700,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
   toggleRepeat: () => {
     const state = get();
-    const modes: RepeatMode[] = ['off', 'all', 'one'];
+    const modes: RepeatMode[] = [RepeatMode.Off, RepeatMode.All, RepeatMode.One];
     const currentIndex = modes.indexOf(state.repeatMode);
     const nextIndex = (currentIndex + 1) % modes.length;
     const nextMode = modes[nextIndex];
@@ -796,6 +818,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
             
             set({
               currentSong: song,
+              lastPlayedSong: song,
               queue: [song],
               currentIndex: 0,
               queueSource: seed.context.type as QueueSource,
@@ -883,6 +906,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       // Update store state
       set({
         currentSong: song,
+        lastPlayedSong: song,
         queue: fullQueue,
         currentIndex: startIndex,
         queueSource: progress.context?.type as QueueSource ?? null,
@@ -990,6 +1014,7 @@ if (import.meta.env.DEV) {
   usePlayerStore.subscribe((state) => {
     setBackupState({
       currentSong: state.currentSong,
+      lastPlayedSong: state.lastPlayedSong,
       queue: state.queue,
       currentIndex: state.currentIndex,
       queueSource: state.queueSource,

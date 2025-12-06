@@ -5,10 +5,11 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { db } from '../../db/schema';
-import type {
-  ApiResponse,
-  ProgressSyncResult,
-  PreferencesUpdateResult,
+import {
+  RepeatMode,
+  type ApiResponse,
+  type ProgressSyncResult,
+  type PreferencesUpdateResult,
 } from '@m3w/shared';
 import { getUserId } from '../utils';
 
@@ -248,7 +249,7 @@ app.get('/preferences', async (c: Context) => {
       data: preferences || {
         volume: 1,
         muted: false,
-        repeatMode: 'off',
+        repeatMode: RepeatMode.Off,
         shuffleEnabled: false,
       },
     });
@@ -258,7 +259,7 @@ app.get('/preferences', async (c: Context) => {
       data: {
         volume: 1,
         muted: false,
-        repeatMode: 'off',
+        repeatMode: RepeatMode.Off,
         shuffleEnabled: false,
       },
     });

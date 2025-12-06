@@ -7,7 +7,13 @@
 // Enums and Constants
 // ============================================================
 
-export type RepeatMode = 'off' | 'all' | 'one';
+/** Repeat mode for playback */
+export enum RepeatMode {
+  Off = 'off',
+  All = 'all',
+  One = 'one',
+}
+
 export type PlaybackContextType = 'library' | 'playlist' | 'album' | 'search' | 'queue';
 
 // ============================================================
