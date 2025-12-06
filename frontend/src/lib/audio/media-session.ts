@@ -34,7 +34,7 @@ const DEFAULT_SEEK_OFFSET = 10;
  * Check if Media Session API is supported
  */
 export function isMediaSessionSupported(): boolean {
-  return 'mediaSession' in navigator;
+  return typeof navigator !== 'undefined' && 'mediaSession' in navigator;
 }
 
 /**
@@ -49,13 +49,14 @@ export function updateMediaSessionMetadata(track: MediaSessionTrack): void {
     const artwork: MediaImage[] = [];
     if (track.coverUrl) {
       // Provide multiple sizes for different contexts
+      // Omit 'type' to let the browser infer from response headers (covers can be JPEG, PNG, WebP, etc.)
       artwork.push(
-        { src: track.coverUrl, sizes: '96x96', type: 'image/jpeg' },
-        { src: track.coverUrl, sizes: '128x128', type: 'image/jpeg' },
-        { src: track.coverUrl, sizes: '192x192', type: 'image/jpeg' },
-        { src: track.coverUrl, sizes: '256x256', type: 'image/jpeg' },
-        { src: track.coverUrl, sizes: '384x384', type: 'image/jpeg' },
-        { src: track.coverUrl, sizes: '512x512', type: 'image/jpeg' }
+        { src: track.coverUrl, sizes: '96x96' },
+        { src: track.coverUrl, sizes: '128x128' },
+        { src: track.coverUrl, sizes: '192x192' },
+        { src: track.coverUrl, sizes: '256x256' },
+        { src: track.coverUrl, sizes: '384x384' },
+        { src: track.coverUrl, sizes: '512x512' }
       );
     }
 
@@ -105,8 +106,8 @@ export function updateMediaSessionPositionState(
     return;
   }
 
-  // Validate inputs to prevent errors
-  if (duration <= 0 || !isFinite(duration)) {
+  // Validate inputs to prevent errors (NaN, Infinity, negative values)
+  if (duration <= 0 || !isFinite(duration) || !isFinite(position)) {
     return;
   }
 

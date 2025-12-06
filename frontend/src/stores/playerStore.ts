@@ -159,20 +159,24 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       get().next();
     },
     onSeekTo: (time: number) => {
+      const { duration } = get();
       audioPlayer.seek(time);
       set({ currentTime: time });
+      updateMediaSessionPositionState(time, duration);
     },
     onSeekBackward: (offset: number) => {
-      const { currentTime } = get();
+      const { currentTime, duration } = get();
       const newTime = Math.max(0, currentTime - offset);
       audioPlayer.seek(newTime);
       set({ currentTime: newTime });
+      updateMediaSessionPositionState(newTime, duration);
     },
     onSeekForward: (offset: number) => {
       const { currentTime, duration } = get();
       const newTime = Math.min(duration, currentTime + offset);
       audioPlayer.seek(newTime);
       set({ currentTime: newTime });
+      updateMediaSessionPositionState(newTime, duration);
     },
   });
   
