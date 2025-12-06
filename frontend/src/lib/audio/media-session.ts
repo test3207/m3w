@@ -171,7 +171,7 @@ export function registerMediaSessionHandlers(
     // Seek controls (optional but nice to have)
     if (callbacks.onSeekTo) {
       navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime !== undefined) {
+        if (details.seekTime !== undefined && isFinite(details.seekTime) && details.seekTime >= 0) {
           logger.info('Media Session: seekto action triggered', {
             seekTime: details.seekTime,
           });
@@ -183,6 +183,8 @@ export function registerMediaSessionHandlers(
     if (callbacks.onSeekBackward) {
       navigator.mediaSession.setActionHandler('seekbackward', (details) => {
         const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
+        // Validate offset is a positive finite number
+        if (!isFinite(offset) || offset <= 0) return;
         logger.info('Media Session: seekbackward action triggered', { offset });
         callbacks.onSeekBackward?.(offset);
       });
@@ -191,6 +193,8 @@ export function registerMediaSessionHandlers(
     if (callbacks.onSeekForward) {
       navigator.mediaSession.setActionHandler('seekforward', (details) => {
         const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
+        // Validate offset is a positive finite number
+        if (!isFinite(offset) || offset <= 0) return;
         logger.info('Media Session: seekforward action triggered', { offset });
         callbacks.onSeekForward?.(offset);
       });

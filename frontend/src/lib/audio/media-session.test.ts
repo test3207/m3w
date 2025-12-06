@@ -272,10 +272,29 @@ describe('media-session', () => {
       const seekToCall = mockSetActionHandler.mock.calls.find((call) => call[0] === 'seekto');
       const handler = seekToCall?.[1] as (details: MediaSessionActionDetails) => void;
 
-      // Invoke with seekTime
+      // Invoke with valid seekTime
       handler({ action: 'seekto', seekTime: 45 });
-
       expect(onSeekTo).toHaveBeenCalledWith(45);
+    });
+
+    it('does not invoke seekto callback with invalid seekTime', () => {
+      const onSeekTo = vi.fn();
+      registerMediaSessionHandlers({ onSeekTo });
+
+      const seekToCall = mockSetActionHandler.mock.calls.find((call) => call[0] === 'seekto');
+      const handler = seekToCall?.[1] as (details: MediaSessionActionDetails) => void;
+
+      // NaN
+      handler({ action: 'seekto', seekTime: NaN });
+      expect(onSeekTo).not.toHaveBeenCalled();
+
+      // Negative
+      handler({ action: 'seekto', seekTime: -10 });
+      expect(onSeekTo).not.toHaveBeenCalled();
+
+      // Infinity
+      handler({ action: 'seekto', seekTime: Infinity });
+      expect(onSeekTo).not.toHaveBeenCalled();
     });
 
     it('invokes seekbackward callback with offset', () => {
@@ -290,12 +309,28 @@ describe('media-session', () => {
       // With custom offset
       handler({ action: 'seekbackward', seekOffset: 15 });
       expect(onSeekBackward).toHaveBeenCalledWith(15);
+    });
 
-      onSeekBackward.mockClear();
+    it('does not invoke seekbackward callback with invalid offset', () => {
+      const onSeekBackward = vi.fn();
+      registerMediaSessionHandlers({ onSeekBackward });
 
-      // Without offset (should use default 10)
-      handler({ action: 'seekbackward' });
-      expect(onSeekBackward).toHaveBeenCalledWith(10);
+      const seekBackwardCall = mockSetActionHandler.mock.calls.find(
+        (call) => call[0] === 'seekbackward'
+      );
+      const handler = seekBackwardCall?.[1] as (details: MediaSessionActionDetails) => void;
+
+      // NaN offset
+      handler({ action: 'seekbackward', seekOffset: NaN });
+      expect(onSeekBackward).not.toHaveBeenCalled();
+
+      // Negative offset
+      handler({ action: 'seekbackward', seekOffset: -5 });
+      expect(onSeekBackward).not.toHaveBeenCalled();
+
+      // Zero offset
+      handler({ action: 'seekbackward', seekOffset: 0 });
+      expect(onSeekBackward).not.toHaveBeenCalled();
     });
 
     it('invokes seekforward callback with offset', () => {
@@ -310,12 +345,28 @@ describe('media-session', () => {
       // With custom offset
       handler({ action: 'seekforward', seekOffset: 30 });
       expect(onSeekForward).toHaveBeenCalledWith(30);
+    });
 
-      onSeekForward.mockClear();
+    it('does not invoke seekforward callback with invalid offset', () => {
+      const onSeekForward = vi.fn();
+      registerMediaSessionHandlers({ onSeekForward });
 
-      // Without offset (should use default 10)
-      handler({ action: 'seekforward' });
-      expect(onSeekForward).toHaveBeenCalledWith(10);
+      const seekForwardCall = mockSetActionHandler.mock.calls.find(
+        (call) => call[0] === 'seekforward'
+      );
+      const handler = seekForwardCall?.[1] as (details: MediaSessionActionDetails) => void;
+
+      // NaN offset
+      handler({ action: 'seekforward', seekOffset: NaN });
+      expect(onSeekForward).not.toHaveBeenCalled();
+
+      // Negative offset
+      handler({ action: 'seekforward', seekOffset: -5 });
+      expect(onSeekForward).not.toHaveBeenCalled();
+
+      // Zero offset
+      handler({ action: 'seekforward', seekOffset: 0 });
+      expect(onSeekForward).not.toHaveBeenCalled();
     });
   });
 });

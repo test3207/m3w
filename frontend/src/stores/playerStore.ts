@@ -149,15 +149,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     onPlay: () => {
       const { currentSong, duration, currentTime } = get();
       if (currentSong) {
-        // Refresh metadata in case it was cleared
-        updateMediaSessionMetadata({
-          title: currentSong.title,
-          artist: currentSong.artist ?? undefined,
-          album: currentSong.album ?? undefined,
-          coverUrl: currentSong.coverUrl ?? undefined,
-        });
-        // Also update position state when resuming
-        updateMediaSessionPositionState(currentTime, duration);
+        // Refresh metadata in case it was cleared (reuse helper function)
+        updateMediaSessionForSong(currentSong);
+        // Also update position state when resuming (if valid)
+        if (isFinite(currentTime) && isFinite(duration) && duration > 0) {
+          updateMediaSessionPositionState(currentTime, duration);
+        }
         audioPlayer.resume();
       }
     },
@@ -183,8 +180,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     },
     onSeekBackward: (offset: number) => {
       const { currentTime, duration } = get();
-      // Validate duration before seeking
-      if (!isFinite(duration) || duration <= 0) return;
+      // Validate all inputs before seeking
+      if (!isFinite(offset) || offset <= 0) return;
+      if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
       const newTime = Math.max(0, currentTime - offset);
       audioPlayer.seek(newTime);
       set({ currentTime: newTime });
@@ -192,8 +190,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     },
     onSeekForward: (offset: number) => {
       const { currentTime, duration } = get();
-      // Validate duration before seeking
-      if (!isFinite(duration) || duration <= 0) return;
+      // Validate all inputs before seeking
+      if (!isFinite(offset) || offset <= 0) return;
+      if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
       const newTime = Math.min(duration, currentTime + offset);
       audioPlayer.seek(newTime);
       set({ currentTime: newTime });
