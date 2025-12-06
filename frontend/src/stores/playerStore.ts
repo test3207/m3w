@@ -109,64 +109,77 @@ interface PlayerActions {
 
 type PlayerStore = PlayerState & PlayerActions;
 
+// Track if event listeners have been registered (survives HMR via window)
+declare global {
+  interface Window {
+    __PLAYER_STORE_LISTENERS_REGISTERED__?: boolean;
+  }
+}
+
 export const usePlayerStore = create<PlayerStore>((set, get) => {
   // Get AudioPlayer instance
   const audioPlayer = getAudioPlayer();
   
-  // Setup event listeners for AudioPlayer state changes
-  audioPlayer.on('play', (state) => {
-    set({ isPlaying: true, currentTime: state.currentTime, duration: state.duration });
-    logger.info('AudioPlayer playing');
-  });
-
-  audioPlayer.on('pause', (state) => {
-    set({ isPlaying: false, currentTime: state.currentTime });
-    logger.info('AudioPlayer paused');
-  });
-
-  audioPlayer.on('end', async () => {
-    const { next, repeatMode } = get();
-    logger.info('Track ended, repeatMode:', repeatMode);
+  // Setup event listeners for AudioPlayer state changes (only once)
+  // This check prevents duplicate listeners during HMR
+  if (!window.__PLAYER_STORE_LISTENERS_REGISTERED__) {
+    window.__PLAYER_STORE_LISTENERS_REGISTERED__ = true;
     
-    if (repeatMode === RepeatMode.One) {
-      // Replay current track
-      const { currentSong } = get();
-      if (currentSong) {
-        const track = songToTrack(currentSong);
-        const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
-        const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
-        audioPlayer.play(preparedTrack);
+    audioPlayer.on('play', (state) => {
+      // Use usePlayerStore.setState to always get the latest store instance
+      usePlayerStore.setState({ isPlaying: true, currentTime: state.currentTime, duration: state.duration });
+      logger.info('AudioPlayer playing');
+    });
+
+    audioPlayer.on('pause', (state) => {
+      usePlayerStore.setState({ isPlaying: false, currentTime: state.currentTime });
+      logger.info('AudioPlayer paused');
+    });
+
+    audioPlayer.on('end', async () => {
+      const { next, repeatMode } = usePlayerStore.getState();
+      logger.info('Track ended, repeatMode:', repeatMode);
+      
+      if (repeatMode === RepeatMode.One) {
+        // Replay current track
+        const { currentSong } = usePlayerStore.getState();
+        if (currentSong) {
+          const track = songToTrack(currentSong);
+          const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+          const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+          audioPlayer.play(preparedTrack);
+        }
+      } else {
+        // Play next track
+        await next();
       }
-    } else {
-      // Play next track
-      await next();
-    }
-  });
+    });
 
-  audioPlayer.on('error', (state) => {
-    logger.error('AudioPlayer error', { track: state.currentTrack });
-    set({ isPlaying: false });
-  });
+    audioPlayer.on('error', (state) => {
+      logger.error('AudioPlayer error', { track: state.currentTrack });
+      usePlayerStore.setState({ isPlaying: false });
+    });
 
-  // Start a timer to update current time and sync isPlaying state
-  // Note: This interval is intentionally never cleaned up because:
-  // 1. playerStore is a singleton that lives for the entire app lifetime
-  // 2. The AudioPlayer instance is preserved across HMR via window global
-  // 3. Zustand stores are not recreated during HMR
-  setInterval(() => {
-    const audioState = audioPlayer.getState();
-    const storeState = get();
-    
-    // Sync isPlaying state if out of sync (e.g., after HMR)
-    if (audioState.isPlaying !== storeState.isPlaying) {
-      set({ isPlaying: audioState.isPlaying });
-    }
-    
-    // Update time/duration when playing
-    if (audioState.isPlaying) {
-      set({ currentTime: audioState.currentTime, duration: audioState.duration });
-    }
-  }, 500); // Update every 500ms
+    // Start a timer to update current time and sync isPlaying state
+    // Note: This interval is intentionally never cleaned up because:
+    // 1. playerStore is a singleton that lives for the entire app lifetime
+    // 2. The AudioPlayer instance is preserved across HMR via window global
+    // 3. Zustand stores are not recreated during HMR
+    setInterval(() => {
+      const audioState = audioPlayer.getState();
+      const storeState = usePlayerStore.getState();
+      
+      // Sync isPlaying state if out of sync (e.g., after HMR)
+      if (audioState.isPlaying !== storeState.isPlaying) {
+        usePlayerStore.setState({ isPlaying: audioState.isPlaying });
+      }
+      
+      // Update time/duration when playing
+      if (audioState.isPlaying) {
+        usePlayerStore.setState({ currentTime: audioState.currentTime, duration: audioState.duration });
+      }
+    }, 500);
+  }
 
   const backupState = getBackupState();
   const audioState = audioPlayer.getState();
