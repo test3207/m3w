@@ -220,6 +220,8 @@ export interface Messages {
     greetingWithName: string;
     /** From {0} to {1} */
     dateRange: string;
+    /** Unknown Artist */
+    unknownArtist: string;
     timeAgo: {
       /** Just now */
       justNow: string;
@@ -1147,6 +1149,8 @@ export interface Messages {
       nowPlaying: string;
       /** From: {0} */
       fromLibrary: string;
+      /** Drag to reorder */
+      dragToReorder: string;
       empty: {
         /** Playlist is empty */
         title: string;
@@ -1169,6 +1173,12 @@ export interface Messages {
       };
       /** Add songs from your libraries to this playlist */
       addFromLibrary: string;
+      /** Play {0} */
+      playSong: string;
+      /** Play {0} by {1} */
+      playSongBy: string;
+      /** Remove {0} from playlist */
+      removeFromPlaylist: string;
     };
   };
   demo: {

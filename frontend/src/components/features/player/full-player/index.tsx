@@ -63,7 +63,6 @@ import {
   Shuffle,
 } from 'lucide-react';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
 import { Text } from '@/components/ui/text';
 import { Stack } from '@/components/ui/stack';
@@ -103,8 +102,6 @@ function formatDuration(seconds: number): string {
 // ============================================================================
 
 export function FullPlayer() {
-  useLocale();
-  
   const isOpen = useUIStore((state) => state.isFullPlayerOpen);
   const closeFullPlayer = useUIStore((state) => state.closeFullPlayer);
   const openPlayQueueDrawer = useUIStore((state) => state.openPlayQueueDrawer);

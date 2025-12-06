@@ -25,6 +25,7 @@ import { ReloadPrompt } from "./components/features/pwa/reload-prompt";
 import { InstallPrompt } from "./components/features/pwa/install-prompt";
 import { MobileLayout } from "./components/layouts/mobile-layout";
 import { AuthProvider } from "./components/providers/auth-provider";
+import { LocaleProvider } from "./components/providers/locale-provider";
 
 // Get or create root for HMR compatibility
 // Store root instance on the DOM element to prevent duplicate createRoot calls during HMR
@@ -40,9 +41,10 @@ if (!rootElement._reactRoot) {
 
 rootElement._reactRoot.render(
   <React.StrictMode>
-    <AuthProvider>
-      <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
+    <LocaleProvider>
+      <AuthProvider>
+        <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<HomePage />} />
@@ -110,6 +112,7 @@ rootElement._reactRoot.render(
           <InstallPrompt />
         </BrowserRouter>
       </AuthProvider>
+    </LocaleProvider>
   </React.StrictMode>
 );
 

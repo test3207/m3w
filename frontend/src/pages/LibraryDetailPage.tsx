@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
-import { useLocale } from "@/locales/use-locale";
 import { api } from "@/services";
 import { eventBus, EVENTS, type SongCachedPayload } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
@@ -61,7 +60,6 @@ import { cn } from "@/lib/utils";
 const LONG_PRESS_DURATION = 500;
 
 export default function LibraryDetailPage() {
-  useLocale(); // Subscribe to locale changes
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();

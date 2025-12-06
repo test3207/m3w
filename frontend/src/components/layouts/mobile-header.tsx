@@ -4,13 +4,11 @@
  */
 
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 import { LanguageSwitcher } from './language-switcher';
 import { useAuthStore } from '@/stores/authStore';
 import { MobileUserMenu } from './mobile-user-menu';
 
 export function MobileHeader() {
-  useLocale(); // Subscribe to locale changes
   const user = useAuthStore((state) => state.user);
   
   return (

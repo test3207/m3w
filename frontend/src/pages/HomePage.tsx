@@ -2,12 +2,10 @@ import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Music } from "lucide-react";
 import { I18n } from "@/locales/i18n";
-import { useLocale } from "@/locales/use-locale";
 import { LanguageSwitcher } from "@/components/layouts/language-switcher";
 import { useAuthStore } from "@/stores/authStore";
 
 export default function HomePage() {
-  useLocale();
   const { isAuthenticated } = useAuthStore();
 
   if (isAuthenticated) {

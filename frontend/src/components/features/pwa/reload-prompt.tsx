@@ -7,10 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServiceWorker } from '@/hooks/useServiceWorker';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 
 export function ReloadPrompt() {
-  useLocale();
   const { offlineReady, needRefresh, updateServiceWorker, close } = useServiceWorker();
 
   if (!offlineReady && !needRefresh) {

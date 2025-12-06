@@ -8,7 +8,6 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 import { demo } from '@/services/api/main/resources/demo';
 import { IS_DEMO_BUILD } from '@/lib/demo/constants';
 import { Stack } from '@/components/ui/stack';
@@ -17,8 +16,6 @@ import { Separator } from '@/components/ui/separator';
 import type { StorageUsageInfo } from '@m3w/shared';
 
 export function DemoBanner() {
-  useLocale();
-  
   const [storageInfo, setStorageInfo] = useState<StorageUsageInfo | null>(null);
   const [isEnabled, setIsEnabled] = useState(false);
 

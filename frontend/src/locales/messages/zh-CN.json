@@ -116,6 +116,7 @@
     "itemsCount": "{0} 项",
     "greetingWithName": "你好 {0},欢迎回来!",
     "dateRange": "从 {0} 到 {1}",
+    "unknownArtist": "未知艺术家",
     "timeAgo": {
       "justNow": "刚刚",
       "minutesAgo": "{0}分钟前",
@@ -642,6 +643,7 @@
       "playAll": "播放全部",
       "nowPlaying": "正在播放：{0}",
       "fromLibrary": "来自：{0}",
+      "dragToReorder": "拖动排序",
       "empty": {
         "title": "播放列表为空",
         "description": "从音乐库添加歌曲到此播放列表",
@@ -655,7 +657,10 @@
         "successTitle": "已移除：{0}",
         "errorTitle": "移除失败"
       },
-      "addFromLibrary": "从音乐库添加歌曲到此播放列表"
+      "addFromLibrary": "从音乐库添加歌曲到此播放列表",
+      "playSong": "播放 {0}",
+      "playSongBy": "播放 {0}，{1}",
+      "removeFromPlaylist": "从播放列表移除 {0}"
     }
   },
   "demo": {

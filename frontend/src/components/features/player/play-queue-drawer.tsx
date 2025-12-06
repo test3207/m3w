@@ -19,10 +19,8 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 
 export function PlayQueueDrawer() {
-  useLocale();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [playlistName, setPlaylistName] = useState('');

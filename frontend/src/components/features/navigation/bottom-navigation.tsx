@@ -8,7 +8,6 @@ import { Link, useLocation } from 'react-router-dom';
 
 import { cn } from '@/lib/utils';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 
 const NAV_ITEMS = [
   {
@@ -29,7 +28,6 @@ const NAV_ITEMS = [
 ];
 
 export function BottomNavigation() {
-  useLocale(); // Subscribe to locale changes
   const location = useLocation();
 
   return (

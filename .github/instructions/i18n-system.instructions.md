@@ -91,20 +91,23 @@ const unsubscribe = onLocaleChange(() => {
 
 **Purpose:** Trigger component re-render when locale changes
 
+**Architecture Note:** Since v0.1.1, `useLocale()` is called once at the root level in `LocaleProvider` (see `src/components/providers/locale-provider.tsx`). Individual components **no longer need** to call `useLocale()` - the root provider handles locale reactivity for the entire component tree.
+
 **Implementation:**
 ```typescript
+// src/components/providers/locale-provider.tsx
 import { useLocale } from '@/locales/use-locale';
 
-export default function MyComponent() {
-  useLocale(); // Subscribe to locale changes
-  return <h1>{I18n.dashboard.title}</h1>;
+export function LocaleProvider({ children }: { children: React.ReactNode }) {
+  useLocale(); // Single subscription at root level
+  return <>{children}</>;
 }
 ```
 
 **Rules:**
-- Call `useLocale()` at the top of any client component using i18n
-- Do NOT use in API routes or server actions (they don't need re-rendering)
-- The hook returns nothing; it only triggers re-renders
+- Do NOT call `useLocale()` in individual components - it's handled at root level
+- The `LocaleProvider` wraps the entire app in `main.tsx`
+- When locale changes, the entire component tree re-renders automatically
 
 ### 4. Build Script (`scripts/build-i18n.js`)
 
@@ -134,14 +137,10 @@ export default function MyComponent() {
 ### Client Components
 
 ```typescript
-'use client';
-
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 
 export default function DashboardPage() {
-  useLocale(); // Required for reactivity
-  
+  // No need to call useLocale() - handled by LocaleProvider at root level
   return (
     <div>
       <h1>{I18n.dashboard.title}</h1>
@@ -152,8 +151,8 @@ export default function DashboardPage() {
 ```
 
 **Rules:**
-- Always import both `I18n` and `useLocale`
-- Call `useLocale()` at component start
+- Only import `I18n` (useLocale is handled at root level by LocaleProvider)
+- Access messages via `I18n.category.key`
 - Add `suppressHydrationWarning` to elements containing i18n text if needed
 
 ### API Routes
@@ -411,13 +410,9 @@ npm run i18n:build
 
 ### Issue: Component Not Re-rendering on Language Change
 
-**Solution:** Ensure `useLocale()` is called at component start:
-```typescript
-export default function MyComponent() {
-  useLocale(); // Add this
-  return <div>{I18n.text.here}</div>;
-}
-```
+**Note:** This should not happen with the current architecture since `LocaleProvider` handles all locale reactivity at the root level. If you encounter this issue, verify that:
+1. `LocaleProvider` is wrapping the component tree in `main.tsx`
+2. The `I18n.category.key` syntax is being used (not a cached value)
 
 ### Issue: Missing Translation
 
@@ -431,7 +426,6 @@ export default function MyComponent() {
 
 ### DO:
 - ✅ Add all new text to `en.json` first
-- ✅ Use `useLocale()` in client components
 - ✅ Keep messages short and descriptive
 - ✅ Organize by feature/domain in nested structure
 - ✅ Run `npm run i18n:build` after batch edits
@@ -439,7 +433,7 @@ export default function MyComponent() {
 ### DON'T:
 - ❌ Hardcode user-facing text
 - ❌ Edit `types.d.ts` manually (auto-generated)
-- ❌ Use `useLocale()` in API routes
+- ❌ Call `useLocale()` in individual components (handled by LocaleProvider)
 - ❌ Call `setLocale()` on every render
 - ❌ Create separate i18n stores or contexts
 
@@ -449,7 +443,6 @@ When migrating existing code:
 
 - [ ] Replace hardcoded strings with `I18n.category.key`
 - [ ] Add keys to `en.json` if missing
-- [ ] Add `useLocale()` to client components
 - [ ] Remove old i18n imports (if any)
 - [ ] Test language switching
 - [ ] Verify TypeScript compilation

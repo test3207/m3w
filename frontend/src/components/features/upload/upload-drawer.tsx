@@ -11,15 +11,12 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 import { useUIStore } from '@/stores/uiStore';
 import { useLibraryStore } from '@/stores/libraryStore';
 import { UploadSongForm } from '@/components/features/upload/upload-song-form';
 import { getLibraryDisplayName } from '@/lib/utils/defaults';
 
 export function UploadDrawer() {
-  useLocale();
-  
   const { isUploadDrawerOpen, closeUploadDrawer, uploadTargetLibraryId } = useUIStore();
   const { libraries } = useLibraryStore();
   

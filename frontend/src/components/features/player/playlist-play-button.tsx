@@ -4,7 +4,6 @@ import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import type { Track } from '@/lib/audio/player';
 import type { PlayContext } from '@/lib/audio/context';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
 import { api } from '@/services';
 import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
@@ -15,7 +14,6 @@ interface PlaylistPlayButtonProps {
 }
 
 export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayButtonProps) {
-  useLocale(); // Subscribe to locale changes
   const { playFromQueue } = useAudioPlayer();
   const [isLoading, setIsLoading] = useState(false);
 
