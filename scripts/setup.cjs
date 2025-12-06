@@ -277,6 +277,7 @@ function installDependencies() {
     log.error('  ✗ shared package build failed');
     process.exit(1);
   }
+  log.success('  ✓ Shared package built');
 
   // Optional: Playwright browsers
   log.gray('  Installing Playwright browsers (for testing)...');
