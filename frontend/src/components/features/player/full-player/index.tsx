@@ -67,7 +67,7 @@ import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
 import { Text } from '@/components/ui/text';
 import { Stack } from '@/components/ui/stack';
-import { RepeatMode, type Song } from '@m3w/shared';
+import { RepeatMode } from '@m3w/shared';
 
 import { GESTURE_CONFIG, ANIMATION_CONFIG, TRANSFORM } from './constants';
 import {
@@ -116,6 +116,7 @@ export function FullPlayer() {
   const isShuffled = usePlayerStore((state) => state.isShuffled);
   const repeatMode = usePlayerStore((state) => state.repeatMode);
   const queueSourceName = usePlayerStore((state) => state.queueSourceName);
+  const lastPlayedSong = usePlayerStore((state) => state.lastPlayedSong);
 
   const togglePlayPause = usePlayerStore((state) => state.togglePlayPause);
   const previous = usePlayerStore((state) => state.previous);
@@ -134,9 +135,6 @@ export function FullPlayer() {
   // Touch gesture tracking
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Store last song to display during exit animation when currentSong becomes null
-  const lastSongRef = useRef<Song | null>(null);
   
   // RAF cleanup tracking to prevent memory leaks during rapid open/close
   const rafIdsRef = useRef<number[]>([]);
@@ -345,13 +343,8 @@ export function FullPlayer() {
     next();
   };
 
-  // Update lastSongRef when currentSong changes (for exit animation display)
-  if (currentSong) {
-    lastSongRef.current = currentSong;
-  }
-
-  // Use currentSong if available, otherwise fall back to lastSongRef for exit animation
-  const displaySong = currentSong || lastSongRef.current;
+  // Use currentSong if available, otherwise fall back to lastPlayedSong from store for exit animation
+  const displaySong = currentSong || lastPlayedSong;
 
   // Don't render if hidden (after close animation completes) or no song to display
   if (animationPhase === AnimationPhase.Hidden || !displaySong) {

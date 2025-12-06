@@ -51,6 +51,7 @@ function songToTrack(song: Song): Track {
 interface PlayerState {
   // Current playback
   currentSong: Song | null;
+  lastPlayedSong: Song | null; // Keeps last valid song for UI display during exit animations
   queue: Song[];
   currentIndex: number;
   
@@ -190,6 +191,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   return {
   // Initial state (restore from backup if HMR, otherwise start fresh)
   currentSong: backupState?.currentSong ?? null,
+  lastPlayedSong: backupState?.lastPlayedSong ?? null,
   queue: backupState?.queue ?? [],
   currentIndex: backupState?.currentIndex ?? -1,
   queueSource: backupState?.queueSource ?? null,
@@ -210,7 +212,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     if (song) {
       const track = songToTrack(song);
       audioPlayer.play(track);
-      set({ currentSong: song, isPlaying: true });
+      set({ currentSong: song, lastPlayedSong: song, isPlaying: true });
       logger.info('Playing song', { songId: song.id, title: song.title });
     } else {
       audioPlayer.resume();
@@ -475,6 +477,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       set({
         currentIndex: nextIndex,
         currentSong: nextSong,
+        lastPlayedSong: nextSong,
         currentTime: 0,
         isPlaying: true,
       });
@@ -512,6 +515,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       set({
         currentIndex: prevIndex,
         currentSong: prevSong,
+        lastPlayedSong: prevSong,
         currentTime: 0,
         isPlaying: true,
       });
@@ -534,6 +538,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       set({
         currentIndex: index,
         currentSong: song,
+        lastPlayedSong: song,
         currentTime: 0,
         isPlaying: true,
       });
@@ -690,6 +695,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
             
             set({
               currentSong: song,
+              lastPlayedSong: song,
               queue: [song],
               currentIndex: 0,
               queueSource: seed.context.type as QueueSource,
@@ -777,6 +783,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       // Update store state
       set({
         currentSong: song,
+        lastPlayedSong: song,
         queue: fullQueue,
         currentIndex: startIndex,
         queueSource: progress.context?.type as QueueSource ?? null,
@@ -884,6 +891,7 @@ if (import.meta.env.DEV) {
   usePlayerStore.subscribe((state) => {
     setBackupState({
       currentSong: state.currentSong,
+      lastPlayedSong: state.lastPlayedSong,
       queue: state.queue,
       currentIndex: state.currentIndex,
       queueSource: state.queueSource,
