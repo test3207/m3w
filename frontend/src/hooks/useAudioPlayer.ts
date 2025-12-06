@@ -42,13 +42,13 @@ export function useAudioPlayer() {
         const preferences = await api.main.player.getPreferences();
         if (preferences) {
           const queue = getPlayQueue();
-          // Map string repeatMode to enum
-          const repeatModeMap: Record<string, RepeatMode> = {
-            'off': RepeatMode.Off,
-            'all': RepeatMode.All,
-            'one': RepeatMode.One,
-          };
-          queue.setRepeatMode(repeatModeMap[preferences.repeatMode] || RepeatMode.Off);
+          // Validate and use repeatMode from preferences (enum values are already strings)
+          const isValidRepeatMode = (value: string): value is RepeatMode =>
+            Object.values(RepeatMode).includes(value as RepeatMode);
+          const repeatMode = isValidRepeatMode(preferences.repeatMode)
+            ? preferences.repeatMode
+            : RepeatMode.Off;
+          queue.setRepeatMode(repeatMode);
           queue.setShuffle(preferences.shuffleEnabled);
           setQueueState(queue.getState());
         }

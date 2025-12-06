@@ -135,6 +135,12 @@ export function FullPlayer() {
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // RAF cleanup tracking to prevent memory leaks during rapid open/close
+  const rafIdsRef = useRef<number[]>([]);
+  
+  // Unique ID for this instance's history state (prevents race conditions on rapid open/close)
+  const historyStateIdRef = useRef<number>(0);
+  
   // Drag state for gesture tracking
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -158,15 +164,23 @@ export function FullPlayer() {
       dispatch({ type: AnimationActionType.Open });
       // Use double requestAnimationFrame to ensure 'entering' renders first
       // at translateY(100%), then transition to 'visible' at translateY(0)
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+      const raf1 = requestAnimationFrame(() => {
+        const raf2 = requestAnimationFrame(() => {
           dispatch({ type: AnimationActionType.OpenComplete });
         });
+        rafIdsRef.current.push(raf2);
       });
+      rafIdsRef.current.push(raf1);
     } else if (!isOpen && wasOpen) {
       // Closing: start exit animation (default down for non-gesture close)
       dispatch({ type: AnimationActionType.Close, direction: ExitDirection.Down });
     }
+    
+    // Cleanup RAF on unmount or isOpen change
+    return () => {
+      rafIdsRef.current.forEach(id => cancelAnimationFrame(id));
+      rafIdsRef.current = [];
+    };
   }, [isOpen]);
   
   // Handle transition end - cleanup after exit animation
@@ -189,8 +203,12 @@ export function FullPlayer() {
   useEffect(() => {
     if (!isOpen) return;
 
+    // Generate unique ID for this open instance to prevent race conditions
+    const stateId = Date.now();
+    historyStateIdRef.current = stateId;
+    
     // Push a history state when FullPlayer opens
-    const historyState = { fullPlayerOpen: true };
+    const historyState = { fullPlayerOpen: true, id: stateId };
     window.history.pushState(historyState, '');
 
     // Handle popstate (back button)
@@ -207,7 +225,8 @@ export function FullPlayer() {
       window.removeEventListener('popstate', handlePopState);
       // Clean up history state if component unmounts while open (e.g., button/gesture close)
       // Use replaceState instead of back() to avoid triggering another popstate event
-      if (window.history.state?.fullPlayerOpen) {
+      // Only clean up if this is our own state (matching ID)
+      if (window.history.state?.id === stateId) {
         window.history.replaceState(null, '');
       }
     };
@@ -215,6 +234,11 @@ export function FullPlayer() {
 
   // Touch gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Skip gesture tracking for interactive elements (seek bar, buttons)
+    const target = e.target as HTMLElement;
+    if (target.closest('[role="slider"]') || target.closest('button')) {
+      return;
+    }
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
     setIsDragging(true);
@@ -350,6 +374,43 @@ export function FullPlayer() {
     seek(newTime);
   };
 
+  // Keyboard navigation for progress bar (ARIA slider pattern)
+  const handleProgressKeyDown = (e: React.KeyboardEvent) => {
+    if (duration <= 0) return;
+    
+    let newTime = currentTime;
+    const step = duration * 0.05; // 5% step
+    const largeStep = duration * 0.1; // 10% step for PageUp/PageDown
+    
+    switch (e.key) {
+      case 'ArrowLeft':
+      case 'ArrowDown':
+        newTime = Math.max(0, currentTime - step);
+        break;
+      case 'ArrowRight':
+      case 'ArrowUp':
+        newTime = Math.min(duration, currentTime + step);
+        break;
+      case 'PageDown':
+        newTime = Math.max(0, currentTime - largeStep);
+        break;
+      case 'PageUp':
+        newTime = Math.min(duration, currentTime + largeStep);
+        break;
+      case 'Home':
+        newTime = 0;
+        break;
+      case 'End':
+        newTime = duration;
+        break;
+      default:
+        return; // Don't preventDefault for other keys
+    }
+    
+    e.preventDefault();
+    seek(newTime);
+  };
+
   const handleOpenQueue = () => {
     openPlayQueueDrawer();
   };
@@ -367,7 +428,10 @@ export function FullPlayer() {
         transition: shouldAnimate 
           ? `transform ${ANIMATION_CONFIG.DURATION_MS}ms ${ANIMATION_CONFIG.EASING}, opacity ${ANIMATION_CONFIG.DURATION_MS}ms ${ANIMATION_CONFIG.EASING}`
           : 'none',
-        willChange: 'transform, opacity',
+        // Only apply willChange during animations to reduce resource usage when idle
+        willChange: (isDragging || animationPhase === AnimationPhase.Entering || animationPhase === AnimationPhase.Exiting)
+          ? 'transform, opacity'
+          : 'auto',
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -432,8 +496,9 @@ export function FullPlayer() {
             aria-valuenow={Math.round(currentTime)}
             aria-valuetext={`${formatDuration(currentTime)} / ${formatDuration(duration)}`}
             tabIndex={0}
-            className="h-1.5 w-full cursor-pointer rounded-full bg-secondary hover:h-2 transition-all"
+            className="h-1.5 w-full cursor-pointer rounded-full bg-secondary hover:h-2 transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             onClick={handleProgressClick}
+            onKeyDown={handleProgressKeyDown}
           >
             <div
               className="h-full rounded-full bg-primary transition-all"

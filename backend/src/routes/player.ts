@@ -517,7 +517,8 @@ function normalizeRepeatMode(value: string | null | undefined): RepeatMode {
   if (!value) return RepeatMode.Off;
 
   const candidate = value as RepeatMode;
-  return repeatModeValues.includes(candidate) ? candidate : RepeatMode.Off;
+  // Use Object.values to ensure validation stays in sync with enum changes
+  return Object.values(RepeatMode).includes(candidate) ? candidate : RepeatMode.Off;
 }
 
 function mapPlaybackContext(
