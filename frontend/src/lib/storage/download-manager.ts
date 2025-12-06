@@ -249,8 +249,8 @@ async function processTask(task: DownloadTask): Promise<void> {
 
     logger.debug(`Successfully cached song ${task.songId}`);
     
-    // Notify UI to refresh cache status
-    eventBus.emit(EVENTS.SONG_CACHED);
+    // Notify UI to refresh cache status (with libraryId for filtering)
+    eventBus.emit(EVENTS.SONG_CACHED, { libraryId: task.libraryId });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.warn(`Failed to cache song ${task.songId}: ${errorMessage}`);

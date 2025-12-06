@@ -204,12 +204,26 @@ export default function LibraryDetailPage() {
   }, [loadCacheStats]);
 
   // Effect 6: Subscribe to SONG_CACHED events for real-time cache status updates
+  // Debounced to avoid excessive refreshes during batch operations
   useEffect(() => {
-    const unsubscribe = eventBus.on(EVENTS.SONG_CACHED, () => {
-      void loadCacheStats();
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    
+    const unsubscribe = eventBus.on<{ libraryId: string }>(EVENTS.SONG_CACHED, (payload) => {
+      // Only refresh if the cached song belongs to the current library
+      if (payload?.libraryId !== id) return;
+      
+      // Debounce: wait 500ms after last event before refreshing
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        void loadCacheStats();
+      }, 500);
     });
-    return unsubscribe;
-  }, [loadCacheStats]);
+    
+    return () => {
+      unsubscribe();
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [loadCacheStats, id]);
 
   // Handle download all
   const handleDownloadAll = useCallback(async () => {

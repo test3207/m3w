@@ -4,12 +4,19 @@
 
 import { logger } from '@/lib/logger-client';
 
-type EventCallback = () => void;
+// Event payload types
+export interface SongCachedPayload {
+  libraryId: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EventCallback<T = any> = (payload?: T) => void;
 
 class EventBus {
-  private listeners: Map<string, Set<EventCallback>> = new Map();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private listeners: Map<string, Set<EventCallback<any>>> = new Map();
 
-  on(event: string, callback: EventCallback): () => void {
+  on<T = void>(event: string, callback: EventCallback<T>): () => void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
@@ -23,9 +30,9 @@ class EventBus {
     };
   }
 
-  emit(event: string): void {
-    logger.debug(`[EventBus] Emitting event: ${event}`);
-    this.listeners.get(event)?.forEach((callback) => callback());
+  emit<T = void>(event: string, payload?: T): void {
+    logger.debug(`[EventBus] Emitting event: ${event}`, payload);
+    this.listeners.get(event)?.forEach((callback) => callback(payload));
   }
 
   off(event: string, callback: EventCallback): void {
