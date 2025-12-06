@@ -285,6 +285,12 @@ export function FullPlayer() {
     touchStartRef.current = null;
     setIsDragging(false);
   }, [closeFullPlayer]);
+
+  const handleTouchCancel = useCallback(() => {
+    touchStartRef.current = null;
+    setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+  }, []);
   
   // Ensure playlists are loaded when FullPlayer opens
   useEffect(() => {
@@ -378,7 +384,7 @@ export function FullPlayer() {
   const handleProgressKeyDown = (e: React.KeyboardEvent) => {
     if (duration <= 0) return;
     
-    let newTime = currentTime;
+    let newTime: number;
     const step = duration * 0.05; // 5% step
     const largeStep = duration * 0.1; // 10% step for PageUp/PageDown
     
@@ -436,6 +442,7 @@ export function FullPlayer() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       onTransitionEnd={handleTransitionEnd}
     >
       {/* Header */}
@@ -490,6 +497,7 @@ export function FullPlayer() {
         <div>
           <div
             role="slider"
+            aria-orientation="horizontal"
             aria-label={I18n.player.progress.ariaLabel}
             aria-valuemin={0}
             aria-valuemax={Math.round(duration)}
@@ -578,6 +586,7 @@ export function FullPlayer() {
             variant="ghost"
             size="sm"
             onClick={toggleRepeat}
+            aria-pressed={repeatMode !== RepeatMode.Off}
             aria-label={I18n.player.repeat.label}
             className={repeatMode !== RepeatMode.Off ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'hover:bg-accent'}
           >
