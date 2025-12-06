@@ -271,6 +271,13 @@ function installDependencies() {
     }
   }
 
+  // Build shared package (required before frontend/backend can import from it)
+  log.gray('  Building shared package...');
+  if (!exec('npm run build', { cwd: path.join(projectRoot, 'shared') })) {
+    log.error('  ✗ shared package build failed');
+    process.exit(1);
+  }
+
   // Optional: Playwright browsers
   log.gray('  Installing Playwright browsers (for testing)...');
   exec('npx playwright install', { cwd: path.join(projectRoot, 'frontend') });
