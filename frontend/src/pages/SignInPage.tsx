@@ -11,14 +11,12 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { I18n } from "@/locales/i18n";
-import { useLocale } from "@/locales/use-locale";
 import { useAuthStore } from "@/stores/authStore";
 import { initGuestResources } from "@/lib/db/init-guest";
 import { logger } from "@/lib/logger-client";
 import { getApiBaseUrl } from "@/lib/api/config";
 
 export default function SignInPage() {
-  useLocale();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { loginAsGuest } = useAuthStore();

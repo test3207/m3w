@@ -3,14 +3,12 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/stores/authStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  useLocale();
   const { isAuthenticated, isLoading, checkAuth } = useAuth();
   const location = useLocation();
 

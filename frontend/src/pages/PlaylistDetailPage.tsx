@@ -25,7 +25,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { I18n } from "@/locales/i18n";
-import { useLocale } from "@/locales/use-locale";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { api } from "@/services";
@@ -36,7 +35,6 @@ import type { Song as SharedSong } from "@m3w/shared";
 import { SortableSongItem } from "@/components/features/playlists/SortableSongItem";
 
 export default function PlaylistDetailPage() {
-  useLocale();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();

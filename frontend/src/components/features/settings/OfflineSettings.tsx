@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Info, Cloud } from 'lucide-react';
-import { useLocale } from '@/locales/use-locale';
 import { I18n } from '@/locales/i18n';
 import { api } from '@/services';
 import {
@@ -41,7 +40,6 @@ import { isGuestUser } from '@/lib/offline-proxy/utils';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function OfflineSettings() {
-  useLocale();
   const { isGuest } = useAuthStore();
   
   // Backend settings (only for authenticated users)

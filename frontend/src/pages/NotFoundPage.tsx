@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 import { I18n } from "@/locales/i18n";
-import { useLocale } from "@/locales/use-locale";
 
 export default function NotFoundPage() {
-  useLocale();
   const navigate = useNavigate();
   const [countdown, setCountdown] = useState(3);
 

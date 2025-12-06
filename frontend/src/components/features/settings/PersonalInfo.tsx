@@ -4,7 +4,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Stack } from '@/components/ui/stack';
 import { Text } from '@/components/ui/text';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 
 interface PersonalInfoProps {
   user: {
@@ -15,8 +14,6 @@ interface PersonalInfoProps {
 }
 
 export default function PersonalInfo({ user }: PersonalInfoProps) {
-  useLocale();
-
   const getInitials = (name: string) => {
     return name
       .split(' ')

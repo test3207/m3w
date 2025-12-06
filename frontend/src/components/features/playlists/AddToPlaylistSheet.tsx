@@ -17,14 +17,12 @@ import { useUIStore, type SelectedSongInfo } from '@/stores/uiStore';
 import { usePlaylistStore } from '@/stores/playlistStore';
 import { useToast } from '@/components/ui/use-toast';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 import { getPlaylistDisplayName } from '@/lib/utils/defaults';
 import { isFavoritesPlaylist } from '@m3w/shared';
 import { Check, Plus, Music, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function AddToPlaylistSheet() {
-  useLocale();
   const { toast } = useToast();
   
   const isOpen = useUIStore((state) => state.isAddToPlaylistSheetOpen);

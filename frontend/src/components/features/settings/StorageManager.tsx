@@ -24,7 +24,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 import { useToast } from '@/components/ui/use-toast';
 import { usePWAStatus, usePWAInstall } from '@/hooks/usePWA';
 import {
@@ -40,7 +39,6 @@ import {
 import { db } from '@/lib/db/schema';
 
 export default function StorageManager() {
-  useLocale();
   const { toast } = useToast();
   const { status: pwaStatus, loading: pwaLoading } = usePWAStatus();
   const { canInstall, installing, install } = usePWAInstall();

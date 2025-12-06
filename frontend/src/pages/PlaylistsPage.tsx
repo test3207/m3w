@@ -15,7 +15,6 @@ import { eventBus, EVENTS } from "@/lib/events";
 import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
 import { isFavoritesPlaylist } from "@m3w/shared";
 import { I18n } from "@/locales/i18n";
-import { useLocale } from "@/locales/use-locale";
 import { logger } from "@/lib/logger-client";
 import {
   Dialog,
@@ -39,7 +38,6 @@ import {
 import { Label } from "@/components/ui/label";
 
 export default function PlaylistsPage() {
-  useLocale();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");

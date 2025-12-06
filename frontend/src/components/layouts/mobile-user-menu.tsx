@@ -12,7 +12,6 @@ import {
 import { logger } from '@/lib/logger-client';
 import { api } from '@/services';
 import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
 import { useAuthStore } from '@/stores/authStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useLibraryStore } from '@/stores/libraryStore';
@@ -25,7 +24,6 @@ interface MobileUserMenuProps {
 }
 
 export function MobileUserMenu({ name, email, image }: MobileUserMenuProps) {
-  useLocale();
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const clearPlayerQueue = usePlayerStore((state) => state.clearQueue);
