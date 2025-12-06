@@ -14,6 +14,7 @@ import { canDownloadNow, shouldCacheLibrary, type CachePolicyContext } from './c
 import { logger } from '../logger-client';
 import { useAuthStore } from '@/stores/authStore';
 import { GUEST_USER_ID } from '@/lib/constants/guest';
+import { eventBus, EVENTS } from '../events';
 
 // ============================================================
 // Configuration
@@ -247,6 +248,9 @@ async function processTask(task: DownloadTask): Promise<void> {
     });
 
     logger.debug(`Successfully cached song ${task.songId}`);
+    
+    // Notify UI to refresh cache status
+    eventBus.emit(EVENTS.SONG_CACHED);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.warn(`Failed to cache song ${task.songId}: ${errorMessage}`);

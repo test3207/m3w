@@ -39,4 +39,5 @@ export const eventBus = new EventBus();
 export const EVENTS = {
   SONG_DELETED: 'song:deleted',
   SONG_UPLOADED: 'song:uploaded',
+  SONG_CACHED: 'song:cached',
 } as const;
