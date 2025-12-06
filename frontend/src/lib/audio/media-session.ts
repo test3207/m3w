@@ -141,62 +141,90 @@ export function registerMediaSessionHandlers(
     // Play/Pause controls
     if (callbacks.onPlay) {
       navigator.mediaSession.setActionHandler('play', () => {
-        logger.info('Media Session: play action triggered');
-        callbacks.onPlay?.();
+        try {
+          logger.info('Media Session: play action triggered');
+          callbacks.onPlay?.();
+        } catch (error) {
+          logger.warn('Media Session: play callback error', { error });
+        }
       });
     }
 
     if (callbacks.onPause) {
       navigator.mediaSession.setActionHandler('pause', () => {
-        logger.info('Media Session: pause action triggered');
-        callbacks.onPause?.();
+        try {
+          logger.info('Media Session: pause action triggered');
+          callbacks.onPause?.();
+        } catch (error) {
+          logger.warn('Media Session: pause callback error', { error });
+        }
       });
     }
 
     // Previous/Next track controls (the main fix for Issue #110)
     if (callbacks.onPreviousTrack) {
       navigator.mediaSession.setActionHandler('previoustrack', () => {
-        logger.info('Media Session: previoustrack action triggered');
-        callbacks.onPreviousTrack?.();
+        try {
+          logger.info('Media Session: previoustrack action triggered');
+          callbacks.onPreviousTrack?.();
+        } catch (error) {
+          logger.warn('Media Session: previoustrack callback error', { error });
+        }
       });
     }
 
     if (callbacks.onNextTrack) {
       navigator.mediaSession.setActionHandler('nexttrack', () => {
-        logger.info('Media Session: nexttrack action triggered');
-        callbacks.onNextTrack?.();
+        try {
+          logger.info('Media Session: nexttrack action triggered');
+          callbacks.onNextTrack?.();
+        } catch (error) {
+          logger.warn('Media Session: nexttrack callback error', { error });
+        }
       });
     }
 
     // Seek controls (optional but nice to have)
     if (callbacks.onSeekTo) {
       navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime !== undefined && isFinite(details.seekTime) && details.seekTime >= 0) {
-          logger.info('Media Session: seekto action triggered', {
-            seekTime: details.seekTime,
-          });
-          callbacks.onSeekTo?.(details.seekTime);
+        try {
+          if (details.seekTime !== undefined && isFinite(details.seekTime) && details.seekTime >= 0) {
+            logger.info('Media Session: seekto action triggered', {
+              seekTime: details.seekTime,
+            });
+            callbacks.onSeekTo?.(details.seekTime);
+          }
+        } catch (error) {
+          logger.warn('Media Session: seekto callback error', { error });
         }
       });
     }
 
     if (callbacks.onSeekBackward) {
       navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
-        // Validate offset is a positive finite number
-        if (!isFinite(offset) || offset <= 0) return;
-        logger.info('Media Session: seekbackward action triggered', { offset });
-        callbacks.onSeekBackward?.(offset);
+        try {
+          const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
+          // Validate offset is a positive finite number
+          if (!isFinite(offset) || offset <= 0) return;
+          logger.info('Media Session: seekbackward action triggered', { offset });
+          callbacks.onSeekBackward?.(offset);
+        } catch (error) {
+          logger.warn('Media Session: seekbackward callback error', { error });
+        }
       });
     }
 
     if (callbacks.onSeekForward) {
       navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
-        // Validate offset is a positive finite number
-        if (!isFinite(offset) || offset <= 0) return;
-        logger.info('Media Session: seekforward action triggered', { offset });
-        callbacks.onSeekForward?.(offset);
+        try {
+          const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
+          // Validate offset is a positive finite number
+          if (!isFinite(offset) || offset <= 0) return;
+          logger.info('Media Session: seekforward action triggered', { offset });
+          callbacks.onSeekForward?.(offset);
+        } catch (error) {
+          logger.warn('Media Session: seekforward callback error', { error });
+        }
       });
     }
 
