@@ -1,17 +1,17 @@
-import { Languages } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { getLocale, setLocale, getAvailableLocales, onLocaleChange } from '@/locales/i18n';
+import { Languages } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getLocale, setLocale, getAvailableLocales, onLocaleChange } from "@/locales/i18n";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 const LOCALE_NAMES: Record<string, string> = {
-  'en': 'English',
-  'zh-CN': '简体中文',
+  "en": "English",
+  "zh-CN": "简体中文",
 };
 
 export function LanguageSwitcher() {
@@ -55,7 +55,7 @@ export function LanguageSwitcher() {
           <DropdownMenuItem
             key={locale}
             onClick={() => handleLocaleChange(locale)}
-            className={currentLocale === locale ? 'bg-accent' : ''}
+            className={currentLocale === locale ? "bg-accent" : ""}
           >
             {LOCALE_NAMES[locale] || locale}
           </DropdownMenuItem>

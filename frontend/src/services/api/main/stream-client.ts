@@ -4,7 +4,7 @@
  * Wraps the low-level apiClient and provides a clean interface for stream data
  */
 
-import { apiClient } from '../../../lib/api/client';
+import { apiClient } from "../../../lib/api/client";
 
 /**
  * Stream API Client for binary data requests

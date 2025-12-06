@@ -4,14 +4,14 @@
  * Provides audio player state and controls to React components
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { getAudioPlayer, type PlayerState, type Track } from '@/lib/audio/player';
-import { getPlayQueue, RepeatMode } from '@/lib/audio/queue';
-import { getPlayContext, type PlayContext } from '@/lib/audio/context';
-import { useTrackPreloader } from '@/hooks/useTrackPreloader';
-import { logger } from '@/lib/logger-client';
-import { api } from '@/services';
-import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { getAudioPlayer, type PlayerState, type Track } from "@/lib/audio/player";
+import { getPlayQueue, RepeatMode } from "@/lib/audio/queue";
+import { getPlayContext, type PlayContext } from "@/lib/audio/context";
+import { useTrackPreloader } from "@/hooks/useTrackPreloader";
+import { logger } from "@/lib/logger-client";
+import { api } from "@/services";
+import { MAIN_API_ENDPOINTS } from "@/services/api/main/endpoints";
 
 interface PrimePlaybackPayload {
   track: Track;
@@ -53,7 +53,7 @@ export function useAudioPlayer() {
           setQueueState(queue.getState());
         }
       } catch (error) {
-        logger.error('Failed to load playback preferences', error);
+        logger.error("Failed to load playback preferences", error);
       }
     };
 
@@ -89,7 +89,7 @@ export function useAudioPlayer() {
       const loadDefaultSeed = async () => {
         try {
           const seed = await api.main.player.getSeed();
-          logger.info('Loaded default seed', { hasSeed: !!seed, trackId: seed?.track?.id, context: seed?.context });
+          logger.info("Loaded default seed", { hasSeed: !!seed, trackId: seed?.track?.id, context: seed?.context });
 
           if (!seed?.track) {
             return;
@@ -108,7 +108,7 @@ export function useAudioPlayer() {
             mimeType: seed.track.mimeType ?? undefined,
           };
 
-          logger.info('Priming track from seed', {
+          logger.info("Priming track from seed", {
             trackId: track.id,
             audioUrl: track.audioUrl
           });
@@ -119,7 +119,7 @@ export function useAudioPlayer() {
               let fullTracks: Track[] = [];
               let currentIndex = 0;
 
-              if (seed.context.type === 'playlist' && seed.context.id) {
+              if (seed.context.type === "playlist" && seed.context.id) {
                 const songs = await api.main.playlists.getSongs(seed.context.id);
                 if (songs) {
                   fullTracks = songs.map((song) => ({
@@ -130,17 +130,17 @@ export function useAudioPlayer() {
                     coverUrl: song.coverUrl ?? undefined,
                     duration: song.duration ?? undefined,
                     audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-                    mimeType: song.mimeType ?? 'audio/mpeg',
+                    mimeType: song.mimeType ?? "audio/mpeg",
                   }));
                   currentIndex = fullTracks.findIndex(t => t.id === track.id);
                   if (currentIndex === -1) currentIndex = 0;
-                  logger.info('Loaded full playlist queue from seed', {
+                  logger.info("Loaded full playlist queue from seed", {
                     playlistId: seed.context.id,
                     tracksCount: fullTracks.length,
                     currentIndex
                   });
                 }
-              } else if (seed.context.type === 'library' && seed.context.id) {
+              } else if (seed.context.type === "library" && seed.context.id) {
                 const songs = await api.main.libraries.getSongs(seed.context.id);
                 if (songs) {
                   fullTracks = songs.map((song) => ({
@@ -151,11 +151,11 @@ export function useAudioPlayer() {
                     coverUrl: song.coverUrl ?? undefined,
                     duration: song.duration ?? undefined,
                     audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-                    mimeType: song.mimeType ?? 'audio/mpeg',
+                    mimeType: song.mimeType ?? "audio/mpeg",
                   }));
                   currentIndex = fullTracks.findIndex(t => t.id === track.id);
                   if (currentIndex === -1) currentIndex = 0;
-                  logger.info('Loaded full library queue from seed', {
+                  logger.info("Loaded full library queue from seed", {
                     libraryId: seed.context.id,
                     tracksCount: fullTracks.length,
                     currentIndex
@@ -169,13 +169,13 @@ export function useAudioPlayer() {
                 queue.setQueue([track], 0);
               }
             } catch (error) {
-              logger.error('Failed to load full queue from seed, using single track', error);
+              logger.error("Failed to load full queue from seed, using single track", error);
               queue.setQueue([track], 0);
             }
 
             getPlayContext().setContext({
               ...seed.context,
-              name: seed.context.name ?? '',
+              name: seed.context.name ?? "",
             });
           } else {
             queue.setQueue([track], 0);
@@ -196,13 +196,13 @@ export function useAudioPlayer() {
             });
           }
         } catch (error) {
-          logger.error('Failed to load default playback seed', error);
+          logger.error("Failed to load default playback seed", error);
         }
       };
 
       try {
         const progress = await api.main.player.getProgress();
-        logger.info('Loaded playback progress', { hasProgress: !!progress, trackId: progress?.track?.id });
+        logger.info("Loaded playback progress", { hasProgress: !!progress, trackId: progress?.track?.id });
 
         if (!progress?.track) {
           // No progress data, try to load seed
@@ -224,7 +224,7 @@ export function useAudioPlayer() {
           mimeType: progress.track.mimeType ?? undefined,
         };
 
-        logger.info('Priming track from progress', {
+        logger.info("Priming track from progress", {
           trackId: track.id,
           audioUrl: track.audioUrl,
           position: progress.position,
@@ -237,7 +237,7 @@ export function useAudioPlayer() {
             let fullTracks: Track[] = [];
             let currentIndex = 0;
 
-            if (progress.context.type === 'playlist' && progress.context.id) {
+            if (progress.context.type === "playlist" && progress.context.id) {
               const songs = await api.main.playlists.getSongs(progress.context.id);
               if (songs) {
                 fullTracks = songs.map((song) => ({
@@ -248,17 +248,17 @@ export function useAudioPlayer() {
                   coverUrl: song.coverUrl ?? undefined,
                   duration: song.duration ?? undefined,
                   audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-                  mimeType: song.mimeType ?? 'audio/mpeg',
+                  mimeType: song.mimeType ?? "audio/mpeg",
                 }));
                 currentIndex = fullTracks.findIndex(t => t.id === track.id);
                 if (currentIndex === -1) currentIndex = 0;
-                logger.info('Loaded full playlist queue', {
+                logger.info("Loaded full playlist queue", {
                   playlistId: progress.context.id,
                   tracksCount: fullTracks.length,
                   currentIndex
                 });
               }
-            } else if (progress.context.type === 'library' && progress.context.id) {
+            } else if (progress.context.type === "library" && progress.context.id) {
               const songs = await api.main.libraries.getSongs(progress.context.id);
               if (songs) {
                 fullTracks = songs.map((song) => ({
@@ -269,11 +269,11 @@ export function useAudioPlayer() {
                   coverUrl: song.coverUrl ?? undefined,
                   duration: song.duration ?? undefined,
                   audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-                  mimeType: song.mimeType ?? 'audio/mpeg',
+                  mimeType: song.mimeType ?? "audio/mpeg",
                 }));
                 currentIndex = fullTracks.findIndex(t => t.id === track.id);
                 if (currentIndex === -1) currentIndex = 0;
-                logger.info('Loaded full library queue', {
+                logger.info("Loaded full library queue", {
                   libraryId: progress.context.id,
                   tracksCount: fullTracks.length,
                   currentIndex
@@ -287,13 +287,13 @@ export function useAudioPlayer() {
               queue.setQueue([track], 0);
             }
           } catch (error) {
-            logger.error('Failed to load full queue, using single track', error);
+            logger.error("Failed to load full queue, using single track", error);
             queue.setQueue([track], 0);
           }
 
           getPlayContext().setContext({
             ...progress.context,
-            name: progress.context.name ?? '',
+            name: progress.context.name ?? "",
           });
         } else {
           queue.setQueue([track], 0);
@@ -319,7 +319,7 @@ export function useAudioPlayer() {
           });
         }
       } catch (error) {
-        logger.error('Failed to load playback progress', error);
+        logger.error("Failed to load playback progress", error);
       }
     };
 
@@ -343,7 +343,7 @@ export function useAudioPlayer() {
         apiPreferences.repeatMode = preferences.repeatMode;
       }
       void api.main.player.updatePreferences(apiPreferences).catch((error: unknown) => {
-        logger.error('Failed to persist playback preferences', error);
+        logger.error("Failed to persist playback preferences", error);
       });
     },
     []
@@ -376,7 +376,7 @@ export function useAudioPlayer() {
     const payload = {
       songId: track.id,
       position,
-      contextType: (context?.type === 'library' || context?.type === 'playlist') ? context.type : undefined,
+      contextType: (context?.type === "library" || context?.type === "playlist") ? context.type : undefined,
       contextId: context?.id,
       contextName: context?.name,
     };
@@ -388,7 +388,7 @@ export function useAudioPlayer() {
     };
 
     void api.main.player.updateProgress(payload).catch((error: unknown) => {
-      logger.error('Failed to persist playback progress', error);
+      logger.error("Failed to persist playback progress", error);
     });
   }, []);
 
@@ -441,7 +441,7 @@ export function useAudioPlayer() {
       setQueueState(queue.getState());
       if (nextTrack) {
         void playWithPreload(nextTrack).catch((error) => {
-          logger.error('Failed to auto-play next track', error);
+          logger.error("Failed to auto-play next track", error);
         });
       }
     },
@@ -452,13 +452,13 @@ export function useAudioPlayer() {
   useEffect(() => {
     const player = getAudioPlayer();
     const unsubscribers = [
-      player.on('play', setPlayerState),
-      player.on('pause', setPlayerState),
-      player.on('end', handleTrackEnd),
-      player.on('load', setPlayerState),
-      player.on('seek', setPlayerState),
-      player.on('volume', setPlayerState),
-      player.on('error', setPlayerState),
+      player.on("play", setPlayerState),
+      player.on("pause", setPlayerState),
+      player.on("end", handleTrackEnd),
+      player.on("load", setPlayerState),
+      player.on("seek", setPlayerState),
+      player.on("volume", setPlayerState),
+      player.on("error", setPlayerState),
     ];
 
     return () => {
@@ -482,12 +482,12 @@ export function useAudioPlayer() {
   // Play from queue
   const playFromQueue = useCallback(
     async (tracks: Track[], startIndex: number = 0, context?: PlayContext) => {
-      logger.info('playFromQueue called', { tracksCount: tracks.length, startIndex, context });
+      logger.info("playFromQueue called", { tracksCount: tracks.length, startIndex, context });
       const queue = getPlayQueue();
       queue.setQueue(tracks, startIndex);
       setQueueState(queue.getState());
       const track = queue.getCurrentTrack();
-      logger.info('Current track from queue', { track });
+      logger.info("Current track from queue", { track });
       if (track) {
         // Set play context if provided
         if (context) {
@@ -495,7 +495,7 @@ export function useAudioPlayer() {
         }
         await playWithPreload(track);
       } else {
-        logger.warn('No track to play from queue');
+        logger.warn("No track to play from queue");
       }
     },
     [playWithPreload]
@@ -527,18 +527,18 @@ export function useAudioPlayer() {
 
   // Next track
   const next = useCallback(async () => {
-    logger.info('Next button clicked');
+    logger.info("Next button clicked");
     const queue = getPlayQueue();
     const currentState = queue.getState();
-    logger.info('Current queue state', currentState);
+    logger.info("Current queue state", currentState);
 
     const nextTrack = queue.next();
-    logger.info('Next track', { nextTrack });
+    logger.info("Next track", { nextTrack });
 
     if (nextTrack) {
       await playWithPreload(nextTrack);
     } else {
-      logger.warn('No next track available');
+      logger.warn("No next track available");
     }
     setQueueState(queue.getState());
   }, [playWithPreload]);
@@ -625,7 +625,7 @@ export function useAudioPlayer() {
       const context = getPlayContext().getContext();
 
       // Only refresh if we're currently playing from this playlist
-      if (!context || context.type !== 'playlist' || context.id !== playlistId) {
+      if (!context || context.type !== "playlist" || context.id !== playlistId) {
         return;
       }
 
@@ -637,7 +637,7 @@ export function useAudioPlayer() {
         const songs = await api.main.playlists.getSongs(playlistId);
 
         if (!songs) {
-          logger.warn('Failed to refresh playlist queue', { playlistId });
+          logger.warn("Failed to refresh playlist queue", { playlistId });
           return;
         }
 
@@ -649,7 +649,7 @@ export function useAudioPlayer() {
           coverUrl: song.coverUrl ?? undefined,
           duration: song.duration ?? undefined,
           audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
-          mimeType: song.mimeType ?? 'audio/mpeg',
+          mimeType: song.mimeType ?? "audio/mpeg",
         }));
 
         // Find current track index in new queue
@@ -657,7 +657,7 @@ export function useAudioPlayer() {
 
         if (currentIndex === -1) {
           // Current track was removed from playlist, keep playing but clear queue
-          logger.info('Current track removed from playlist, keeping playback but clearing context');
+          logger.info("Current track removed from playlist, keeping playback but clearing context");
           return;
         }
 
@@ -666,13 +666,13 @@ export function useAudioPlayer() {
         queue.setQueue(tracks, currentIndex);
         setQueueState(queue.getState());
 
-        logger.info('Refreshed playlist queue', {
+        logger.info("Refreshed playlist queue", {
           playlistId,
           trackCount: tracks.length,
           currentIndex
         });
       } catch (error) {
-        logger.error('Failed to refresh playlist queue', { error, playlistId });
+        logger.error("Failed to refresh playlist queue", { error, playlistId });
       }
     },
     [playerState.currentTrack]

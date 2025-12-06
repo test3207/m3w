@@ -2,8 +2,8 @@
  * Playlists Resource Service
  */
 
-import { mainApiClient } from '../client';
-import { MAIN_API_ENDPOINTS } from '../endpoints';
+import { mainApiClient } from "../client";
+import { MAIN_API_ENDPOINTS } from "../endpoints";
 import type {
   Playlist,
   Song,
@@ -11,7 +11,7 @@ import type {
   UpdatePlaylistInput,
   AddSongToPlaylistInput,
   ReorderPlaylistSongsInput
-} from '@m3w/shared';
+} from "@m3w/shared";
 
 // Re-export shared types for convenience
 export type { CreatePlaylistInput, UpdatePlaylistInput, AddSongToPlaylistInput, ReorderPlaylistSongsInput };
@@ -106,7 +106,7 @@ export const playlists = {
    * @param data - { name, linkedLibraryId, songIds }
    */
   createForLibrary: async (data: { name: string; linkedLibraryId: string; songIds: string[] }): Promise<Playlist> => {
-    return mainApiClient.post<Playlist>('/api/playlists/for-library', data);
+    return mainApiClient.post<Playlist>("/api/playlists/for-library", data);
   },
 
   /**

@@ -44,7 +44,7 @@ rootElement._reactRoot.render(
     <LocaleProvider>
       <AuthProvider>
         <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
+          <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<HomePage />} />

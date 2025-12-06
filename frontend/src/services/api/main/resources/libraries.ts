@@ -2,9 +2,9 @@
  * Libraries Resource Service
  */
 
-import { mainApiClient } from '../client';
-import { MAIN_API_ENDPOINTS } from '../endpoints';
-import type { Library, Song, CreateLibraryInput, UpdateLibraryInput, SongSortOption } from '@m3w/shared';
+import { mainApiClient } from "../client";
+import { MAIN_API_ENDPOINTS } from "../endpoints";
+import type { Library, Song, CreateLibraryInput, UpdateLibraryInput, SongSortOption } from "@m3w/shared";
 
 // Re-export shared types for convenience
 export type { CreateLibraryInput, UpdateLibraryInput };

@@ -7,11 +7,11 @@
  * Backend original models location: prisma/schema.prisma
  */
 
-import type { Library, Playlist, Song } from '@m3w/shared';
+import type { Library, Playlist, Song } from "@m3w/shared";
 
 // Re-export shared types for convenience
-export type { Library, Playlist, Song } from '@m3w/shared';
-export type { User } from '@m3w/shared';
+export type { Library, Playlist, Song } from "@m3w/shared";
+export type { User } from "@m3w/shared";
 
 /**
  * Library with songs relation (frontend-only extension)

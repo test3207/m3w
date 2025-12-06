@@ -3,27 +3,27 @@
  * Displays and manages the current playback queue
  */
 
-import { usePlayerStore } from '@/stores/playerStore';
-import { useUIStore } from '@/stores/uiStore';
-import { Button } from '@/components/ui/button';
+import { usePlayerStore } from "@/stores/playerStore";
+import { useUIStore } from "@/stores/uiStore";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
-import { X, Trash2, GripVertical, Save } from 'lucide-react';
-import { formatDuration } from '@/lib/utils/format';
-import { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
-import { I18n } from '@/locales/i18n';
+} from "@/components/ui/sheet";
+import { X, Trash2, GripVertical, Save } from "lucide-react";
+import { formatDuration } from "@/lib/utils/format";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import { I18n } from "@/locales/i18n";
 
 export function PlayQueueDrawer() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  const [playlistName, setPlaylistName] = useState('');
+  const [playlistName, setPlaylistName] = useState("");
   const [showSaveInput, setShowSaveInput] = useState(false);
 
   const isOpen = useUIStore((state) => state.isPlayQueueDrawerOpen);
@@ -60,7 +60,7 @@ export function PlayQueueDrawer() {
   const handleSaveAsPlaylist = async () => {
     if (!playlistName.trim()) {
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.player.playQueue.savePlaylistErrorEmptyName,
       });
       return;
@@ -72,20 +72,20 @@ export function PlayQueueDrawer() {
       if (success) {
         toast({
           title: I18n.player.playQueue.savePlaylistSuccessTitle,
-          description: I18n.player.playQueue.savePlaylistSuccessDescription.replace('{0}', playlistName),
+          description: I18n.player.playQueue.savePlaylistSuccessDescription.replace("{0}", playlistName),
         });
-        setPlaylistName('');
+        setPlaylistName("");
         setShowSaveInput(false);
       } else {
         toast({
-          variant: 'destructive',
+          variant: "destructive",
           title: I18n.player.playQueue.savePlaylistErrorTitle,
           description: I18n.player.playQueue.savePlaylistErrorDescription,
         });
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.player.playQueue.savePlaylistErrorTitle,
         description: error instanceof Error ? error.message : I18n.player.playQueue.savePlaylistErrorUnknown,
       });
@@ -99,11 +99,11 @@ export function PlayQueueDrawer() {
       <SheetContent side="bottom" className="h-[80vh]">
         <SheetHeader>
           <SheetTitle>
-            {I18n.player.playQueue.title} ({I18n.player.playQueue.songsCount.replace('{0}', String(queue.length))})
+            {I18n.player.playQueue.title} ({I18n.player.playQueue.songsCount.replace("{0}", String(queue.length))})
           </SheetTitle>
           {queueSourceName && (
             <SheetDescription>
-              {I18n.player.playQueue.playingFrom.replace('{0}', queueSourceName)}
+              {I18n.player.playQueue.playingFrom.replace("{0}", queueSourceName)}
             </SheetDescription>
           )}
         </SheetHeader>
@@ -137,11 +137,11 @@ export function PlayQueueDrawer() {
                 value={playlistName}
                 onChange={(e) => setPlaylistName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     handleSaveAsPlaylist();
-                  } else if (e.key === 'Escape') {
+                  } else if (e.key === "Escape") {
                     setShowSaveInput(false);
-                    setPlaylistName('');
+                    setPlaylistName("");
                   }
                 }}
               />
@@ -157,7 +157,7 @@ export function PlayQueueDrawer() {
                 size="sm"
                 onClick={() => {
                   setShowSaveInput(false);
-                  setPlaylistName('');
+                  setPlaylistName("");
                 }}
               >
                 {I18n.common.cancelButton}
@@ -178,7 +178,7 @@ export function PlayQueueDrawer() {
                 key={`${song.id}-${index}`}
                 onClick={() => handleSongClick(index)}
                 className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-accent ${
-                  index === currentIndex ? 'bg-accent border-primary' : ''
+                  index === currentIndex ? "bg-accent border-primary" : ""
                 }`}
               >
                 {/* Drag Handle */}

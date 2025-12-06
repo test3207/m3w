@@ -28,7 +28,7 @@ export const ANIMATION_CONFIG = {
   /** Duration of enter/exit animations (milliseconds) */
   DURATION_MS: 300,
   /** CSS easing function */
-  EASING: 'ease-out',
+  EASING: "ease-out",
 } as const;
 
 // ============================================================================
@@ -38,11 +38,11 @@ export const ANIMATION_CONFIG = {
 /** CSS transform values for animation states */
 export const TRANSFORM = {
   /** Initial position (off-screen bottom) */
-  ENTER_START: 'translateY(100%)',
+  ENTER_START: "translateY(100%)",
   /** Visible position (on-screen) */
-  VISIBLE: 'translateY(0)',
+  VISIBLE: "translateY(0)",
   /** Exit position for downward swipe */
-  EXIT_DOWN: 'translateY(100%)',
+  EXIT_DOWN: "translateY(100%)",
   /** Exit position for rightward swipe */
-  EXIT_RIGHT: 'translateX(100%)',
+  EXIT_RIGHT: "translateX(100%)",
 } as const;

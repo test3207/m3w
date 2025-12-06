@@ -1,7 +1,7 @@
-import { HttpStatusCode } from '@/lib/constants/http-status';
-import { logger } from '@/lib/logger-client';
-import { routeRequest } from './router';
-import { API_BASE_URL } from './config';
+import { HttpStatusCode } from "@/lib/constants/http-status";
+import { logger } from "@/lib/logger-client";
+import { routeRequest } from "./router";
+import { API_BASE_URL } from "./config";
 
 export class ApiError extends Error {
   constructor(
@@ -11,7 +11,7 @@ export class ApiError extends Error {
     public data?: unknown
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -35,7 +35,7 @@ export interface ApiRequestOptions extends RequestInit {
 class ApiClient {
   private baseURL: string;
 
-  constructor(baseURL = '/api') {
+  constructor(baseURL = "/api") {
     this.baseURL = baseURL;
   }
 
@@ -44,8 +44,8 @@ class ApiClient {
    */
   private buildURL(endpoint: string, params?: Record<string, string | number | boolean>): string {
     // Remove leading slash from endpoint to allow proper concatenation
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-    const baseWithSlash = this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
+    const baseWithSlash = this.baseURL.endsWith("/") ? this.baseURL : `${this.baseURL}/`;
 
     // Build full URL with backend base URL
     const url = new URL(cleanEndpoint, baseWithSlash);
@@ -70,12 +70,12 @@ class ApiClient {
     const url = this.buildURL(endpoint, params);
 
     try {
-      logger.info('API request', { url, method: options.method || 'GET' });
+      logger.info("API request", { url, method: options.method || "GET" });
 
       // Build headers - don't set Content-Type for FormData (browser will set it with boundary)
       const headers: HeadersInit = { ...fetchOptions.headers };
-      if (!(fetchOptions.body instanceof FormData) && typeof headers === 'object' && !Array.isArray(headers)) {
-        (headers as Record<string, string>)['Content-Type'] = 'application/json';
+      if (!(fetchOptions.body instanceof FormData) && typeof headers === "object" && !Array.isArray(headers)) {
+        (headers as Record<string, string>)["Content-Type"] = "application/json";
       }
 
       // Extract pathname and search params for routeRequest (it will build full URL internally)
@@ -88,8 +88,8 @@ class ApiClient {
       });
 
       // Handle non-JSON responses (e.g., audio streams)
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
         if (!response.ok) {
           throw new ApiError(
             response.status,
@@ -104,7 +104,7 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        logger.error('API error', {
+        logger.error("API error", {
           status: response.status,
           statusText: response.statusText,
           data,
@@ -118,18 +118,18 @@ class ApiClient {
         );
       }
 
-      logger.info('API response', { url, status: response.status });
+      logger.info("API response", { url, status: response.status });
       return data;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
 
-      logger.error('API request failed', { error, url });
+      logger.error("API request failed", { error, url });
       throw new ApiError(
         HttpStatusCode.INTERNAL_SERVER_ERROR,
-        'Request Failed',
-        error instanceof Error ? error.message : 'Unknown error occurred'
+        "Request Failed",
+        error instanceof Error ? error.message : "Unknown error occurred"
       );
     }
   }
@@ -140,7 +140,7 @@ class ApiClient {
   async get<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
-      method: 'GET',
+      method: "GET",
     });
   }
 
@@ -150,7 +150,7 @@ class ApiClient {
   async post<T>(endpoint: string, body?: unknown, options?: ApiRequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body: body ? JSON.stringify(body) : undefined,
     });
   }
@@ -161,7 +161,7 @@ class ApiClient {
   async put<T>(endpoint: string, body?: unknown, options?: ApiRequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
-      method: 'PUT',
+      method: "PUT",
       body: body ? JSON.stringify(body) : undefined,
     });
   }
@@ -172,7 +172,7 @@ class ApiClient {
   async patch<T>(endpoint: string, body?: unknown, options?: ApiRequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
-      method: 'PATCH',
+      method: "PATCH",
       body: body ? JSON.stringify(body) : undefined,
     });
   }
@@ -183,7 +183,7 @@ class ApiClient {
   async delete<T>(endpoint: string, options?: ApiRequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -195,7 +195,7 @@ class ApiClient {
 
     return this.request<T>(endpoint, {
       ...restOptions,
-      method: 'POST',
+      method: "POST",
       body: formData,
       headers: {
         ...headers,

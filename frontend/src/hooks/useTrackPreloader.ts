@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useCallback } from 'react';
-import type { Track } from '@/lib/audio/player';
-import { logger } from '@/lib/logger-client';
-import { streamApiClient } from '@/services/api/main/stream-client';
+import { useEffect, useRef, useCallback } from "react";
+import type { Track } from "@/lib/audio/player";
+import { logger } from "@/lib/logger-client";
+import { streamApiClient } from "@/services/api/main/stream-client";
 
 const MAX_PRELOADED_TRACKS = 5;
 
@@ -25,7 +25,7 @@ export function useTrackPreloader(limit: number = MAX_PRELOADED_TRACKS) {
   const refs = useRef<PreloaderRefs>(createRefs());
 
   const revokeObjectUrl = useCallback((url: string) => {
-    if (typeof URL === 'undefined' || typeof URL.revokeObjectURL !== 'function') {
+    if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") {
       return;
     }
     URL.revokeObjectURL(url);
@@ -33,7 +33,7 @@ export function useTrackPreloader(limit: number = MAX_PRELOADED_TRACKS) {
 
   const ensurePreloadedTrack = useCallback(
     async (track: Track): Promise<PreloadResult> => {
-      if (typeof window === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+      if (typeof window === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
         return null;
       }
 
@@ -79,7 +79,7 @@ export function useTrackPreloader(limit: number = MAX_PRELOADED_TRACKS) {
 
           return objectUrl;
         } catch (error) {
-          logger.error('Failed to preload track', error);
+          logger.error("Failed to preload track", error);
           return null;
         } finally {
           promises.delete(track.id);

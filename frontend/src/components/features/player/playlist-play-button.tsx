@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { useAudioPlayer } from '@/hooks/useAudioPlayer';
-import type { Track } from '@/lib/audio/player';
-import type { PlayContext } from '@/lib/audio/context';
-import { I18n } from '@/locales/i18n';
-import { logger } from '@/lib/logger-client';
-import { api } from '@/services';
-import { MAIN_API_ENDPOINTS } from '@/services/api/main/endpoints';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import type { Track } from "@/lib/audio/player";
+import type { PlayContext } from "@/lib/audio/context";
+import { I18n } from "@/locales/i18n";
+import { logger } from "@/lib/logger-client";
+import { api } from "@/services";
+import { MAIN_API_ENDPOINTS } from "@/services/api/main/endpoints";
 
 interface PlaylistPlayButtonProps {
   playlistId: string;
@@ -24,7 +24,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
       const tracks = await api.main.playlists.getSongs(playlistId);
 
       if (tracks.length === 0) {
-        logger.warn('Playlist has no tracks', { playlistId });
+        logger.warn("Playlist has no tracks", { playlistId });
         return;
       }
 
@@ -39,24 +39,24 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
           coverUrl: track.coverUrl ?? undefined,
           duration: track.duration ?? undefined,
           audioUrl: MAIN_API_ENDPOINTS.songs.stream(track.id),
-          mimeType: track.mimeType ?? 'audio/mpeg',
+          mimeType: track.mimeType ?? "audio/mpeg",
         });
       }
 
       if (tracksWithAudio.length === 0) {
-        logger.warn('No playable tracks in playlist', { playlistId });
+        logger.warn("No playable tracks in playlist", { playlistId });
         return;
       }
 
       const context: PlayContext = {
-        type: 'playlist',
+        type: "playlist",
         id: playlistId,
         name: playlistName,
       };
 
       await playFromQueue(tracksWithAudio, 0, context);
     } catch (error) {
-      logger.error('Failed to start playlist playback', error);
+      logger.error("Failed to start playlist playback", error);
     } finally {
       setIsLoading(false);
     }

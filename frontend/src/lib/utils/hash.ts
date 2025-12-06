@@ -1,4 +1,4 @@
-import { logger } from '../logger-client';
+import { logger } from "../logger-client";
 
 /**
  * Calculate SHA256 hash of a File (browser version using Web Crypto API)
@@ -6,11 +6,11 @@ import { logger } from '../logger-client';
 export async function calculateFileHash(file: File): Promise<string> {
   try {
     const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-    logger.info('Calculated file hash', {
+    logger.info("Calculated file hash", {
       fileName: file.name,
       fileSize: file.size,
       hash: hashHex
@@ -18,7 +18,7 @@ export async function calculateFileHash(file: File): Promise<string> {
 
     return hashHex;
   } catch (error) {
-    logger.error('Error calculating file hash', error);
+    logger.error("Error calculating file hash", error);
     throw error;
   }
 }
@@ -28,18 +28,18 @@ export async function calculateFileHash(file: File): Promise<string> {
  */
 export async function calculateBufferHash(buffer: ArrayBuffer): Promise<string> {
   try {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-    logger.info('Calculated buffer hash', {
+    logger.info("Calculated buffer hash", {
       size: buffer.byteLength,
       hash: hashHex
     });
 
     return hashHex;
   } catch (error) {
-    logger.error('Error calculating buffer hash', error);
+    logger.error("Error calculating buffer hash", error);
     throw error;
   }
 }

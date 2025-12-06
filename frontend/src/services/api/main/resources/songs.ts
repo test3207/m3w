@@ -2,9 +2,9 @@
  * Songs Resource Service
  */
 
-import { mainApiClient } from '../client';
-import { MAIN_API_ENDPOINTS } from '../endpoints';
-import type { Song, SongSearchParams, UpdateSongInput, SongPlaylistCount } from '@m3w/shared';
+import { mainApiClient } from "../client";
+import { MAIN_API_ENDPOINTS } from "../endpoints";
+import type { Song, SongSearchParams, UpdateSongInput, SongPlaylistCount } from "@m3w/shared";
 
 // Re-export shared types
 export type { UpdateSongInput, SongSearchParams };
@@ -16,9 +16,9 @@ export const songs = {
    */
   search: async (params: SongSearchParams): Promise<Song[]> => {
     const searchParams = new URLSearchParams();
-    if (params.q) searchParams.set('q', params.q);
-    if (params.libraryId) searchParams.set('libraryId', params.libraryId);
-    if (params.sort) searchParams.set('sort', params.sort);
+    if (params.q) searchParams.set("q", params.q);
+    if (params.libraryId) searchParams.set("libraryId", params.libraryId);
+    if (params.sort) searchParams.set("sort", params.sort);
 
     const url = `${MAIN_API_ENDPOINTS.songs.search}?${searchParams.toString()}`;
     return mainApiClient.get<Song[]>(url);

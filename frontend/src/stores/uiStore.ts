@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { SongSortOption } from '@m3w/shared';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { SongSortOption } from "@m3w/shared";
 
 // Song info for add-to-playlist sheet
 export interface SelectedSongInfo {
@@ -39,10 +39,10 @@ interface UIState {
   currentSortOption: SongSortOption;
 
   // Theme
-  theme: 'light' | 'dark' | 'system';
+  theme: "light" | "dark" | "system";
 
   // Language
-  language: 'en' | 'zh-CN';
+  language: "en" | "zh-CN";
 }
 
 interface UIActions {
@@ -84,10 +84,10 @@ interface UIActions {
   setSortOption: (option: SongSortOption) => void;
 
   // Theme
-  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setTheme: (theme: "light" | "dark" | "system") => void;
 
   // Language
-  setLanguage: (language: 'en' | 'zh-CN') => void;
+  setLanguage: (language: "en" | "zh-CN") => void;
 }
 
 type UIStore = UIState & UIActions;
@@ -109,9 +109,9 @@ export const useUIStore = create<UIStore>()(
       isSelectionMode: false,
       selectedSongs: [],
       selectedSongForPlaylist: null,
-      currentSortOption: 'date-desc',
-      theme: 'system',
-      language: 'en',
+      currentSortOption: "date-desc",
+      theme: "system",
+      language: "en",
 
       // Sidebar actions
       toggleSidebar: () =>
@@ -195,10 +195,10 @@ export const useUIStore = create<UIStore>()(
       setTheme: (theme) => {
         set({ theme });
         // Apply theme to document
-        if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
+        if (theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
         } else {
-          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.remove("dark");
         }
       },
 
@@ -206,7 +206,7 @@ export const useUIStore = create<UIStore>()(
       setLanguage: (language) => set({ language }),
     }),
     {
-      name: 'ui-storage',
+      name: "ui-storage",
       partialize: (state) => ({
         isSidebarCollapsed: state.isSidebarCollapsed,
         theme: state.theme,

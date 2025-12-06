@@ -93,7 +93,7 @@ export default function PlaylistsPage() {
       await createPlaylist(newPlaylistName.trim());
       toast({
         title: I18n.playlists.create.successTitle,
-        description: I18n.playlists.create.successDescription.replace('{0}', newPlaylistName),
+        description: I18n.playlists.create.successDescription.replace("{0}", newPlaylistName),
       });
       setNewPlaylistName("");
       setIsDialogOpen(false);
@@ -116,18 +116,18 @@ export default function PlaylistsPage() {
       if (success) {
         toast({
           title: I18n.playlists.delete.successTitle,
-          description: I18n.playlists.delete.successDescription.replace('{0}', playlistToDelete.name),
+          description: I18n.playlists.delete.successDescription.replace("{0}", playlistToDelete.name),
         });
       } else {
         toast({
-          variant: 'destructive',
+          variant: "destructive",
           title: I18n.playlists.delete.errorTitle,
           description: I18n.playlists.delete.cannotDeleteDefault,
         });
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.playlists.delete.errorTitle,
         description: error instanceof Error ? error.message : I18n.error.genericTryAgain,
       });
@@ -152,7 +152,7 @@ export default function PlaylistsPage() {
         <div>
           <h1 className="text-2xl font-bold">{I18n.playlists.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {I18n.playlists.count.replace('{0}', String(playlists.length))}
+            {I18n.playlists.count.replace("{0}", String(playlists.length))}
           </p>
         </div>
 
@@ -248,10 +248,10 @@ export default function PlaylistsPage() {
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {I18n.playlists.card.songsCount.replace('{0}', String(playlist.songCount || 0))}
+                        {I18n.playlists.card.songsCount.replace("{0}", String(playlist.songCount || 0))}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {I18n.playlists.card.createdAt.replace('{0}', new Date(playlist.createdAt).toLocaleDateString(
+                        {I18n.playlists.card.createdAt.replace("{0}", new Date(playlist.createdAt).toLocaleDateString(
                           "zh-CN",
                           { year: "numeric", month: "short", day: "numeric" }
                         ))}
@@ -289,8 +289,8 @@ export default function PlaylistsPage() {
             <AlertDialogTitle>{I18n.playlists.delete.confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {playlistToDelete
-                ? I18n.playlists.delete.confirmDescription.replace('{0}', playlistToDelete.name)
-                : ''
+                ? I18n.playlists.delete.confirmDescription.replace("{0}", playlistToDelete.name)
+                : ""
               }
             </AlertDialogDescription>
           </AlertDialogHeader>

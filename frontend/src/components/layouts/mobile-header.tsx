@@ -3,10 +3,10 @@
  * Top header bar with logo and language switcher
  */
 
-import { I18n } from '@/locales/i18n';
-import { LanguageSwitcher } from './language-switcher';
-import { useAuthStore } from '@/stores/authStore';
-import { MobileUserMenu } from './mobile-user-menu';
+import { I18n } from "@/locales/i18n";
+import { LanguageSwitcher } from "./language-switcher";
+import { useAuthStore } from "@/stores/authStore";
+import { MobileUserMenu } from "./mobile-user-menu";
 
 export function MobileHeader() {
   const user = useAuthStore((state) => state.user);

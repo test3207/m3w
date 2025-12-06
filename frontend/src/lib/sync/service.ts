@@ -13,17 +13,17 @@
  * - Manual trigger
  */
 
-import { db, getDirtyCount, markSynced, updateEntityId } from '../db/schema';
-import type { OfflineLibrary, OfflinePlaylist, OfflinePlaylistSong } from '../db/schema';
-import { logger } from '../logger-client';
-import { syncMetadata } from './metadata-sync';
-import { api } from '@/services';
-import { toast } from '@/components/ui/use-toast';
-import { I18n } from '@/locales/i18n';
-import { isGuestUser } from '../offline-proxy/utils';
-import { triggerAutoCacheAfterSync } from '../storage/download-manager';
-import type { CachePolicyContext } from '../storage/cache-policy';
-import { useAuthStore } from '@/stores/authStore';
+import { db, getDirtyCount, markSynced, updateEntityId } from "../db/schema";
+import type { OfflineLibrary, OfflinePlaylist, OfflinePlaylistSong } from "../db/schema";
+import { logger } from "../logger-client";
+import { syncMetadata } from "./metadata-sync";
+import { api } from "@/services";
+import { toast } from "@/components/ui/use-toast";
+import { I18n } from "@/locales/i18n";
+import { isGuestUser } from "../offline-proxy/utils";
+import { triggerAutoCacheAfterSync } from "../storage/download-manager";
+import type { CachePolicyContext } from "../storage/cache-policy";
+import { useAuthStore } from "@/stores/authStore";
 
 // Sync interval: 5 minutes (aligned with metadata-sync)
 const SYNC_INTERVAL = 5 * 60 * 1000;
@@ -58,12 +58,12 @@ export class SyncService {
   start() {
     // Guest users don't need sync - skip entirely
     if (isGuestUser()) {
-      logger.info('Sync service skipped for guest user');
+      logger.info("Sync service skipped for guest user");
       return;
     }
 
     if (this.syncInterval) {
-      logger.info('Sync service already running');
+      logger.info("Sync service already running");
       return;
     }
 
@@ -74,21 +74,21 @@ export class SyncService {
 
     // Sync when network comes online
     this.onlineHandler = () => {
-      logger.info('Network online, triggering sync');
+      logger.info("Network online, triggering sync");
       this.syncIfNeeded();
     };
-    window.addEventListener('online', this.onlineHandler);
+    window.addEventListener("online", this.onlineHandler);
 
     // Sync when page becomes visible (user switches back to app)
     this.visibilityHandler = () => {
-      if (document.visibilityState === 'visible') {
-        logger.info('Page visible, checking for sync');
+      if (document.visibilityState === "visible") {
+        logger.info("Page visible, checking for sync");
         this.syncIfNeeded();
       }
     };
-    document.addEventListener('visibilitychange', this.visibilityHandler);
+    document.addEventListener("visibilitychange", this.visibilityHandler);
 
-    logger.info('Background sync service started');
+    logger.info("Background sync service started");
 
     // Initial sync on start
     this.syncIfNeeded();
@@ -104,16 +104,16 @@ export class SyncService {
     }
 
     if (this.onlineHandler) {
-      window.removeEventListener('online', this.onlineHandler);
+      window.removeEventListener("online", this.onlineHandler);
       this.onlineHandler = null;
     }
 
     if (this.visibilityHandler) {
-      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      document.removeEventListener("visibilitychange", this.visibilityHandler);
       this.visibilityHandler = null;
     }
 
-    logger.info('Background sync service stopped');
+    logger.info("Background sync service stopped");
   }
 
   /**
@@ -144,12 +144,12 @@ export class SyncService {
     };
 
     if (this.isSyncing) {
-      logger.info('Sync already in progress, skipping');
+      logger.info("Sync already in progress, skipping");
       return result;
     }
 
     if (!navigator.onLine) {
-      logger.info('Offline, skipping sync');
+      logger.info("Offline, skipping sync");
       return result;
     }
 
@@ -185,18 +185,18 @@ export class SyncService {
         toast({
           title: I18n.sync.conflictsResolved,
           description: `${result.conflicts} ${I18n.sync.serverWins}`,
-          variant: 'default',
+          variant: "default",
         });
       }
 
       // Phase 3: Trigger auto-cache for libraries that should be cached
       await this.triggerAutoCache();
 
-      logger.info('Sync completed', result);
+      logger.info("Sync completed", result);
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Sync failed', { error });
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Sync failed", { error });
       result.errors.push(errorMessage);
       return result;
     } finally {
@@ -208,7 +208,7 @@ export class SyncService {
    * Push dirty entities to backend
    */
   private async pushDirtyEntities(): Promise<{
-    pushed: SyncResult['pushed'];
+    pushed: SyncResult["pushed"];
     conflicts: number;
     errors: string[];
   }> {
@@ -224,7 +224,7 @@ export class SyncService {
     const dirtySongs = await db.songs.filter(e => e._isDirty === true).toArray();
     const dirtyPlaylistSongs = await db.playlistSongs.filter(e => e._isDirty === true).toArray();
 
-    logger.info('Pushing dirty entities', {
+    logger.info("Pushing dirty entities", {
       libraries: dirtyLibraries.length,
       playlists: dirtyPlaylists.length,
       songs: dirtySongs.length,
@@ -237,8 +237,8 @@ export class SyncService {
         await this.pushLibrary(lib);
         result.pushed.libraries++;
       } catch (error) {
-        logger.error('Failed to push library', { id: lib.id, error });
-        result.errors.push(`Library ${lib.name}: ${error instanceof Error ? error.message : 'Failed'}`);
+        logger.error("Failed to push library", { id: lib.id, error });
+        result.errors.push(`Library ${lib.name}: ${error instanceof Error ? error.message : "Failed"}`);
       }
     }
 
@@ -248,8 +248,8 @@ export class SyncService {
         await this.pushPlaylist(pl);
         result.pushed.playlists++;
       } catch (error) {
-        logger.error('Failed to push playlist', { id: pl.id, error });
-        result.errors.push(`Playlist ${pl.name}: ${error instanceof Error ? error.message : 'Failed'}`);
+        logger.error("Failed to push playlist", { id: pl.id, error });
+        result.errors.push(`Playlist ${pl.name}: ${error instanceof Error ? error.message : "Failed"}`);
       }
     }
 
@@ -258,7 +258,7 @@ export class SyncService {
     // 1. Soft-deleted songs that need cleanup
     // 2. Unexpected dirty state (log warning, server state will overwrite)
     if (dirtySongs.length > 0 && dirtySongs.some(s => !s._isDeleted)) {
-      logger.warn('Dirty songs found during sync - changes will be overwritten by server', {
+      logger.warn("Dirty songs found during sync - changes will be overwritten by server", {
         count: dirtySongs.filter(s => !s._isDeleted).length,
         songIds: dirtySongs.filter(s => !s._isDeleted).map(s => s.id),
       });
@@ -292,15 +292,15 @@ export class SyncService {
           await api.main.libraries.delete(library.id);
         } catch (error) {
           // 404 is okay - already deleted on server
-          if (!(error instanceof Error && error.message.includes('404'))) {
+          if (!(error instanceof Error && error.message.includes("404"))) {
             throw error;
           }
         }
       }
       // Remove from local DB (with cascading to avoid orphaned data)
       // This is especially important for Guest users who never sync
-      await db.songs.where('libraryId').equals(library.id).delete();
-      await db.playlists.where('linkedLibraryId').equals(library.id).modify({ linkedLibraryId: undefined });
+      await db.songs.where("libraryId").equals(library.id).delete();
+      await db.playlists.where("linkedLibraryId").equals(library.id).modify({ linkedLibraryId: undefined });
       await db.libraries.delete(library.id);
       return;
     }
@@ -314,13 +314,13 @@ export class SyncService {
       
       // Validate server response
       if (!created?.id) {
-        throw new Error('Server did not return library ID');
+        throw new Error("Server did not return library ID");
       }
       
       // Update local ID to match server ID
       if (created.id !== library.id) {
-        await updateEntityId('libraries', library.id, created.id);
-        logger.info('Library ID mapped', { local: library.id, server: created.id });
+        await updateEntityId("libraries", library.id, created.id);
+        logger.info("Library ID mapped", { local: library.id, server: created.id });
       } else {
         await db.libraries.put(markSynced(library));
       }
@@ -334,8 +334,8 @@ export class SyncService {
         await db.libraries.put(markSynced(library));
       } catch (error) {
         // 404 means server doesn't have it - treat as conflict (server wins)
-        if (error instanceof Error && error.message.includes('404')) {
-          logger.warn('Library not found on server, will be recreated on pull', { id: library.id });
+        if (error instanceof Error && error.message.includes("404")) {
+          logger.warn("Library not found on server, will be recreated on pull", { id: library.id });
           await db.libraries.delete(library.id);
         } else {
           throw error;
@@ -355,7 +355,7 @@ export class SyncService {
           await api.main.playlists.delete(playlist.id);
         } catch (error) {
           // 404 is okay - already deleted on server
-          if (!(error instanceof Error && error.message.includes('404'))) {
+          if (!(error instanceof Error && error.message.includes("404"))) {
             throw error;
           }
         }
@@ -363,7 +363,7 @@ export class SyncService {
       // Remove from local DB
       await db.playlists.delete(playlist.id);
       // Also remove playlist songs
-      await db.playlistSongs.where('playlistId').equals(playlist.id).delete();
+      await db.playlistSongs.where("playlistId").equals(playlist.id).delete();
       return;
     }
 
@@ -376,13 +376,13 @@ export class SyncService {
       
       // Validate server response
       if (!created?.id) {
-        throw new Error('Server did not return playlist ID');
+        throw new Error("Server did not return playlist ID");
       }
       
       // Update local ID to match server ID
       if (created.id !== playlist.id) {
-        await updateEntityId('playlists', playlist.id, created.id);
-        logger.info('Playlist ID mapped', { local: playlist.id, server: created.id });
+        await updateEntityId("playlists", playlist.id, created.id);
+        logger.info("Playlist ID mapped", { local: playlist.id, server: created.id });
       } else {
         await db.playlists.put(markSynced(playlist));
       }
@@ -396,8 +396,8 @@ export class SyncService {
         await db.playlists.put(markSynced(playlist));
       } catch (error) {
         // 404 means server doesn't have it - treat as conflict (server wins)
-        if (error instanceof Error && error.message.includes('404')) {
-          logger.warn('Playlist not found on server, will be recreated on pull', { id: playlist.id });
+        if (error instanceof Error && error.message.includes("404")) {
+          logger.warn("Playlist not found on server, will be recreated on pull", { id: playlist.id });
           await db.playlists.delete(playlist.id);
         } else {
           throw error;
@@ -412,7 +412,7 @@ export class SyncService {
    */
   private async pushPlaylistSongs(
     dirtyPlaylistSongs: OfflinePlaylistSong[],
-    result: { pushed: SyncResult['pushed']; errors: string[] }
+    result: { pushed: SyncResult["pushed"]; errors: string[] }
   ): Promise<void> {
     if (dirtyPlaylistSongs.length === 0) return;
 
@@ -451,21 +451,21 @@ export class SyncService {
             }
           }
           result.pushed.playlistSongs += changes.length;
-          logger.info('Skipped playlistSongs sync for local-only playlist', { playlistId });
+          logger.info("Skipped playlistSongs sync for local-only playlist", { playlistId });
           continue;
         }
 
         // Get current playlist's complete songIds (excluding deleted ones)
         const currentSongs = await db.playlistSongs
-          .where('playlistId').equals(playlistId)
+          .where("playlistId").equals(playlistId)
           .filter(ps => !ps._isDeleted)
-          .sortBy('order');
+          .sortBy("order");
         
         const songIds = currentSongs.map(ps => ps.songId);
 
         // Batch update playlist songs on server
         await api.main.playlists.updateSongs(playlistId, { songIds });
-        logger.info('Synced playlist songs', { playlistId, songCount: songIds.length });
+        logger.info("Synced playlist songs", { playlistId, songCount: songIds.length });
 
         // Clean up local state
         for (const ps of changes) {
@@ -477,8 +477,8 @@ export class SyncService {
         }
         result.pushed.playlistSongs += changes.length;
       } catch (error) {
-        logger.error('Failed to push playlist songs', { playlistId, error });
-        result.errors.push(`PlaylistSongs for ${playlistId}: ${error instanceof Error ? error.message : 'Failed'}`);
+        logger.error("Failed to push playlist songs", { playlistId, error });
+        result.errors.push(`PlaylistSongs for ${playlistId}: ${error instanceof Error ? error.message : "Failed"}`);
       }
     }
   }
@@ -492,13 +492,13 @@ export class SyncService {
       // Get current user ID
       const { user, isGuest } = useAuthStore.getState();
       if (isGuest) {
-        logger.debug('Skipping auto-cache for guest user');
+        logger.debug("Skipping auto-cache for guest user");
         return;
       }
       
       const userId = user?.id;
       if (!userId) {
-        logger.debug('No user ID, skipping auto-cache');
+        logger.debug("No user ID, skipping auto-cache");
         return;
       }
       
@@ -513,7 +513,7 @@ export class SyncService {
       try {
         userPreferences = await api.main.user.getPreferences();
       } catch {
-        logger.debug('Could not fetch user preferences for cache policy');
+        logger.debug("Could not fetch user preferences for cache policy");
       }
 
       // Build context for each library and trigger cache
@@ -528,7 +528,7 @@ export class SyncService {
         context
       );
     } catch (error) {
-      logger.warn('Failed to trigger auto-cache after sync', error);
+      logger.warn("Failed to trigger auto-cache after sync", error);
     }
   }
 

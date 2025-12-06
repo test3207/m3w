@@ -6,18 +6,18 @@
  * - Song relationships stored in `playlistSongs` table (junction table)
  */
 
-import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { db, markDirty, markDeleted } from '../../db/schema';
-import type { OfflinePlaylist, OfflinePlaylistSong } from '../../db/schema';
+import { Hono } from "hono";
+import type { Context } from "hono";
+import { db, markDirty, markDeleted } from "../../db/schema";
+import type { OfflinePlaylist, OfflinePlaylistSong } from "../../db/schema";
 import {
   createPlaylistSchema,
   updatePlaylistSchema,
   toPlaylistResponse,
-} from '@m3w/shared';
-import type { ApiResponse, PlaylistReorderResult } from '@m3w/shared';
-import { getUserId, isGuestUser } from '../utils';
-import { logger } from '../../logger-client';
+} from "@m3w/shared";
+import type { ApiResponse, PlaylistReorderResult } from "@m3w/shared";
+import { getUserId, isGuestUser } from "../utils";
+import { logger } from "../../logger-client";
 
 const app = new Hono();
 
@@ -26,7 +26,7 @@ const app = new Hono();
  */
 async function getPlaylistCoverUrl(playlistId: string): Promise<string | null> {
   const playlistSongs = await db.playlistSongs
-    .where('playlistId')
+    .where("playlistId")
     .equals(playlistId)
     .toArray();
   const activeSongs = playlistSongs
@@ -41,14 +41,14 @@ async function getPlaylistCoverUrl(playlistId: string): Promise<string | null> {
 }
 
 // GET /playlists - List all playlists
-app.get('/', async (c: Context) => {
+app.get("/", async (c: Context) => {
   try {
     const userId = getUserId();
     const allPlaylists = await db.playlists
-      .where('userId')
+      .where("userId")
       .equals(userId)
       .reverse()
-      .sortBy('createdAt');
+      .sortBy("createdAt");
     // Filter out soft-deleted playlists
     const playlists = allPlaylists.filter(pl => !pl._isDeleted);
 
@@ -71,7 +71,7 @@ app.get('/', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to fetch playlists',
+        error: "Failed to fetch playlists",
       },
       500
     );
@@ -80,14 +80,14 @@ app.get('/', async (c: Context) => {
 
 // GET /playlists/by-library/:libraryId - Get playlist linked to library
 // Note: This route must be defined BEFORE /:id to avoid conflict
-app.get('/by-library/:libraryId', async (c: Context) => {
+app.get("/by-library/:libraryId", async (c: Context) => {
   try {
-    const libraryId = c.req.param('libraryId');
+    const libraryId = c.req.param("libraryId");
     const userId = getUserId();
 
     // Find playlist with linkedLibraryId (exclude soft-deleted)
     const allMatching = await db.playlists
-      .where('linkedLibraryId')
+      .where("linkedLibraryId")
       .equals(libraryId)
       .toArray();
     const playlist = allMatching.find(pl => !pl._isDeleted);
@@ -114,7 +114,7 @@ app.get('/by-library/:libraryId', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to fetch library playlist',
+        error: "Failed to fetch library playlist",
       },
       500
     );
@@ -122,7 +122,7 @@ app.get('/by-library/:libraryId', async (c: Context) => {
 });
 
 // POST /playlists/for-library - Create playlist linked to library
-app.post('/for-library', async (c: Context) => {
+app.post("/for-library", async (c: Context) => {
   try {
     const body = await c.req.json();
     const { name, linkedLibraryId, songIds } = body;
@@ -169,7 +169,7 @@ app.post('/for-library', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to create library playlist',
+        error: "Failed to create library playlist",
       },
       500
     );
@@ -177,9 +177,9 @@ app.post('/for-library', async (c: Context) => {
 });
 
 // GET /playlists/:id - Get playlist by ID
-app.get('/:id', async (c: Context) => {
+app.get("/:id", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const userId = getUserId();
 
     const playlist = await db.playlists.get(id);
@@ -189,7 +189,7 @@ app.get('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Playlist not found',
+          error: "Playlist not found",
         },
         404
       );
@@ -209,7 +209,7 @@ app.get('/:id', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to fetch playlist',
+        error: "Failed to fetch playlist",
       },
       500
     );
@@ -217,7 +217,7 @@ app.get('/:id', async (c: Context) => {
 });
 
 // POST /playlists - Create new playlist
-app.post('/', async (c: Context) => {
+app.post("/", async (c: Context) => {
   try {
     const body = await c.req.json();
     const data = createPlaylistSchema.parse(body);
@@ -253,7 +253,7 @@ app.post('/', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to create playlist',
+        error: "Failed to create playlist",
       },
       500
     );
@@ -261,9 +261,9 @@ app.post('/', async (c: Context) => {
 });
 
 // PATCH /playlists/:id - Update playlist
-app.patch('/:id', async (c: Context) => {
+app.patch("/:id", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const body = await c.req.json();
     const data = updatePlaylistSchema.parse(body);
     const userId = getUserId();
@@ -274,7 +274,7 @@ app.patch('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Playlist not found',
+          error: "Playlist not found",
         },
         404
       );
@@ -297,7 +297,7 @@ app.patch('/:id', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to update playlist',
+        error: "Failed to update playlist",
       },
       500
     );
@@ -305,9 +305,9 @@ app.patch('/:id', async (c: Context) => {
 });
 
 // DELETE /playlists/:id - Delete playlist
-app.delete('/:id', async (c: Context) => {
+app.delete("/:id", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const userId = getUserId();
 
     const playlist = await db.playlists.get(id);
@@ -316,7 +316,7 @@ app.delete('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Playlist not found',
+          error: "Playlist not found",
         },
         404
       );
@@ -326,12 +326,12 @@ app.delete('/:id', async (c: Context) => {
       // Guest user: hard delete immediately (no sync needed)
       await db.playlists.delete(id);
       // Also delete all playlistSongs for this playlist
-      await db.playlistSongs.where('playlistId').equals(id).delete();
+      await db.playlistSongs.where("playlistId").equals(id).delete();
     } else {
       // Auth user: soft delete for sync
       await db.playlists.put(markDeleted(playlist));
       // Also soft-delete all playlistSongs
-      const playlistSongs = await db.playlistSongs.where('playlistId').equals(id).toArray();
+      const playlistSongs = await db.playlistSongs.where("playlistId").equals(id).toArray();
       await Promise.all(playlistSongs.map(ps => db.playlistSongs.put(markDeleted(ps))));
     }
 
@@ -342,7 +342,7 @@ app.delete('/:id', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to delete playlist',
+        error: "Failed to delete playlist",
       },
       500
     );
@@ -350,9 +350,9 @@ app.delete('/:id', async (c: Context) => {
 });
 
 // GET /playlists/:id/songs - Get songs in playlist
-app.get('/:id/songs', async (c: Context) => {
+app.get("/:id/songs", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const userId = getUserId();
 
     const playlist = await db.playlists.get(id);
@@ -361,7 +361,7 @@ app.get('/:id/songs', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Playlist not found',
+          error: "Playlist not found",
         },
         404
       );
@@ -369,7 +369,7 @@ app.get('/:id/songs', async (c: Context) => {
 
     // Get playlist songs from IndexedDB (filter soft-deleted, sort by order)
     const allPlaylistSongs = await db.playlistSongs
-      .where('playlistId')
+      .where("playlistId")
       .equals(id)
       .toArray();
     const playlistSongs = allPlaylistSongs
@@ -408,7 +408,7 @@ app.get('/:id/songs', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to fetch playlist songs',
+        error: "Failed to fetch playlist songs",
       },
       500
     );
@@ -416,9 +416,9 @@ app.get('/:id/songs', async (c: Context) => {
 });
 
 // POST /playlists/:id/songs - Add song to playlist
-app.post('/:id/songs', async (c: Context) => {
+app.post("/:id/songs", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const body = await c.req.json();
     const { songId } = body;
     const userId = getUserId();
@@ -429,7 +429,7 @@ app.post('/:id/songs', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Playlist not found',
+          error: "Playlist not found",
         },
         404
       );
@@ -441,7 +441,7 @@ app.post('/:id/songs', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Song not found',
+          error: "Song not found",
         },
         404
       );
@@ -449,7 +449,7 @@ app.post('/:id/songs', async (c: Context) => {
 
     // Check if song already in playlist
     const existingEntry = await db.playlistSongs
-      .where('[playlistId+songId]')
+      .where("[playlistId+songId]")
       .equals([id, songId])
       .first();
 
@@ -457,7 +457,7 @@ app.post('/:id/songs', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Song is already in playlist',
+          error: "Song is already in playlist",
         },
         400
       );
@@ -465,7 +465,7 @@ app.post('/:id/songs', async (c: Context) => {
 
     // Get current max order
     const existingSongs = await db.playlistSongs
-      .where('playlistId')
+      .where("playlistId")
       .equals(id)
       .toArray();
     const activeSongs = existingSongs.filter(ps => !ps._isDeleted);
@@ -518,7 +518,7 @@ app.post('/:id/songs', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to add song to playlist',
+        error: "Failed to add song to playlist",
       },
       500
     );
@@ -526,9 +526,9 @@ app.post('/:id/songs', async (c: Context) => {
 });
 
 // PUT /playlists/:id/songs/reorder - Reorder songs in playlist
-app.put('/:id/songs/reorder', async (c: Context) => {
+app.put("/:id/songs/reorder", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const userId = getUserId();
     const body = await c.req.json();
     const { songIds } = body as { songIds: string[] };
@@ -539,7 +539,7 @@ app.put('/:id/songs/reorder', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Playlist not found',
+          error: "Playlist not found",
         },
         404
       );
@@ -553,7 +553,7 @@ app.put('/:id/songs/reorder', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Invalid song order',
+          error: "Invalid song order",
         },
         400
       );
@@ -561,7 +561,7 @@ app.put('/:id/songs/reorder', async (c: Context) => {
 
     // Update playlistSongs order field using bulkPut for efficiency
     const allPlaylistSongs = await db.playlistSongs
-      .where('playlistId')
+      .where("playlistId")
       .equals(id)
       .toArray();
 
@@ -594,11 +594,11 @@ app.put('/:id/songs/reorder', async (c: Context) => {
       },
     });
   } catch (error) {
-    logger.error('Failed to reorder songs in playlist', { error });
+    logger.error("Failed to reorder songs in playlist", { error });
     return c.json<ApiResponse<never>>(
       {
         success: false,
-        error: 'Failed to reorder songs in playlist',
+        error: "Failed to reorder songs in playlist",
       },
       500
     );
@@ -606,9 +606,9 @@ app.put('/:id/songs/reorder', async (c: Context) => {
 });
 
 // PUT /playlists/:id/songs - Update playlist songs (batch)
-app.put('/:id/songs', async (c: Context) => {
+app.put("/:id/songs", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const body = await c.req.json();
     const { songIds } = body;
     const userId = getUserId();
@@ -619,17 +619,17 @@ app.put('/:id/songs', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Playlist not found',
+          error: "Playlist not found",
         },
         404
       );
     }
 
     // Use transaction for atomicity
-    await db.transaction('rw', db.playlistSongs, db.playlists, async () => {
+    await db.transaction("rw", db.playlistSongs, db.playlists, async () => {
       // Delete existing playlist songs
       const existingSongs = await db.playlistSongs
-        .where('playlistId')
+        .where("playlistId")
         .equals(id)
         .toArray();
       
@@ -670,7 +670,7 @@ app.put('/:id/songs', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to update playlist songs',
+        error: "Failed to update playlist songs",
       },
       500
     );
@@ -678,10 +678,10 @@ app.put('/:id/songs', async (c: Context) => {
 });
 
 // DELETE /playlists/:id/songs/:songId - Remove song from playlist
-app.delete('/:id/songs/:songId', async (c: Context) => {
+app.delete("/:id/songs/:songId", async (c: Context) => {
   try {
-    const playlistId = c.req.param('id');
-    const songId = c.req.param('songId');
+    const playlistId = c.req.param("id");
+    const songId = c.req.param("songId");
     const userId = getUserId();
 
     const playlist = await db.playlists.get(playlistId);
@@ -690,7 +690,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Playlist not found',
+          error: "Playlist not found",
         },
         404
       );
@@ -698,7 +698,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
 
     // Find the playlist song entry
     const playlistSong = await db.playlistSongs
-      .where('[playlistId+songId]')
+      .where("[playlistId+songId]")
       .equals([playlistId, songId])
       .first();
 
@@ -706,7 +706,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Song not in playlist',
+          error: "Song not in playlist",
         },
         404
       );
@@ -714,7 +714,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
 
     // Get current song count before deletion
     const allPlaylistSongs = await db.playlistSongs
-      .where('playlistId')
+      .where("playlistId")
       .equals(playlistId)
       .toArray();
     const currentCount = allPlaylistSongs.filter(ps => !ps._isDeleted).length;
@@ -748,7 +748,7 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to remove song from playlist',
+        error: "Failed to remove song from playlist",
       },
       500
     );

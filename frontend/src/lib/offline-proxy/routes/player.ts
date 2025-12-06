@@ -2,21 +2,21 @@
  * Player routes for offline-proxy (Guest Mode - IndexedDB backed)
  */
 
-import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { db } from '../../db/schema';
+import { Hono } from "hono";
+import type { Context } from "hono";
+import { db } from "../../db/schema";
 import {
   RepeatMode,
   type ApiResponse,
   type ProgressSyncResult,
   type PreferencesUpdateResult,
-} from '@m3w/shared';
-import { getUserId } from '../utils';
+} from "@m3w/shared";
+import { getUserId } from "../utils";
 
 const app = new Hono();
 
 // GET /player/progress - Get playback progress
-app.get('/progress', async (c: Context) => {
+app.get("/progress", async (c: Context) => {
   try {
     const userId = getUserId();
     const progress = await db.playerProgress.get(userId);
@@ -42,7 +42,7 @@ app.get('/progress', async (c: Context) => {
 
     // Try to find which playlist contains this song via PlaylistSong table
     const playlistSongEntry = await db.playlistSongs
-      .where('songId')
+      .where("songId")
       .equals(song.id)
       .first();
     
@@ -56,7 +56,7 @@ app.get('/progress', async (c: Context) => {
 
     if (playlistWithSong) {
       context = {
-        type: 'playlist',
+        type: "playlist",
         id: playlistWithSong.id,
         name: playlistWithSong.name,
       };
@@ -66,7 +66,7 @@ app.get('/progress', async (c: Context) => {
         const library = await db.libraries.get(song.libraryId);
         if (library) {
           context = {
-            type: 'library',
+            type: "library",
             id: library.id,
             name: library.name,
           };
@@ -85,7 +85,7 @@ app.get('/progress', async (c: Context) => {
           album: song.album,
           coverUrl: song.coverUrl,
           duration: progress.duration,
-          mimeType: song.mimeType ?? 'audio/mpeg',
+          mimeType: song.mimeType ?? "audio/mpeg",
         },
         position: progress.position,
         context,
@@ -101,7 +101,7 @@ app.get('/progress', async (c: Context) => {
 });
 
 // PUT /player/progress - Sync playback progress
-app.put('/progress', async (c: Context) => {
+app.put("/progress", async (c: Context) => {
   try {
     const userId = getUserId();
     const body = await c.req.json();
@@ -132,7 +132,7 @@ app.put('/progress', async (c: Context) => {
     return c.json<ApiResponse<never>>(
       {
         success: false,
-        error: 'Failed to save progress',
+        error: "Failed to save progress",
       },
       500
     );
@@ -140,20 +140,20 @@ app.put('/progress', async (c: Context) => {
 });
 
 // GET /player/seed - Get default playback seed
-app.get('/seed', async (c: Context) => {
+app.get("/seed", async (c: Context) => {
   try {
     const userId = getUserId();
 
     // Try to find first playlist with songs
     const playlists = await db.playlists
-      .where('userId')
+      .where("userId")
       .equals(userId)
-      .sortBy('createdAt');
+      .sortBy("createdAt");
 
     for (const playlist of playlists) {
       // Get first song from PlaylistSong table
       const playlistSongs = await db.playlistSongs
-        .where('playlistId')
+        .where("playlistId")
         .equals(playlist.id)
         .toArray();
       const activeSongs = playlistSongs
@@ -174,11 +174,11 @@ app.get('/seed', async (c: Context) => {
                 artist: song.artist,
                 album: song.album,
                 coverUrl: song.coverUrl,
-                mimeType: song.mimeType ?? 'audio/mpeg',
+                mimeType: song.mimeType ?? "audio/mpeg",
                 duration: song.duration ?? null,
               },
               context: {
-                type: 'playlist',
+                type: "playlist",
                 id: playlist.id,
                 name: playlist.name,
               },
@@ -190,13 +190,13 @@ app.get('/seed', async (c: Context) => {
 
     // Fallback to first library with songs
     const libraries = await db.libraries
-      .where('userId')
+      .where("userId")
       .equals(userId)
-      .sortBy('createdAt');
+      .sortBy("createdAt");
 
     for (const library of libraries) {
       const songs = await db.songs
-        .where('libraryId')
+        .where("libraryId")
         .equals(library.id)
         .limit(1)
         .toArray();
@@ -212,11 +212,11 @@ app.get('/seed', async (c: Context) => {
               artist: song.artist,
               album: song.album,
               coverUrl: song.coverUrl,
-              mimeType: song.mimeType ?? 'audio/mpeg',
+              mimeType: song.mimeType ?? "audio/mpeg",
               duration: song.duration ?? null,
             },
             context: {
-              type: 'library',
+              type: "library",
               id: library.id,
               name: library.name,
             },
@@ -239,7 +239,7 @@ app.get('/seed', async (c: Context) => {
 });
 
 // GET /player/preferences - Get user preferences
-app.get('/preferences', async (c: Context) => {
+app.get("/preferences", async (c: Context) => {
   try {
     const userId = getUserId();
     const preferences = await db.playerPreferences.get(userId);
@@ -267,7 +267,7 @@ app.get('/preferences', async (c: Context) => {
 });
 
 // PATCH /player/preferences - Update user preferences
-app.patch('/preferences', async (c: Context) => {
+app.patch("/preferences", async (c: Context) => {
   try {
     const userId = getUserId();
     const body = await c.req.json();
@@ -277,7 +277,7 @@ app.patch('/preferences', async (c: Context) => {
       userId,
       volume: body.volume ?? current?.volume ?? 1,
       muted: body.muted ?? current?.muted ?? false,
-      repeatMode: body.repeatMode ?? current?.repeatMode ?? 'off',
+      repeatMode: body.repeatMode ?? current?.repeatMode ?? "off",
       shuffleEnabled: body.shuffleEnabled ?? current?.shuffleEnabled ?? false,
       updatedAt: new Date(),
     };
@@ -292,7 +292,7 @@ app.patch('/preferences', async (c: Context) => {
     return c.json<ApiResponse<never>>(
       {
         success: false,
-        error: 'Failed to update preferences',
+        error: "Failed to update preferences",
       },
       500
     );
@@ -300,7 +300,7 @@ app.patch('/preferences', async (c: Context) => {
 });
 
 // PUT /player/preferences - Update user preferences (alias for PATCH)
-app.put('/preferences', async (c: Context) => {
+app.put("/preferences", async (c: Context) => {
   try {
     const userId = getUserId();
     const body = await c.req.json();
@@ -310,7 +310,7 @@ app.put('/preferences', async (c: Context) => {
       userId,
       volume: body.volume ?? current?.volume ?? 1,
       muted: body.muted ?? current?.muted ?? false,
-      repeatMode: body.repeatMode ?? current?.repeatMode ?? 'off',
+      repeatMode: body.repeatMode ?? current?.repeatMode ?? "off",
       shuffleEnabled: body.shuffleEnabled ?? current?.shuffleEnabled ?? false,
       updatedAt: new Date(),
     };
@@ -325,7 +325,7 @@ app.put('/preferences', async (c: Context) => {
     return c.json<ApiResponse<never>>(
       {
         success: false,
-        error: 'Failed to update preferences',
+        error: "Failed to update preferences",
       },
       500
     );

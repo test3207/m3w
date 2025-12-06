@@ -3,11 +3,11 @@
  * Automatically refreshes access token before expiry
  */
 
-import { useEffect, useRef } from 'react';
-import { useAuth } from '@/stores/authStore';
-import { useToast } from '@/components/ui/use-toast';
-import { logger } from '@/lib/logger-client';
-import { I18n } from '@/locales/i18n';
+import { useEffect, useRef } from "react";
+import { useAuth } from "@/stores/authStore";
+import { useToast } from "@/components/ui/use-toast";
+import { logger } from "@/lib/logger-client";
+import { I18n } from "@/locales/i18n";
 
 // Refresh when 1 hour (3600000ms) remains
 const REFRESH_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
@@ -29,14 +29,14 @@ export function useAuthRefresh() {
 
     const checkAndRefresh = async () => {
       if (isRefreshingRef.current) {
-        logger.info('Token refresh already in progress, skipping');
+        logger.info("Token refresh already in progress, skipping");
         return;
       }
 
       const now = Date.now();
       const timeUntilExpiry = tokens.expiresAt - now;
 
-      logger.info('Token expiry check', {
+      logger.info("Token expiry check", {
         expiresAt: new Date(tokens.expiresAt).toISOString(),
         timeUntilExpiry: Math.floor(timeUntilExpiry / 1000 / 60), // minutes
         threshold: Math.floor(REFRESH_THRESHOLD_MS / 1000 / 60), // minutes
@@ -44,7 +44,7 @@ export function useAuthRefresh() {
 
       // Refresh if less than threshold remains
       if (timeUntilExpiry <= REFRESH_THRESHOLD_MS) {
-        logger.info('Token expiring soon, refreshing...', {
+        logger.info("Token expiring soon, refreshing...", {
           minutesRemaining: Math.floor(timeUntilExpiry / 1000 / 60),
         });
 
@@ -54,27 +54,27 @@ export function useAuthRefresh() {
           const success = await refreshToken();
 
           if (success) {
-            logger.info('Token refreshed successfully');
+            logger.info("Token refreshed successfully");
             // Show success toast (optional, can be commented out if too noisy)
             // toast({
             //   title: 'Session renewed',
             //   description: 'Your login session has been extended.',
             // });
           } else {
-            logger.warn('Token refresh failed - user may need to re-authenticate');
+            logger.warn("Token refresh failed - user may need to re-authenticate");
 
             // Only show toast once every 10 minutes to avoid spam
             if (now - lastFailureToastRef.current > 10 * 60 * 1000) {
               toast({
-                variant: 'destructive',
-                title: I18n.error.sessionExpired || 'Session expired',
-                description: I18n.error.pleaseSignInAgain || 'Please sign in again.',
+                variant: "destructive",
+                title: I18n.error.sessionExpired || "Session expired",
+                description: I18n.error.pleaseSignInAgain || "Please sign in again.",
               });
               lastFailureToastRef.current = now;
             }
           }
         } catch (error) {
-          logger.error('Token refresh error', error);
+          logger.error("Token refresh error", error);
         } finally {
           isRefreshingRef.current = false;
         }

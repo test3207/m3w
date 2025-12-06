@@ -8,24 +8,24 @@
 
 /** Animation phase */
 export enum AnimationPhase {
-  Hidden = 'hidden',
-  Entering = 'entering',
-  Visible = 'visible',
-  Exiting = 'exiting',
+  Hidden = "hidden",
+  Entering = "entering",
+  Visible = "visible",
+  Exiting = "exiting",
 }
 
 /** Exit direction */
 export enum ExitDirection {
-  Down = 'down',
-  Right = 'right',
+  Down = "down",
+  Right = "right",
 }
 
 /** Animation action types */
 export enum AnimationActionType {
-  Open = 'OPEN',
-  OpenComplete = 'OPEN_COMPLETE',
-  Close = 'CLOSE',
-  CloseComplete = 'CLOSE_COMPLETE',
+  Open = "OPEN",
+  OpenComplete = "OPEN_COMPLETE",
+  Close = "CLOSE",
+  CloseComplete = "CLOSE_COMPLETE",
 }
 
 /** Animation action union type */

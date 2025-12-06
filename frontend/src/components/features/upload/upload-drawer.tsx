@@ -9,19 +9,19 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from '@/components/ui/sheet';
-import { I18n } from '@/locales/i18n';
-import { useUIStore } from '@/stores/uiStore';
-import { useLibraryStore } from '@/stores/libraryStore';
-import { UploadSongForm } from '@/components/features/upload/upload-song-form';
-import { getLibraryDisplayName } from '@/lib/utils/defaults';
+} from "@/components/ui/sheet";
+import { I18n } from "@/locales/i18n";
+import { useUIStore } from "@/stores/uiStore";
+import { useLibraryStore } from "@/stores/libraryStore";
+import { UploadSongForm } from "./upload-form";
+import { getLibraryDisplayName } from "@/lib/utils/defaults";
 
 export function UploadDrawer() {
   const { isUploadDrawerOpen, closeUploadDrawer, uploadTargetLibraryId } = useUIStore();
   const { libraries } = useLibraryStore();
   
   // Find target library
-  const targetLibrary = uploadTargetLibraryId 
+  const targetLibrary = uploadTargetLibraryId
     ? libraries.find(lib => lib.id === uploadTargetLibraryId)
     : null;
 
@@ -37,15 +37,15 @@ export function UploadDrawer() {
         <SheetHeader>
           <SheetTitle>{I18n.upload.page.title}</SheetTitle>
           <SheetDescription>
-            {targetLibrary 
-              ? I18n.upload.page.uploadingTo.replace('{0}', getLibraryDisplayName(targetLibrary))
+            {targetLibrary
+              ? I18n.upload.page.uploadingTo.replace("{0}", getLibraryDisplayName(targetLibrary))
               : I18n.upload.page.description
             }
           </SheetDescription>
         </SheetHeader>
 
-        <UploadSongForm 
-          onDrawerClose={closeUploadDrawer} 
+        <UploadSongForm
+          onDrawerClose={closeUploadDrawer}
           targetLibraryId={uploadTargetLibraryId}
         />
       </SheetContent>

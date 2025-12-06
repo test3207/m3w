@@ -10,15 +10,15 @@
 declare const self: ServiceWorkerGlobalScope;
 
 // Import Workbox for precaching
-import { precacheAndRoute } from 'workbox-precaching';
+import { precacheAndRoute } from "workbox-precaching";
 
 // Precache static assets (injected by Vite PWA plugin)
 // Use self.__WB_MANIFEST for Workbox to inject the precache manifest
 precacheAndRoute(self.__WB_MANIFEST);
 
-const CACHE_NAME = 'm3w-media-v1';
-const AUTH_DB_NAME = 'm3w-auth';
-const AUTH_STORE_NAME = 'tokens';
+const CACHE_NAME = "m3w-media-v1";
+const AUTH_DB_NAME = "m3w-auth";
+const AUTH_STORE_NAME = "tokens";
 
 /**
  * Lightweight logger for Service Worker
@@ -26,18 +26,18 @@ const AUTH_STORE_NAME = 'tokens';
  */
 const swLogger = {
   debug: (message: string, data?: unknown) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.debug(`[SW Debug] ${message}`, data !== undefined ? data : '');
+    if (process.env.NODE_ENV === "development") {
+      console.debug(`[SW Debug] ${message}`, data !== undefined ? data : "");
     }
   },
   info: (message: string, data?: unknown) => {
-    console.info(`[SW Info] ${message}`, data !== undefined ? data : '');
+    console.info(`[SW Info] ${message}`, data !== undefined ? data : "");
   },
   warn: (message: string, data?: unknown) => {
-    console.warn(`[SW Warning] ${message}`, data !== undefined ? data : '');
+    console.warn(`[SW Warning] ${message}`, data !== undefined ? data : "");
   },
   error: (message: string, data?: unknown) => {
-    console.error(`[SW Error] ${message}`, data !== undefined ? data : '');
+    console.error(`[SW Error] ${message}`, data !== undefined ? data : "");
   },
 };
 
@@ -60,16 +60,16 @@ async function getAuthToken(): Promise<string | null> {
         return;
       }
 
-      const transaction = db.transaction([AUTH_STORE_NAME], 'readonly');
+      const transaction = db.transaction([AUTH_STORE_NAME], "readonly");
       const store = transaction.objectStore(AUTH_STORE_NAME);
-      const getRequest = store.get('accessToken');
+      const getRequest = store.get("accessToken");
 
       getRequest.onsuccess = () => {
         resolve(getRequest.result || null);
       };
 
       getRequest.onerror = () => {
-        swLogger.error('Failed to get token:', getRequest.error);
+        swLogger.error("Failed to get token:", getRequest.error);
         resolve(null);
       };
     };
@@ -97,8 +97,8 @@ async function handleRangeRequest(cachedResponse: Response, rangeHeader: string)
   // Parse Range header: "bytes=start-end" or "bytes=start-"
   const rangeMatch = rangeHeader.match(/bytes=(\d+)-(\d*)/);
   if (!rangeMatch) {
-    swLogger.error('Invalid Range header:', rangeHeader);
-    return new Response('Invalid Range header', { status: 416 });
+    swLogger.error("Invalid Range header:", rangeHeader);
+    return new Response("Invalid Range header", { status: 416 });
   }
   
   const start = parseInt(rangeMatch[1], 10);
@@ -106,11 +106,11 @@ async function handleRangeRequest(cachedResponse: Response, rangeHeader: string)
   
   // Validate range
   if (start >= totalSize || end >= totalSize || start > end) {
-    swLogger.error('Range out of bounds:', { start, end, totalSize });
-    return new Response('Range Not Satisfiable', { 
+    swLogger.error("Range out of bounds:", { start, end, totalSize });
+    return new Response("Range Not Satisfiable", { 
       status: 416,
       headers: {
-        'Content-Range': `bytes */${totalSize}`,
+        "Content-Range": `bytes */${totalSize}`,
       },
     });
   }
@@ -119,17 +119,17 @@ async function handleRangeRequest(cachedResponse: Response, rangeHeader: string)
   const slicedBuffer = arrayBuffer.slice(start, end + 1);
   const contentLength = slicedBuffer.byteLength;
   
-  swLogger.debug('📊 Range request:', { start, end, contentLength, totalSize });
+  swLogger.debug("📊 Range request:", { start, end, contentLength, totalSize });
   
   // Return 206 Partial Content
   return new Response(slicedBuffer, {
     status: 206,
-    statusText: 'Partial Content',
+    statusText: "Partial Content",
     headers: {
-      'Content-Type': cachedResponse.headers.get('Content-Type') || 'audio/mpeg',
-      'Content-Length': contentLength.toString(),
-      'Content-Range': `bytes ${start}-${end}/${totalSize}`,
-      'Accept-Ranges': 'bytes',
+      "Content-Type": cachedResponse.headers.get("Content-Type") || "audio/mpeg",
+      "Content-Length": contentLength.toString(),
+      "Content-Range": `bytes ${start}-${end}/${totalSize}`,
+      "Accept-Ranges": "bytes",
     },
   });
 }
@@ -153,10 +153,10 @@ async function handleMediaRequest(request: Request): Promise<Response> {
   const cached = await cache.match(cacheKey);
   
   if (cached) {
-    swLogger.debug('✅ Serving from cache:', url.pathname);
+    swLogger.debug("✅ Serving from cache:", url.pathname);
     
     // Handle Range requests (for seeking)
-    const rangeHeader = request.headers.get('Range');
+    const rangeHeader = request.headers.get("Range");
     if (rangeHeader) {
       return handleRangeRequest(cached, rangeHeader);
     }
@@ -172,10 +172,10 @@ async function handleMediaRequest(request: Request): Promise<Response> {
     // No token = Guest mode
     // In Guest mode, all files should be cached during upload
     // If we reach here with an /api/ URL and no token, the file isn't available
-    swLogger.info('ℹ️ Guest mode - file not cached:', url.pathname);
-    return new Response('File not available offline (Guest mode)', { 
+    swLogger.info("ℹ️ Guest mode - file not cached:", url.pathname);
+    return new Response("File not available offline (Guest mode)", { 
       status: 404,
-      statusText: 'Not Found',
+      statusText: "Not Found",
     });
   }
 
@@ -183,14 +183,14 @@ async function handleMediaRequest(request: Request): Promise<Response> {
   try {
     // Build headers with auth token
     const headers = new Headers(request.headers);
-    headers.set('Authorization', `Bearer ${token}`);
+    headers.set("Authorization", `Bearer ${token}`);
     
     // Clone request with new headers
     const authenticatedRequest = new Request(request, {
       headers,
     });
 
-    swLogger.debug('🌐 Fetching from backend:', url.pathname);
+    swLogger.debug("🌐 Fetching from backend:", url.pathname);
     const response = await fetch(authenticatedRequest);
 
     // Cache successful complete responses (200 OK)
@@ -202,20 +202,20 @@ async function handleMediaRequest(request: Request): Promise<Response> {
       // Cache asynchronously (don't block return)
       // Use pathname as cache key (same as match) to handle port differences
       cache.put(cacheKey, responseToCache).then(() => {
-        swLogger.debug('✅ Cached from backend:', url.pathname);
+        swLogger.debug("✅ Cached from backend:", url.pathname);
       }).catch((error) => {
-        swLogger.error('❌ Failed to cache:', error);
+        swLogger.error("❌ Failed to cache:", error);
       });
     }
 
     return response;
   } catch (error) {
-    swLogger.error('❌ Fetch error:', error);
+    swLogger.error("❌ Fetch error:", error);
     
     // Return offline error
-    return new Response('Network error', {
+    return new Response("Network error", {
       status: 503,
-      statusText: 'Service Unavailable',
+      statusText: "Service Unavailable",
     });
   }
 }
@@ -224,12 +224,12 @@ async function handleMediaRequest(request: Request): Promise<Response> {
  * Install event: Setup cache
  * Note: Use skipWaiting carefully - it can interrupt ongoing operations
  */
-self.addEventListener('install', (event) => {
-  swLogger.info('Installing service worker...');
+self.addEventListener("install", (event) => {
+  swLogger.info("Installing service worker...");
   
   event.waitUntil(
     caches.open(CACHE_NAME).then(() => {
-      swLogger.info('✅ Cache created');
+      swLogger.info("✅ Cache created");
       // Don't skip waiting automatically during install
       // Let the user decide when to update via the reload prompt
       // This prevents interrupting OAuth flows or active playback
@@ -240,8 +240,8 @@ self.addEventListener('install', (event) => {
 /**
  * Activate event: Claim clients and cleanup old caches
  */
-self.addEventListener('activate', (event) => {
-  swLogger.info('Activating service worker...');
+self.addEventListener("activate", (event) => {
+  swLogger.info("Activating service worker...");
   
   event.waitUntil(
     Promise.all([
@@ -249,8 +249,8 @@ self.addEventListener('activate', (event) => {
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME && cacheName.startsWith('m3w-media-')) {
-              swLogger.info('🗑️ Deleting old cache:', cacheName);
+            if (cacheName !== CACHE_NAME && cacheName.startsWith("m3w-media-")) {
+              swLogger.info("🗑️ Deleting old cache:", cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -259,7 +259,7 @@ self.addEventListener('activate', (event) => {
       // Take control of all clients immediately
       self.clients.claim(),
     ]).then(() => {
-      swLogger.info('✅ Service worker activated');
+      swLogger.info("✅ Service worker activated");
     })
   );
 });
@@ -267,7 +267,7 @@ self.addEventListener('activate', (event) => {
 /**
  * Fetch event: Intercept media requests
  */
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   // Only intercept media requests (audio/cover)
@@ -284,15 +284,15 @@ self.addEventListener('fetch', (event) => {
 /**
  * Message event: Handle commands from main thread
  */
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
   
-  if (event.data && event.data.type === 'CLEAR_CACHE') {
+  if (event.data && event.data.type === "CLEAR_CACHE") {
     event.waitUntil(
       caches.delete(CACHE_NAME).then(() => {
-        swLogger.info('✅ Cache cleared');
+        swLogger.info("✅ Cache cleared");
         return caches.open(CACHE_NAME);
       })
     );

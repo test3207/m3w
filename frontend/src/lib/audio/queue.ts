@@ -4,8 +4,8 @@
  * Manages playlist queue, shuffle, repeat modes
  */
 
-import { Track } from './player';
-import { RepeatMode } from '@m3w/shared';
+import { Track } from "./player";
+import { RepeatMode } from "@m3w/shared";
 
 // Re-export RepeatMode for convenience
 export { RepeatMode };

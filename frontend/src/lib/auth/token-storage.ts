@@ -5,10 +5,10 @@
  * auth tokens to IndexedDB for SW to inject into API requests.
  */
 
-import { logger } from '@/lib/logger-client';
+import { logger } from "@/lib/logger-client";
 
-const AUTH_DB_NAME = 'm3w-auth';
-const AUTH_STORE_NAME = 'tokens';
+const AUTH_DB_NAME = "m3w-auth";
+const AUTH_STORE_NAME = "tokens";
 const DB_VERSION = 1;
 
 /**
@@ -36,10 +36,10 @@ function openAuthDB(): Promise<IDBDatabase> {
 export async function saveTokenToIndexedDB(accessToken: string): Promise<void> {
   try {
     const db = await openAuthDB();
-    const transaction = db.transaction([AUTH_STORE_NAME], 'readwrite');
+    const transaction = db.transaction([AUTH_STORE_NAME], "readwrite");
     const store = transaction.objectStore(AUTH_STORE_NAME);
     
-    store.put(accessToken, 'accessToken');
+    store.put(accessToken, "accessToken");
     
     return new Promise((resolve, reject) => {
       transaction.oncomplete = () => {
@@ -52,7 +52,7 @@ export async function saveTokenToIndexedDB(accessToken: string): Promise<void> {
       };
     });
   } catch (error) {
-    logger.error('[Auth] Failed to save token to IndexedDB:', error);
+    logger.error("[Auth] Failed to save token to IndexedDB:", error);
     throw error;
   }
 }
@@ -63,10 +63,10 @@ export async function saveTokenToIndexedDB(accessToken: string): Promise<void> {
 export async function clearTokenFromIndexedDB(): Promise<void> {
   try {
     const db = await openAuthDB();
-    const transaction = db.transaction([AUTH_STORE_NAME], 'readwrite');
+    const transaction = db.transaction([AUTH_STORE_NAME], "readwrite");
     const store = transaction.objectStore(AUTH_STORE_NAME);
     
-    store.delete('accessToken');
+    store.delete("accessToken");
     
     return new Promise((resolve, reject) => {
       transaction.oncomplete = () => {
@@ -79,7 +79,7 @@ export async function clearTokenFromIndexedDB(): Promise<void> {
       };
     });
   } catch (error) {
-    logger.error('[Auth] Failed to clear token from IndexedDB:', error);
+    logger.error("[Auth] Failed to clear token from IndexedDB:", error);
     throw error;
   }
 }
@@ -90,9 +90,9 @@ export async function clearTokenFromIndexedDB(): Promise<void> {
 export async function getTokenFromIndexedDB(): Promise<string | null> {
   try {
     const db = await openAuthDB();
-    const transaction = db.transaction([AUTH_STORE_NAME], 'readonly');
+    const transaction = db.transaction([AUTH_STORE_NAME], "readonly");
     const store = transaction.objectStore(AUTH_STORE_NAME);
-    const request = store.get('accessToken');
+    const request = store.get("accessToken");
     
     return new Promise((resolve, reject) => {
       request.onsuccess = () => {
@@ -105,7 +105,7 @@ export async function getTokenFromIndexedDB(): Promise<string | null> {
       };
     });
   } catch (error) {
-    logger.error('[Auth] Failed to get token from IndexedDB:', error);
+    logger.error("[Auth] Failed to get token from IndexedDB:", error);
     return null;
   }
 }

@@ -2,9 +2,9 @@
  * Demo Resource Service
  */
 
-import { mainApiClient } from '../client';
-import { MAIN_API_ENDPOINTS } from '../endpoints';
-import type { StorageUsageInfo } from '@m3w/shared';
+import { mainApiClient } from "../client";
+import { MAIN_API_ENDPOINTS } from "../endpoints";
+import type { StorageUsageInfo } from "@m3w/shared";
 
 export const demo = {
   /**

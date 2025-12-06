@@ -4,40 +4,40 @@
  * Compact UI for cache-all settings with inline dropdowns
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { useState, useEffect, useCallback } from "react";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Stack } from '@/components/ui/stack';
-import { Text } from '@/components/ui/text';
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Stack } from "@/components/ui/stack";
+import { Text } from "@/components/ui/text";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Info, Cloud } from 'lucide-react';
-import { I18n } from '@/locales/i18n';
-import { api } from '@/services';
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Info, Cloud } from "lucide-react";
+import { I18n } from "@/locales/i18n";
+import { api } from "@/services";
 import {
   getLocalCacheAllOverride,
   setLocalCacheAllOverride,
   getDownloadTiming,
   setDownloadTiming,
-} from '@/lib/storage/cache-policy';
-import type { LocalCacheOverride, DownloadTiming } from '@/lib/db/schema';
-import { getQueueStatus, getTotalCacheStats } from '@/lib/storage/download-manager';
-import { isAudioCacheAvailable } from '@/lib/storage/audio-cache';
-import { logger } from '@/lib/logger-client';
-import { isGuestUser } from '@/lib/offline-proxy/utils';
-import { useAuthStore } from '@/stores/authStore';
+} from "@/lib/storage/cache-policy";
+import type { LocalCacheOverride, DownloadTiming } from "@/lib/db/schema";
+import { getQueueStatus, getTotalCacheStats } from "@/lib/storage/download-manager";
+import { isAudioCacheAvailable } from "@/lib/storage/audio-cache";
+import { logger } from "@/lib/logger-client";
+import { isGuestUser } from "@/lib/offline-proxy/utils";
+import { useAuthStore } from "@/stores/authStore";
 
 export default function OfflineSettings() {
   const { isGuest } = useAuthStore();
@@ -46,8 +46,8 @@ export default function OfflineSettings() {
   const [backendCacheAll, setBackendCacheAll] = useState(false);
   
   // Local settings
-  const [localOverride, setLocalOverride] = useState<LocalCacheOverride>('inherit');
-  const [downloadTimingVal, setDownloadTimingVal] = useState<DownloadTiming>('wifi-only');
+  const [localOverride, setLocalOverride] = useState<LocalCacheOverride>("inherit");
+  const [downloadTimingVal, setDownloadTimingVal] = useState<DownloadTiming>("wifi-only");
   
   // Queue status
   const [queueStatus, setQueueStatus] = useState({ pending: 0, active: 0, isProcessing: false });
@@ -78,7 +78,7 @@ export default function OfflineSettings() {
           getLocalCacheAllOverride(),
           getDownloadTiming(),
         ]);
-        setLocalOverride(localOvr ?? 'inherit');
+        setLocalOverride(localOvr ?? "inherit");
         setDownloadTimingVal(timing);
 
         // Load backend settings (only for authenticated users)
@@ -87,11 +87,11 @@ export default function OfflineSettings() {
             const prefs = await api.main.user.getPreferences();
             setBackendCacheAll(prefs.cacheAllEnabled);
           } catch (error) {
-            logger.warn('Failed to load user preferences', error);
+            logger.warn("Failed to load user preferences", error);
           }
         }
       } catch (error) {
-        logger.error('Failed to load offline settings', error);
+        logger.error("Failed to load offline settings", error);
       } finally {
         setLoading(false);
       }
@@ -133,17 +133,17 @@ export default function OfflineSettings() {
       await api.main.user.updatePreferences({ cacheAllEnabled: enabled });
       setBackendCacheAll(enabled);
     } catch (error) {
-      logger.error('Failed to update cache-all setting', error);
+      logger.error("Failed to update cache-all setting", error);
     }
   }, []);
 
   // Handle local override change
   const handleLocalOverrideChange = useCallback(async (value: LocalCacheOverride) => {
     try {
-      await setLocalCacheAllOverride(value === 'inherit' ? null : value);
+      await setLocalCacheAllOverride(value === "inherit" ? null : value);
       setLocalOverride(value);
     } catch (error) {
-      logger.error('Failed to update local override', error);
+      logger.error("Failed to update local override", error);
     }
   }, []);
 
@@ -153,7 +153,7 @@ export default function OfflineSettings() {
       await setDownloadTiming(value);
       setDownloadTimingVal(value);
     } catch (error) {
-      logger.error('Failed to update download timing', error);
+      logger.error("Failed to update download timing", error);
     }
   }, []);
 
@@ -271,14 +271,14 @@ export default function OfflineSettings() {
             <Stack direction="horizontal" align="center" justify="between" className="pt-2 border-t min-h-6">
               <Text variant="caption" className="text-muted-foreground">
                 {I18n.settings.offline.cacheStatus
-                  .replace('{0}', String(cacheStats.cached))
-                  .replace('{1}', String(cacheStats.total))}
+                  .replace("{0}", String(cacheStats.cached))
+                  .replace("{1}", String(cacheStats.total))}
               </Text>
               {isDownloading && (
                 <Text variant="caption" className="text-primary">
                   {I18n.settings.offline.downloadingStatus
-                    .replace('{0}', String(queueStatus.active))
-                    .replace('{1}', String(queueStatus.pending))}
+                    .replace("{0}", String(queueStatus.active))
+                    .replace("{1}", String(queueStatus.pending))}
                 </Text>
               )}
             </Stack>

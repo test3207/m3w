@@ -3,24 +3,24 @@
  * Sheet for adding songs to existing playlists (supports batch add)
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useUIStore, type SelectedSongInfo } from '@/stores/uiStore';
-import { usePlaylistStore } from '@/stores/playlistStore';
-import { useToast } from '@/components/ui/use-toast';
-import { I18n } from '@/locales/i18n';
-import { getPlaylistDisplayName } from '@/lib/utils/defaults';
-import { isFavoritesPlaylist } from '@m3w/shared';
-import { Check, Plus, Music, Heart } from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useUIStore, type SelectedSongInfo } from "@/stores/uiStore";
+import { usePlaylistStore } from "@/stores/playlistStore";
+import { useToast } from "@/components/ui/use-toast";
+import { I18n } from "@/locales/i18n";
+import { getPlaylistDisplayName } from "@/lib/utils/defaults";
+import { isFavoritesPlaylist } from "@m3w/shared";
+import { Check, Plus, Music, Heart } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function AddToPlaylistSheet() {
   const { toast } = useToast();
@@ -40,7 +40,7 @@ export function AddToPlaylistSheet() {
   
   const [isAdding, setIsAdding] = useState(false);
   const [showNewPlaylist, setShowNewPlaylist] = useState(false);
-  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   // Fetch playlists when sheet opens to ensure data is fresh
@@ -118,11 +118,11 @@ export function AddToPlaylistSheet() {
       if (addedCount > 0) {
         const description = songsToAdd.length === 1
           ? I18n.library.addToPlaylist.toastSuccessDescriptionWithName
-              .replace('{0}', songsToAdd[0].title)
-              .replace('{1}', playlistName)
+            .replace("{0}", songsToAdd[0].title)
+            .replace("{1}", playlistName)
           : I18n.library.addToPlaylist.batchSuccessDescription
-              .replace('{0}', String(addedCount))
-              .replace('{1}', playlistName);
+            .replace("{0}", String(addedCount))
+            .replace("{1}", playlistName);
         
         toast({
           title: I18n.library.addToPlaylist.toastSuccessTitle,
@@ -140,14 +140,14 @@ export function AddToPlaylistSheet() {
         });
       } else {
         toast({
-          variant: 'destructive',
+          variant: "destructive",
           title: I18n.library.addToPlaylist.toastErrorTitle,
           description: I18n.library.addToPlaylist.toastErrorDescription,
         });
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.library.addToPlaylist.toastErrorTitle,
         description: error instanceof Error ? error.message : I18n.library.addToPlaylist.toastErrorDescription,
       });
@@ -179,11 +179,11 @@ export function AddToPlaylistSheet() {
         if (addedCount > 0) {
           const description = songsToAdd.length === 1
             ? I18n.library.addToPlaylist.toastSuccessDescriptionWithName
-                .replace('{0}', songsToAdd[0].title)
-                .replace('{1}', newPlaylistName.trim())
+              .replace("{0}", songsToAdd[0].title)
+              .replace("{1}", newPlaylistName.trim())
             : I18n.library.addToPlaylist.batchSuccessDescription
-                .replace('{0}', String(addedCount))
-                .replace('{1}', newPlaylistName.trim());
+              .replace("{0}", String(addedCount))
+              .replace("{1}", newPlaylistName.trim());
           
           toast({
             title: I18n.library.addToPlaylist.toastSuccessTitle,
@@ -201,19 +201,19 @@ export function AddToPlaylistSheet() {
         }
       } else {
         toast({
-          variant: 'destructive',
+          variant: "destructive",
           title: I18n.library.addToPlaylist.createPlaylistError,
         });
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.library.addToPlaylist.createPlaylistError,
         description: error instanceof Error ? error.message : undefined,
       });
     } finally {
       setIsCreating(false);
-      setNewPlaylistName('');
+      setNewPlaylistName("");
       setShowNewPlaylist(false);
     }
   };
@@ -223,17 +223,17 @@ export function AddToPlaylistSheet() {
     if (!open) {
       closeSheet();
       setShowNewPlaylist(false);
-      setNewPlaylistName('');
+      setNewPlaylistName("");
     }
   };
 
   // Generate description text
   const getSheetDescription = () => {
-    if (songsToAdd.length === 0) return '';
+    if (songsToAdd.length === 0) return "";
     if (songsToAdd.length === 1) {
-      return I18n.library.addToPlaylist.selectPlaylistForSong.replace('{0}', songsToAdd[0].title);
+      return I18n.library.addToPlaylist.selectPlaylistForSong.replace("{0}", songsToAdd[0].title);
     }
-    return I18n.library.addToPlaylist.selectPlaylistForSongs.replace('{0}', String(songsToAdd.length));
+    return I18n.library.addToPlaylist.selectPlaylistForSongs.replace("{0}", String(songsToAdd.length));
   };
 
   return (
@@ -264,11 +264,11 @@ export function AddToPlaylistSheet() {
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newPlaylistName.trim()) {
+                  if (e.key === "Enter" && newPlaylistName.trim()) {
                     handleCreateAndAdd();
-                  } else if (e.key === 'Escape') {
+                  } else if (e.key === "Escape") {
                     setShowNewPlaylist(false);
-                    setNewPlaylistName('');
+                    setNewPlaylistName("");
                   }
                 }}
                 autoFocus
@@ -285,7 +285,7 @@ export function AddToPlaylistSheet() {
                 size="sm"
                 onClick={() => {
                   setShowNewPlaylist(false);
-                  setNewPlaylistName('');
+                  setNewPlaylistName("");
                 }}
               >
                 {I18n.common.cancelButton}
@@ -312,10 +312,10 @@ export function AddToPlaylistSheet() {
                     onClick={() => handleAddToPlaylist(playlist.id, displayName)}
                     disabled={isAdding || allSongsAdded}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors',
+                      "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
                       allSongsAdded
-                        ? 'bg-muted/50 cursor-not-allowed opacity-60'
-                        : 'hover:bg-accent cursor-pointer'
+                        ? "bg-muted/50 cursor-not-allowed opacity-60"
+                        : "hover:bg-accent cursor-pointer"
                     )}
                   >
                     {/* Playlist Cover */}
@@ -341,7 +341,7 @@ export function AddToPlaylistSheet() {
                     <div className="flex-1 overflow-hidden">
                       <p className="truncate font-medium">{displayName}</p>
                       <p className="text-sm text-muted-foreground">
-                        {I18n.playlists.detail.songsCount.replace('{0}', String(playlist.songCount))}
+                        {I18n.playlists.detail.songsCount.replace("{0}", String(playlist.songCount))}
                       </p>
                     </div>
 

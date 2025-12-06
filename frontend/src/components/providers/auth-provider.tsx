@@ -3,10 +3,10 @@
  * Wraps app with automatic token refresh and background sync
  */
 
-import { useEffect } from 'react';
-import { useAuthRefresh } from '@/hooks/useAuthRefresh';
-import { syncService } from '@/lib/sync/service';
-import { useAuthStore } from '@/stores/authStore';
+import { useEffect } from "react";
+import { useAuthRefresh } from "@/hooks/useAuthRefresh";
+import { syncService } from "@/lib/sync/service";
+import { useAuthStore } from "@/stores/authStore";
 
 interface AuthProviderProps {
   children: React.ReactNode;

@@ -176,7 +176,7 @@ export default function PlaylistDetailPage() {
     if (success) {
       // If currently playing this playlist in sequential mode, update queue
       if (
-        queueSource === 'playlist' &&
+        queueSource === "playlist" &&
         queueSourceId === currentPlaylist.id &&
         !isShuffled
       ) {
@@ -214,7 +214,7 @@ export default function PlaylistDetailPage() {
       setSongs((prev) => prev.filter((s) => s.id !== songId));
 
       toast({
-        title: I18n.playlists.detail.removeSong.successTitle.replace('{0}', songTitle),
+        title: I18n.playlists.detail.removeSong.successTitle.replace("{0}", songTitle),
       });
     } else {
       toast({
@@ -258,7 +258,7 @@ export default function PlaylistDetailPage() {
               {currentPlaylist.name}
             </h1>
             <p className="text-xs text-muted-foreground">
-              {I18n.playlists.detail.songsCount.replace('{0}', String(songs.length))}
+              {I18n.playlists.detail.songsCount.replace("{0}", String(songs.length))}
             </p>
           </div>
 
@@ -311,7 +311,7 @@ export default function PlaylistDetailPage() {
                   {songs.map((song, index) => {
                     const isCurrentlyPlaying =
                       currentSong?.id === song.id &&
-                      queueSource === 'playlist' &&
+                      queueSource === "playlist" &&
                       queueSourceId === id;
 
                     return (

@@ -1,11 +1,11 @@
-import type { Messages } from './generated/types';
-import { logger } from '@/lib/logger-client';
+import type { Messages } from "./generated/types";
+import { logger } from "@/lib/logger-client";
 
 // Store for all language messages (flat dot-notation keys)
 const messagesStore = new Map<string, Record<string, string>>();
 
 // Current active locale
-let currentLocale = 'en';
+let currentLocale = "en";
 
 // Locale change listeners
 const localeChangeListeners = new Set<() => void>();
@@ -14,13 +14,13 @@ const localeChangeListeners = new Set<() => void>();
  * Flatten nested object to dot notation
  * { a: { b: "text" } } => { "a.b": "text" }
  */
-function flatten(obj: Record<string, unknown>, prefix = ''): Record<string, string> {
+function flatten(obj: Record<string, unknown>, prefix = ""): Record<string, string> {
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       result[fullKey] = value;
-    } else if (typeof value === 'object' && value !== null) {
+    } else if (typeof value === "object" && value !== null) {
       Object.assign(result, flatten(value as Record<string, unknown>, fullKey));
     }
   }
@@ -37,19 +37,19 @@ function createNestedProxy(path: string[] = []): unknown {
     {
       get(_target, prop: string | symbol) {
         // Ignore symbol properties (like Symbol.toStringTag)
-        if (typeof prop === 'symbol') {
+        if (typeof prop === "symbol") {
           return undefined;
         }
 
         const newPath = [...path, prop];
-        const key = newPath.join('.');
+        const key = newPath.join(".");
 
         // Try to get value from current locale
         const messages = messagesStore.get(currentLocale);
         const value = messages?.[key];
 
         // If found string value, return it
-        if (typeof value === 'string') {
+        if (typeof value === "string") {
           return value;
         }
 
@@ -93,7 +93,7 @@ export function registerMessages(locale: string, messages: Record<string, unknow
  */
 export function setLocale(locale: string): void {
   if (!messagesStore.has(locale)) {
-    logger.warn('Locale not registered, falling back', { locale, fallback: currentLocale });
+    logger.warn("Locale not registered, falling back", { locale, fallback: currentLocale });
     return;
   }
   currentLocale = locale;
@@ -156,7 +156,7 @@ export function format(template: string, ...values: (string | number)[]): string
   let result = template;
   
   values.forEach((value, index) => {
-    const regex = new RegExp(`\\{${index}\\}`, 'g');
+    const regex = new RegExp(`\\{${index}\\}`, "g");
     result = result.replace(regex, String(value));
   });
   

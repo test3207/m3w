@@ -7,7 +7,7 @@
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Media_Session_API
  */
 
-import { logger } from '@/lib/logger-client';
+import { logger } from "@/lib/logger-client";
 
 export interface MediaSessionTrack {
   title: string;
@@ -34,7 +34,7 @@ const DEFAULT_SEEK_OFFSET = 10;
  * Check if Media Session API is supported
  */
 export function isMediaSessionSupported(): boolean {
-  return typeof navigator !== 'undefined' && 'mediaSession' in navigator;
+  return typeof navigator !== "undefined" && "mediaSession" in navigator;
 }
 
 /**
@@ -51,29 +51,29 @@ export function updateMediaSessionMetadata(track: MediaSessionTrack): void {
       // Provide multiple sizes for different contexts
       // Omit 'type' to let the browser infer from response headers (covers can be JPEG, PNG, WebP, etc.)
       artwork.push(
-        { src: track.coverUrl, sizes: '96x96' },
-        { src: track.coverUrl, sizes: '128x128' },
-        { src: track.coverUrl, sizes: '192x192' },
-        { src: track.coverUrl, sizes: '256x256' },
-        { src: track.coverUrl, sizes: '384x384' },
-        { src: track.coverUrl, sizes: '512x512' }
+        { src: track.coverUrl, sizes: "96x96" },
+        { src: track.coverUrl, sizes: "128x128" },
+        { src: track.coverUrl, sizes: "192x192" },
+        { src: track.coverUrl, sizes: "256x256" },
+        { src: track.coverUrl, sizes: "384x384" },
+        { src: track.coverUrl, sizes: "512x512" }
       );
     }
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
-      artist: track.artist ?? '',
-      album: track.album ?? '',
+      artist: track.artist ?? "",
+      album: track.album ?? "",
       artwork,
     });
 
-    logger.info('Media Session metadata updated', {
+    logger.info("Media Session metadata updated", {
       title: track.title,
       artist: track.artist,
       hasArtwork: artwork.length > 0,
     });
   } catch (error) {
-    logger.warn('Failed to update Media Session metadata', { error });
+    logger.warn("Failed to update Media Session metadata", { error });
   }
 }
 
@@ -81,7 +81,7 @@ export function updateMediaSessionMetadata(track: MediaSessionTrack): void {
  * Update Media Session playback state
  */
 export function updateMediaSessionPlaybackState(
-  state: 'playing' | 'paused' | 'none'
+  state: "playing" | "paused" | "none"
 ): void {
   if (!isMediaSessionSupported()) {
     return;
@@ -90,7 +90,7 @@ export function updateMediaSessionPlaybackState(
   try {
     navigator.mediaSession.playbackState = state;
   } catch (error) {
-    logger.warn('Failed to update Media Session playback state', { error });
+    logger.warn("Failed to update Media Session playback state", { error });
   }
 }
 
@@ -121,7 +121,7 @@ export function updateMediaSessionPositionState(
     });
   } catch (error) {
     // Some browsers don't support setPositionState
-    logger.debug('Failed to update Media Session position state', { error });
+    logger.debug("Failed to update Media Session position state", { error });
   }
 }
 
@@ -133,108 +133,108 @@ export function registerMediaSessionHandlers(
   callbacks: MediaSessionCallbacks
 ): void {
   if (!isMediaSessionSupported()) {
-    logger.info('Media Session API not supported');
+    logger.info("Media Session API not supported");
     return;
   }
 
   try {
     // Play/Pause controls
     if (callbacks.onPlay) {
-      navigator.mediaSession.setActionHandler('play', () => {
+      navigator.mediaSession.setActionHandler("play", () => {
         try {
-          logger.info('Media Session: play action triggered');
+          logger.info("Media Session: play action triggered");
           callbacks.onPlay?.();
         } catch (error) {
-          logger.warn('Media Session: play callback error', { error });
+          logger.warn("Media Session: play callback error", { error });
         }
       });
     }
 
     if (callbacks.onPause) {
-      navigator.mediaSession.setActionHandler('pause', () => {
+      navigator.mediaSession.setActionHandler("pause", () => {
         try {
-          logger.info('Media Session: pause action triggered');
+          logger.info("Media Session: pause action triggered");
           callbacks.onPause?.();
         } catch (error) {
-          logger.warn('Media Session: pause callback error', { error });
+          logger.warn("Media Session: pause callback error", { error });
         }
       });
     }
 
     // Previous/Next track controls (the main fix for Issue #110)
     if (callbacks.onPreviousTrack) {
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
         try {
-          logger.info('Media Session: previoustrack action triggered');
+          logger.info("Media Session: previoustrack action triggered");
           callbacks.onPreviousTrack?.();
         } catch (error) {
-          logger.warn('Media Session: previoustrack callback error', { error });
+          logger.warn("Media Session: previoustrack callback error", { error });
         }
       });
     }
 
     if (callbacks.onNextTrack) {
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
         try {
-          logger.info('Media Session: nexttrack action triggered');
+          logger.info("Media Session: nexttrack action triggered");
           callbacks.onNextTrack?.();
         } catch (error) {
-          logger.warn('Media Session: nexttrack callback error', { error });
+          logger.warn("Media Session: nexttrack callback error", { error });
         }
       });
     }
 
     // Seek controls (optional but nice to have)
     if (callbacks.onSeekTo) {
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
+      navigator.mediaSession.setActionHandler("seekto", (details) => {
         try {
           if (details.seekTime !== undefined && isFinite(details.seekTime) && details.seekTime >= 0) {
-            logger.info('Media Session: seekto action triggered', {
+            logger.info("Media Session: seekto action triggered", {
               seekTime: details.seekTime,
             });
             callbacks.onSeekTo?.(details.seekTime);
           }
         } catch (error) {
-          logger.warn('Media Session: seekto callback error', { error });
+          logger.warn("Media Session: seekto callback error", { error });
         }
       });
     }
 
     if (callbacks.onSeekBackward) {
-      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+      navigator.mediaSession.setActionHandler("seekbackward", (details) => {
         try {
           const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
           // Validate offset is a positive finite number
           if (!isFinite(offset) || offset <= 0) return;
-          logger.info('Media Session: seekbackward action triggered', { offset });
+          logger.info("Media Session: seekbackward action triggered", { offset });
           callbacks.onSeekBackward?.(offset);
         } catch (error) {
-          logger.warn('Media Session: seekbackward callback error', { error });
+          logger.warn("Media Session: seekbackward callback error", { error });
         }
       });
     }
 
     if (callbacks.onSeekForward) {
-      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+      navigator.mediaSession.setActionHandler("seekforward", (details) => {
         try {
           const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
           // Validate offset is a positive finite number
           if (!isFinite(offset) || offset <= 0) return;
-          logger.info('Media Session: seekforward action triggered', { offset });
+          logger.info("Media Session: seekforward action triggered", { offset });
           callbacks.onSeekForward?.(offset);
         } catch (error) {
-          logger.warn('Media Session: seekforward callback error', { error });
+          logger.warn("Media Session: seekforward callback error", { error });
         }
       });
     }
 
-    logger.info('Media Session handlers registered', {
+    logger.info("Media Session handlers registered", {
       handlers: Object.keys(callbacks).filter(
         (k) => callbacks[k as keyof MediaSessionCallbacks]
       ),
     });
   } catch (error) {
-    logger.warn('Failed to register Media Session handlers', { error });
+    logger.warn("Failed to register Media Session handlers", { error });
   }
 }
 
@@ -248,7 +248,7 @@ export function clearMediaSessionMetadata(): void {
 
   try {
     navigator.mediaSession.metadata = null;
-    navigator.mediaSession.playbackState = 'none';
+    navigator.mediaSession.playbackState = "none";
     // Also clear position state to prevent stale seek bar
     try {
       navigator.mediaSession.setPositionState();
@@ -256,6 +256,6 @@ export function clearMediaSessionMetadata(): void {
       // setPositionState without args may not be supported in all browsers
     }
   } catch (error) {
-    logger.warn('Failed to clear Media Session metadata', { error });
+    logger.warn("Failed to clear Media Session metadata", { error });
   }
 }

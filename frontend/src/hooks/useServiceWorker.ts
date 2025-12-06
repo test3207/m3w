@@ -3,9 +3,9 @@
  * Registers service worker and handles updates
  */
 
-import { useEffect } from 'react';
-import { useRegisterSW } from 'virtual:pwa-register/react';
-import { logger } from '@/lib/logger-client';
+import { useEffect } from "react";
+import { useRegisterSW } from "virtual:pwa-register/react";
+import { logger } from "@/lib/logger-client";
 
 export function useServiceWorker() {
   const {
@@ -14,7 +14,7 @@ export function useServiceWorker() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
-      logger.info('Service Worker registered', { registration: !!r });
+      logger.info("Service Worker registered", { registration: !!r });
 
       // Check for updates every hour
       if (r) {
@@ -24,13 +24,13 @@ export function useServiceWorker() {
       }
     },
     onRegisterError(error) {
-      logger.error('Service Worker registration failed', { error });
+      logger.error("Service Worker registration failed", { error });
     },
   });
 
   useEffect(() => {
     if (offlineReady) {
-      logger.info('App ready to work offline');
+      logger.info("App ready to work offline");
     }
   }, [offlineReady]);
 

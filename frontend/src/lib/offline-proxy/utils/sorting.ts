@@ -3,8 +3,8 @@
  * Mirrors backend sorting logic for consistency
  */
 
-import type { OfflineSong } from '../../db/schema';
-import type { SongSortOption } from '@m3w/shared';
+import type { OfflineSong } from "../../db/schema";
+import type { SongSortOption } from "@m3w/shared";
 
 /**
  * Get pinyin sort key for Chinese text
@@ -50,41 +50,41 @@ export function sortSongsOffline(
   const sorted = [...songs];
 
   switch (sortOption) {
-    case 'title-asc':
+    case "title-asc":
       return sorted.sort((a, b) => {
         const aTitle = getPinyinSort(a.title);
         const bTitle = getPinyinSort(b.title);
-        return aTitle.localeCompare(bTitle, 'zh-CN');
+        return aTitle.localeCompare(bTitle, "zh-CN");
       });
 
-    case 'title-desc':
+    case "title-desc":
       return sorted.sort((a, b) => {
         const aTitle = getPinyinSort(a.title);
         const bTitle = getPinyinSort(b.title);
-        return bTitle.localeCompare(aTitle, 'zh-CN');
+        return bTitle.localeCompare(aTitle, "zh-CN");
       });
 
-    case 'artist-asc':
+    case "artist-asc":
       return sorted.sort((a, b) => {
-        const aArtist = getPinyinSort(a.artist || '');
-        const bArtist = getPinyinSort(b.artist || '');
-        return aArtist.localeCompare(bArtist, 'zh-CN');
+        const aArtist = getPinyinSort(a.artist || "");
+        const bArtist = getPinyinSort(b.artist || "");
+        return aArtist.localeCompare(bArtist, "zh-CN");
       });
 
-    case 'album-asc':
+    case "album-asc":
       return sorted.sort((a, b) => {
-        const aAlbum = getPinyinSort(a.album || '');
-        const bAlbum = getPinyinSort(b.album || '');
-        return aAlbum.localeCompare(bAlbum, 'zh-CN');
+        const aAlbum = getPinyinSort(a.album || "");
+        const bAlbum = getPinyinSort(b.album || "");
+        return aAlbum.localeCompare(bAlbum, "zh-CN");
       });
 
-    case 'date-asc':
+    case "date-asc":
       return sorted.sort(
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
 
-    case 'date-desc':
+    case "date-desc":
     default:
       return sorted.sort(
         (a, b) =>

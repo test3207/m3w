@@ -9,7 +9,7 @@
  * Fixed UUID for guest user
  * This ensures all guest data uses the same userId across sessions.
  */
-export const GUEST_USER_ID = '00000000-0000-0000-0000-000000000000';
+export const GUEST_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 /**
  * Check if a userId is the guest user

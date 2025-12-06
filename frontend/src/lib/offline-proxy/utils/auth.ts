@@ -5,7 +5,7 @@
  * Cache is invalidated on login/logout via invalidateGuestCache().
  */
 
-import { GUEST_USER_ID, isGuestUserId } from '../../constants/guest';
+import { GUEST_USER_ID, isGuestUserId } from "../../constants/guest";
 
 // Re-export for convenience
 export { GUEST_USER_ID, isGuestUserId };
@@ -34,12 +34,12 @@ export function invalidateGuestCache(): void {
  */
 export function getUserId(): string {
   // Zustand persist uses 'auth-storage' as the key name
-  const authState = localStorage.getItem('auth-storage');
+  const authState = localStorage.getItem("auth-storage");
   if (!authState) {
-    throw new Error('Not authenticated');
+    throw new Error("Not authenticated");
   }
   const { user } = JSON.parse(authState).state;
-  return user?.id || '';
+  return user?.id || "";
 }
 
 /**
@@ -58,7 +58,7 @@ export function isGuestUser(): boolean {
   
   // Compute and cache
   try {
-    const authStore = localStorage.getItem('auth-storage');
+    const authStore = localStorage.getItem("auth-storage");
     if (!authStore) {
       guestUserCache = false;
       return false;

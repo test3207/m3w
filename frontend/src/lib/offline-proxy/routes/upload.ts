@@ -5,26 +5,26 @@
  * This ensures cache compatibility when user switches from Guest to Auth mode.
  */
 
-import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { db, markDirty } from '../../db/schema';
-import type { OfflineSong } from '../../db/schema';
-import { parseBlob } from 'music-metadata';
-import { calculateFileHash } from '../../utils/hash';
-import { cacheAudioForOffline, cacheCoverForOffline } from '../../pwa/cache-manager';
-import { logger } from '@/lib/logger-client';
+import { Hono } from "hono";
+import type { Context } from "hono";
+import { db, markDirty } from "../../db/schema";
+import type { OfflineSong } from "../../db/schema";
+import { parseBlob } from "music-metadata";
+import { calculateFileHash } from "../../utils/hash";
+import { cacheAudioForOffline, cacheCoverForOffline } from "../../pwa/cache-manager";
+import { logger } from "@/lib/logger-client";
 
 const app = new Hono();
 
 // POST /upload - Upload audio file (Offline)
-app.post('/', async (c: Context) => {
+app.post("/", async (c: Context) => {
   try {
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
-    const libraryId = formData.get('libraryId') as string;
+    const file = formData.get("file") as File;
+    const libraryId = formData.get("libraryId") as string;
 
     if (!file || !libraryId) {
-      return c.json({ success: false, error: 'Missing file or libraryId' }, 400);
+      return c.json({ success: false, error: "Missing file or libraryId" }, 400);
     }
 
     // 1. Calculate hash
@@ -35,7 +35,7 @@ app.post('/', async (c: Context) => {
     const { common, format } = metadata;
 
     // 3. Check if File entity exists or create new one
-    let fileEntity = await db.files.where('hash').equals(hash).first();
+    let fileEntity = await db.files.where("hash").equals(hash).first();
 
     if (!fileEntity) {
       // Create new File entity
@@ -43,7 +43,7 @@ app.post('/', async (c: Context) => {
         id: `file-${hash}`,
         hash,
         size: file.size,
-        mimeType: file.type || 'audio/mpeg',
+        mimeType: file.type || "audio/mpeg",
         duration: format.duration || undefined,
         refCount: 0, // Will be incremented below
         createdAt: new Date(),
@@ -76,9 +76,9 @@ app.post('/', async (c: Context) => {
     const songData: OfflineSong = {
       id: songId,
       libraryId, // ✅ Required field (one-to-many relationship)
-      title: common.title || file.name.replace(/\.[^/.]+$/, ''),
-      artist: common.artist || 'Unknown Artist',
-      album: common.album || 'Unknown Album',
+      title: common.title || file.name.replace(/\.[^/.]+$/, ""),
+      artist: common.artist || "Unknown Artist",
+      album: common.album || "Unknown Album",
       albumArtist: common.albumartist || null,
       year: common.year || null,
       genre: common.genre && common.genre.length > 0 ? common.genre[0] : null,
@@ -108,7 +108,7 @@ app.post('/', async (c: Context) => {
     const song = markDirty(songData, true);
 
     // 8. Save song to IndexedDB and increment File refCount
-    await db.transaction('rw', [db.songs, db.files], async () => {
+    await db.transaction("rw", [db.songs, db.files], async () => {
       await db.songs.add(song);
 
       // Increment refCount
@@ -127,8 +127,8 @@ app.post('/', async (c: Context) => {
       },
     });
   } catch (error) {
-    logger.error('[OfflineProxy] Offline upload failed', error);
-    return c.json({ success: false, error: 'Upload failed' }, 500);
+    logger.error("[OfflineProxy] Offline upload failed", error);
+    return c.json({ success: false, error: "Upload failed" }, 500);
   }
 });
 

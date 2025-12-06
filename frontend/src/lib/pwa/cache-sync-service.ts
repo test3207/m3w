@@ -8,10 +8,10 @@
  * between Cache Storage API and IndexedDB metadata.
  */
 
-import { db } from '@/lib/db/schema';
-import { logger } from '@/lib/logger-client';
-import { getCacheName } from '@/lib/pwa/cache-manager';
-import { CACHE_SYNC_INTERVAL, CACHE_SYNC_BATCH_SIZE } from '@/lib/storage/storage-constants';
+import { db } from "@/lib/db/schema";
+import { logger } from "@/lib/logger-client";
+import { getCacheName } from "@/lib/pwa/cache-manager";
+import { CACHE_SYNC_INTERVAL, CACHE_SYNC_BATCH_SIZE } from "@/lib/storage/storage-constants";
 
 interface SyncStats {
   totalChecked: number;
@@ -30,21 +30,21 @@ class CacheSyncService {
    */
   start() {
     if (this.intervalId) {
-      logger.warn('Cache sync service already running');
+      logger.warn("Cache sync service already running");
       return;
     }
 
-    logger.info('Starting cache sync service', { interval: CACHE_SYNC_INTERVAL });
+    logger.info("Starting cache sync service", { interval: CACHE_SYNC_INTERVAL });
     
     // Run immediately on start
     this.runSync().catch((error) => {
-      logger.error('Initial cache sync failed', { error });
+      logger.error("Initial cache sync failed", { error });
     });
 
     // Then run on interval
     this.intervalId = setInterval(() => {
       this.runSync().catch((error) => {
-        logger.error('Scheduled cache sync failed', { error });
+        logger.error("Scheduled cache sync failed", { error });
       });
     }, CACHE_SYNC_INTERVAL);
   }
@@ -56,7 +56,7 @@ class CacheSyncService {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      logger.info('Cache sync service stopped');
+      logger.info("Cache sync service stopped");
     }
   }
 
@@ -86,8 +86,8 @@ class CacheSyncService {
    */
   private async runSync(): Promise<SyncStats> {
     if (this.isRunning) {
-      logger.warn('Cache sync already in progress, skipping');
-      throw new Error('Sync already in progress');
+      logger.warn("Cache sync already in progress, skipping");
+      throw new Error("Sync already in progress");
     }
 
     this.isRunning = true;
@@ -100,19 +100,19 @@ class CacheSyncService {
     };
 
     try {
-      logger.info('Cache sync started');
+      logger.info("Cache sync started");
 
       // Get all songs from IndexedDB
       const songs = await db.songs.toArray();
       stats.totalChecked = songs.length;
 
       if (songs.length === 0) {
-        logger.info('No songs to sync');
+        logger.info("No songs to sync");
         return stats;
       }
 
       // Open audio cache
-      const cache = await caches.open(getCacheName('audio'));
+      const cache = await caches.open(getCacheName("audio"));
 
       // Process in batches
       for (let i = 0; i < songs.length; i += CACHE_SYNC_BATCH_SIZE) {
@@ -136,7 +136,7 @@ class CacheSyncService {
                   lastCacheCheck: Date.now(),
                 });
 
-                logger.debug('Cache mismatch fixed', {
+                logger.debug("Cache mismatch fixed", {
                   songId: song.id,
                   wasCached: song.isCached,
                   nowCached: isCached,
@@ -149,7 +149,7 @@ class CacheSyncService {
               }
             } catch (error) {
               stats.errors++;
-              logger.error('Failed to sync song cache', { songId: song.id, error });
+              logger.error("Failed to sync song cache", { songId: song.id, error });
             }
           })
         );
@@ -158,11 +158,11 @@ class CacheSyncService {
       this.lastSyncTime = Date.now();
       stats.duration = Date.now() - startTime;
 
-      logger.info('Cache sync completed', stats);
+      logger.info("Cache sync completed", stats);
       
       return stats;
     } catch (error) {
-      logger.error('Cache sync failed', { error });
+      logger.error("Cache sync failed", { error });
       throw error;
     } finally {
       this.isRunning = false;
@@ -179,7 +179,7 @@ class CacheSyncService {
       const response = await cache.match(streamUrl);
       return response !== undefined;
     } catch (error) {
-      logger.error('Failed to check cache', { songId, error });
+      logger.error("Failed to check cache", { songId, error });
       return false;
     }
   }
@@ -197,7 +197,7 @@ class CacheSyncService {
       const blob = await response.blob();
       return blob.size;
     } catch (error) {
-      logger.error('Failed to get cache size', { streamUrl, error });
+      logger.error("Failed to get cache size", { streamUrl, error });
       return undefined;
     }
   }
@@ -207,6 +207,6 @@ class CacheSyncService {
 export const cacheSyncService = new CacheSyncService();
 
 // Auto-start on import (only in browser context)
-if (typeof window !== 'undefined' && 'caches' in window) {
+if (typeof window !== "undefined" && "caches" in window) {
   cacheSyncService.start();
 }

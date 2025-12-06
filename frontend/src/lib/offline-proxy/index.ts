@@ -10,27 +10,27 @@
  * - This file only handles routing composition
  */
 
-import { Hono } from 'hono';
+import { Hono } from "hono";
 import {
   libraryRoutes,
   playlistRoutes,
   songRoutes,
   uploadRoutes,
   playerRoutes,
-} from './routes';
+} from "./routes";
 
 // Create main app with /api base path
-const app = new Hono().basePath('/api');
+const app = new Hono().basePath("/api");
 
 // Mount sub-routers
-app.route('/libraries', libraryRoutes);
-app.route('/playlists', playlistRoutes);
-app.route('/songs', songRoutes);
-app.route('/upload', uploadRoutes);
-app.route('/player', playerRoutes);
+app.route("/libraries", libraryRoutes);
+app.route("/playlists", playlistRoutes);
+app.route("/songs", songRoutes);
+app.route("/upload", uploadRoutes);
+app.route("/player", playerRoutes);
 
 export default app;
 
 // Re-export utilities for external use
-export { getUserId, isGuestUser } from './utils';
-export { sortSongsOffline, getPinyinSort } from './utils';
+export { getUserId, isGuestUser } from "./utils";
+export { sortSongsOffline, getPinyinSort } from "./utils";

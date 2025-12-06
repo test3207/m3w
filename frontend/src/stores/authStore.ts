@@ -1,12 +1,12 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { api } from '@/services';
-import { logger } from '@/lib/logger-client';
-import { saveTokenToIndexedDB, clearTokenFromIndexedDB } from '@/lib/auth/token-storage';
-import { GUEST_USER_ID } from '@/lib/constants/guest';
-import { invalidateGuestCache } from '@/lib/offline-proxy/utils';
-import type { AuthTokens } from '@m3w/shared';
-import type { User as ApiUser } from '@/services/api/main/resources/auth';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { api } from "@/services";
+import { logger } from "@/lib/logger-client";
+import { saveTokenToIndexedDB, clearTokenFromIndexedDB } from "@/lib/auth/token-storage";
+import { GUEST_USER_ID } from "@/lib/constants/guest";
+import { invalidateGuestCache } from "@/lib/offline-proxy/utils";
+import type { AuthTokens } from "@m3w/shared";
+import type { User as ApiUser } from "@/services/api/main/resources/auth";
 
 export type User = ApiUser & {
   image?: string | null;
@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthStore>()(
         
         // Sync access token to IndexedDB for Service Worker
         saveTokenToIndexedDB(tokens.accessToken).catch((error) => {
-          logger.error('Failed to sync token to IndexedDB', { error });
+          logger.error("Failed to sync token to IndexedDB", { error });
         });
 
         set({
@@ -67,14 +67,14 @@ export const useAuthStore = create<AuthStore>()(
         set({
           user: {
             id: GUEST_USER_ID,
-            name: 'Guest User',
-            email: 'guest@local',
+            name: "Guest User",
+            email: "guest@local",
             image: null,
             createdAt: new Date().toISOString(),
           },
           tokens: {
-            accessToken: 'guest-token',
-            refreshToken: 'guest-refresh-token',
+            accessToken: "guest-token",
+            refreshToken: "guest-refresh-token",
             expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 365, // 1 year
           },
           isAuthenticated: true,
@@ -89,7 +89,7 @@ export const useAuthStore = create<AuthStore>()(
         
         // Clear token from IndexedDB
         clearTokenFromIndexedDB().catch((error) => {
-          logger.error('Failed to clear token from IndexedDB', { error });
+          logger.error("Failed to clear token from IndexedDB", { error });
         });
 
         set({
@@ -132,7 +132,7 @@ export const useAuthStore = create<AuthStore>()(
 
           return true;
         } catch (error) {
-          logger.error('Token refresh failed', { error });
+          logger.error("Token refresh failed", { error });
           get().clearAuth();
           return false;
         }
@@ -169,13 +169,13 @@ export const useAuthStore = create<AuthStore>()(
           const user = await api.main.auth.getMe();
           set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
-          logger.error('Auth check failed', { error });
+          logger.error("Auth check failed", { error });
           clearAuth();
         }
       },
     }),
     {
-      name: 'auth-storage',
+      name: "auth-storage",
       partialize: (state) => ({
         user: state.user,
         tokens: state.tokens,

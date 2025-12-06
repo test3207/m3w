@@ -5,15 +5,15 @@
  * Provides real-time usage statistics and warnings
  */
 
-import { db } from '@/lib/db/schema';
-import { logger } from '@/lib/logger-client';
+import { db } from "@/lib/db/schema";
+import { logger } from "@/lib/logger-client";
 import {
   AVG_AUDIO_SIZE,
   AVG_COVER_SIZE,
   AVG_METADATA_SIZE,
   CRITICAL_THRESHOLD,
   WARNING_THRESHOLD,
-} from './storage-constants';
+} from "./storage-constants";
 
 export interface StorageUsage {
   /** Total quota in bytes */
@@ -33,7 +33,7 @@ export interface StorageUsage {
 }
 
 export interface StorageWarning {
-  level: 'info' | 'warning' | 'critical';
+  level: "info" | "warning" | "critical";
   message: string;
   usagePercent: number;
 }
@@ -64,7 +64,7 @@ class StorageMonitor {
         breakdown,
       };
     } catch (error) {
-      logger.error('Failed to get storage usage', { error });
+      logger.error("Failed to get storage usage", { error });
       return {
         quota: 0,
         usage: 0,
@@ -108,7 +108,7 @@ class StorageMonitor {
         metadata: metadataSize,
       };
     } catch (error) {
-      logger.error('Failed to get storage breakdown', { error });
+      logger.error("Failed to get storage breakdown", { error });
       return { audio: 0, covers: 0, metadata: 0 };
     }
   }
@@ -121,16 +121,16 @@ class StorageMonitor {
 
     if (usage.usagePercent >= CRITICAL_THRESHOLD) {
       return {
-        level: 'critical',
-        message: 'Storage almost full! Consider cleaning up unused songs.',
+        level: "critical",
+        message: "Storage almost full! Consider cleaning up unused songs.",
         usagePercent: usage.usagePercent,
       };
     }
 
     if (usage.usagePercent >= WARNING_THRESHOLD) {
       return {
-        level: 'warning',
-        message: 'Storage running low. Clean up recommended.',
+        level: "warning",
+        message: "Storage running low. Clean up recommended.",
         usagePercent: usage.usagePercent,
       };
     }
@@ -142,35 +142,35 @@ class StorageMonitor {
    * Request persistent storage permission
    * @returns {Promise<'granted' | 'denied' | 'unsupported'>}
    */
-  async requestPersistentStorage(): Promise<'granted' | 'denied' | 'unsupported'> {
+  async requestPersistentStorage(): Promise<"granted" | "denied" | "unsupported"> {
     try {
       if (!navigator.storage || !navigator.storage.persist) {
-        logger.warn('Persistent storage not supported');
-        return 'unsupported';
+        logger.warn("Persistent storage not supported");
+        return "unsupported";
       }
 
       // Check current persisted status first
       const alreadyPersisted = await navigator.storage.persisted();
-      logger.info('Current persisted status', { alreadyPersisted });
+      logger.info("Current persisted status", { alreadyPersisted });
 
       // If already persisted, return granted immediately
       if (alreadyPersisted) {
-        logger.info('Storage already persisted');
-        return 'granted';
+        logger.info("Storage already persisted");
+        return "granted";
       }
 
       const isPersisted = await navigator.storage.persist();
-      logger.info('Persistent storage request result', { 
+      logger.info("Persistent storage request result", { 
         isPersisted, 
         alreadyPersisted,
         userAgent: navigator.userAgent,
-        isStandalone: window.matchMedia('(display-mode: standalone)').matches
+        isStandalone: window.matchMedia("(display-mode: standalone)").matches
       });
       
-      return isPersisted ? 'granted' : 'denied';
+      return isPersisted ? "granted" : "denied";
     } catch (error) {
-      logger.error('Failed to request persistent storage', { error });
-      return 'denied';
+      logger.error("Failed to request persistent storage", { error });
+      return "denied";
     }
   }
 
@@ -178,10 +178,10 @@ class StorageMonitor {
    * Format bytes to human-readable string
    */
   formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) return "0 B";
     
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
@@ -190,10 +190,10 @@ class StorageMonitor {
   /**
    * Get storage status color
    */
-  getStatusColor(usagePercent: number): 'success' | 'warning' | 'destructive' {
-    if (usagePercent >= CRITICAL_THRESHOLD) return 'destructive';
-    if (usagePercent >= WARNING_THRESHOLD) return 'warning';
-    return 'success';
+  getStatusColor(usagePercent: number): "success" | "warning" | "destructive" {
+    if (usagePercent >= CRITICAL_THRESHOLD) return "destructive";
+    if (usagePercent >= WARNING_THRESHOLD) return "warning";
+    return "success";
   }
 
   /**
@@ -227,7 +227,7 @@ class StorageMonitor {
         totalCacheSize,
       };
     } catch (error) {
-      logger.error('Failed to get cache stats', { error });
+      logger.error("Failed to get cache stats", { error });
       return {
         totalSongs: 0,
         cachedSongs: 0,

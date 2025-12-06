@@ -4,16 +4,16 @@
  * Provides easy access to PWA status, storage quota, and caching operations
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { getPWAStatus, type PWAStatus } from '@/lib/pwa';
-import { getStorageQuota, type StorageQuota, monitorStorageQuota } from '@/lib/storage/quota-manager';
-import { cacheSong, cachePlaylist, cacheLibrary, isSongCached, getCachedSongs, type CacheProgress } from '@/lib/storage/audio-cache';
-import { manualSync, type SyncResult } from '@/lib/sync/metadata-sync';
-import { logger } from '@/lib/logger-client';
+import { useState, useEffect, useCallback } from "react";
+import { getPWAStatus, type PWAStatus } from "@/lib/pwa";
+import { getStorageQuota, type StorageQuota, monitorStorageQuota } from "@/lib/storage/quota-manager";
+import { cacheSong, cachePlaylist, cacheLibrary, isSongCached, getCachedSongs, type CacheProgress } from "@/lib/storage/audio-cache";
+import { manualSync, type SyncResult } from "@/lib/sync/metadata-sync";
+import { logger } from "@/lib/logger-client";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 // Global state for install prompt (shared across components)
@@ -26,7 +26,7 @@ function notifyInstallPromptListeners() {
 }
 
 // Initialize listener once (guard prevents duplicate registration during HMR)
-if (typeof window !== 'undefined' && !listenersInitialized) {
+if (typeof window !== "undefined" && !listenersInitialized) {
   listenersInitialized = true;
 
   // HMR: Reset flag on module dispose to allow re-initialization
@@ -36,16 +36,16 @@ if (typeof window !== 'undefined' && !listenersInitialized) {
     });
   }
   
-  window.addEventListener('beforeinstallprompt', (e) => {
+  window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     globalDeferredPrompt = e as BeforeInstallPromptEvent;
-    logger.info('PWA install prompt available');
+    logger.info("PWA install prompt available");
     notifyInstallPromptListeners();
   });
 
-  window.addEventListener('appinstalled', () => {
+  window.addEventListener("appinstalled", () => {
     globalDeferredPrompt = null;
-    logger.info('PWA installed');
+    logger.info("PWA installed");
     notifyInstallPromptListeners();
   });
 }
@@ -75,13 +75,13 @@ export function usePWAInstall() {
       await globalDeferredPrompt.prompt();
       const { outcome } = await globalDeferredPrompt.userChoice;
       
-      if (outcome === 'accepted') {
-        logger.info('User accepted PWA install');
+      if (outcome === "accepted") {
+        logger.info("User accepted PWA install");
         globalDeferredPrompt = null;
         notifyInstallPromptListeners();
         return true;
       } else {
-        logger.info('User dismissed PWA install');
+        logger.info("User dismissed PWA install");
         return false;
       }
     } finally {
