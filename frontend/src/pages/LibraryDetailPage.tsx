@@ -28,7 +28,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
 import { api } from "@/services";
-import { eventBus, EVENTS } from "@/lib/events";
+import { eventBus, EVENTS, type SongCachedPayload } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
 import type { Song, SongSortOption } from "@m3w/shared";
@@ -177,30 +177,53 @@ export default function LibraryDetailPage() {
     isAudioCacheAvailable().then(setCacheAvailable);
   }, []);
 
+  // Callback to load cache stats (reusable for initial load and event-based refresh)
+  const loadCacheStats = useCallback(async () => {
+    if (!id || songs.length === 0) return;
+    
+    try {
+      const stats = await getLibraryCacheStats(id);
+      setCacheStats(stats);
+
+      // Load individual song cache status in parallel
+      const statusMap: Record<string, boolean> = {};
+      await Promise.all(
+        songs.map(async (song) => {
+          statusMap[song.id] = await isSongCached(song.id);
+        })
+      );
+      setSongCacheStatus(statusMap);
+    } catch (error) {
+      logger.error('[LibraryDetailPage] Failed to load cache stats:', error);
+    }
+  }, [id, songs]);
+
   // Effect 5: Load cache stats when songs change
   useEffect(() => {
-    if (!id || songs.length === 0) return;
-
-    const loadCacheStats = async () => {
-      try {
-        const stats = await getLibraryCacheStats(id);
-        setCacheStats(stats);
-
-        // Load individual song cache status in parallel
-        const statusMap: Record<string, boolean> = {};
-        await Promise.all(
-          songs.map(async (song) => {
-            statusMap[song.id] = await isSongCached(song.id);
-          })
-        );
-        setSongCacheStatus(statusMap);
-      } catch (error) {
-        logger.error('[LibraryDetailPage] Failed to load cache stats:', error);
-      }
-    };
-
     void loadCacheStats();
-  }, [id, songs]);
+  }, [loadCacheStats]);
+
+  // Effect 6: Subscribe to SONG_CACHED events for real-time cache status updates
+  // Debounced to avoid excessive refreshes during batch operations
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    
+    const unsubscribe = eventBus.on<SongCachedPayload>(EVENTS.SONG_CACHED, (payload) => {
+      // Only refresh if the cached song belongs to the current library
+      if (payload?.libraryId !== id) return;
+      
+      // Debounce: wait 500ms after last event before refreshing
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        void loadCacheStats();
+      }, 500);
+    });
+    
+    return () => {
+      unsubscribe();
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [loadCacheStats, id]);
 
   // Handle download all
   const handleDownloadAll = useCallback(async () => {
