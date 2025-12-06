@@ -116,6 +116,7 @@
     "itemsCount": "{0} items",
     "greetingWithName": "Hello {0}, welcome back!",
     "dateRange": "From {0} to {1}",
+    "unknownArtist": "Unknown Artist",
     "timeAgo": {
       "justNow": "Just now",
       "minutesAgo": "{0} minutes ago",
@@ -656,7 +657,10 @@
         "successTitle": "Removed: {0}",
         "errorTitle": "Removal failed"
       },
-      "addFromLibrary": "Add songs from your libraries to this playlist"
+      "addFromLibrary": "Add songs from your libraries to this playlist",
+      "playSong": "Play {0}",
+      "playSongBy": "Play {0} by {1}",
+      "removeFromPlaylist": "Remove {0} from playlist"
     }
   },
   "demo": {

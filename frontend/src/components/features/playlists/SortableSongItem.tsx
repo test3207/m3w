@@ -80,6 +80,9 @@ export function SortableSongItem({
         <button
           onClick={() => onPlay(index)}
           className="relative shrink-0 w-12 h-12 rounded bg-muted overflow-hidden group/cover"
+          aria-label={I18n.playlists.detail.playSongBy
+            .replace('{0}', song.title)
+            .replace('{1}', song.artist || I18n.common.unknownArtist)}
         >
           {song.coverUrl ? (
             <img
@@ -114,6 +117,7 @@ export function SortableSongItem({
         <button
           onClick={() => onPlay(index)}
           className="flex-1 min-w-0 text-left"
+          aria-label={I18n.playlists.detail.playSong.replace('{0}', song.title)}
         >
           <p
             className={cn(
@@ -147,6 +151,7 @@ export function SortableSongItem({
           size="icon"
           onClick={() => onRemove(song.id, song.title)}
           className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+          aria-label={I18n.playlists.detail.removeFromPlaylist.replace('{0}', song.title)}
         >
           <X className="h-4 w-4" />
         </Button>
