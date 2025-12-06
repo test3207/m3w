@@ -3,6 +3,13 @@ import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
 import { getAudioPlayer, type Track } from '@/lib/audio/player';
 import { prefetchAudioBlob } from '@/lib/audio/prefetch';
+import {
+  registerMediaSessionHandlers,
+  updateMediaSessionMetadata,
+  updateMediaSessionPlaybackState,
+  updateMediaSessionPositionState,
+  clearMediaSessionMetadata,
+} from '@/lib/audio/media-session';
 import type { Song } from '@m3w/shared';
 import { getStreamUrl } from '@/services/api/main/endpoints';
 import { I18n } from '@/locales/i18n';
@@ -37,6 +44,22 @@ function songToTrack(song: Song): Track {
     mimeType: song.mimeType || undefined,
     audioUrl: getStreamUrl(song.id),
   };
+}
+
+// Update Media Session with current song info
+function updateMediaSessionForSong(song: Song | null): void {
+  if (!song) {
+    clearMediaSessionMetadata();
+    return;
+  }
+
+  updateMediaSessionMetadata({
+    title: song.title,
+    artist: song.artist || undefined,
+    album: song.album || undefined,
+    coverUrl: song.coverUrl || undefined,
+    duration: song.duration || undefined,
+  });
 }
 
 interface PlayerState {
@@ -114,14 +137,55 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   // Get AudioPlayer instance
   const audioPlayer = getAudioPlayer();
   
+  // Register Media Session handlers for lock screen controls
+  // Note: We register handlers once at store creation. The handlers use get()
+  // to access current state, so they always reflect the latest queue/position.
+  registerMediaSessionHandlers({
+    onPlay: () => {
+      const { currentSong } = get();
+      if (currentSong) {
+        audioPlayer.resume();
+      }
+    },
+    onPause: () => {
+      audioPlayer.pause();
+    },
+    onPreviousTrack: () => {
+      // Use get() to call the store's previous() action
+      get().previous();
+    },
+    onNextTrack: () => {
+      // Use get() to call the store's next() action
+      get().next();
+    },
+    onSeekTo: (time: number) => {
+      audioPlayer.seek(time);
+      set({ currentTime: time });
+    },
+    onSeekBackward: (offset: number) => {
+      const { currentTime } = get();
+      const newTime = Math.max(0, currentTime - offset);
+      audioPlayer.seek(newTime);
+      set({ currentTime: newTime });
+    },
+    onSeekForward: (offset: number) => {
+      const { currentTime, duration } = get();
+      const newTime = Math.min(duration, currentTime + offset);
+      audioPlayer.seek(newTime);
+      set({ currentTime: newTime });
+    },
+  });
+  
   // Setup event listeners for AudioPlayer state changes
   audioPlayer.on('play', (state) => {
     set({ isPlaying: true, currentTime: state.currentTime, duration: state.duration });
+    updateMediaSessionPlaybackState('playing');
     logger.info('AudioPlayer playing');
   });
 
   audioPlayer.on('pause', (state) => {
     set({ isPlaying: false, currentTime: state.currentTime });
+    updateMediaSessionPlaybackState('paused');
     logger.info('AudioPlayer paused');
   });
 
@@ -166,6 +230,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     // Update time/duration when playing
     if (audioState.isPlaying) {
       set({ currentTime: audioState.currentTime, duration: audioState.duration });
+      
+      // Update Media Session position state for lock screen seek bar
+      updateMediaSessionPositionState(
+        audioState.currentTime,
+        audioState.duration
+      );
     }
   }, 500); // Update every 500ms
 
@@ -196,6 +266,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       const track = songToTrack(song);
       audioPlayer.play(track);
       set({ currentSong: song, isPlaying: true });
+      // Update Media Session metadata for lock screen display
+      updateMediaSessionForSong(song);
       logger.info('Playing song', { songId: song.id, title: song.title });
     } else {
       audioPlayer.resume();
@@ -224,6 +296,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
   stop: () => {
     audioPlayer.stop();
+    // Clear Media Session when stopping playback
+    clearMediaSessionMetadata();
     set({
       isPlaying: false,
       currentTime: 0,
@@ -265,6 +339,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     // Stop audio playback
     const audioPlayer = getAudioPlayer();
     audioPlayer.stop();
+    // Clear Media Session when clearing queue
+    clearMediaSessionMetadata();
     
     return set({
       queue: [],
@@ -329,6 +405,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
       
       audioPlayer.play(preparedTrack);
+      // Update Media Session metadata for the song
+      updateMediaSessionForSong(currentSong);
 
       set({
         queue: songs,
@@ -366,6 +444,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
     // Play the prepared track
     audioPlayer.play(preparedTrack);
+    // Update Media Session metadata for lock screen display
+    updateMediaSessionForSong(currentSong);
 
     set({
       queue: songs,
@@ -463,6 +543,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         currentTime: 0,
         isPlaying: true,
       });
+      // Update Media Session metadata for the new song
+      updateMediaSessionForSong(nextSong);
       logger.info('Playing next song', { 
         index: nextIndex, 
         title: nextSong.title,
@@ -500,6 +582,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         currentTime: 0,
         isPlaying: true,
       });
+      // Update Media Session metadata for the new song
+      updateMediaSessionForSong(prevSong);
       logger.info('Playing previous song', { index: prevIndex, title: prevSong.title });
     }
   },
@@ -522,6 +606,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         currentTime: 0,
         isPlaying: true,
       });
+      // Update Media Session metadata for the new song
+      updateMediaSessionForSong(song);
       logger.info('Seeking to song', { index, title: song.title });
     }
   },
