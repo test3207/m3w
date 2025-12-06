@@ -296,6 +296,15 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       updateMediaSessionForSong(song);
       logger.info('Playing song', { songId: song.id, title: song.title });
     } else {
+      // Resume playback and ensure Media Session metadata is restored
+      // (may have been cleared by browser during background/sleep)
+      const { currentSong, duration, currentTime } = get();
+      if (currentSong) {
+        updateMediaSessionForSong(currentSong);
+        if (isFinite(currentTime) && isFinite(duration) && duration > 0) {
+          updateMediaSessionPositionState(currentTime, duration);
+        }
+      }
       audioPlayer.resume();
       set({ isPlaying: true });
     }
