@@ -28,7 +28,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { useLocale } from "@/locales/use-locale";
 import { api } from "@/services";
-import { eventBus, EVENTS } from "@/lib/events";
+import { eventBus, EVENTS, type SongCachedPayload } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
 import type { Song, SongSortOption } from "@m3w/shared";
@@ -208,7 +208,7 @@ export default function LibraryDetailPage() {
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     
-    const unsubscribe = eventBus.on<{ libraryId: string }>(EVENTS.SONG_CACHED, (payload) => {
+    const unsubscribe = eventBus.on<SongCachedPayload>(EVENTS.SONG_CACHED, (payload) => {
       // Only refresh if the cached song belongs to the current library
       if (payload?.libraryId !== id) return;
       
