@@ -520,7 +520,7 @@ export function FullPlayer() {
             onKeyDown={handleProgressKeyDown}
           >
             <div
-              className="h-full rounded-full bg-primary transition-all"
+              className="h-full rounded-full bg-primary transition-all pointer-events-none"
               style={{ width: `${progress}%` }}
             />
           </div>
