@@ -10,6 +10,7 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { useUIStore } from "@/stores/uiStore";
+import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import {
   Play,
@@ -27,7 +28,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { api } from "@/services";
-import { eventBus, EVENTS } from "@/lib/events";
+import { eventBus, EVENTS, type SongCachedPayload } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
 import type { Song, SongSortOption } from "@m3w/shared";
@@ -62,6 +63,9 @@ export default function LibraryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Check if guest user - cache UI hidden for guests
+  const isGuest = useAuthStore((state) => state.isGuest);
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [sortOption, setSortOption] = useState<SongSortOption>("date-desc");
@@ -175,30 +179,53 @@ export default function LibraryDetailPage() {
     isAudioCacheAvailable().then(setCacheAvailable);
   }, []);
 
+  // Callback to load cache stats (reusable for initial load and event-based refresh)
+  const loadCacheStats = useCallback(async () => {
+    if (!id || songs.length === 0) return;
+    
+    try {
+      const stats = await getLibraryCacheStats(id);
+      setCacheStats(stats);
+
+      // Load individual song cache status in parallel
+      const statusMap: Record<string, boolean> = {};
+      await Promise.all(
+        songs.map(async (song) => {
+          statusMap[song.id] = await isSongCached(song.id);
+        })
+      );
+      setSongCacheStatus(statusMap);
+    } catch (error) {
+      logger.error('[LibraryDetailPage] Failed to load cache stats:', error);
+    }
+  }, [id, songs]);
+
   // Effect 5: Load cache stats when songs change
   useEffect(() => {
-    if (!id || songs.length === 0) return;
-
-    const loadCacheStats = async () => {
-      try {
-        const stats = await getLibraryCacheStats(id);
-        setCacheStats(stats);
-
-        // Load individual song cache status in parallel
-        const statusMap: Record<string, boolean> = {};
-        await Promise.all(
-          songs.map(async (song) => {
-            statusMap[song.id] = await isSongCached(song.id);
-          })
-        );
-        setSongCacheStatus(statusMap);
-      } catch (error) {
-        logger.error('[LibraryDetailPage] Failed to load cache stats:', error);
-      }
-    };
-
     void loadCacheStats();
-  }, [id, songs]);
+  }, [loadCacheStats]);
+
+  // Effect 6: Subscribe to SONG_CACHED events for real-time cache status updates
+  // Debounced to avoid excessive refreshes during batch operations
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    
+    const unsubscribe = eventBus.on<SongCachedPayload>(EVENTS.SONG_CACHED, (payload) => {
+      // Only refresh if the cached song belongs to the current library
+      if (payload?.libraryId !== id) return;
+      
+      // Debounce: wait 500ms after last event before refreshing
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        void loadCacheStats();
+      }, 500);
+    });
+    
+    return () => {
+      unsubscribe();
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [loadCacheStats, id]);
 
   // Handle download all
   const handleDownloadAll = useCallback(async () => {
@@ -442,7 +469,7 @@ export default function LibraryDetailPage() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {I18n.libraries.detail.songsCount.replace('{0}', String(songs.length))}
-          {cacheAvailable && cacheStats.total > 0 && (
+          {!isGuest && cacheAvailable && cacheStats.total > 0 && (
             <span className="ml-2">
               · {I18n.libraries.detail.cache.cachedCount
                   .replace('{0}', String(cacheStats.cached))
@@ -463,7 +490,7 @@ export default function LibraryDetailPage() {
           {I18n.libraries.detail.playAll}
         </Button>
 
-        {cacheAvailable && (
+        {!isGuest && cacheAvailable && (
           <Button
             variant="outline"
             disabled={songs.length === 0 || isSelectionMode || isDownloading}
@@ -604,7 +631,7 @@ export default function LibraryDetailPage() {
                 {/* Duration and Cache Status */}
                 {!isSelectionMode && (
                   <div className="flex items-center gap-2 shrink-0">
-                    {cacheAvailable && (
+                    {!isGuest && cacheAvailable && (
                       <CacheStatusIcon isCached={songCacheStatus[song.id] ?? false} />
                     )}
                     {song.duration && (
