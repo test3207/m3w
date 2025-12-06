@@ -8,13 +8,13 @@
  * 4. Backend user global (cacheAllEnabled from UserPreferences API)
  */
 
-import { db, type LocalCacheOverride, type DownloadTiming } from '../db/schema';
-import type { Library, UserPreferences, CacheOverride } from '@m3w/shared';
-import { logger } from '../logger-client';
+import { db, type LocalCacheOverride, type DownloadTiming } from "../db/schema";
+import type { Library, UserPreferences, CacheOverride } from "@m3w/shared";
+import { logger } from "../logger-client";
 
 // Local setting keys
-const CACHE_ALL_OVERRIDE_KEY = 'cacheAllOverride';
-const DOWNLOAD_TIMING_KEY = 'downloadTiming';
+const CACHE_ALL_OVERRIDE_KEY = "cacheAllOverride";
+const DOWNLOAD_TIMING_KEY = "downloadTiming";
 
 // ============================================================
 // Local Settings Helpers
@@ -29,7 +29,7 @@ export async function getLocalCacheAllOverride(): Promise<LocalCacheOverride | n
     if (!setting) return null;
     return setting.value as LocalCacheOverride;
   } catch (error) {
-    logger.error('Failed to get local cache override', error);
+    logger.error("Failed to get local cache override", error);
     return null;
   }
 }
@@ -49,7 +49,7 @@ export async function setLocalCacheAllOverride(value: LocalCacheOverride | null)
       });
     }
   } catch (error) {
-    logger.error('Failed to set local cache override', error);
+    logger.error("Failed to set local cache override", error);
   }
 }
 
@@ -59,11 +59,11 @@ export async function setLocalCacheAllOverride(value: LocalCacheOverride | null)
 export async function getDownloadTiming(): Promise<DownloadTiming> {
   try {
     const setting = await db.localSettings.get(DOWNLOAD_TIMING_KEY);
-    if (!setting) return 'wifi-only'; // Default
+    if (!setting) return "wifi-only"; // Default
     return setting.value as DownloadTiming;
   } catch (error) {
-    logger.error('Failed to get download timing', error);
-    return 'wifi-only';
+    logger.error("Failed to get download timing", error);
+    return "wifi-only";
   }
 }
 
@@ -78,7 +78,7 @@ export async function setDownloadTiming(value: DownloadTiming): Promise<void> {
       updatedAt: new Date(),
     });
   } catch (error) {
-    logger.error('Failed to set download timing', error);
+    logger.error("Failed to set download timing", error);
   }
 }
 
@@ -94,7 +94,7 @@ export async function getLibraryLocalOverride(libraryId: string): Promise<LocalC
     const library = await db.libraries.get(libraryId);
     return library?.localCacheOverride;
   } catch (error) {
-    logger.error('Failed to get library local override', error);
+    logger.error("Failed to get library local override", error);
     return undefined;
   }
 }
@@ -109,7 +109,7 @@ export async function setLibraryLocalOverride(
   try {
     await db.libraries.update(libraryId, { localCacheOverride: value });
   } catch (error) {
-    logger.error('Failed to set library local override', error);
+    logger.error("Failed to set library local override", error);
   }
 }
 
@@ -139,20 +139,20 @@ export async function shouldCacheLibrary(
 ): Promise<boolean> {
   // 1. Check local library override
   const localLibraryOverride = await getLibraryLocalOverride(libraryId);
-  if (localLibraryOverride === 'always') return true;
-  if (localLibraryOverride === 'never') return false;
+  if (localLibraryOverride === "always") return true;
+  if (localLibraryOverride === "never") return false;
   // 'inherit' or undefined → continue to next level
 
   // 2. Check local global override
   const localGlobalOverride = await getLocalCacheAllOverride();
-  if (localGlobalOverride === 'always') return true;
-  if (localGlobalOverride === 'never') return false;
+  if (localGlobalOverride === "always") return true;
+  if (localGlobalOverride === "never") return false;
   // 'inherit' or null → continue to next level
 
   // 3. Check backend library setting
   const backendLibraryOverride = context.backendLibrary?.cacheOverride;
-  if (backendLibraryOverride === 'always') return true;
-  if (backendLibraryOverride === 'never') return false;
+  if (backendLibraryOverride === "always") return true;
+  if (backendLibraryOverride === "never") return false;
   // 'inherit' or undefined → continue to next level
 
   // 4. Check backend user global
@@ -168,35 +168,35 @@ export async function getEffectiveCachePolicy(
   context: CachePolicyContext
 ): Promise<{
   shouldCache: boolean;
-  source: 'local-library' | 'local-global' | 'backend-library' | 'backend-global';
+  source: "local-library" | "local-global" | "backend-library" | "backend-global";
   value: CacheOverride | boolean;
 }> {
   // 1. Local library override
   const localLibraryOverride = await getLibraryLocalOverride(libraryId);
-  if (localLibraryOverride && localLibraryOverride !== 'inherit') {
+  if (localLibraryOverride && localLibraryOverride !== "inherit") {
     return {
-      shouldCache: localLibraryOverride === 'always',
-      source: 'local-library',
+      shouldCache: localLibraryOverride === "always",
+      source: "local-library",
       value: localLibraryOverride,
     };
   }
 
   // 2. Local global override
   const localGlobalOverride = await getLocalCacheAllOverride();
-  if (localGlobalOverride && localGlobalOverride !== 'inherit') {
+  if (localGlobalOverride && localGlobalOverride !== "inherit") {
     return {
-      shouldCache: localGlobalOverride === 'always',
-      source: 'local-global',
+      shouldCache: localGlobalOverride === "always",
+      source: "local-global",
       value: localGlobalOverride,
     };
   }
 
   // 3. Backend library setting
   const backendLibraryOverride = context.backendLibrary?.cacheOverride;
-  if (backendLibraryOverride && backendLibraryOverride !== 'inherit') {
+  if (backendLibraryOverride && backendLibraryOverride !== "inherit") {
     return {
-      shouldCache: backendLibraryOverride === 'always',
-      source: 'backend-library',
+      shouldCache: backendLibraryOverride === "always",
+      source: "backend-library",
       value: backendLibraryOverride,
     };
   }
@@ -205,7 +205,7 @@ export async function getEffectiveCachePolicy(
   const shouldCache = context.userPreferences?.cacheAllEnabled ?? false;
   return {
     shouldCache,
-    source: 'backend-global',
+    source: "backend-global",
     value: shouldCache,
   };
 }
@@ -218,26 +218,26 @@ export async function canDownloadNow(): Promise<boolean> {
   
   logger.debug(`canDownloadNow: timing=${timing}, online=${navigator.onLine}`);
   
-  if (timing === 'manual') {
-    logger.debug('canDownloadNow: manual mode, returning false');
+  if (timing === "manual") {
+    logger.debug("canDownloadNow: manual mode, returning false");
     return false;
   }
-  if (timing === 'always') {
-    logger.debug('canDownloadNow: always mode, returning true');
+  if (timing === "always") {
+    logger.debug("canDownloadNow: always mode, returning true");
     return true;
   }
   
   // wifi-only: check connection type
-  if ('connection' in navigator) {
+  if ("connection" in navigator) {
     const connection = (navigator as Navigator & { connection?: { type?: string; effectiveType?: string } }).connection;
     logger.debug(`canDownloadNow: connection type=${connection?.type}, effectiveType=${connection?.effectiveType}`);
     
     // Consider wifi, ethernet as allowed; cellular as not
-    if (connection?.type === 'wifi' || connection?.type === 'ethernet') {
+    if (connection?.type === "wifi" || connection?.type === "ethernet") {
       return true;
     }
     // Explicitly block cellular
-    if (connection?.type === 'cellular') {
+    if (connection?.type === "cellular") {
       return false;
     }
     // If type not available but effectiveType suggests good connection, allow it
@@ -246,6 +246,6 @@ export async function canDownloadNow(): Promise<boolean> {
   
   // If we can't determine connection type (desktop browser), allow download
   // User chose wifi-only but we're likely on a desktop with good connection
-  logger.debug('canDownloadNow: connection type unknown, defaulting to allow');
+  logger.debug("canDownloadNow: connection type unknown, defaulting to allow");
   return navigator.onLine;
 }

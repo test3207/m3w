@@ -157,7 +157,7 @@ export default function LibraryDetailPage() {
         const songsData = await api.main.libraries.getSongs(id, sortOption);
         setSongs(songsData);
       } catch (error) {
-        logger.error('[LibraryDetailPage] Failed to fetch songs:', error);
+        logger.error("[LibraryDetailPage] Failed to fetch songs:", error);
       } finally {
         setIsLoadingSongs(false);
       }
@@ -196,7 +196,7 @@ export default function LibraryDetailPage() {
       );
       setSongCacheStatus(statusMap);
     } catch (error) {
-      logger.error('[LibraryDetailPage] Failed to load cache stats:', error);
+      logger.error("[LibraryDetailPage] Failed to load cache stats:", error);
     }
   }, [id, songs]);
 
@@ -238,7 +238,7 @@ export default function LibraryDetailPage() {
       if (queued > 0) {
         toast({
           title: I18n.libraries.detail.cache.downloadStarted,
-          description: I18n.libraries.detail.cache.downloadStartedDesc.replace('{0}', String(queued)),
+          description: I18n.libraries.detail.cache.downloadStartedDesc.replace("{0}", String(queued)),
         });
       } else {
         toast({
@@ -246,9 +246,9 @@ export default function LibraryDetailPage() {
         });
       }
     } catch (error) {
-      logger.error('[LibraryDetailPage] Failed to start download:', error);
+      logger.error("[LibraryDetailPage] Failed to start download:", error);
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.error.title,
         description: error instanceof Error ? error.message : I18n.error.genericTryAgain,
       });
@@ -273,7 +273,7 @@ export default function LibraryDetailPage() {
           const songsData = await api.main.libraries.getSongs(id, sortOption);
           setSongs(songsData);
         } catch (error) {
-          logger.error('[LibraryDetailPage] Failed to refresh songs:', error);
+          logger.error("[LibraryDetailPage] Failed to refresh songs:", error);
         }
       };
       void refetchSongs();
@@ -375,7 +375,7 @@ export default function LibraryDetailPage() {
 
       toast({
         title: I18n.library.detail.deleteSong.successTitle,
-        description: I18n.library.detail.deleteSong.successDescription.replace('{0}', songTitle),
+        description: I18n.library.detail.deleteSong.successDescription.replace("{0}", songTitle),
       });
     } catch (error) {
       toast({
@@ -431,7 +431,7 @@ export default function LibraryDetailPage() {
               <X className="h-5 w-5" />
             </Button>
             <span className="font-medium">
-              {I18n.libraries.detail.selection.selectedCount.replace('{0}', String(selectedSongs.length))}
+              {I18n.libraries.detail.selection.selectedCount.replace("{0}", String(selectedSongs.length))}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -468,12 +468,12 @@ export default function LibraryDetailPage() {
           )}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {I18n.libraries.detail.songsCount.replace('{0}', String(songs.length))}
+          {I18n.libraries.detail.songsCount.replace("{0}", String(songs.length))}
           {!isGuest && cacheAvailable && cacheStats.total > 0 && (
             <span className="ml-2">
               · {I18n.libraries.detail.cache.cachedCount
-                  .replace('{0}', String(cacheStats.cached))
-                  .replace('{1}', String(cacheStats.total))}
+                .replace("{0}", String(cacheStats.cached))
+                .replace("{1}", String(cacheStats.total))}
             </span>
           )}
         </p>
@@ -554,7 +554,7 @@ export default function LibraryDetailPage() {
 
       {/* Current Sort */}
       <p className="mb-4 text-xs text-muted-foreground">
-        {I18n.libraries.detail.sort.label.replace('{0}', getSortLabel(sortOption))}
+        {I18n.libraries.detail.sort.label.replace("{0}", getSortLabel(sortOption))}
         {isLoadingSongs && ` (${I18n.common.loadingLabel})`}
       </p>
 
@@ -699,8 +699,8 @@ export default function LibraryDetailPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {songToDelete
-                ? I18n.libraries.detail.deleteSong.confirmDescription.replace('{0}', songToDelete.title)
-                : ''
+                ? I18n.libraries.detail.deleteSong.confirmDescription.replace("{0}", songToDelete.title)
+                : ""
               }
             </AlertDialogDescription>
           </AlertDialogHeader>

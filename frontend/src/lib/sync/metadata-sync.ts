@@ -7,13 +7,13 @@
  * Internally manages network status - automatically pauses when offline and resumes when online.
  */
 
-import { api } from '@/services';
-import { useAuthStore } from '@/stores/authStore';
-import { db, type OfflineSong } from '../db/schema';
-import { logger } from '../logger-client';
+import { api } from "@/services";
+import { useAuthStore } from "@/stores/authStore";
+import { db, type OfflineSong } from "../db/schema";
+import { logger } from "../logger-client";
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
-const SYNC_STORAGE_KEY = 'm3w_last_sync_timestamp';
+const SYNC_STORAGE_KEY = "m3w_last_sync_timestamp";
 
 export interface SyncResult {
   success: boolean;
@@ -44,7 +44,7 @@ function setLastSyncTime(timestamp: number): void {
  */
 export async function syncMetadata(): Promise<SyncResult> {
   try {
-    logger.info('Starting metadata sync');
+    logger.info("Starting metadata sync");
 
     // Fetch all libraries
     const libraries = await api.main.libraries.list();
@@ -55,7 +55,7 @@ export async function syncMetadata(): Promise<SyncResult> {
         _isDirty: false,
       }))
     );
-    logger.info('Libraries synced', { count: libraries.length });
+    logger.info("Libraries synced", { count: libraries.length });
 
     // Fetch all playlists
     const playlists = await api.main.playlists.list();
@@ -66,7 +66,7 @@ export async function syncMetadata(): Promise<SyncResult> {
         _isDirty: false,
       }))
     );
-    logger.info('Playlists synced', { count: playlists.length });
+    logger.info("Playlists synced", { count: playlists.length });
 
     // Pre-load existing songs to preserve cache status
     const existingSongs = await db.songs.toArray();
@@ -103,10 +103,10 @@ export async function syncMetadata(): Promise<SyncResult> {
         await db.songs.bulkPut(mergedSongs);
         totalSongs += songs.length;
       } catch (error) {
-        logger.error('Failed to sync library songs', { libraryId: library.id, error });
+        logger.error("Failed to sync library songs", { libraryId: library.id, error });
       }
     }
-    logger.info('Songs synced', { totalSongs });
+    logger.info("Songs synced", { totalSongs });
     
     // Delete songs that no longer exist on server (for current user's owned libraries only)
     // Filter by userId to ensure we don't delete songs from shared libraries
@@ -120,7 +120,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     
     if (songsToDelete.length > 0) {
       await db.songs.bulkDelete(songsToDelete);
-      logger.info('Deleted stale songs from IndexedDB', { count: songsToDelete.length });
+      logger.info("Deleted stale songs from IndexedDB", { count: songsToDelete.length });
     }
 
     // Fetch playlist songs for each playlist (batched)
@@ -160,10 +160,10 @@ export async function syncMetadata(): Promise<SyncResult> {
 
         totalPlaylistSongs += songs.length;
       } catch (error) {
-        logger.error('Failed to sync playlist songs', { playlistId: playlist.id, error });
+        logger.error("Failed to sync playlist songs", { playlistId: playlist.id, error });
       }
     }
-    logger.info('Playlist songs synced', { totalPlaylistSongs });
+    logger.info("Playlist songs synced", { totalPlaylistSongs });
 
     // Update last sync timestamp
     setLastSyncTime(Date.now());
@@ -176,10 +176,10 @@ export async function syncMetadata(): Promise<SyncResult> {
       playlistSongs: totalPlaylistSongs,
     };
   } catch (error) {
-    logger.error('Metadata sync failed', { error });
+    logger.error("Metadata sync failed", { error });
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -206,40 +206,40 @@ let networkListenersAttached = false;
 
 // Network event handlers
 const handleOnline = () => {
-  logger.info('Network online, triggering sync');
+  logger.info("Network online, triggering sync");
   if (syncIntervalId && shouldSync()) {
-    syncMetadata().catch((error) => logger.error('Online sync failed', { error }));
+    syncMetadata().catch((error) => logger.error("Online sync failed", { error }));
   }
 };
 
 const handleOffline = () => {
-  logger.info('Network offline, sync paused');
+  logger.info("Network offline, sync paused");
 };
 
 export function startAutoSync(): void {
   if (syncIntervalId) {
-    logger.info('Auto-sync already running');
+    logger.info("Auto-sync already running");
     return;
   }
 
-  logger.info('Starting auto-sync');
+  logger.info("Starting auto-sync");
 
   // Attach network listeners once
   if (!networkListenersAttached) {
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
     networkListenersAttached = true;
   }
 
   // Initial sync (only if online)
   if (navigator.onLine && shouldSync()) {
-    syncMetadata().catch((error) => logger.error('Auto-sync failed', { error }));
+    syncMetadata().catch((error) => logger.error("Auto-sync failed", { error }));
   }
 
   // Periodic sync (checks online status internally)
   syncIntervalId = setInterval(() => {
     if (navigator.onLine && shouldSync()) {
-      syncMetadata().catch((error) => logger.error('Auto-sync failed', { error }));
+      syncMetadata().catch((error) => logger.error("Auto-sync failed", { error }));
     }
   }, SYNC_INTERVAL);
 }
@@ -251,13 +251,13 @@ export function stopAutoSync(): void {
   if (syncIntervalId) {
     clearInterval(syncIntervalId);
     syncIntervalId = null;
-    logger.info('Auto-sync stopped');
+    logger.info("Auto-sync stopped");
   }
   
   // Remove network listeners
   if (networkListenersAttached) {
-    window.removeEventListener('online', handleOnline);
-    window.removeEventListener('offline', handleOffline);
+    window.removeEventListener("online", handleOnline);
+    window.removeEventListener("offline", handleOffline);
     networkListenersAttached = false;
   }
 }
@@ -266,7 +266,7 @@ export function stopAutoSync(): void {
  * Trigger sync manually
  */
 export async function manualSync(): Promise<SyncResult> {
-  logger.info('Manual sync triggered');
+  logger.info("Manual sync triggered");
   return syncMetadata();
 }
 

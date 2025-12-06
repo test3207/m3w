@@ -1,24 +1,34 @@
 /**
  * Locale Provider Component
  *
- * Subscribes to locale changes at the root level.
- * When locale changes, this component re-renders, causing the entire
- * child tree to re-render with updated I18n.xxx values.
+ * Provides locale context for the app. Components that need to react
+ * to locale changes should call useLocale() hook.
  *
- * This eliminates the need to call useLocale() in every component
- * that uses internationalized text.
+ * Note: We don't force re-render of the entire tree to avoid disrupting
+ * audio playback. Instead, layout components and pages should call useLocale().
  */
 
-import { useLocale } from '@/locales/use-locale';
+import { useEffect, useState } from "react";
+import { onLocaleChange, getLocale } from "@/locales/i18n";
+import { LocaleContext } from "@/locales/use-locale";
 
 interface LocaleProviderProps {
   children: React.ReactNode;
 }
 
 export function LocaleProvider({ children }: LocaleProviderProps) {
-  // Subscribe to locale changes at root level
-  // When locale changes, this triggers a re-render of the entire child tree
-  useLocale();
+  const [locale, setLocale] = useState(getLocale);
 
-  return <>{children}</>;
+  useEffect(() => {
+    const unsubscribe = onLocaleChange(() => {
+      setLocale(getLocale());
+    });
+    return unsubscribe;
+  }, []);
+
+  return (
+    <LocaleContext.Provider value={locale}>
+      {children}
+    </LocaleContext.Provider>
+  );
 }

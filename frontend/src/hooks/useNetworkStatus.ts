@@ -4,8 +4,8 @@
  * Combines browser network status with API connectivity
  */
 
-import { useState, useEffect } from 'react';
-import { getDirtyCount } from '../lib/db/schema';
+import { useState, useEffect } from "react";
+import { getDirtyCount } from "../lib/db/schema";
 
 export function useNetworkStatus() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -30,10 +30,10 @@ export function useNetworkStatus() {
     const handleApiError = () => setIsApiReachable(false);
     const handleApiSuccess = () => setIsApiReachable(true);
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('api-error', handleApiError);
-    window.addEventListener('api-success', handleApiSuccess);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("api-error", handleApiError);
+    window.addEventListener("api-success", handleApiSuccess);
 
     // Check dirty entity count periodically
     const checkDirtyEntities = async () => {
@@ -45,10 +45,10 @@ export function useNetworkStatus() {
     const interval = setInterval(checkDirtyEntities, 5000);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('api-error', handleApiError);
-      window.removeEventListener('api-success', handleApiSuccess);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("api-error", handleApiError);
+      window.removeEventListener("api-success", handleApiSuccess);
       clearInterval(interval);
     };
   }, []);

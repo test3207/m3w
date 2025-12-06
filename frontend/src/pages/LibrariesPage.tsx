@@ -3,17 +3,17 @@
  * Display and manage user's music libraries
  */
 
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useLibraryStore } from '@/stores/libraryStore';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Library, Plus, Music, Trash2 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { getLibraryDisplayName, getLibraryBadge } from '@/lib/utils/defaults';
-import { isDefaultLibrary } from '@m3w/shared';
-import { I18n } from '@/locales/i18n';
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { useLibraryStore } from "@/stores/libraryStore";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Library, Plus, Music, Trash2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { getLibraryDisplayName, getLibraryBadge } from "@/lib/utils/defaults";
+import { isDefaultLibrary } from "@m3w/shared";
+import { I18n } from "@/locales/i18n";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,13 +32,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 
 export default function LibrariesPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newLibraryName, setNewLibraryName] = useState('');
+  const [newLibraryName, setNewLibraryName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   
   // Delete state
@@ -60,7 +60,7 @@ export default function LibrariesPage() {
   const handleCreateLibrary = async () => {
     if (!newLibraryName.trim()) {
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.libraries.create.promptName,
       });
       return;
@@ -71,13 +71,13 @@ export default function LibrariesPage() {
       await createLibrary(newLibraryName.trim());
       toast({
         title: I18n.libraries.create.successTitle,
-        description: I18n.libraries.create.successDescription.replace('{0}', newLibraryName),
+        description: I18n.libraries.create.successDescription.replace("{0}", newLibraryName),
       });
-      setNewLibraryName('');
+      setNewLibraryName("");
       setIsDialogOpen(false);
     } catch (error) {
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.libraries.create.errorTitle,
         description: error instanceof Error ? error.message : I18n.libraries.create.unknownError,
       });
@@ -94,18 +94,18 @@ export default function LibrariesPage() {
       if (success) {
         toast({
           title: I18n.libraries.delete.successTitle,
-          description: I18n.libraries.delete.successDescription.replace('{0}', libraryToDelete.name),
+          description: I18n.libraries.delete.successDescription.replace("{0}", libraryToDelete.name),
         });
       } else {
         toast({
-          variant: 'destructive',
+          variant: "destructive",
           title: I18n.libraries.delete.errorTitle,
           description: I18n.libraries.delete.cannotDeleteDefault,
         });
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.libraries.delete.errorTitle,
         description: error instanceof Error ? error.message : I18n.error.genericTryAgain,
       });
@@ -130,7 +130,7 @@ export default function LibrariesPage() {
         <div>
           <h1 className="text-2xl font-bold">{I18n.libraries.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {I18n.libraries.count.replace('{0}', String(libraries.length))}
+            {I18n.libraries.count.replace("{0}", String(libraries.length))}
           </p>
         </div>
 
@@ -156,7 +156,7 @@ export default function LibrariesPage() {
                   value={newLibraryName}
                   onChange={(e) => setNewLibraryName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       handleCreateLibrary();
                     }
                   }}
@@ -168,7 +168,7 @@ export default function LibrariesPage() {
                 variant="outline"
                 onClick={() => {
                   setIsDialogOpen(false);
-                  setNewLibraryName('');
+                  setNewLibraryName("");
                 }}
               >
                 {I18n.libraries.create.cancel}
@@ -228,10 +228,10 @@ export default function LibrariesPage() {
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {I18n.libraries.card.songsCount.replace('{0}', String(library.songCount || 0))}
+                        {I18n.libraries.card.songsCount.replace("{0}", String(library.songCount || 0))}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {I18n.libraries.card.createdAt.replace('{0}', new Date(library.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' }))}
+                        {I18n.libraries.card.createdAt.replace("{0}", new Date(library.createdAt).toLocaleDateString("zh-CN", { year: "numeric", month: "short", day: "numeric" }))}
                       </p>
                     </Link>
 
@@ -266,8 +266,8 @@ export default function LibrariesPage() {
             <AlertDialogTitle>{I18n.libraries.delete.confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {libraryToDelete
-                ? I18n.libraries.delete.confirmDescription.replace('{0}', libraryToDelete.name)
-                : ''
+                ? I18n.libraries.delete.confirmDescription.replace("{0}", libraryToDelete.name)
+                : ""
               }
             </AlertDialogDescription>
           </AlertDialogHeader>

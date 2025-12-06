@@ -3,21 +3,25 @@
  * Main layout for mobile-first design with header, bottom navigation and mini player
  */
 
-import { useEffect, useMemo } from 'react';
-import { usePlayerStore } from '@/stores/playerStore';
-import { MobileHeader } from '@/components/layouts/mobile-header';
-import { BottomNavigation } from '@/components/features/navigation/bottom-navigation';
-import { MiniPlayer, FullPlayer, PlayQueueDrawer } from '@/components/features/player';
-import { UploadDrawer } from '@/components/features/upload/upload-drawer';
-import { AddToPlaylistSheet } from '@/components/features/playlists/AddToPlaylistSheet';
-import { DemoBanner } from '@/components/features/demo/DemoBanner';
-import { useDemoMode, DEMO_BANNER_HEIGHT } from '@/hooks/useDemoMode';
+import { useEffect, useMemo } from "react";
+import { usePlayerStore } from "@/stores/playerStore";
+import { MobileHeader } from "@/components/layouts/mobile-header";
+import { BottomNavigation } from "@/components/features/navigation/bottom-navigation";
+import { MiniPlayer, FullPlayer, PlayQueueDrawer } from "@/components/features/player";
+import { UploadDrawer } from "@/components/features/upload/upload-drawer";
+import { AddToPlaylistSheet } from "@/components/features/playlists/AddToPlaylistSheet";
+import { DemoBanner } from "@/components/features/demo/DemoBanner";
+import { useDemoMode, DEMO_BANNER_HEIGHT } from "@/hooks/useDemoMode";
+import { useLocale } from "@/locales/use-locale";
 
 interface MobileLayoutProps {
   children: React.ReactNode;
 }
 
 export function MobileLayout({ children }: MobileLayoutProps) {
+  // Subscribe to locale changes - use locale as key to force content re-render
+  const locale = useLocale();
+
   const currentSong = usePlayerStore((state) => state.currentSong);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const loadPlaybackProgress = usePlayerStore((state) => state.loadPlaybackProgress);
@@ -50,9 +54,9 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []); // Empty deps - listener always uses latest store state
 
@@ -86,7 +90,9 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       <MobileHeader />
 
       {/* Main content area - fixed height excluding header, bottom nav, mini player, and demo banner */}
+      {/* Key on locale to force re-render children when locale changes (doesn't affect AudioPlayer) */}
       <main 
+        key={locale}
         className="overflow-hidden"
         style={{ height: contentHeight }}
       >

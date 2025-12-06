@@ -5,9 +5,9 @@
  * Used by DemoBanner to render and MobileLayout to calculate heights.
  */
 
-import { useEffect, useState } from 'react';
-import { demo } from '@/services/api/main/resources/demo';
-import { IS_DEMO_BUILD } from '@/lib/demo/constants';
+import { useEffect, useState } from "react";
+import { demo } from "@/services/api/main/resources/demo";
+import { IS_DEMO_BUILD } from "@/lib/demo/constants";
 
 // Demo banner height: py-2 (16px) + content (~24px) + border (1px) ≈ 41px
 // Using a safe estimate that covers wrapped content

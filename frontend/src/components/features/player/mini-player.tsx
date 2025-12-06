@@ -3,10 +3,10 @@
  * Compact player displayed above bottom navigation
  */
 
-import { Play, Pause, SkipForward, Music } from 'lucide-react';
-import { usePlayerStore } from '@/stores/playerStore';
-import { useUIStore } from '@/stores/uiStore';
-import { cn } from '@/lib/utils';
+import { Play, Pause, SkipForward, Music } from "lucide-react";
+import { usePlayerStore } from "@/stores/playerStore";
+import { useUIStore } from "@/stores/uiStore";
+import { cn } from "@/lib/utils";
 
 export function MiniPlayer() {
   const currentSong = usePlayerStore((state) => state.currentSong);
@@ -52,10 +52,10 @@ export function MiniPlayer() {
               togglePlayPause();
             }}
             className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-full',
-              'hover:bg-accent transition-colors'
+              "flex h-10 w-10 items-center justify-center rounded-full",
+              "hover:bg-accent transition-colors"
             )}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? (
               <Pause className="h-5 w-5 fill-current" />
@@ -70,8 +70,8 @@ export function MiniPlayer() {
               next();
             }}
             className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-full',
-              'hover:bg-accent transition-colors'
+              "flex h-10 w-10 items-center justify-center rounded-full",
+              "hover:bg-accent transition-colors"
             )}
             aria-label="Next"
           >

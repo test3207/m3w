@@ -5,15 +5,15 @@
  * Only visible when demo mode is enabled at runtime.
  */
 
-import { useEffect, useState } from 'react';
-import { AlertCircle } from 'lucide-react';
-import { I18n } from '@/locales/i18n';
-import { demo } from '@/services/api/main/resources/demo';
-import { IS_DEMO_BUILD } from '@/lib/demo/constants';
-import { Stack } from '@/components/ui/stack';
-import { Text } from '@/components/ui/text';
-import { Separator } from '@/components/ui/separator';
-import type { StorageUsageInfo } from '@m3w/shared';
+import { useEffect, useState } from "react";
+import { AlertCircle } from "lucide-react";
+import { I18n } from "@/locales/i18n";
+import { demo } from "@/services/api/main/resources/demo";
+import { IS_DEMO_BUILD } from "@/lib/demo/constants";
+import { Stack } from "@/components/ui/stack";
+import { Text } from "@/components/ui/text";
+import { Separator } from "@/components/ui/separator";
+import type { StorageUsageInfo } from "@m3w/shared";
 
 export function DemoBanner() {
   const [storageInfo, setStorageInfo] = useState<StorageUsageInfo | null>(null);

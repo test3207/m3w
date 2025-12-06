@@ -23,31 +23,31 @@ export function getCoverUrl(songId: string): string {
 export const MAIN_API_ENDPOINTS = {
   // Auth
   auth: {
-    github: '/api/auth/github',
-    callback: '/api/auth/callback',
-    refresh: '/api/auth/refresh',
-    me: '/api/auth/me',
-    logout: '/api/auth/logout',
+    github: "/api/auth/github",
+    callback: "/api/auth/callback",
+    refresh: "/api/auth/refresh",
+    me: "/api/auth/me",
+    logout: "/api/auth/logout",
   },
   // User
   user: {
-    preferences: '/api/user/preferences',
+    preferences: "/api/user/preferences",
   },
   // Libraries
   libraries: {
-    list: '/api/libraries',
+    list: "/api/libraries",
     detail: (id: string) => `/api/libraries/${id}`,
     songs: (id: string) => `/api/libraries/${id}/songs`,
-    create: '/api/libraries',
+    create: "/api/libraries",
     update: (id: string) => `/api/libraries/${id}`,
     delete: (id: string) => `/api/libraries/${id}`,
   },
   // Playlists
   playlists: {
-    list: '/api/playlists',
+    list: "/api/playlists",
     detail: (id: string) => `/api/playlists/${id}`,
     songs: (id: string) => `/api/playlists/${id}/songs`,
-    create: '/api/playlists',
+    create: "/api/playlists",
     update: (id: string) => `/api/playlists/${id}`,
     delete: (id: string) => `/api/playlists/${id}`,
     addSong: (id: string) => `/api/playlists/${id}/songs`,
@@ -56,7 +56,7 @@ export const MAIN_API_ENDPOINTS = {
   },
   // Songs
   songs: {
-    search: '/api/songs/search',
+    search: "/api/songs/search",
     detail: (id: string) => `/api/songs/${id}`,
     update: (id: string) => `/api/songs/${id}`,
     stream: (id: string) => `/api/songs/${id}/stream`,
@@ -65,16 +65,16 @@ export const MAIN_API_ENDPOINTS = {
   },
   // Upload
   upload: {
-    file: '/api/upload',
+    file: "/api/upload",
   },
   // Player
   player: {
-    seed: '/api/player/seed',
-    progress: '/api/player/progress',
-    preferences: '/api/player/preferences',
+    seed: "/api/player/seed",
+    progress: "/api/player/progress",
+    preferences: "/api/player/preferences",
   },
   // Demo
   demo: {
-    storage: '/api/demo/storage',
+    storage: "/api/demo/storage",
   },
 } as const;

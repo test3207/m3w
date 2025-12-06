@@ -2,26 +2,26 @@
  * Library routes for offline-proxy
  */
 
-import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { db, markDirty, markDeleted } from '../../db/schema';
-import type { OfflineLibrary } from '../../db/schema';
-import { createLibrarySchema, updateLibrarySchema, toLibraryResponse } from '@m3w/shared';
-import { getUserId, isGuestUser } from '../utils';
-import { sortSongsOffline } from '../utils';
-import { logger } from '@/lib/logger-client';
+import { Hono } from "hono";
+import type { Context } from "hono";
+import { db, markDirty, markDeleted } from "../../db/schema";
+import type { OfflineLibrary } from "../../db/schema";
+import { createLibrarySchema, updateLibrarySchema, toLibraryResponse } from "@m3w/shared";
+import { getUserId, isGuestUser } from "../utils";
+import { sortSongsOffline } from "../utils";
+import { logger } from "@/lib/logger-client";
 
 const app = new Hono();
 
 // GET /libraries - List all libraries
-app.get('/', async (c: Context) => {
+app.get("/", async (c: Context) => {
   try {
     const userId = getUserId();
     const allLibraries = await db.libraries
-      .where('userId')
+      .where("userId")
       .equals(userId)
       .reverse()
-      .sortBy('createdAt');
+      .sortBy("createdAt");
     // Filter out soft-deleted libraries
     const libraries = allLibraries.filter(lib => !lib._isDeleted);
 
@@ -29,7 +29,7 @@ app.get('/', async (c: Context) => {
     const librariesWithCounts = await Promise.all(
       libraries.map(async (library) => {
         // Filter out soft-deleted songs for count and cover
-        const allSongs = await db.songs.where('libraryId').equals(library.id).toArray();
+        const allSongs = await db.songs.where("libraryId").equals(library.id).toArray();
         const activeSongs = allSongs.filter(s => !s._isDeleted);
         const songCount = activeSongs.length;
 
@@ -55,7 +55,7 @@ app.get('/', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to fetch libraries',
+        error: "Failed to fetch libraries",
       },
       500
     );
@@ -63,9 +63,9 @@ app.get('/', async (c: Context) => {
 });
 
 // GET /libraries/:id - Get library by ID
-app.get('/:id', async (c: Context) => {
+app.get("/:id", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const userId = getUserId();
 
     const library = await db.libraries.get(id);
@@ -75,7 +75,7 @@ app.get('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Library not found',
+          error: "Library not found",
         },
         404
       );
@@ -86,21 +86,21 @@ app.get('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Library not found',
+          error: "Library not found",
         },
         404
       );
     }
 
     // Add song count and coverUrl from last added song
-    const songCount = await db.songs.where('libraryId').equals(id).count();
+    const songCount = await db.songs.where("libraryId").equals(id).count();
 
     // Get last added song for cover (matches backend)
     const lastSong = await db.songs
-      .where('libraryId')
+      .where("libraryId")
       .equals(id)
       .reverse()
-      .sortBy('createdAt')
+      .sortBy("createdAt")
       .then((songs) => songs[0]);
 
     const libraryWithCount = {
@@ -114,11 +114,11 @@ app.get('/:id', async (c: Context) => {
       data: libraryWithCount,
     });
   } catch (error) {
-    logger.error('[OfflineProxy] GET /libraries/:id error:', error);
+    logger.error("[OfflineProxy] GET /libraries/:id error:", error);
     return c.json(
       {
         success: false,
-        error: 'Failed to fetch library',
+        error: "Failed to fetch library",
       },
       500
     );
@@ -126,7 +126,7 @@ app.get('/:id', async (c: Context) => {
 });
 
 // POST /libraries - Create new library
-app.post('/', async (c: Context) => {
+app.post("/", async (c: Context) => {
   try {
     const body = await c.req.json();
     const data = createLibrarySchema.parse(body);
@@ -140,7 +140,7 @@ app.post('/', async (c: Context) => {
       songCount: 0,
       isDefault: false,
       canDelete: true,
-      cacheOverride: 'inherit',  // Default: follow global setting
+      cacheOverride: "inherit",  // Default: follow global setting
       coverUrl: null, // New library has no songs yet
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -162,7 +162,7 @@ app.post('/', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to create library',
+        error: "Failed to create library",
       },
       500
     );
@@ -170,9 +170,9 @@ app.post('/', async (c: Context) => {
 });
 
 // PATCH /libraries/:id - Update library
-app.patch('/:id', async (c: Context) => {
+app.patch("/:id", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const body = await c.req.json();
     const data = updateLibrarySchema.parse(body);
     const userId = getUserId();
@@ -183,7 +183,7 @@ app.patch('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Library not found',
+          error: "Library not found",
         },
         404
       );
@@ -205,7 +205,7 @@ app.patch('/:id', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to update library',
+        error: "Failed to update library",
       },
       500
     );
@@ -213,9 +213,9 @@ app.patch('/:id', async (c: Context) => {
 });
 
 // DELETE /libraries/:id - Delete library
-app.delete('/:id', async (c: Context) => {
+app.delete("/:id", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const userId = getUserId();
 
     const library = await db.libraries.get(id);
@@ -224,7 +224,7 @@ app.delete('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Library not found',
+          error: "Library not found",
         },
         404
       );
@@ -233,9 +233,9 @@ app.delete('/:id', async (c: Context) => {
     if (isGuestUser()) {
       // Guest user: hard delete with cascade (no sync needed)
       // Delete all songs in this library
-      await db.songs.where('libraryId').equals(id).delete();
+      await db.songs.where("libraryId").equals(id).delete();
       // Clear linkedLibraryId from playlists (don't delete playlists, just unlink)
-      await db.playlists.where('linkedLibraryId').equals(id).modify({ linkedLibraryId: undefined });
+      await db.playlists.where("linkedLibraryId").equals(id).modify({ linkedLibraryId: undefined });
       // Delete the library itself
       await db.libraries.delete(id);
     } else {
@@ -250,7 +250,7 @@ app.delete('/:id', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to delete library',
+        error: "Failed to delete library",
       },
       500
     );
@@ -258,11 +258,11 @@ app.delete('/:id', async (c: Context) => {
 });
 
 // GET /libraries/:id/songs - Get songs in library
-app.get('/:id/songs', async (c: Context) => {
+app.get("/:id/songs", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const userId = getUserId();
-    const sortParam = (c.req.query('sort') || 'date-desc') as string;
+    const sortParam = (c.req.query("sort") || "date-desc") as string;
 
     const library = await db.libraries.get(id);
 
@@ -270,7 +270,7 @@ app.get('/:id/songs', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Library not found',
+          error: "Library not found",
         },
         404
       );
@@ -278,7 +278,7 @@ app.get('/:id/songs', async (c: Context) => {
 
     // Query songs by libraryId (one-to-many relationship)
     // Filter out soft-deleted songs
-    const allSongs = await db.songs.where('libraryId').equals(id).toArray();
+    const allSongs = await db.songs.where("libraryId").equals(id).toArray();
     const songs = allSongs.filter(song => !song._isDeleted);
 
     // Apply sorting (matches backend logic)
@@ -292,7 +292,7 @@ app.get('/:id/songs', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to fetch songs',
+        error: "Failed to fetch songs",
       },
       500
     );

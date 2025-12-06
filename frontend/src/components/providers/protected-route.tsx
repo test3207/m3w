@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/stores/authStore';
-import { Card, CardContent } from '@/components/ui/card';
-import { I18n } from '@/locales/i18n';
+import { useEffect } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/stores/authStore";
+import { Card, CardContent } from "@/components/ui/card";
+import { I18n } from "@/locales/i18n";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

@@ -3,13 +3,13 @@
  * Central export point for all API services
  */
 
-import { libraries } from './api/main/resources/libraries';
-import { playlists } from './api/main/resources/playlists';
-import { songs } from './api/main/resources/songs';
-import { upload } from './api/main/resources/upload';
-import { player } from './api/main/resources/player';
-import { auth } from './api/main/resources/auth';
-import { user } from './api/main/resources/user';
+import { libraries } from "./api/main/resources/libraries";
+import { playlists } from "./api/main/resources/playlists";
+import { songs } from "./api/main/resources/songs";
+import { upload } from "./api/main/resources/upload";
+import { player } from "./api/main/resources/player";
+import { auth } from "./api/main/resources/auth";
+import { user } from "./api/main/resources/user";
 
 /**
  * Main API services grouped by backend
@@ -60,9 +60,9 @@ export { libraries, playlists, songs, upload, player, auth };
 /**
  * Re-export types for convenience
  */
-export type * from './api/main/resources/libraries';
-export type * from './api/main/resources/playlists';
-export type * from './api/main/resources/songs';
-export type * from './api/main/resources/upload';
-export type * from './api/main/resources/player';
-export type * from './api/main/resources/auth';
+export type * from "./api/main/resources/libraries";
+export type * from "./api/main/resources/playlists";
+export type * from "./api/main/resources/songs";
+export type * from "./api/main/resources/upload";
+export type * from "./api/main/resources/player";
+export type * from "./api/main/resources/auth";

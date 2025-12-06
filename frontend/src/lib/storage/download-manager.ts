@@ -8,13 +8,13 @@
  * - Integrates with cache-policy for decision making
  */
 
-import { db } from '../db/schema';
-import { cacheSong, isSongCached, isAudioCacheAvailable } from './audio-cache';
-import { canDownloadNow, shouldCacheLibrary, type CachePolicyContext } from './cache-policy';
-import { logger } from '../logger-client';
-import { useAuthStore } from '@/stores/authStore';
-import { GUEST_USER_ID } from '@/lib/constants/guest';
-import { eventBus, EVENTS, type SongCachedPayload } from '../events';
+import { db } from "../db/schema";
+import { cacheSong, isSongCached, isAudioCacheAvailable } from "./audio-cache";
+import { canDownloadNow, shouldCacheLibrary, type CachePolicyContext } from "./cache-policy";
+import { logger } from "../logger-client";
+import { useAuthStore } from "@/stores/authStore";
+import { GUEST_USER_ID } from "@/lib/constants/guest";
+import { eventBus, EVENTS, type SongCachedPayload } from "../events";
 
 // ============================================================
 // Configuration
@@ -54,7 +54,7 @@ export async function queueLibraryDownload(
   // Check if caching is available (requires Cache API and sufficient quota)
   const cacheAvailable = await isAudioCacheAvailable();
   if (!cacheAvailable) {
-    logger.debug('Audio cache not available: no storage quota');
+    logger.debug("Audio cache not available: no storage quota");
     return 0;
   }
 
@@ -69,7 +69,7 @@ export async function queueLibraryDownload(
 
   // Get all songs in library that aren't cached yet
   const songs = await db.songs
-    .where('libraryId')
+    .where("libraryId")
     .equals(libraryId)
     .toArray();
 
@@ -114,7 +114,7 @@ export function cancelLibraryDownloads(libraryId: string): number {
  */
 export function cancelAllDownloads(): void {
   downloadQueue = [];
-  logger.info('Cancelled all pending downloads');
+  logger.info("Cancelled all pending downloads");
 }
 
 /**
@@ -124,7 +124,7 @@ export function getQueueStatus(): {
   pending: number;
   active: number;
   isProcessing: boolean;
-} {
+  } {
   return {
     pending: downloadQueue.length,
     active: activeDownloads,
@@ -143,7 +143,7 @@ export async function triggerAutoCacheAfterSync(
   // Check if we can download now
   const canDownload = await canDownloadNow();
   if (!canDownload) {
-    logger.debug('Download not allowed based on timing policy');
+    logger.debug("Download not allowed based on timing policy");
     return;
   }
 
@@ -166,7 +166,7 @@ function addToQueue(task: DownloadTask): void {
 
 async function processQueue(): Promise<void> {
   if (isProcessing) {
-    logger.debug('processQueue: already processing, skipping');
+    logger.debug("processQueue: already processing, skipping");
     return;
   }
   isProcessing = true;
@@ -176,7 +176,7 @@ async function processQueue(): Promise<void> {
     // Check if caching is available
     const cacheAvailable = await isAudioCacheAvailable();
     if (!cacheAvailable) {
-      logger.debug('processQueue: cache not available, clearing queue');
+      logger.debug("processQueue: cache not available, clearing queue");
       downloadQueue = [];
       return;
     }
@@ -185,7 +185,7 @@ async function processQueue(): Promise<void> {
       // Check if we can still download
       const canDownload = await canDownloadNow();
       if (!canDownload) {
-        logger.debug('processQueue: pausing downloads, timing policy not met');
+        logger.debug("processQueue: pausing downloads, timing policy not met");
         break;
       }
 
@@ -256,9 +256,9 @@ async function processTask(task: DownloadTask): Promise<void> {
     logger.warn(`Failed to cache song ${task.songId}: ${errorMessage}`);
     
     // Don't retry for permanent failures (404, not found, not available)
-    if (errorMessage.includes('not available') || 
-        errorMessage.includes('not found') || 
-        errorMessage.includes('404')) {
+    if (errorMessage.includes("not available") || 
+        errorMessage.includes("not found") || 
+        errorMessage.includes("404")) {
       logger.debug(`Permanent failure for song ${task.songId}, not retrying`);
       return;
     }
@@ -289,7 +289,7 @@ export async function getLibraryCacheStats(libraryId: string): Promise<{
   percentage: number;
 }> {
   const songs = await db.songs
-    .where('libraryId')
+    .where("libraryId")
     .equals(libraryId)
     .toArray();
 

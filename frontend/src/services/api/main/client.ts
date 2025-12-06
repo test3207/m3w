@@ -3,8 +3,8 @@
  * Wraps the generic HTTP client and handles Main API specific response format
  */
 
-import { apiClient } from '@/lib/api/client';
-import type { ApiResponse } from './types';
+import { apiClient } from "@/lib/api/client";
+import type { ApiResponse } from "./types";
 
 export class MainApiClient {
   /**
@@ -14,7 +14,7 @@ export class MainApiClient {
     const response = await apiClient.get<ApiResponse<T>>(endpoint, options);
 
     if (!response.success) {
-      throw new Error(response.error || 'Request failed');
+      throw new Error(response.error || "Request failed");
     }
 
     return response.data as T;
@@ -27,7 +27,7 @@ export class MainApiClient {
     const response = await apiClient.post<ApiResponse<T>>(endpoint, body, options);
 
     if (!response.success) {
-      throw new Error(response.error || 'Request failed');
+      throw new Error(response.error || "Request failed");
     }
 
     return response.data as T;
@@ -40,7 +40,7 @@ export class MainApiClient {
     const response = await apiClient.put<ApiResponse<T>>(endpoint, body, options);
 
     if (!response.success) {
-      throw new Error(response.error || 'Request failed');
+      throw new Error(response.error || "Request failed");
     }
 
     return response.data as T;
@@ -53,7 +53,7 @@ export class MainApiClient {
     const response = await apiClient.patch<ApiResponse<T>>(endpoint, body, options);
 
     if (!response.success) {
-      throw new Error(response.error || 'Request failed');
+      throw new Error(response.error || "Request failed");
     }
 
     return response.data as T;
@@ -66,7 +66,7 @@ export class MainApiClient {
     const response = await apiClient.delete<ApiResponse<T>>(endpoint, options);
 
     if (!response.success) {
-      throw new Error(response.error || 'Request failed');
+      throw new Error(response.error || "Request failed");
     }
 
     return response.data as T;
@@ -79,7 +79,7 @@ export class MainApiClient {
     const response = await apiClient.upload<ApiResponse<T>>(endpoint, formData, options);
 
     if (!response.success) {
-      throw new Error(response.error || 'Upload failed');
+      throw new Error(response.error || "Upload failed");
     }
 
     return response.data as T;

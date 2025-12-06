@@ -14,9 +14,9 @@
  * - _lastModifiedAt: timestamp for conflict detection
  */
 
-import Dexie, { type EntityTable, type Table } from 'dexie';
-import { RepeatMode, type Library, type Playlist, type Song, type PlaylistSong, type CacheOverride } from '@m3w/shared';
-import { isGuestUser } from '../offline-proxy/utils';
+import Dexie, { type EntityTable, type Table } from "dexie";
+import { RepeatMode, type Library, type Playlist, type Song, type PlaylistSong, type CacheOverride } from "@m3w/shared";
+import { isGuestUser } from "../offline-proxy/utils";
 
 // ============================================================
 // Sync Tracking Fields (common to all syncable entities)
@@ -68,7 +68,7 @@ export interface OfflineFile extends SyncTrackingFields {
   createdAt: Date;
 }
 
-export interface OfflineSong extends Omit<Song, 'fileId' | 'libraryName' | 'mimeType'>, SyncTrackingFields {
+export interface OfflineSong extends Omit<Song, "fileId" | "libraryName" | "mimeType">, SyncTrackingFields {
   /** Audio stream URL (/api/songs/:id/stream) */
   streamUrl?: string;
   /** Cache status fields */
@@ -145,7 +145,7 @@ export interface LocalSetting {
 }
 
 /** Download timing policy */
-export type DownloadTiming = 'always' | 'wifi-only' | 'manual';
+export type DownloadTiming = "always" | "wifi-only" | "manual";
 
 // ============================================================
 // Database Class
@@ -154,29 +154,29 @@ export type DownloadTiming = 'always' | 'wifi-only' | 'manual';
 // Database class
 export class M3WDatabase extends Dexie {
   // Tables
-  libraries!: EntityTable<OfflineLibrary, 'id'>;
-  playlists!: EntityTable<OfflinePlaylist, 'id'>;
-  files!: EntityTable<OfflineFile, 'id'>;
-  songs!: EntityTable<OfflineSong, 'id'>;
+  libraries!: EntityTable<OfflineLibrary, "id">;
+  playlists!: EntityTable<OfflinePlaylist, "id">;
+  files!: EntityTable<OfflineFile, "id">;
+  songs!: EntityTable<OfflineSong, "id">;
   // Use Table instead of EntityTable for composite primary key
   playlistSongs!: Table<OfflinePlaylistSong, [string, string]>;
-  playerPreferences!: EntityTable<PlayerPreferences, 'userId'>;
-  playerProgress!: EntityTable<PlayerProgress, 'userId'>;
-  localSettings!: EntityTable<LocalSetting, 'key'>;
+  playerPreferences!: EntityTable<PlayerPreferences, "userId">;
+  playerProgress!: EntityTable<PlayerProgress, "userId">;
+  localSettings!: EntityTable<LocalSetting, "key">;
 
   constructor() {
-    super('m3w-offline');
+    super("m3w-offline");
 
     // State-based sync schema (dirty tracking instead of sync queue)
     this.version(1).stores({
-      libraries: 'id, userId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly',
-      playlists: 'id, userId, linkedLibraryId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly',
-      files: 'id, hash, size, refCount, _isDirty, _isDeleted',
-      songs: 'id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck, _isDirty, _isDeleted, _isLocalOnly',
-      playlistSongs: '[playlistId+songId], playlistId, songId, order, _isDirty, _isDeleted',
-      playerPreferences: 'userId, updatedAt',
-      playerProgress: 'userId, songId, contextType, contextId, updatedAt',
-      localSettings: 'key, updatedAt',
+      libraries: "id, userId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly",
+      playlists: "id, userId, linkedLibraryId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly",
+      files: "id, hash, size, refCount, _isDirty, _isDeleted",
+      songs: "id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck, _isDirty, _isDeleted, _isLocalOnly",
+      playlistSongs: "[playlistId+songId], playlistId, songId, order, _isDirty, _isDeleted",
+      playerPreferences: "userId, updatedAt",
+      playerProgress: "userId, songId, contextType, contextId, updatedAt",
+      localSettings: "key, updatedAt",
     });
   }
 }
@@ -268,9 +268,9 @@ export function markDeleted<T extends SyncTrackingFields>(entity: T): T {
  */
 export async function getLocalOnlyEntities() {
   const [libraries, playlists, songs] = await Promise.all([
-    db.libraries.where('_isLocalOnly').equals(1).toArray(),
-    db.playlists.where('_isLocalOnly').equals(1).toArray(),
-    db.songs.where('_isLocalOnly').equals(1).toArray(),
+    db.libraries.where("_isLocalOnly").equals(1).toArray(),
+    db.playlists.where("_isLocalOnly").equals(1).toArray(),
+    db.songs.where("_isLocalOnly").equals(1).toArray(),
   ]);
   return { libraries, playlists, songs };
 }
@@ -280,43 +280,43 @@ export async function getLocalOnlyEntities() {
  * Also updates all foreign key references
  */
 export async function updateEntityId(
-  table: 'libraries' | 'playlists' | 'songs',
+  table: "libraries" | "playlists" | "songs",
   localId: string,
   serverId: string
 ): Promise<void> {
-  await db.transaction('rw', [db.libraries, db.playlists, db.songs, db.playlistSongs], async () => {
-    if (table === 'libraries') {
+  await db.transaction("rw", [db.libraries, db.playlists, db.songs, db.playlistSongs], async () => {
+    if (table === "libraries") {
       // Get the library
       const library = await db.libraries.get(localId);
       if (!library) return;
       
       // Update songs that reference this library
-      await db.songs.where('libraryId').equals(localId).modify({ libraryId: serverId });
+      await db.songs.where("libraryId").equals(localId).modify({ libraryId: serverId });
       
       // Update playlists linked to this library
-      await db.playlists.where('linkedLibraryId').equals(localId).modify({ linkedLibraryId: serverId });
+      await db.playlists.where("linkedLibraryId").equals(localId).modify({ linkedLibraryId: serverId });
       
       // Delete old, add new with server ID (use markSynced to clear all sync flags)
       await db.libraries.delete(localId);
       await db.libraries.add(markSynced({ ...library, id: serverId }));
       
-    } else if (table === 'playlists') {
+    } else if (table === "playlists") {
       const playlist = await db.playlists.get(localId);
       if (!playlist) return;
       
       // Update playlistSongs that reference this playlist
-      await db.playlistSongs.where('playlistId').equals(localId).modify({ playlistId: serverId });
+      await db.playlistSongs.where("playlistId").equals(localId).modify({ playlistId: serverId });
       
       // Delete old, add new with server ID (use markSynced to clear all sync flags)
       await db.playlists.delete(localId);
       await db.playlists.add(markSynced({ ...playlist, id: serverId }));
       
-    } else if (table === 'songs') {
+    } else if (table === "songs") {
       const song = await db.songs.get(localId);
       if (!song) return;
       
       // Update playlistSongs that reference this song
-      await db.playlistSongs.where('songId').equals(localId).modify({ songId: serverId });
+      await db.playlistSongs.where("songId").equals(localId).modify({ songId: serverId });
       
       // Delete old, add new with server ID (use markSynced to clear all sync flags)
       await db.songs.delete(localId);

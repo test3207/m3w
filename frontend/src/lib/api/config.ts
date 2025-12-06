@@ -14,17 +14,17 @@
  * Runtime config is injected by docker-entrypoint scripts via window.__API_BASE_URL__
  */
 export const getApiBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const runtimeUrl = (window as any).__API_BASE_URL__;
     // If runtime config is set and not the placeholder
     // Note: Empty string is valid for AIO mode (relative URLs), so use !== undefined
-    if (runtimeUrl !== undefined && runtimeUrl !== '__API_BASE_URL__') {
+    if (runtimeUrl !== undefined && runtimeUrl !== "__API_BASE_URL__") {
       return runtimeUrl;
     }
   }
   // Fallback to build-time env or dev default
-  return import.meta.env.VITE_API_URL || 'http://localhost:4000';
+  return import.meta.env.VITE_API_URL || "http://localhost:4000";
 };
 
 /**

@@ -2,8 +2,8 @@
  * Upload Resource Service
  */
 
-import { mainApiClient } from '../client';
-import { MAIN_API_ENDPOINTS } from '../endpoints';
+import { mainApiClient } from "../client";
+import { MAIN_API_ENDPOINTS } from "../endpoints";
 
 export interface UploadData {
   song: {
@@ -31,9 +31,16 @@ export const upload = {
    */
   uploadFile: async (libraryId: string, file: File, hash: string): Promise<UploadData> => {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('hash', hash);
-    formData.append('libraryId', libraryId);
+    
+    // When using webkitdirectory, file.webkitRelativePath contains the folder path
+    // We need to ensure only the pure filename is sent to the server
+    // Create a new File object with just the filename (no path)
+    const pureFileName = file.name;
+    const fileToUpload = new File([file], pureFileName, { type: file.type });
+    
+    formData.append("file", fileToUpload);
+    formData.append("hash", hash);
+    formData.append("libraryId", libraryId);
 
     return mainApiClient.upload<UploadData>(MAIN_API_ENDPOINTS.upload.file, formData);
   },

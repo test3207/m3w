@@ -1,21 +1,21 @@
-import { Menu, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+import { Menu, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { logger } from '@/lib/logger-client';
-import { api } from '@/services';
-import { I18n } from '@/locales/i18n';
-import { useAuthStore } from '@/stores/authStore';
-import { usePlayerStore } from '@/stores/playerStore';
-import { useLibraryStore } from '@/stores/libraryStore';
-import { usePlaylistStore } from '@/stores/playlistStore';
+} from "@/components/ui/dropdown-menu";
+import { logger } from "@/lib/logger-client";
+import { api } from "@/services";
+import { I18n } from "@/locales/i18n";
+import { useAuthStore } from "@/stores/authStore";
+import { usePlayerStore } from "@/stores/playerStore";
+import { useLibraryStore } from "@/stores/libraryStore";
+import { usePlaylistStore } from "@/stores/playlistStore";
 
 interface MobileUserMenuProps {
   name?: string | null;
@@ -32,9 +32,9 @@ export function MobileUserMenu({ name, email, image }: MobileUserMenuProps) {
   
   const displayName = name ?? email;
   const initials = (name || email)
-    .split(' ')
+    .split(" ")
     .map((part) => part[0])
-    .join('')
+    .join("")
     .slice(0, 2)
     .toUpperCase();
 
@@ -50,12 +50,12 @@ export function MobileUserMenu({ name, email, image }: MobileUserMenuProps) {
     await new Promise(resolve => setTimeout(resolve, 0));
     
     // 3. Navigate to sign-in page
-    navigate('/');
+    navigate("/");
     
     // 4. Call backend signout in background (async, fire-and-forget)
     // Continue even if this fails - frontend is already clean
     api.main.auth.signout().catch((error) => {
-      logger.error('Backend signout failed', error);
+      logger.error("Backend signout failed", error);
     });
     
     // Note: Cache Storage is intentionally preserved

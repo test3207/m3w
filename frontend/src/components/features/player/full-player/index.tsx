@@ -44,12 +44,12 @@
  * @see {@link animationReducer} - State machine for enter/exit animations
  */
 
-import { useMemo, useEffect, useRef, useCallback, useState, useReducer } from 'react';
-import { usePlayerStore } from '@/stores/playerStore';
-import { usePlaylistStore } from '@/stores/playlistStore';
-import { useUIStore } from '@/stores/uiStore';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
+import { useMemo, useEffect, useRef, useCallback, useState, useReducer } from "react";
+import { usePlayerStore } from "@/stores/playerStore";
+import { usePlaylistStore } from "@/stores/playlistStore";
+import { useUIStore } from "@/stores/uiStore";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
 import {
   ChevronDown,
   Heart,
@@ -61,20 +61,20 @@ import {
   SkipForward,
   Repeat,
   Shuffle,
-} from 'lucide-react';
-import { I18n } from '@/locales/i18n';
-import { logger } from '@/lib/logger-client';
-import { Text } from '@/components/ui/text';
-import { Stack } from '@/components/ui/stack';
-import { RepeatMode } from '@m3w/shared';
+} from "lucide-react";
+import { I18n } from "@/locales/i18n";
+import { logger } from "@/lib/logger-client";
+import { Text } from "@/components/ui/text";
+import { Stack } from "@/components/ui/stack";
+import { RepeatMode } from "@m3w/shared";
 
-import { GESTURE_CONFIG, ANIMATION_CONFIG, TRANSFORM } from './constants';
+import { GESTURE_CONFIG, ANIMATION_CONFIG, TRANSFORM } from "./constants";
 import {
   AnimationPhase,
   ExitDirection,
   AnimationActionType,
   animationReducer,
-} from './types';
+} from "./types";
 
 // ============================================================================
 // Utilities
@@ -83,7 +83,7 @@ import {
 /** Format duration in seconds to human-readable string (e.g., "3:45" or "1:23:45") */
 function formatDuration(seconds: number): string {
   if (!seconds || isNaN(seconds)) {
-    return '0:00';
+    return "0:00";
   }
 
   const hours = Math.floor(seconds / 3600);
@@ -91,10 +91,10 @@ function formatDuration(seconds: number): string {
   const secs = Math.floor(seconds % 60);
 
   if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
 
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
 
 // ============================================================================
@@ -190,7 +190,7 @@ export function FullPlayer() {
   // Handle transition end - cleanup after exit animation
   const handleTransitionEnd = useCallback((e: React.TransitionEvent) => {
     // Only handle transform transitions on the container itself
-    if (e.propertyName === 'transform' && e.target === containerRef.current) {
+    if (e.propertyName === "transform" && e.target === containerRef.current) {
       if (animationPhase === AnimationPhase.Exiting) {
         dispatch({ type: AnimationActionType.CloseComplete });
         setDragOffset({ x: 0, y: 0 });
@@ -213,7 +213,7 @@ export function FullPlayer() {
     
     // Push a history state when FullPlayer opens
     const historyState = { fullPlayerOpen: true, id: stateId };
-    window.history.pushState(historyState, '');
+    window.history.pushState(historyState, "");
 
     // Handle popstate (back button)
     const handlePopState = (event: PopStateEvent) => {
@@ -223,15 +223,15 @@ export function FullPlayer() {
       }
     };
 
-    window.addEventListener('popstate', handlePopState);
+    window.addEventListener("popstate", handlePopState);
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener("popstate", handlePopState);
       // Clean up history state if component unmounts while open (e.g., button/gesture close)
       // Use replaceState instead of back() to avoid triggering another popstate event
       // Only clean up if this is our own state (matching ID)
       if (window.history.state?.id === stateId) {
-        window.history.replaceState(null, '');
+        window.history.replaceState(null, "");
       }
     };
   }, [isOpen, handleClose]);
@@ -240,7 +240,7 @@ export function FullPlayer() {
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     // Skip gesture tracking for interactive elements (seek bar, buttons)
     const target = e.target as HTMLElement;
-    if (target.closest('[role="slider"]') || target.closest('button')) {
+    if (target.closest('[role="slider"]') || target.closest("button")) {
       return;
     }
     const touch = e.touches[0];
@@ -277,7 +277,7 @@ export function FullPlayer() {
 
     if (isSwipeDown || isSwipeRight) {
       const direction = isSwipeRight ? ExitDirection.Right : ExitDirection.Down;
-      logger.debug('[FullPlayer] Swipe gesture detected:', direction);
+      logger.debug("[FullPlayer] Swipe gesture detected:", direction);
       // Dispatch close with direction before calling closeFullPlayer
       dispatch({ type: AnimationActionType.Close, direction });
       // Use setTimeout to ensure the direction is set before the store updates
@@ -329,7 +329,7 @@ export function FullPlayer() {
     } else {
       toast({
         title: wasFavorited ? I18n.player.favorite.removeError : I18n.player.favorite.addError,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -391,24 +391,24 @@ export function FullPlayer() {
     const largeStep = duration * 0.1; // 10% step for PageUp/PageDown
     
     switch (e.key) {
-      case 'ArrowLeft':
-      case 'ArrowDown':
+      case "ArrowLeft":
+      case "ArrowDown":
         newTime = Math.max(0, currentTime - step);
         break;
-      case 'ArrowRight':
-      case 'ArrowUp':
+      case "ArrowRight":
+      case "ArrowUp":
         newTime = Math.min(duration, currentTime + step);
         break;
-      case 'PageDown':
+      case "PageDown":
         newTime = Math.max(0, currentTime - largeStep);
         break;
-      case 'PageUp':
+      case "PageUp":
         newTime = Math.min(duration, currentTime + largeStep);
         break;
-      case 'Home':
+      case "Home":
         newTime = 0;
         break;
-      case 'End':
+      case "End":
         newTime = duration;
         break;
       default:
@@ -435,11 +435,11 @@ export function FullPlayer() {
         opacity: getOpacity(),
         transition: shouldAnimate 
           ? `transform ${ANIMATION_CONFIG.DURATION_MS}ms ${ANIMATION_CONFIG.EASING}, opacity ${ANIMATION_CONFIG.DURATION_MS}ms ${ANIMATION_CONFIG.EASING}`
-          : 'none',
+          : "none",
         // Only apply willChange during animations to reduce resource usage when idle
         willChange: (isDragging || animationPhase === AnimationPhase.Entering || animationPhase === AnimationPhase.Exiting)
-          ? 'transform, opacity'
-          : 'auto',
+          ? "transform, opacity"
+          : "auto",
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -566,7 +566,7 @@ export function FullPlayer() {
             onClick={toggleShuffle}
             aria-pressed={isShuffled}
             aria-label={I18n.player.shuffle.label}
-            className={isShuffled ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'hover:bg-accent'}
+            className={isShuffled ? "bg-primary/10 text-primary hover:bg-primary/20" : "hover:bg-accent"}
           >
             <Shuffle className="h-5 w-5 mr-1.5" aria-hidden="true" />
             <Text as="span" variant="caption">{I18n.player.shuffle.label}</Text>
@@ -578,9 +578,9 @@ export function FullPlayer() {
             onClick={handleToggleFavorite}
             aria-pressed={isFavorited}
             aria-label={isFavorited ? I18n.player.favorite.removeLabel : I18n.player.favorite.addLabel}
-            className={isFavorited ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'hover:bg-accent'}
+            className={isFavorited ? "bg-primary/10 text-primary hover:bg-primary/20" : "hover:bg-accent"}
           >
-            <Heart className={`h-5 w-5 mr-1.5 ${isFavorited ? 'fill-current' : ''}`} aria-hidden="true" />
+            <Heart className={`h-5 w-5 mr-1.5 ${isFavorited ? "fill-current" : ""}`} aria-hidden="true" />
             <Text as="span" variant="caption">{I18n.player.favorite.label}</Text>
           </Button>
           
@@ -590,7 +590,7 @@ export function FullPlayer() {
             onClick={toggleRepeat}
             aria-pressed={repeatMode !== RepeatMode.Off}
             aria-label={I18n.player.repeat.label}
-            className={repeatMode !== RepeatMode.Off ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'hover:bg-accent'}
+            className={repeatMode !== RepeatMode.Off ? "bg-primary/10 text-primary hover:bg-primary/20" : "hover:bg-accent"}
           >
             <div className="relative">
               <Repeat className="h-5 w-5 mr-1.5" aria-hidden="true" />

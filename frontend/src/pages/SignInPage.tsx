@@ -11,12 +11,14 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { I18n } from "@/locales/i18n";
+import { useLocale } from "@/locales/use-locale";
 import { useAuthStore } from "@/stores/authStore";
 import { initGuestResources } from "@/lib/db/init-guest";
 import { logger } from "@/lib/logger-client";
 import { getApiBaseUrl } from "@/lib/api/config";
 
 export default function SignInPage() {
+  useLocale(); // Subscribe to locale changes
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { loginAsGuest } = useAuthStore();
@@ -107,7 +109,7 @@ export default function SignInPage() {
                   loginAsGuest();
                   navigate("/libraries");
                 } catch (error) {
-                  logger.error('[SignInPage] Failed to initialize guest mode', error);
+                  logger.error("[SignInPage] Failed to initialize guest mode", error);
                   toast({
                     title: "Error",
                     description: "Failed to initialize guest mode",

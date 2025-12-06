@@ -3,10 +3,10 @@
  * Shows notification when new version is available or app is offline-ready
  */
 
-import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useServiceWorker } from '@/hooks/useServiceWorker';
-import { I18n } from '@/locales/i18n';
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useServiceWorker } from "@/hooks/useServiceWorker";
+import { I18n } from "@/locales/i18n";
 
 export function ReloadPrompt() {
   const { offlineReady, needRefresh, updateServiceWorker, close } = useServiceWorker();

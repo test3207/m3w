@@ -5,11 +5,11 @@
  * 2. Route offline capability (from API contracts)
  */
 
-import offlineProxy from '../offline-proxy';
-import { isOfflineCapable } from '@m3w/shared';
-import { logger } from '../logger-client';
-import { API_BASE_URL } from './config';
-import { isGuestUser } from '../offline-proxy/utils';
+import offlineProxy from "../offline-proxy";
+import { isOfflineCapable } from "@m3w/shared";
+import { logger } from "../logger-client";
+import { API_BASE_URL } from "./config";
+import { isGuestUser } from "../offline-proxy/utils";
 
 // Track backend reachability
 let isBackendReachable = true;
@@ -22,8 +22,8 @@ async function checkBackendHealth(): Promise<boolean> {
     const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
     
     const response = await fetch(`${API_BASE_URL}/api/health`, {
-      method: 'GET',
-      credentials: 'include',
+      method: "GET",
+      credentials: "include",
       signal: controller.signal,
     });
     
@@ -38,13 +38,13 @@ async function checkBackendHealth(): Promise<boolean> {
 function startHealthCheck() {
   if (healthCheckInterval) return;
   
-  logger.info('Starting backend health check polling');
+  logger.info("Starting backend health check polling");
   healthCheckInterval = setInterval(async () => {
     if (!isBackendReachable) {
-      logger.debug('Checking backend health...');
+      logger.debug("Checking backend health...");
       const isHealthy = await checkBackendHealth();
       if (isHealthy) {
-        logger.info('Backend recovered, stopping health checks');
+        logger.info("Backend recovered, stopping health checks");
         emitNetworkStatus(true);
         stopHealthCheck();
       }
@@ -57,7 +57,7 @@ function stopHealthCheck() {
   if (healthCheckInterval) {
     clearInterval(healthCheckInterval);
     healthCheckInterval = null;
-    logger.info('Stopped backend health check polling');
+    logger.info("Stopped backend health check polling");
   }
 }
 
@@ -72,8 +72,8 @@ function emitNetworkStatus(isReachable: boolean) {
       stopHealthCheck(); // Stop polling when backend recovers
     }
     
-    window.dispatchEvent(new CustomEvent(isReachable ? 'api-success' : 'api-error'));
-    logger.info('Backend reachability changed', { isReachable });
+    window.dispatchEvent(new CustomEvent(isReachable ? "api-success" : "api-error"));
+    logger.info("Backend reachability changed", { isReachable });
   }
 }
 
@@ -81,7 +81,7 @@ function emitNetworkStatus(isReachable: boolean) {
 function getAuthToken(): string | null {
   try {
     // Zustand persist uses 'auth-storage' as the key name
-    const authStore = localStorage.getItem('auth-storage');
+    const authStore = localStorage.getItem("auth-storage");
     if (!authStore) return null;
 
     const parsed = JSON.parse(authStore);
@@ -96,7 +96,7 @@ export async function routeRequest(
   path: string,
   init?: RequestInit
 ): Promise<Response> {
-  const method = init?.method || 'GET';
+  const method = init?.method || "GET";
   const isOnline = navigator.onLine;
   const offlineCapable = isOfflineCapable(path, method);
   const isGuest = isGuestUser();
@@ -104,17 +104,17 @@ export async function routeRequest(
   // Guest Mode: Always use offline proxy for capable routes
   if (isGuest) {
     if (offlineCapable) {
-      logger.info('Guest mode: Using offline proxy', { path, method });
+      logger.info("Guest mode: Using offline proxy", { path, method });
       return await callOfflineProxy(path, init);
     } else {
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'This feature is not available in Guest Mode',
+          error: "This feature is not available in Guest Mode",
         }),
         {
           status: 403,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { "Content-Type": "application/json" },
         }
       );
     }
@@ -129,18 +129,18 @@ export async function routeRequest(
 
   if (effectivelyOffline) {
     if (offlineCapable) {
-      logger.info('Using offline proxy', { path, method, reason: !isOnline ? 'no network' : 'backend unreachable' });
+      logger.info("Using offline proxy", { path, method, reason: !isOnline ? "no network" : "backend unreachable" });
       return await callOfflineProxy(path, init);
     } else {
       // Cannot fulfill request offline
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'This operation requires an internet connection',
+          error: "This operation requires an internet connection",
         }),
         {
           status: 503,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { "Content-Type": "application/json" },
         }
       );
     }
@@ -150,17 +150,17 @@ export async function routeRequest(
   try {
     // Build full backend URL from path
     // path may contain query params, so use it directly if it starts with /
-    const fullUrl = path.startsWith('http')
+    const fullUrl = path.startsWith("http")
       ? path
       : `${API_BASE_URL}${path}`;
 
     const response = await fetch(fullUrl, {
       ...init,
-      credentials: 'include',
+      credentials: "include",
       headers: {
         ...init?.headers,
         // Add authorization header if token exists
-        ...(getAuthToken() ? { 'Authorization': `Bearer ${getAuthToken()}` } : {}),
+        ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
       },
     });
 
@@ -173,7 +173,7 @@ export async function routeRequest(
     }
 
     // If backend fails and route is offline-capable, fallback to offline proxy
-    logger.warn('Backend request failed, falling back to offline proxy', { path, status: response.status });
+    logger.warn("Backend request failed, falling back to offline proxy", { path, status: response.status });
     return await callOfflineProxy(path, init);
   } catch (error) {
     // Mark backend as unreachable on connection error
@@ -181,7 +181,7 @@ export async function routeRequest(
 
     // Network error: fallback to offline proxy if possible
     if (offlineCapable) {
-      logger.warn('Backend unreachable, using offline proxy', { path, error });
+      logger.warn("Backend unreachable, using offline proxy", { path, error });
       return await callOfflineProxy(path, init);
     }
 
@@ -189,11 +189,11 @@ export async function routeRequest(
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Failed to connect to server',
+        error: "Failed to connect to server",
       }),
       {
         status: 503,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       }
     );
   }
@@ -211,15 +211,15 @@ async function callOfflineProxy(
     // Call offline proxy via Hono fetch
     return await offlineProxy.fetch(request);
   } catch (error) {
-    logger.error('Offline proxy failed', { path, error });
+    logger.error("Offline proxy failed", { path, error });
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Offline operation failed',
+        error: "Offline operation failed",
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       }
     );
   }

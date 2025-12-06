@@ -2,7 +2,7 @@
  * Simple event bus for cross-component communication
  */
 
-import { logger } from '@/lib/logger-client';
+import { logger } from "@/lib/logger-client";
 
 // Event payload types
 export interface SongCachedPayload {
@@ -44,7 +44,7 @@ export const eventBus = new EventBus();
 
 // Event names
 export const EVENTS = {
-  SONG_DELETED: 'song:deleted',
-  SONG_UPLOADED: 'song:uploaded',
-  SONG_CACHED: 'song:cached',
+  SONG_DELETED: "song:deleted",
+  SONG_UPLOADED: "song:uploaded",
+  SONG_CACHED: "song:cached",
 } as const;

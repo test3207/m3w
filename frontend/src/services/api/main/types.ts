@@ -2,7 +2,7 @@
  * Main API Response Types
  */
 
-import type { ApiResponse } from '@m3w/shared';
+import type { ApiResponse } from "@m3w/shared";
 
 // Re-export shared type for convenience
 export type { ApiResponse };

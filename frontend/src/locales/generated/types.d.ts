@@ -735,10 +735,20 @@ export interface Messages {
       selectFileLabel: string;
       /** Select audio files */
       selectFilesLabel: string;
+      /** Select folder */
+      selectFolderLabel: string;
       /** Supports MP3, FLAC, WAV, OGG, M4A, AAC, and other common formats. Max size 100 MB per file. */
       fileHelper: string;
       /** Select one or multiple audio files. Metadata will be extracted automatically from ID3 tags. */
       multiFileHelper: string;
+      /** Select a folder to import all audio files inside (recursive scan). */
+      folderHelper: string;
+      /** Found {0} audio files */
+      foundAudioFiles: string;
+      /** Skipped {0} non-audio files */
+      skippedNonAudio: string;
+      /** No audio files found in the selected folder */
+      noAudioInFolder: string;
       /** Selected files */
       selectedFilesTitle: string;
       /** Clear all */

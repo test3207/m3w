@@ -2,9 +2,9 @@
  * Player Resource Service
  */
 
-import { mainApiClient } from '../client';
-import { MAIN_API_ENDPOINTS } from '../endpoints';
-import { RepeatMode } from '@m3w/shared';
+import { mainApiClient } from "../client";
+import { MAIN_API_ENDPOINTS } from "../endpoints";
+import { RepeatMode } from "@m3w/shared";
 
 export interface Track {
   id: string;
@@ -18,7 +18,7 @@ export interface Track {
 }
 
 export interface PlayContext {
-  type: 'library' | 'playlist';
+  type: "library" | "playlist";
   id: string;
   name?: string;
 }
@@ -43,7 +43,7 @@ export interface PlaybackSeed {
 export interface UpdateProgressInput {
   songId: string;
   position: number;
-  contextType?: 'library' | 'playlist';
+  contextType?: "library" | "playlist";
   contextId?: string;
   contextName?: string;
 }

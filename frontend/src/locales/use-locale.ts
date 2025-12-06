@@ -1,13 +1,22 @@
-import { useEffect, useState } from 'react';
-import { onLocaleChange } from './i18n';
+import { useContext, createContext, useEffect, useState } from "react";
+import { onLocaleChange, getLocale } from "./i18n";
+
+// Context for locale - exported for LocaleProvider
+export const LocaleContext = createContext<string>("en");
 
 /**
  * Hook to force component re-render when locale changes
- * Use this in components that display I18n.xxx text
  * 
- * @returns Current locale (for dependency tracking)
+ * Tries to use LocaleContext first (recommended).
+ * Falls back to direct subscription if used outside LocaleProvider.
+ * 
+ * @returns Current locale string
  */
 export function useLocale(): string {
+  // Try to use context first (more efficient, works with React tree)
+  const contextLocale = useContext(LocaleContext);
+  
+  // Also subscribe directly as fallback (for components outside provider)
   const [, forceUpdate] = useState(0);
 
   useEffect(() => {
@@ -18,7 +27,5 @@ export function useLocale(): string {
     return unsubscribe;
   }, []);
 
-  // Return empty string just to have a stable value
-  // The actual locale is accessed via I18n.xxx
-  return '';
+  return contextLocale || getLocale();
 }

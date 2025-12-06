@@ -3,11 +3,11 @@
  * Manages music libraries state with Zustand
  */
 
-import { create } from 'zustand';
-import { api } from '@/services';
-import { logger } from '@/lib/logger-client';
-import { isDefaultLibrary } from '@m3w/shared';
-import type { Library } from '@m3w/shared';
+import { create } from "zustand";
+import { api } from "@/services";
+import { logger } from "@/lib/logger-client";
+import { isDefaultLibrary } from "@m3w/shared";
+import type { Library } from "@m3w/shared";
 
 interface LibraryState {
   libraries: Library[];
@@ -48,11 +48,11 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
   // Fetch all libraries
   fetchLibraries: async () => {
-    logger.debug('[LibraryStore] fetchLibraries called');
+    logger.debug("[LibraryStore] fetchLibraries called");
     set({ isLoading: true, error: null });
     try {
       const libraries = await api.main.libraries.list();
-      logger.debug('[LibraryStore] Fetched libraries:', libraries.length);
+      logger.debug("[LibraryStore] Fetched libraries:", libraries.length);
 
       // Update libraries and refresh currentLibrary if it exists
       set((state) => {
@@ -66,7 +66,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
           }
         }
 
-        logger.debug('[LibraryStore] Setting new libraries array');
+        logger.debug("[LibraryStore] Setting new libraries array");
         return {
           libraries,
           currentLibrary: updatedCurrentLibrary,
@@ -76,8 +76,8 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
       logger.info(`Fetched ${libraries.length} libraries`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch libraries';
-      logger.error('Failed to fetch libraries', { error });
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch libraries";
+      logger.error("Failed to fetch libraries", { error });
       set({ error: errorMessage, isLoading: false });
     }
   },
@@ -92,8 +92,8 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       logger.info(`Fetched library: ${library.name}`, { libraryId: id });
       return library;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch library';
-      logger.error('Failed to fetch library', { error, libraryId: id });
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch library";
+      logger.error("Failed to fetch library", { error, libraryId: id });
       set({ error: errorMessage, isLoading: false });
       return null;
     }
@@ -120,8 +120,8 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       logger.info(`Created library: ${name}`, { libraryId: newLibrary.id });
       return newLibrary;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create library';
-      logger.error('Failed to create library', { error, name });
+      const errorMessage = error instanceof Error ? error.message : "Failed to create library";
+      logger.error("Failed to create library", { error, name });
       set({ error: errorMessage, isLoading: false });
       return null;
     }
@@ -133,8 +133,8 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
     // Check if library can be deleted
     if (!canDeleteLibrary(id)) {
-      logger.warn('Cannot delete default library', { libraryId: id });
-      set({ error: 'Cannot delete default library' });
+      logger.warn("Cannot delete default library", { libraryId: id });
+      set({ error: "Cannot delete default library" });
       return false;
     }
 
@@ -149,11 +149,11 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
         isLoading: false,
       }));
 
-      logger.info(`Deleted library`, { libraryId: id });
+      logger.info("Deleted library", { libraryId: id });
       return true;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete library';
-      logger.error('Failed to delete library', { error, libraryId: id });
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete library";
+      logger.error("Failed to delete library", { error, libraryId: id });
       set({ error: errorMessage, isLoading: false });
       return false;
     }

@@ -8,9 +8,9 @@
  * - canDelete: Based on isDefault flag (default resources cannot be deleted)
  */
 
-import { I18n } from '@/locales/i18n';
-import { isDefaultLibrary, isFavoritesPlaylist } from '@m3w/shared';
-import type { Library, Playlist } from '@m3w/shared';
+import { I18n } from "@/locales/i18n";
+import { isDefaultLibrary, isFavoritesPlaylist } from "@m3w/shared";
+import type { Library, Playlist } from "@m3w/shared";
 
 /**
  * Get display name for a library

@@ -25,6 +25,17 @@ export default [
         { allowConstantExport: true },
       ],
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'quotes': ['error', 'double', { avoidEscape: true }],
+      'indent': ['error', 2, { SwitchCase: 1 }],
+      'semi': ['error', 'always'],
+      'no-console': 'error',
+    },
+  },
+  // Allow console in logger wrapper and service worker only
+  {
+    files: ['**/logger-client.ts', '**/service-worker-custom.ts'],
+    rules: {
+      'no-console': 'off',
     },
   },
 ];

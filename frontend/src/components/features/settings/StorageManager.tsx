@@ -7,25 +7,25 @@
  * 3. Clear all data option
  */
 
-import { useState, useEffect } from 'react';
-import { storageMonitor, type StorageUsage, type StorageWarning } from '@/lib/storage/storage-monitor';
-import { logger } from '@/lib/logger-client';
-import { Stack } from '@/components/ui/stack';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card } from '@/components/ui/card';
-import { RefreshCw, Database, AlertTriangle, Trash2, Download, Info } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { storageMonitor, type StorageUsage, type StorageWarning } from "@/lib/storage/storage-monitor";
+import { logger } from "@/lib/logger-client";
+import { Stack } from "@/components/ui/stack";
+import { Text } from "@/components/ui/text";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { RefreshCw, Database, AlertTriangle, Trash2, Download, Info } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { I18n } from '@/locales/i18n';
-import { useToast } from '@/components/ui/use-toast';
-import { usePWAStatus, usePWAInstall } from '@/hooks/usePWA';
+} from "@/components/ui/popover";
+import { I18n } from "@/locales/i18n";
+import { useToast } from "@/components/ui/use-toast";
+import { usePWAStatus, usePWAInstall } from "@/hooks/usePWA";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,8 +35,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { db } from '@/lib/db/schema';
+} from "@/components/ui/alert-dialog";
+import { db } from "@/lib/db/schema";
 
 export default function StorageManager() {
   const { toast } = useToast();
@@ -64,9 +64,9 @@ export default function StorageManager() {
       
       setUsage(usageData);
       setWarning(warningData);
-      logger.info('Storage usage loaded', usageData);
+      logger.info("Storage usage loaded", usageData);
     } catch (error) {
-      logger.error('Failed to load storage usage', { error });
+      logger.error("Failed to load storage usage", { error });
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +90,7 @@ export default function StorageManager() {
       await db.delete();
       
       // Clear Cache Storage
-      if ('caches' in window) {
+      if ("caches" in window) {
         const cacheNames = await caches.keys();
         await Promise.all(
           cacheNames.map(cacheName => caches.delete(cacheName))
@@ -100,7 +100,7 @@ export default function StorageManager() {
       // Clear localStorage
       localStorage.clear();
       
-      logger.info('All data cleared');
+      logger.info("All data cleared");
       
       // Show success toast briefly
       toast({
@@ -111,13 +111,13 @@ export default function StorageManager() {
       // Redirect immediately after toast (user will need to sign in again)
       // Use replace to prevent back navigation to this page
       setTimeout(() => {
-        window.location.replace('/');
+        window.location.replace("/");
       }, 1000);
     } catch (error) {
-      logger.error('Failed to clear data', { error });
+      logger.error("Failed to clear data", { error });
       toast({
         title: I18n.settings.storage.clearError,
-        variant: 'destructive',
+        variant: "destructive",
       });
       setIsClearing(false);
       setShowClearDialog(false);
@@ -135,10 +135,10 @@ export default function StorageManager() {
 
   const statusColor = storageMonitor.getStatusColor(usage.usagePercent);
   const progressVariant = 
-    statusColor === 'destructive' ? 'destructive' 
-    : statusColor === 'warning' ? 'warning' 
-    : 'success';
-  const badgeVariant = statusColor === 'destructive' ? 'destructive' : 'default';
+    statusColor === "destructive" ? "destructive" 
+      : statusColor === "warning" ? "warning" 
+        : "success";
+  const badgeVariant = statusColor === "destructive" ? "destructive" : "default";
 
   return (
     <>
@@ -163,7 +163,7 @@ export default function StorageManager() {
                       disabled={installing}
                     >
                       <Download className="h-3 w-3" />
-                      {installing ? '...' : I18n.settings.storage.pwa.install}
+                      {installing ? "..." : I18n.settings.storage.pwa.install}
                     </Button>
                   ) : (
                     <Badge variant="secondary" className="text-xs h-5">PWA</Badge>
@@ -205,14 +205,14 @@ export default function StorageManager() {
                 disabled={isLoading}
                 aria-label="Refresh"
               >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
               </Button>
             </Stack>
           </Stack>
 
           {/* Warning Banner */}
           {warning && (
-            <Alert variant={warning.level === 'critical' ? 'destructive' : 'warning'}>
+            <Alert variant={warning.level === "critical" ? "destructive" : "warning"}>
               <Stack direction="horizontal" gap="sm" align="center">
                 <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <AlertDescription>{warning.message}</AlertDescription>

@@ -4,7 +4,7 @@
  * Manages the current playback context (library, playlist, or album)
  */
 
-export type PlayContextType = 'library' | 'playlist' | 'album' | 'search' | 'queue';
+export type PlayContextType = "library" | "playlist" | "album" | "search" | "queue";
 
 export interface PlayContext {
   type: PlayContextType;

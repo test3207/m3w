@@ -30,7 +30,7 @@ const textVariants = cva("", {
 });
 
 export interface TextProps
-  extends Omit<React.HTMLAttributes<HTMLElement>, 'color'>,
+  extends Omit<React.HTMLAttributes<HTMLElement>, "color">,
     VariantProps<typeof textVariants> {
   /**
    * HTML element to render

@@ -4,19 +4,19 @@
  * All cache operations use /api/ URLs.
  */
 
-import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { db, markDeleted } from '../../db/schema';
-import { deleteFromCache } from '../../pwa/cache-manager';
-import { isGuestUser } from '../utils';
-import { logger } from '@/lib/logger-client';
+import { Hono } from "hono";
+import type { Context } from "hono";
+import { db, markDeleted } from "../../db/schema";
+import { deleteFromCache } from "../../pwa/cache-manager";
+import { isGuestUser } from "../utils";
+import { logger } from "@/lib/logger-client";
 
 const app = new Hono();
 
 // GET /songs/:id - Get song by ID
-app.get('/:id', async (c: Context) => {
+app.get("/:id", async (c: Context) => {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param("id");
     const song = await db.songs.get(id);
 
     // Treat soft-deleted as not found
@@ -24,7 +24,7 @@ app.get('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Song not found',
+          error: "Song not found",
         },
         404
       );
@@ -38,7 +38,7 @@ app.get('/:id', async (c: Context) => {
     return c.json(
       {
         success: false,
-        error: 'Failed to fetch song',
+        error: "Failed to fetch song",
       },
       500
     );
@@ -47,16 +47,16 @@ app.get('/:id', async (c: Context) => {
 
 // DELETE /songs/:id - Delete song from library
 // Query param: libraryId (required)
-app.delete('/:id', async (c: Context) => {
+app.delete("/:id", async (c: Context) => {
   try {
-    const id = c.req.param('id');
-    const libraryId = c.req.query('libraryId');
+    const id = c.req.param("id");
+    const libraryId = c.req.query("libraryId");
 
     if (!libraryId) {
       return c.json(
         {
           success: false,
-          error: 'libraryId is required',
+          error: "libraryId is required",
         },
         400
       );
@@ -69,7 +69,7 @@ app.delete('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Song not found',
+          error: "Song not found",
         },
         404
       );
@@ -79,14 +79,14 @@ app.delete('/:id', async (c: Context) => {
       return c.json(
         {
           success: false,
-          error: 'Song does not belong to this library',
+          error: "Song does not belong to this library",
         },
         403
       );
     }
 
     // Get affected playlist IDs before deletion (for songCount update)
-    const affectedPlaylistSongs = await db.playlistSongs.where('songId').equals(id).toArray();
+    const affectedPlaylistSongs = await db.playlistSongs.where("songId").equals(id).toArray();
     const affectedPlaylistIds = [...new Set(affectedPlaylistSongs.filter(ps => !ps._isDeleted).map(ps => ps.playlistId))];
 
     if (isGuestUser()) {
@@ -94,7 +94,7 @@ app.delete('/:id', async (c: Context) => {
       await db.songs.delete(id);
       
       // Hard delete playlistSongs referencing this song
-      await db.playlistSongs.where('songId').equals(id).delete();
+      await db.playlistSongs.where("songId").equals(id).delete();
     } else {
       // Auth user: soft delete for sync
       await db.songs.put(markDeleted(song));
@@ -126,7 +126,7 @@ app.delete('/:id', async (c: Context) => {
       await deleteFromCache(`/api/songs/${id}/stream`);
     } catch (cacheError) {
       // Log but don't fail - audio may not be cached
-      logger.warn('[OfflineProxy] Failed to delete cached audio:', cacheError);
+      logger.warn("[OfflineProxy] Failed to delete cached audio:", cacheError);
     }
 
     // Delete cached cover from Cache Storage if exists
@@ -143,11 +143,11 @@ app.delete('/:id', async (c: Context) => {
       data: null,
     });
   } catch (error) {
-    logger.error('[OfflineProxy] Failed to delete song:', error);
+    logger.error("[OfflineProxy] Failed to delete song:", error);
     return c.json(
       {
         success: false,
-        error: 'Failed to delete song',
+        error: "Failed to delete song",
       },
       500
     );

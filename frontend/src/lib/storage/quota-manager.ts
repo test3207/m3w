@@ -8,22 +8,22 @@
  * - Provides UI for storage management
  */
 
-import { logger } from '../logger-client';
+import { logger } from "../logger-client";
 
 /**
  * Check if app is running as PWA (installed)
  */
 export function isPWAInstalled(): boolean {
   // Check if running in standalone mode (iOS Safari)
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
 
   // Check if running in standalone mode (Android Chrome)
-  const isStandaloneNavigator = ('standalone' in window.navigator) && (window.navigator as { standalone?: boolean }).standalone;
+  const isStandaloneNavigator = ("standalone" in window.navigator) && (window.navigator as { standalone?: boolean }).standalone;
 
   // Check if launched from home screen
-  const isLaunchedFromHomeScreen = window.matchMedia('(display-mode: standalone)').matches ||
-    window.matchMedia('(display-mode: fullscreen)').matches ||
-    window.matchMedia('(display-mode: minimal-ui)').matches;
+  const isLaunchedFromHomeScreen = window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    window.matchMedia("(display-mode: minimal-ui)").matches;
 
   return isStandalone || isStandaloneNavigator || isLaunchedFromHomeScreen;
 }
@@ -32,7 +32,7 @@ export function isPWAInstalled(): boolean {
  * Check if persistent storage is supported
  */
 export function isStorageSupported(): boolean {
-  return 'storage' in navigator && 'persist' in navigator.storage;
+  return "storage" in navigator && "persist" in navigator.storage;
 }
 
 /**
@@ -40,16 +40,16 @@ export function isStorageSupported(): boolean {
  */
 export async function requestPersistentStorage(): Promise<boolean> {
   if (!isStorageSupported()) {
-    logger.warn('Storage API not supported');
+    logger.warn("Storage API not supported");
     return false;
   }
 
   try {
     const isPersisted = await navigator.storage.persist();
-    logger.info('Persistent storage request result', { isPersisted });
+    logger.info("Persistent storage request result", { isPersisted });
     return isPersisted;
   } catch (error) {
-    logger.error('Failed to request persistent storage', { error });
+    logger.error("Failed to request persistent storage", { error });
     return false;
   }
 }
@@ -65,7 +65,7 @@ export async function isStoragePersisted(): Promise<boolean> {
   try {
     return await navigator.storage.persisted();
   } catch (error) {
-    logger.error('Failed to check storage persistence', { error });
+    logger.error("Failed to check storage persistence", { error });
     return false;
   }
 }
@@ -101,7 +101,7 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
       availableFormatted: formatBytes(quota - usage),
     };
   } catch (error) {
-    logger.error('Failed to get storage quota', { error });
+    logger.error("Failed to get storage quota", { error });
     return null;
   }
 }
@@ -110,11 +110,11 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
  * Format bytes to human-readable string
  */
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
 
   const k = 1024;
   const decimals = 2;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
 
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const value = bytes / Math.pow(k, i);
@@ -164,7 +164,7 @@ export async function getStorageStatus(): Promise<StorageStatus> {
   // Can cache if Cache API is available AND there's available quota
   // Note: We allow caching even without PWA/persistence - user's choice
   // The browser may evict cache under storage pressure, but that's acceptable
-  const cacheApiAvailable = 'caches' in window;
+  const cacheApiAvailable = "caches" in window;
   const hasQuota = quota ? quota.quota - quota.usage > 0 : false;
   const canCache = cacheApiAvailable && hasQuota;
 
@@ -181,11 +181,11 @@ export async function getStorageStatus(): Promise<StorageStatus> {
  * Initialize storage management (call on PWA install)
  */
 export async function initializeStorage(): Promise<void> {
-  logger.info('Initializing storage management');
+  logger.info("Initializing storage management");
 
   const status = await getStorageStatus();
 
-  logger.info('Storage status', {
+  logger.info("Storage status", {
     isPWAInstalled: status.isPWAInstalled,
     isPersisted: status.isPersisted,
     usage: status.quota?.usageFormatted,
@@ -194,13 +194,13 @@ export async function initializeStorage(): Promise<void> {
 
   // If PWA is installed but storage not persisted, request it
   if (status.isPWAInstalled && !status.isPersisted) {
-    logger.info('Requesting persistent storage');
+    logger.info("Requesting persistent storage");
     const granted = await requestPersistentStorage();
 
     if (granted) {
-      logger.info('Persistent storage granted');
+      logger.info("Persistent storage granted");
     } else {
-      logger.warn('Persistent storage denied');
+      logger.warn("Persistent storage denied");
     }
   }
 }

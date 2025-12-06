@@ -6,10 +6,10 @@
  * Reduces database queries with 1-minute expiry
  */
 
-import { db } from '@/lib/db/schema';
-import { logger } from '@/lib/logger-client';
-import { getCacheName } from '@/lib/pwa/cache-manager';
-import { CACHE_VALIDATOR_EXPIRY } from '@/lib/storage/storage-constants';
+import { db } from "@/lib/db/schema";
+import { logger } from "@/lib/logger-client";
+import { getCacheName } from "@/lib/pwa/cache-manager";
+import { CACHE_VALIDATOR_EXPIRY } from "@/lib/storage/storage-constants";
 
 interface CacheStatus {
   isCached: boolean;
@@ -56,7 +56,7 @@ class CacheValidator {
     }
 
     try {
-      const cacheName = getCacheName('audio');
+      const cacheName = getCacheName("audio");
       const cache = await caches.open(cacheName);
       const response = await cache.match(streamUrl);
 
@@ -75,7 +75,7 @@ class CacheValidator {
 
       return { isCached: true, cacheSize, checkedAt };
     } catch (error) {
-      logger.error('Failed to validate cache', { songId, error });
+      logger.error("Failed to validate cache", { songId, error });
       return { isCached: false, checkedAt };
     }
   }
@@ -111,7 +111,7 @@ class CacheValidator {
    */
   clearMemoryCache() {
     this.cache.clear();
-    logger.debug('Cache validator memory cleared');
+    logger.debug("Cache validator memory cleared");
   }
 
   /**
@@ -141,14 +141,14 @@ class CacheValidator {
           lastCacheCheck: Date.now(),
         });
 
-        logger.debug('Cache status updated in IndexedDB', {
+        logger.debug("Cache status updated in IndexedDB", {
           songId,
           isCached,
           cacheSize,
         });
       }
     } catch (error) {
-      logger.error('Failed to update IndexedDB', { songId, error });
+      logger.error("Failed to update IndexedDB", { songId, error });
     }
   }
 }

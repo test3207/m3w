@@ -3,15 +3,15 @@
  * Shows prompt to install app on home screen/desktop
  */
 
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { logger } from '@/lib/logger-client';
-import { I18n } from '@/locales/i18n';
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { logger } from "@/lib/logger-client";
+import { I18n } from "@/locales/i18n";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 export function InstallPrompt() {
@@ -25,7 +25,7 @@ export function InstallPrompt() {
       setDeferredPrompt(promptEvent);
       
       // Check if recently dismissed
-      const dismissed = localStorage.getItem('pwa-install-dismissed');
+      const dismissed = localStorage.getItem("pwa-install-dismissed");
       if (dismissed) {
         const dismissedTime = parseInt(dismissed, 10);
         const sevenDays = 7 * 24 * 60 * 60 * 1000;
@@ -40,10 +40,10 @@ export function InstallPrompt() {
       }, 30000);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener("beforeinstallprompt", handler);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener("beforeinstallprompt", handler);
     };
   }, []);
 
@@ -55,10 +55,10 @@ export function InstallPrompt() {
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
 
-    if (outcome === 'accepted') {
-      logger.info('User accepted PWA install prompt');
+    if (outcome === "accepted") {
+      logger.info("User accepted PWA install prompt");
     } else {
-      logger.info('User dismissed PWA install prompt');
+      logger.info("User dismissed PWA install prompt");
     }
 
     setDeferredPrompt(null);
@@ -69,7 +69,7 @@ export function InstallPrompt() {
     setShowPrompt(false);
     
     // Don't show again for 7 days
-    localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    localStorage.setItem("pwa-install-dismissed", Date.now().toString());
   };
 
   if (!showPrompt || !deferredPrompt) {
