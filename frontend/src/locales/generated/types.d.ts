@@ -1147,6 +1147,8 @@ export interface Messages {
       nowPlaying: string;
       /** From: {0} */
       fromLibrary: string;
+      /** Drag to reorder */
+      dragToReorder: string;
       empty: {
         /** Playlist is empty */
         title: string;

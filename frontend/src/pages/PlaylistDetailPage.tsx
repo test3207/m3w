@@ -1,11 +1,27 @@
 /**
  * PlaylistDetailPage (Mobile-First)
- * Displays playlist songs with playback and reordering
+ * Displays playlist songs with playback and drag-to-reorder
  */
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Play, Music, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Play, Music } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { I18n } from "@/locales/i18n";
@@ -16,8 +32,8 @@ import { api } from "@/services";
 import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { eventBus, EVENTS } from "@/lib/events";
-import { cn } from "@/lib/utils";
 import type { Song as SharedSong } from "@m3w/shared";
+import { SortableSongItem } from "@/components/features/playlists/SortableSongItem";
 
 export default function PlaylistDetailPage() {
   useLocale();
@@ -43,6 +59,21 @@ export default function PlaylistDetailPage() {
 
   const [songs, setSongs] = useState<SharedSong[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Configure drag sensors
+  // TouchSensor: delay 250ms for mobile long-press
+  // PointerSensor: distance 10px to prevent accidental drags
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 10 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Fetch playlist data
   useEffect(() => {
@@ -119,107 +150,57 @@ export default function PlaylistDetailPage() {
     playFromPlaylist(currentPlaylist.id, currentPlaylist.name, songs, index);
   };
 
-  // Handle move song up
-  const handleMoveUp = async (index: number) => {
-    if (index === 0 || !currentPlaylist) return;
+  // Handle drag end - reorder songs
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    // Build songIds from current songs array (source of truth for display order)
-    const currentSongIds = songs.map(s => s.id);
-    const newSongIds = [...currentSongIds];
-    [newSongIds[index - 1], newSongIds[index]] = [
-      newSongIds[index],
-      newSongIds[index - 1],
-    ];
-
-    const success = await reorderPlaylistSongs(currentPlaylist.id, newSongIds);
-    if (success) {
-      // Re-fetch to sync UI
-      const updatedSongs = await api.main.playlists.getSongs(
-        currentPlaylist.id
-      );
-      setSongs(updatedSongs);
-
-      // If currently playing this playlist in sequential mode, update queue
-      if (
-        queueSource === 'playlist' && 
-        queueSourceId === currentPlaylist.id && 
-        !isShuffled
-      ) {
-        // Calculate new index for currently playing song
-        let newIndex = currentIndex;
-        
-        // If moved the currently playing song, adjust index
-        if (currentIndex === index) {
-          newIndex = index - 1;
-        } 
-        // If moved a song from above the current song to below it
-        else if (currentIndex === index - 1) {
-          newIndex = index;
-        }
-        
-        // Update the queue with the new order and adjusted index
-        setQueue(updatedSongs, newIndex);
-      }
-
-      toast({
-        title: I18n.playlists.detail.moveSong.successTitle,
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: I18n.playlists.detail.moveSong.errorTitle,
-      });
+    if (!over || active.id === over.id || !currentPlaylist) {
+      return;
     }
-  };
 
-  // Handle move song down
-  const handleMoveDown = async (index: number) => {
-    if (index === songs.length - 1 || !currentPlaylist) return;
+    const oldIndex = songs.findIndex((s) => s.id === active.id);
+    const newIndex = songs.findIndex((s) => s.id === over.id);
 
-    // Build songIds from current songs array (source of truth for display order)
-    const currentSongIds = songs.map(s => s.id);
-    const newSongIds = [...currentSongIds];
-    [newSongIds[index], newSongIds[index + 1]] = [
-      newSongIds[index + 1],
-      newSongIds[index],
-    ];
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
 
+    // Optimistically update UI
+    const reorderedSongs = arrayMove(songs, oldIndex, newIndex);
+    setSongs(reorderedSongs);
+
+    // Build new songIds order
+    const newSongIds = reorderedSongs.map((s) => s.id);
+
+    // Persist to backend
     const success = await reorderPlaylistSongs(currentPlaylist.id, newSongIds);
-    if (success) {
-      // Re-fetch to sync UI
-      const updatedSongs = await api.main.playlists.getSongs(
-        currentPlaylist.id
-      );
-      setSongs(updatedSongs);
 
+    if (success) {
       // If currently playing this playlist in sequential mode, update queue
       if (
-        queueSource === 'playlist' && 
-        queueSourceId === currentPlaylist.id && 
+        queueSource === 'playlist' &&
+        queueSourceId === currentPlaylist.id &&
         !isShuffled
       ) {
-        // Calculate new index for currently playing song
-        let newIndex = currentIndex;
-        
-        // If moved the currently playing song, adjust index
-        if (currentIndex === index) {
-          newIndex = index + 1;
-        } 
-        // If moved a song from below the current song to above it
-        else if (currentIndex === index + 1) {
-          newIndex = index;
-        }
-        
-        // Update the queue with the new order and adjusted index
-        setQueue(updatedSongs, newIndex);
+        // Find the new index of the currently playing song
+        const playingSongId = currentSong?.id;
+        const newPlayingIndex = playingSongId
+          ? reorderedSongs.findIndex((s) => s.id === playingSongId)
+          : currentIndex;
+
+        setQueue(reorderedSongs, newPlayingIndex >= 0 ? newPlayingIndex : 0);
       }
 
       toast({
         title: I18n.playlists.detail.moveSong.successTitle,
       });
     } else {
+      // Revert on failure - refetch from server
+      const serverSongs = await api.main.playlists.getSongs(currentPlaylist.id);
+      setSongs(serverSongs);
+
       toast({
-        variant: "destructive",
+        variant: 'destructive',
         title: I18n.playlists.detail.moveSong.errorTitle,
       });
     }
@@ -319,123 +300,37 @@ export default function PlaylistDetailPage() {
               </div>
             </Card>
           ) : (
-            <div className="space-y-2">
-              {songs.map((song, index) => {
-                // Check if this song is currently playing from this playlist
-                const isCurrentlyPlaying =
-                  currentSong?.id === song.id &&
-                  queueSource === "playlist" &&
-                  queueSourceId === id;
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={songs.map((s) => s.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {songs.map((song, index) => {
+                    const isCurrentlyPlaying =
+                      currentSong?.id === song.id &&
+                      queueSource === 'playlist' &&
+                      queueSourceId === id;
 
-                return (
-                  <Card
-                    key={song.id}
-                    className={cn(
-                      "overflow-hidden transition-colors",
-                      isCurrentlyPlaying
-                        ? "bg-primary/10 border-primary/50 hover:bg-primary/15"
-                        : "hover:bg-accent/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-3 p-3">
-                      {/* Album Cover */}
-                      <button
-                        onClick={() => handlePlaySong(index)}
-                        className="relative shrink-0 w-12 h-12 rounded bg-muted overflow-hidden group"
-                      >
-                        {song.coverUrl ? (
-                          <img
-                            src={song.coverUrl}
-                            alt={song.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full">
-                            <Music className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div
-                          className={cn(
-                            "absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity",
-                            isCurrentlyPlaying
-                              ? "opacity-100"
-                              : "opacity-0 group-hover:opacity-100"
-                          )}
-                        >
-                          <Play
-                            className={cn(
-                              "h-5 w-5",
-                              isCurrentlyPlaying ? "text-primary" : "text-white"
-                            )}
-                          />
-                        </div>
-                      </button>
-
-                      {/* Song Info */}
-                      <button
-                        onClick={() => handlePlaySong(index)}
-                        className="flex-1 min-w-0 text-left"
-                      >
-                        <p
-                          className={cn(
-                            "font-medium truncate",
-                            isCurrentlyPlaying && "text-primary"
-                          )}
-                        >
-                          {song.title}
-                        </p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {song.artist}
-                          {song.album && ` • ${song.album}`}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {formatDuration(song.duration || 0)}
-                          {song.libraryName && (
-                            <>
-                              {" • "}
-                              {I18n.playlists.detail.fromLibrary.replace(
-                                '{0}',
-                                song.libraryName
-                              )}
-                            </>
-                          )}
-                        </p>
-                      </button>
-
-                      {/* Controls */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleMoveUp(index)}
-                          disabled={index === 0}
-                          className="h-8 w-8"
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleMoveDown(index)}
-                          disabled={index === songs.length - 1}
-                          className="h-8 w-8"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemove(song.id, song.title)}
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
+                    return (
+                      <SortableSongItem
+                        key={song.id}
+                        song={song}
+                        index={index}
+                        isCurrentlyPlaying={isCurrentlyPlaying}
+                        onPlay={handlePlaySong}
+                        onRemove={handleRemove}
+                        formatDuration={formatDuration}
+                      />
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>
