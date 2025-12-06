@@ -337,12 +337,6 @@ export function FullPlayer() {
     }
   };
 
-  // Debug: Log current repeatMode when next button is clicked
-  const handleNext = () => {
-    logger.debug('[FullPlayer] Next button clicked, current repeatMode:', repeatMode);
-    next();
-  };
-
   // Use currentSong if available, otherwise fall back to lastPlayedSong from store for exit animation
   const displaySong = currentSong || lastPlayedSong;
 
@@ -475,7 +469,7 @@ export function FullPlayer() {
           {displaySong.coverUrl ? (
             <img
               src={displaySong.coverUrl}
-              alt={`${I18n.player.fullPlayer.albumCoverAlt} - ${displaySong.title}`}
+              alt={I18n.player.fullPlayer.albumCoverAlt}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -559,7 +553,7 @@ export function FullPlayer() {
           <Button
             variant="outline"
             size="icon"
-            onClick={handleNext}
+            onClick={next}
             aria-label={I18n.player.controls.next}
             className="h-14 w-14 rounded-full border-2"
           >
