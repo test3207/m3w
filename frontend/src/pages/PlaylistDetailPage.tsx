@@ -200,7 +200,7 @@ export default function PlaylistDetailPage() {
       setSongs(serverSongs);
 
       toast({
-        variant: 'destructive',
+        variant: "destructive",
         title: I18n.playlists.detail.moveSong.errorTitle,
       });
     }

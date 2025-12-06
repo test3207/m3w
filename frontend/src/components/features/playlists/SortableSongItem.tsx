@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Song } from '@m3w/shared';
 import { I18n } from '@/locales/i18n';
+import { useLocale } from '@/locales/use-locale';
 
 interface SortableSongItemProps {
   song: Song;
@@ -32,6 +33,8 @@ export function SortableSongItem({
   onRemove,
   formatDuration,
 }: SortableSongItemProps) {
+  useLocale(); // Subscribe to locale changes for i18n reactivity
+
   const {
     attributes,
     listeners,
@@ -51,7 +54,7 @@ export function SortableSongItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'overflow-hidden transition-colors touch-none',
+        'group overflow-hidden transition-colors touch-none',
         isDragging && 'opacity-90 shadow-lg scale-[1.02] z-50 ring-2 ring-primary',
         isCurrentlyPlaying
           ? 'bg-primary/10 border-primary/50 hover:bg-primary/15'
