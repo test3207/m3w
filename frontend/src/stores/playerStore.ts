@@ -9,10 +9,20 @@ import { I18n } from '@/locales/i18n';
 
 export type QueueSource = 'library' | 'playlist' | 'all' | null;
 
-// Store previous state for HMR (use window to survive HMR)
+// ============================================================================
+// HMR (Hot Module Replacement) Support
+// ============================================================================
+// During development, Vite's HMR will re-execute this module when changes occur.
+// We use window globals to preserve state and prevent duplicate setup:
+// - __PLAYER_STATE_BACKUP__: Stores player state to restore after HMR
+// - __PLAYER_STORE_LISTENERS_REGISTERED__: Prevents duplicate event listeners
+// - __PLAYER_STORE_INTERVAL_ID__: Tracks sync interval to prevent accumulation
+
 declare global {
   interface Window {
     __PLAYER_STATE_BACKUP__?: PlayerState;
+    __PLAYER_STORE_LISTENERS_REGISTERED__?: boolean;
+    __PLAYER_STORE_INTERVAL_ID__?: ReturnType<typeof setInterval>;
   }
 }
 
@@ -109,13 +119,6 @@ interface PlayerActions {
 
 type PlayerStore = PlayerState & PlayerActions;
 
-// Track if event listeners have been registered (survives HMR via window)
-declare global {
-  interface Window {
-    __PLAYER_STORE_LISTENERS_REGISTERED__?: boolean;
-  }
-}
-
 export const usePlayerStore = create<PlayerStore>((set, get) => {
   // Get AudioPlayer instance
   const audioPlayer = getAudioPlayer();
@@ -161,11 +164,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     });
 
     // Start a timer to update current time and sync isPlaying state
-    // Note: This interval is intentionally never cleaned up because:
-    // 1. playerStore is a singleton that lives for the entire app lifetime
-    // 2. The AudioPlayer instance is preserved across HMR via window global
-    // 3. Zustand stores are not recreated during HMR
-    setInterval(() => {
+    // Track interval ID globally to prevent accumulation during HMR
+    if (window.__PLAYER_STORE_INTERVAL_ID__) {
+      clearInterval(window.__PLAYER_STORE_INTERVAL_ID__);
+    }
+    window.__PLAYER_STORE_INTERVAL_ID__ = setInterval(() => {
       const audioState = audioPlayer.getState();
       const storeState = usePlayerStore.getState();
       

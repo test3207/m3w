@@ -67,7 +67,7 @@ import { useLocale } from '@/locales/use-locale';
 import { logger } from '@/lib/logger-client';
 import { Text } from '@/components/ui/text';
 import { Stack } from '@/components/ui/stack';
-import { RepeatMode } from '@m3w/shared';
+import { RepeatMode, type Song } from '@m3w/shared';
 
 import { GESTURE_CONFIG, ANIMATION_CONFIG, TRANSFORM } from './constants';
 import {
@@ -135,6 +135,9 @@ export function FullPlayer() {
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // Store last song to display during exit animation when currentSong becomes null
+  const lastSongRef = useRef<Song | null>(null);
+  
   // RAF cleanup tracking to prevent memory leaks during rapid open/close
   const rafIdsRef = useRef<number[]>([]);
   
@@ -159,13 +162,18 @@ export function FullPlayer() {
     const wasOpen = prevIsOpenRef.current;
     prevIsOpenRef.current = isOpen;
     
+    // Track if effect was cleaned up to prevent RAF callbacks from running
+    let cancelled = false;
+    
     if (isOpen && !wasOpen) {
       // Opening: start enter animation
       dispatch({ type: AnimationActionType.Open });
       // Use double requestAnimationFrame to ensure 'entering' renders first
       // at translateY(100%), then transition to 'visible' at translateY(0)
       const raf1 = requestAnimationFrame(() => {
+        if (cancelled) return;
         const raf2 = requestAnimationFrame(() => {
+          if (cancelled) return;
           dispatch({ type: AnimationActionType.OpenComplete });
         });
         rafIdsRef.current.push(raf2);
@@ -178,6 +186,7 @@ export function FullPlayer() {
     
     // Cleanup RAF on unmount or isOpen change
     return () => {
+      cancelled = true;
       rafIdsRef.current.forEach(id => cancelAnimationFrame(id));
       rafIdsRef.current = [];
     };
@@ -245,7 +254,8 @@ export function FullPlayer() {
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current || !isDragging) return;
+    // Use touchStartRef as the sole guard to avoid stale closure issues with isDragging
+    if (!touchStartRef.current) return;
 
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartRef.current.x;
@@ -257,7 +267,7 @@ export function FullPlayer() {
     const offsetY = Math.max(0, deltaY * GESTURE_CONFIG.DRAG_RESISTANCE);
 
     setDragOffset({ x: offsetX, y: offsetY });
-  }, [isDragging]);
+  }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!touchStartRef.current) return;
@@ -335,8 +345,16 @@ export function FullPlayer() {
     next();
   };
 
-  // Don't render if hidden (after close animation completes)
-  if (animationPhase === AnimationPhase.Hidden || !currentSong) {
+  // Update lastSongRef when currentSong changes (for exit animation display)
+  if (currentSong) {
+    lastSongRef.current = currentSong;
+  }
+
+  // Use currentSong if available, otherwise fall back to lastSongRef for exit animation
+  const displaySong = currentSong || lastSongRef.current;
+
+  // Don't render if hidden (after close animation completes) or no song to display
+  if (animationPhase === AnimationPhase.Hidden || !displaySong) {
     return null;
   }
 
@@ -461,10 +479,10 @@ export function FullPlayer() {
       {/* Album Cover */}
       <Stack align="center" className="px-8 py-4 shrink-0">
         <div className="aspect-square w-full max-w-[280px] overflow-hidden rounded-lg shadow-2xl">
-          {currentSong.coverUrl ? (
+          {displaySong.coverUrl ? (
             <img
-              src={currentSong.coverUrl}
-              alt={`${I18n.player.fullPlayer.albumCoverAlt} - ${currentSong.title}`}
+              src={displaySong.coverUrl}
+              alt={`${I18n.player.fullPlayer.albumCoverAlt} - ${displaySong.title}`}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -477,13 +495,13 @@ export function FullPlayer() {
 
       {/* Song Info */}
       <Stack gap="xs" align="center" className="px-8 py-4 shrink-0">
-        <Text variant="h3" className="truncate w-full text-center">{currentSong.title}</Text>
+        <Text variant="h3" className="truncate w-full text-center">{displaySong.title}</Text>
         <Text variant="h5" color="muted" className="truncate w-full text-center">
-          {currentSong.artist}
+          {displaySong.artist}
         </Text>
-        {currentSong.album && (
+        {displaySong.album && (
           <Text variant="caption" color="muted" className="truncate w-full text-center">
-            {currentSong.album}
+            {displaySong.album}
           </Text>
         )}
       </Stack>
