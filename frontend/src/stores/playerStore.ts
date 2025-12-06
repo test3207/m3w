@@ -3,6 +3,13 @@ import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
 import { getAudioPlayer, type Track } from '@/lib/audio/player';
 import { prefetchAudioBlob } from '@/lib/audio/prefetch';
+import {
+  registerMediaSessionHandlers,
+  updateMediaSessionMetadata,
+  updateMediaSessionPlaybackState,
+  updateMediaSessionPositionState,
+  clearMediaSessionMetadata,
+} from '@/lib/audio/media-session';
 import { type Song, RepeatMode } from '@m3w/shared';
 import { getStreamUrl } from '@/services/api/main/endpoints';
 import { I18n } from '@/locales/i18n';
@@ -46,6 +53,27 @@ function songToTrack(song: Song): Track {
     mimeType: song.mimeType || undefined,
     audioUrl: getStreamUrl(song.id),
   };
+}
+
+// Update Media Session with current song info
+function updateMediaSessionForSong(song: Song | null): void {
+  if (!song) {
+    clearMediaSessionMetadata();
+    return;
+  }
+
+  updateMediaSessionMetadata({
+    title: song.title,
+    artist: song.artist ?? undefined,
+    album: song.album ?? undefined,
+    coverUrl: song.coverUrl ?? undefined,
+    duration: song.duration ?? undefined,
+  });
+
+  // Initialize position state with duration if available
+  if (typeof song.duration === 'number' && song.duration > 0) {
+    updateMediaSessionPositionState(0, song.duration);
+  }
 }
 
 interface PlayerState {
@@ -124,19 +152,81 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   // Get AudioPlayer instance
   const audioPlayer = getAudioPlayer();
   
-  // Setup event listeners for AudioPlayer state changes (only once)
+  // Setup event listeners and Media Session handlers (only once)
   // This check prevents duplicate listeners during HMR
   if (!window.__PLAYER_STORE_LISTENERS_REGISTERED__) {
     window.__PLAYER_STORE_LISTENERS_REGISTERED__ = true;
+
+    // Register Media Session handlers for lock screen controls
+    // Note: We register handlers once at store creation. The handlers use get()
+    // to access current state, so they always reflect the latest queue/position.
+    registerMediaSessionHandlers({
+      onPlay: () => {
+        const { currentSong, duration, currentTime } = usePlayerStore.getState();
+        if (currentSong) {
+          // Refresh metadata in case it was cleared (reuse helper function)
+          updateMediaSessionForSong(currentSong);
+          // Also update position state when resuming (if valid)
+          if (isFinite(currentTime) && isFinite(duration) && duration > 0) {
+            updateMediaSessionPositionState(currentTime, duration);
+          }
+          audioPlayer.resume();
+        }
+      },
+      onPause: () => {
+        audioPlayer.pause();
+      },
+      onPreviousTrack: () => {
+        // Use usePlayerStore.getState() to call the store's previous() action
+        usePlayerStore.getState().previous();
+      },
+      onNextTrack: () => {
+        // Use usePlayerStore.getState() to call the store's next() action
+        usePlayerStore.getState().next();
+      },
+      onSeekTo: (time: number) => {
+        const { duration } = usePlayerStore.getState();
+        // Validate inputs before seeking
+        if (!isFinite(time) || !isFinite(duration) || duration <= 0) return;
+        const clampedTime = Math.max(0, Math.min(time, duration));
+        audioPlayer.seek(clampedTime);
+        usePlayerStore.setState({ currentTime: clampedTime });
+        updateMediaSessionPositionState(clampedTime, duration);
+      },
+      onSeekBackward: (offset: number) => {
+        const { currentTime, duration } = usePlayerStore.getState();
+        // Validate all inputs before seeking
+        if (!isFinite(offset) || offset <= 0) return;
+        if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
+        const newTime = Math.max(0, currentTime - offset);
+        audioPlayer.seek(newTime);
+        usePlayerStore.setState({ currentTime: newTime });
+        updateMediaSessionPositionState(newTime, duration);
+      },
+      onSeekForward: (offset: number) => {
+        const { currentTime, duration } = usePlayerStore.getState();
+        // Validate all inputs before seeking
+        if (!isFinite(offset) || offset <= 0) return;
+        if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
+        const newTime = Math.min(duration, currentTime + offset);
+        audioPlayer.seek(newTime);
+        usePlayerStore.setState({ currentTime: newTime });
+        updateMediaSessionPositionState(newTime, duration);
+      },
+    });
     
+    // Setup event listeners for AudioPlayer state changes
     audioPlayer.on('play', (state) => {
-      // Use usePlayerStore.setState to always get the latest store instance
       usePlayerStore.setState({ isPlaying: true, currentTime: state.currentTime, duration: state.duration });
+      updateMediaSessionPlaybackState('playing');
       logger.info('AudioPlayer playing');
     });
 
     audioPlayer.on('pause', (state) => {
       usePlayerStore.setState({ isPlaying: false, currentTime: state.currentTime });
+      updateMediaSessionPlaybackState('paused');
+      // Update position state to ensure lock screen reflects current position
+      updateMediaSessionPositionState(state.currentTime, state.duration);
       logger.info('AudioPlayer paused');
     });
 
@@ -181,6 +271,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       // Update time/duration when playing
       if (audioState.isPlaying) {
         usePlayerStore.setState({ currentTime: audioState.currentTime, duration: audioState.duration });
+        
+        // Update Media Session position state for lock screen seek bar
+        updateMediaSessionPositionState(
+          audioState.currentTime,
+          audioState.duration
+        );
       }
     }, 500);
   }
@@ -213,8 +309,19 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       const track = songToTrack(song);
       audioPlayer.play(track);
       set({ currentSong: song, lastPlayedSong: song, isPlaying: true });
+      // Update Media Session metadata for lock screen display
+      updateMediaSessionForSong(song);
       logger.info('Playing song', { songId: song.id, title: song.title });
     } else {
+      // Resume playback and ensure Media Session metadata is restored
+      // (may have been cleared by browser during background/sleep)
+      const { currentSong, duration, currentTime } = get();
+      if (currentSong) {
+        updateMediaSessionForSong(currentSong);
+        if (isFinite(currentTime) && isFinite(duration) && duration > 0) {
+          updateMediaSessionPositionState(currentTime, duration);
+        }
+      }
       audioPlayer.resume();
       set({ isPlaying: true });
     }
@@ -241,6 +348,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
   stop: () => {
     audioPlayer.stop();
+    // Clear Media Session when stopping playback
+    clearMediaSessionMetadata();
     set({
       isPlaying: false,
       currentTime: 0,
@@ -249,11 +358,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
   // Queue management
   setQueue: (songs, startIndex = 0) =>
-    set({
+    set((state) => ({
       queue: songs,
       currentIndex: startIndex,
       currentSong: songs[startIndex] || null,
-    }),
+      lastPlayedSong: songs[startIndex] || state.lastPlayedSong,
+    })),
 
   addToQueue: (song) =>
     set((state) => ({
@@ -275,6 +385,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         queue: newQueue,
         currentIndex: newIndex,
         currentSong: newQueue[newIndex] || null,
+        lastPlayedSong: newQueue[newIndex] || state.lastPlayedSong,
       };
     }),
 
@@ -282,6 +393,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     // Stop audio playback
     const audioPlayer = getAudioPlayer();
     audioPlayer.stop();
+    // Clear Media Session when clearing queue
+    clearMediaSessionMetadata();
     
     return set({
       queue: [],
@@ -346,6 +459,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
       
       audioPlayer.play(preparedTrack);
+      // Update Media Session metadata for the song
+      updateMediaSessionForSong(currentSong);
 
       set({
         queue: songs,
@@ -383,6 +498,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
     // Play the prepared track
     audioPlayer.play(preparedTrack);
+    // Update Media Session metadata for lock screen display
+    updateMediaSessionForSong(currentSong);
 
     set({
       queue: songs,
@@ -481,6 +598,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         currentTime: 0,
         isPlaying: true,
       });
+      // Update Media Session metadata for the new song
+      updateMediaSessionForSong(nextSong);
       logger.info('Playing next song', { 
         index: nextIndex, 
         title: nextSong.title,
@@ -519,6 +638,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         currentTime: 0,
         isPlaying: true,
       });
+      // Update Media Session metadata for the new song
+      updateMediaSessionForSong(prevSong);
       logger.info('Playing previous song', { index: prevIndex, title: prevSong.title });
     }
   },
@@ -542,6 +663,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         currentTime: 0,
         isPlaying: true,
       });
+      // Update Media Session metadata for the new song
+      updateMediaSessionForSong(song);
       logger.info('Seeking to song', { index, title: song.title });
     }
   },
