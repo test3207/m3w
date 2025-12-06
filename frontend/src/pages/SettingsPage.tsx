@@ -16,7 +16,7 @@ import OfflineSettings from "@/components/features/settings/OfflineSettings";
 
 export default function SettingsPage() {
   useLocale();
-  const { user } = useAuthStore();
+  const { user, isGuest } = useAuthStore();
 
   if (!user) {
     return (
@@ -41,8 +41,8 @@ export default function SettingsPage() {
         {/* User Profile Section */}
         <PersonalInfo user={user} />
 
-        {/* Offline Settings Section */}
-        <OfflineSettings />
+        {/* Offline Settings Section - Hidden for guest users */}
+        {!isGuest && <OfflineSettings />}
 
         {/* Storage Management Section */}
         <StorageManager />

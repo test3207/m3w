@@ -10,6 +10,7 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { useUIStore } from "@/stores/uiStore";
+import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import {
   Play,
@@ -64,6 +65,9 @@ export default function LibraryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Check if guest user - cache UI hidden for guests
+  const isGuest = useAuthStore((state) => state.isGuest);
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [sortOption, setSortOption] = useState<SongSortOption>("date-desc");
@@ -467,7 +471,7 @@ export default function LibraryDetailPage() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {I18n.libraries.detail.songsCount.replace('{0}', String(songs.length))}
-          {cacheAvailable && cacheStats.total > 0 && (
+          {!isGuest && cacheAvailable && cacheStats.total > 0 && (
             <span className="ml-2">
               · {I18n.libraries.detail.cache.cachedCount
                   .replace('{0}', String(cacheStats.cached))
@@ -488,7 +492,7 @@ export default function LibraryDetailPage() {
           {I18n.libraries.detail.playAll}
         </Button>
 
-        {cacheAvailable && (
+        {!isGuest && cacheAvailable && (
           <Button
             variant="outline"
             disabled={songs.length === 0 || isSelectionMode || isDownloading}
@@ -629,7 +633,7 @@ export default function LibraryDetailPage() {
                 {/* Duration and Cache Status */}
                 {!isSelectionMode && (
                   <div className="flex items-center gap-2 shrink-0">
-                    {cacheAvailable && (
+                    {!isGuest && cacheAvailable && (
                       <CacheStatusIcon isCached={songCacheStatus[song.id] ?? false} />
                     )}
                     {song.duration && (
