@@ -9,6 +9,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { resolveCoverUrl } from '../lib/cover-url-helper';
+import { RepeatMode } from '@m3w/shared';
 import type { Context } from 'hono';
 
 const app = new Hono();
@@ -249,7 +250,7 @@ app.get('/preferences', async (c: Context) => {
         }
       : {
           shuffleEnabled: false,
-          repeatMode: 'off' as const,
+          repeatMode: RepeatMode.Off,
         };
 
     return c.json({
@@ -512,11 +513,11 @@ app.put('/progress', async (c: Context) => {
 // Helper Functions
 // ============================================================================
 
-function normalizeRepeatMode(value: string | null | undefined): 'off' | 'all' | 'one' {
-  if (!value) return 'off';
+function normalizeRepeatMode(value: string | null | undefined): RepeatMode {
+  if (!value) return RepeatMode.Off;
 
-  const candidate = value as 'off' | 'all' | 'one';
-  return repeatModeValues.includes(candidate) ? candidate : 'off';
+  const candidate = value as RepeatMode;
+  return repeatModeValues.includes(candidate) ? candidate : RepeatMode.Off;
 }
 
 function mapPlaybackContext(

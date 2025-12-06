@@ -44,11 +44,11 @@ export function useAudioPlayer() {
           const queue = getPlayQueue();
           // Map string repeatMode to enum
           const repeatModeMap: Record<string, RepeatMode> = {
-            'off': RepeatMode.OFF,
-            'all': RepeatMode.ALL,
-            'one': RepeatMode.ONE,
+            'off': RepeatMode.Off,
+            'all': RepeatMode.All,
+            'one': RepeatMode.One,
           };
-          queue.setRepeatMode(repeatModeMap[preferences.repeatMode] || RepeatMode.OFF);
+          queue.setRepeatMode(repeatModeMap[preferences.repeatMode] || RepeatMode.Off);
           queue.setShuffle(preferences.shuffleEnabled);
           setQueueState(queue.getState());
         }
@@ -334,13 +334,13 @@ export function useAudioPlayer() {
 
   const persistPreferences = useCallback(
     (preferences: Partial<{ shuffleEnabled: boolean; repeatMode: RepeatMode }>) => {
-      // Convert RepeatMode enum to string for API
-      const apiPreferences: { shuffleEnabled?: boolean; repeatMode?: 'off' | 'all' | 'one' } = {};
+      // Convert local preferences to API input
+      const apiPreferences: { shuffleEnabled?: boolean; repeatMode?: RepeatMode } = {};
       if (preferences.shuffleEnabled !== undefined) {
         apiPreferences.shuffleEnabled = preferences.shuffleEnabled;
       }
       if (preferences.repeatMode !== undefined) {
-        apiPreferences.repeatMode = preferences.repeatMode as 'off' | 'all' | 'one';
+        apiPreferences.repeatMode = preferences.repeatMode;
       }
       void api.main.player.updatePreferences(apiPreferences).catch((error: unknown) => {
         logger.error('Failed to persist playback preferences', error);

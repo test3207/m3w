@@ -594,7 +594,31 @@ export interface Messages {
     unmute: string;
     /** Volume */
     volume: string;
+    fullPlayer: {
+      /** Full screen player */
+      ariaLabel: string;
+      /** Close full player */
+      close: string;
+      /** Album cover */
+      albumCoverAlt: string;
+    };
+    controls: {
+      /** Play */
+      play: string;
+      /** Pause */
+      pause: string;
+      /** Previous track */
+      previous: string;
+      /** Next track */
+      next: string;
+    };
+    progress: {
+      /** Playback progress */
+      ariaLabel: string;
+    };
     repeat: {
+      /** Repeat */
+      label: string;
       /** Repeat off */
       off: string;
       /** Repeat all */
@@ -613,6 +637,10 @@ export interface Messages {
     favorite: {
       /** Favorite */
       label: string;
+      /** Add to favorites */
+      addLabel: string;
+      /** Remove from favorites */
+      removeLabel: string;
       /** Added to Favorites */
       added: string;
       /** Removed from Favorites */
@@ -637,6 +665,8 @@ export interface Messages {
     playQueue: {
       /** Play Queue */
       title: string;
+      /** Open play queue */
+      open: string;
       /** {0} songs */
       songsCount: string;
       /** Playing from: {0} */

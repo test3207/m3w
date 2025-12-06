@@ -15,7 +15,7 @@
  */
 
 import Dexie, { type EntityTable, type Table } from 'dexie';
-import type { Library, Playlist, Song, PlaylistSong, CacheOverride } from '@m3w/shared';
+import { RepeatMode, type Library, type Playlist, type Song, type PlaylistSong, type CacheOverride } from '@m3w/shared';
 import { isGuestUser } from '../offline-proxy/utils';
 
 // ============================================================
@@ -109,7 +109,7 @@ export interface PlayerPreferences {
   userId: string;
   volume: number;
   muted: boolean;
-  repeatMode: 'off' | 'one' | 'all';
+  repeatMode: RepeatMode;
   shuffleEnabled: boolean;
   updatedAt: Date;
 }

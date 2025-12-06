@@ -5,12 +5,10 @@
  */
 
 import { Track } from './player';
+import { RepeatMode } from '@m3w/shared';
 
-export enum RepeatMode {
-  OFF = 'off',
-  ALL = 'all',
-  ONE = 'one',
-}
+// Re-export RepeatMode for convenience
+export { RepeatMode };
 
 export interface QueueState {
   tracks: Track[];
@@ -24,7 +22,7 @@ export class PlayQueue {
   private tracks: Track[] = [];
   private currentIndex: number = -1;
   private shuffleEnabled: boolean = false;
-  private repeatMode: RepeatMode = RepeatMode.OFF;
+  private repeatMode: RepeatMode = RepeatMode.Off;
   private originalOrder: Track[] = [];
   private shuffleOrder: number[] = [];
 
@@ -97,7 +95,7 @@ export class PlayQueue {
     if (this.tracks.length === 0) return null;
 
     // Repeat one - return same track
-    if (this.repeatMode === RepeatMode.ONE) {
+    if (this.repeatMode === RepeatMode.One) {
       return this.getCurrentTrack();
     }
 
@@ -106,7 +104,7 @@ export class PlayQueue {
     // If at end of queue
     if (nextIndex >= this.tracks.length) {
       // Repeat all - go back to start
-      if (this.repeatMode === RepeatMode.ALL) {
+      if (this.repeatMode === RepeatMode.All) {
         nextIndex = 0;
       } else {
         // No repeat - no next track
@@ -128,7 +126,7 @@ export class PlayQueue {
     // If at start of queue
     if (prevIndex < 0) {
       // Wrap to end if repeat is enabled
-      if (this.repeatMode === RepeatMode.ALL) {
+      if (this.repeatMode === RepeatMode.All) {
         prevIndex = this.tracks.length - 1;
       } else {
         // No repeat - restart current track
@@ -146,7 +144,7 @@ export class PlayQueue {
     if (this.tracks.length === 0) return null;
 
     // Repeat one - return same track without changing index
-    if (this.repeatMode === RepeatMode.ONE) {
+    if (this.repeatMode === RepeatMode.One) {
       return this.getCurrentTrack();
     }
 
@@ -155,7 +153,7 @@ export class PlayQueue {
     // If at end of queue
     if (nextIndex >= this.tracks.length) {
       // Repeat all - go back to start
-      if (this.repeatMode === RepeatMode.ALL) {
+      if (this.repeatMode === RepeatMode.All) {
         nextIndex = 0;
       } else {
         // No repeat - no next track
@@ -178,7 +176,7 @@ export class PlayQueue {
     // If at start of queue
     if (prevIndex < 0) {
       // Wrap to end if repeat is enabled
-      if (this.repeatMode === RepeatMode.ALL) {
+      if (this.repeatMode === RepeatMode.All) {
         prevIndex = this.tracks.length - 1;
       } else {
         // No repeat - restart current track (stay at index 0)
@@ -248,7 +246,7 @@ export class PlayQueue {
    * Cycle through repeat modes
    */
   cycleRepeatMode(): RepeatMode {
-    const modes: RepeatMode[] = [RepeatMode.OFF, RepeatMode.ALL, RepeatMode.ONE];
+    const modes: RepeatMode[] = [RepeatMode.Off, RepeatMode.All, RepeatMode.One];
     const currentIndex = modes.indexOf(this.repeatMode);
     this.repeatMode = modes[(currentIndex + 1) % modes.length];
     return this.repeatMode;

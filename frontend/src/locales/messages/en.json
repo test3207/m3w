@@ -327,7 +327,22 @@
     "mute": "Mute",
     "unmute": "Unmute",
     "volume": "Volume",
+    "fullPlayer": {
+      "ariaLabel": "Full screen player",
+      "close": "Close full player",
+      "albumCoverAlt": "Album cover"
+    },
+    "controls": {
+      "play": "Play",
+      "pause": "Pause",
+      "previous": "Previous track",
+      "next": "Next track"
+    },
+    "progress": {
+      "ariaLabel": "Playback progress"
+    },
     "repeat": {
+      "label": "Repeat",
       "off": "Repeat off",
       "all": "Repeat all",
       "one": "Repeat one"
@@ -339,6 +354,8 @@
     },
     "favorite": {
       "label": "Favorite",
+      "addLabel": "Add to favorites",
+      "removeLabel": "Remove from favorites",
       "added": "Added to Favorites",
       "removed": "Removed from Favorites",
       "addError": "Failed to add to Favorites",
@@ -353,6 +370,7 @@
     },
     "playQueue": {
       "title": "Play Queue",
+      "open": "Open play queue",
       "songsCount": "{0} songs",
       "playingFrom": "Playing from: {0}",
       "nowPlaying": "Now Playing",

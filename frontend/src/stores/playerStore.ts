@@ -3,11 +3,10 @@ import { api } from '@/services';
 import { logger } from '@/lib/logger-client';
 import { getAudioPlayer, type Track } from '@/lib/audio/player';
 import { prefetchAudioBlob } from '@/lib/audio/prefetch';
-import type { Song } from '@m3w/shared';
+import { type Song, RepeatMode } from '@m3w/shared';
 import { getStreamUrl } from '@/services/api/main/endpoints';
 import { I18n } from '@/locales/i18n';
 
-export type RepeatMode = 'off' | 'one' | 'all';
 export type QueueSource = 'library' | 'playlist' | 'all' | null;
 
 // Store previous state for HMR (use window to survive HMR)
@@ -129,7 +128,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     const { next, repeatMode } = get();
     logger.info('Track ended, repeatMode:', repeatMode);
     
-    if (repeatMode === 'one') {
+    if (repeatMode === RepeatMode.One) {
       // Replay current track
       const { currentSong } = get();
       if (currentSong) {
@@ -183,7 +182,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   isPlaying: audioState.isPlaying, // Always use AudioPlayer's actual state
   volume: backupState?.volume ?? 0.8,
   isMuted: backupState?.isMuted ?? false,
-  repeatMode: backupState?.repeatMode ?? 'off',
+  repeatMode: backupState?.repeatMode ?? RepeatMode.Off,
   isShuffled: backupState?.isShuffled ?? false,
   currentTime: backupState?.currentTime ?? 0,
   duration: backupState?.duration ?? 0,
@@ -557,7 +556,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
   toggleRepeat: () => {
     const state = get();
-    const modes: RepeatMode[] = ['off', 'all', 'one'];
+    const modes: RepeatMode[] = [RepeatMode.Off, RepeatMode.All, RepeatMode.One];
     const currentIndex = modes.indexOf(state.repeatMode);
     const nextIndex = (currentIndex + 1) % modes.length;
     const nextMode = modes[nextIndex];
