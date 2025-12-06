@@ -217,6 +217,12 @@ export function clearMediaSessionMetadata(): void {
   try {
     navigator.mediaSession.metadata = null;
     navigator.mediaSession.playbackState = 'none';
+    // Also clear position state to prevent stale seek bar
+    try {
+      navigator.mediaSession.setPositionState();
+    } catch {
+      // setPositionState without args may not be supported in all browsers
+    }
   } catch (error) {
     logger.warn('Failed to clear Media Session metadata', { error });
   }

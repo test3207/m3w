@@ -142,8 +142,17 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   // to access current state, so they always reflect the latest queue/position.
   registerMediaSessionHandlers({
     onPlay: () => {
-      const { currentSong } = get();
+      const { currentSong, duration, currentTime } = get();
       if (currentSong) {
+        // Refresh metadata in case it was cleared
+        updateMediaSessionMetadata({
+          title: currentSong.title,
+          artist: currentSong.artist ?? undefined,
+          album: currentSong.album ?? undefined,
+          coverUrl: currentSong.coverUrl ?? undefined,
+        });
+        // Also update position state when resuming
+        updateMediaSessionPositionState(currentTime, duration);
         audioPlayer.resume();
       }
     },
@@ -160,12 +169,17 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     },
     onSeekTo: (time: number) => {
       const { duration } = get();
-      audioPlayer.seek(time);
-      set({ currentTime: time });
-      updateMediaSessionPositionState(time, duration);
+      // Validate inputs before seeking
+      if (!isFinite(time) || !isFinite(duration) || duration <= 0) return;
+      const clampedTime = Math.max(0, Math.min(time, duration));
+      audioPlayer.seek(clampedTime);
+      set({ currentTime: clampedTime });
+      updateMediaSessionPositionState(clampedTime, duration);
     },
     onSeekBackward: (offset: number) => {
       const { currentTime, duration } = get();
+      // Validate duration before seeking
+      if (!isFinite(duration) || duration <= 0) return;
       const newTime = Math.max(0, currentTime - offset);
       audioPlayer.seek(newTime);
       set({ currentTime: newTime });
@@ -173,6 +187,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     },
     onSeekForward: (offset: number) => {
       const { currentTime, duration } = get();
+      // Validate duration before seeking
+      if (!isFinite(duration) || duration <= 0) return;
       const newTime = Math.min(duration, currentTime + offset);
       audioPlayer.seek(newTime);
       set({ currentTime: newTime });
@@ -190,6 +206,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
   audioPlayer.on('pause', (state) => {
     set({ isPlaying: false, currentTime: state.currentTime });
     updateMediaSessionPlaybackState('paused');
+    // Update position state to ensure lock screen reflects current position
+    updateMediaSessionPositionState(state.currentTime, state.duration);
     logger.info('AudioPlayer paused');
   });
 
