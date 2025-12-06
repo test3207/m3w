@@ -62,8 +62,8 @@ export function updateMediaSessionMetadata(track: MediaSessionTrack): void {
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
-      artist: track.artist || '',
-      album: track.album || '',
+      artist: track.artist ?? '',
+      album: track.album ?? '',
       artwork,
     });
 

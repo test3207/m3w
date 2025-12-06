@@ -55,11 +55,16 @@ function updateMediaSessionForSong(song: Song | null): void {
 
   updateMediaSessionMetadata({
     title: song.title,
-    artist: song.artist || undefined,
-    album: song.album || undefined,
-    coverUrl: song.coverUrl || undefined,
-    duration: song.duration || undefined,
+    artist: song.artist ?? undefined,
+    album: song.album ?? undefined,
+    coverUrl: song.coverUrl ?? undefined,
+    duration: song.duration ?? undefined,
   });
+
+  // Initialize position state with duration if available
+  if (typeof song.duration === 'number' && song.duration > 0) {
+    updateMediaSessionPositionState(0, song.duration);
+  }
 }
 
 interface PlayerState {
