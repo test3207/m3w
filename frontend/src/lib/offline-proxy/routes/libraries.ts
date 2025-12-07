@@ -326,10 +326,27 @@ app.post("/:id/songs", async (c: Context) => {
       await db.files.add(fileEntity);
     }
 
-    // 4. Generate song ID (needed for cache URLs)
+    // 4. Check if song already exists in this library (same fileId)
+    const existingSong = await db.songs
+      .where("libraryId")
+      .equals(libraryId)
+      .filter((s) => s.fileId === fileEntity!.id && !s._isDeleted)
+      .first();
+
+    if (existingSong) {
+      return c.json(
+        {
+          success: false,
+          error: "This song already exists in the selected library",
+        },
+        409
+      );
+    }
+
+    // 5. Generate song ID (needed for cache URLs)
     const songId = crypto.randomUUID();
 
-    // 5. Extract cover art if available and cache it
+    // 6. Extract cover art if available and cache it
     let coverUrl: string | null = null;
     if (common.picture && common.picture.length > 0) {
       const picture = common.picture[0];
@@ -342,10 +359,10 @@ app.post("/:id/songs", async (c: Context) => {
       coverUrl = await cacheCoverForOffline(songId, coverBlob);
     }
 
-    // 6. Cache audio file in Cache Storage using unified /api/ URL
+    // 7. Cache audio file in Cache Storage using unified /api/ URL
     const streamUrl = await cacheAudioForOffline(songId, file);
 
-    // 7. Create Song object with sync tracking
+    // 8. Create Song object with sync tracking
     const now = new Date().toISOString();
 
     const songData: OfflineSong = {
@@ -382,21 +399,31 @@ app.post("/:id/songs", async (c: Context) => {
     // Apply sync tracking based on user type
     const song = markDirty(songData, true);
 
-    // 8. Save song to IndexedDB and increment File refCount
-    await db.transaction("rw", [db.songs, db.files], async () => {
+    // 9. Save song to IndexedDB, increment File refCount, and update library songCount
+    await db.transaction("rw", [db.songs, db.files, db.libraries], async () => {
       await db.songs.add(song);
 
       // Increment refCount
       await db.files.update(fileEntity!.id, {
         refCount: fileEntity!.refCount + 1,
       });
+
+      // Increment library songCount (matches backend logic)
+      if (library) {
+        await db.libraries.update(library.id, {
+          songCount: (library.songCount ?? 0) + 1,
+        });
+      }
     });
 
+    // Response structure matches backend: { song }
     return c.json({
       success: true,
       data: {
-        song,
-        isDuplicate: false,
+        song: {
+          ...song,
+          // coverUrl already set in songData
+        },
       },
     });
   } catch (error) {

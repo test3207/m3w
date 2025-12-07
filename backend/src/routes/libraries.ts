@@ -597,8 +597,6 @@ app.post('/:id/songs', async (c) => {
           ...song,
           coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
         },
-        file: fileRecord,
-        isNewFile,
       },
     });
   } catch (error) {

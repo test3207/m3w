@@ -120,6 +120,7 @@ export async function parseStreamingUpload(
 
     const form = formidable({
       maxFileSize: MAX_FILE_SIZE,
+      maxFiles: 1, // Only allow single file upload per request
       maxFields: 20,
       allowEmptyFiles: false,
       hashAlgorithm: 'sha256', // formidable calculates hash for us
