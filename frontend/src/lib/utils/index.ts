@@ -12,5 +12,8 @@ export { formatDuration } from "./format-duration";
 // Hash utilities
 export { calculateFileHash, calculateBufferHash } from "./hash";
 
+// UUID utilities (with fallback for non-secure contexts)
+export { generateUUID } from "./uuid";
+
 // Audio file filter utilities
 export { isAudioFile, filterAudioFiles, isFolderSelectionSupported, getFileName, AUDIO_EXTENSIONS, AUDIO_MIME_TYPES } from "./audio-filter";
