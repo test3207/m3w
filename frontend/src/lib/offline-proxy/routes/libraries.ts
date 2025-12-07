@@ -16,6 +16,7 @@ import { createLibrarySchema, updateLibrarySchema, toLibraryResponse } from "@m3
 import { getUserId, isGuestUser, sortSongsOffline } from "../utils";
 import { parseBlob } from "music-metadata";
 import { calculateFileHash } from "../../utils/hash";
+import { generateUUID } from "../../utils/uuid";
 import { cacheAudioForOffline, cacheCoverForOffline } from "../../pwa/cache-manager";
 import { logger } from "@/lib/logger-client";
 
@@ -141,7 +142,7 @@ app.post("/", async (c: Context) => {
     const userId = getUserId();
 
     const libraryData: OfflineLibrary = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       ...data,
       description: data.description ?? null,
       userId,
@@ -345,7 +346,7 @@ app.post("/:id/songs", async (c: Context) => {
     }
 
     // 5. Generate song ID (needed for cache URLs)
-    const songId = crypto.randomUUID();
+    const songId = generateUUID();
 
     // 6. Extract cover art if available and cache it
     let coverUrl: string | null = null;

@@ -224,6 +224,17 @@ Production deployment should:
 4. Restrict CORS to specific domains
 5. Configure appropriate security policies
 
+## Web Crypto API Compatibility
+
+As of v0.1.1, M3W fully supports HTTP-based LAN access. The following Web Crypto APIs that normally require HTTPS now have fallback implementations:
+
+| API | Fallback | Notes |
+|-----|----------|-------|
+| `crypto.subtle.digest()` | `@aws-crypto/sha256-browser` | Auto-detects secure context, falls back to pure JS |
+| `crypto.randomUUID()` | `crypto.getRandomValues()` based | Standards-compliant UUID v4 generation |
+
+**Performance Note**: The pure JS fallbacks are slower than native implementations. For large file uploads over HTTP LAN, expect slightly longer hash calculation times. HTTPS access will automatically use the faster native APIs.
+
 ## References
 
 - Backend configuration: `backend/.env.example`

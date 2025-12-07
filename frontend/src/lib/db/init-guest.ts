@@ -1,6 +1,7 @@
 import { db } from "./schema";
 import type { OfflineLibrary, OfflinePlaylist } from "./schema";
 import { GUEST_USER_ID } from "../constants/guest";
+import { generateUUID } from "../utils/uuid";
 
 export async function initGuestResources() {
   const userId = GUEST_USER_ID;
@@ -15,7 +16,7 @@ export async function initGuestResources() {
 
   if (!existingLibrary) {
     const defaultLibrary: OfflineLibrary = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: "Default Library",
       description: null,
       userId,
@@ -41,7 +42,7 @@ export async function initGuestResources() {
 
   if (!existingPlaylist) {
     const favoritesPlaylist: OfflinePlaylist = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: "My Favorites",
       description: null,
       userId,

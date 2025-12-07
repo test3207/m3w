@@ -23,6 +23,7 @@ import {
 } from "@m3w/shared";
 import type { ApiResponse, PlaylistReorderResult } from "@m3w/shared";
 import { getUserId, isGuestUser } from "../utils";
+import { generateUUID } from "../../utils/uuid";
 import { logger } from "../../logger-client";
 
 const app = new Hono();
@@ -136,7 +137,7 @@ app.post("/for-library", async (c: Context) => {
 
     const songCount = songIds?.length || 0;
     const playlistData: OfflinePlaylist = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name,
       description: null,
       userId,
@@ -230,7 +231,7 @@ app.post("/", async (c: Context) => {
     const userId = getUserId();
 
     const playlistData: OfflinePlaylist = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       ...data,
       description: data.description ?? null,
       userId,
