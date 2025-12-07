@@ -1,5 +1,11 @@
 /**
  * Libraries Resource Service
+ * 
+ * @related When modifying API methods, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - backend/src/routes/libraries.ts - Backend route handlers
+ * - frontend/src/lib/offline-proxy/routes/libraries.ts - Offline proxy handlers
+ * - frontend/src/services/api/main/endpoints.ts - Endpoint URL definitions
  */
 
 import { mainApiClient } from "../client";
@@ -8,6 +14,28 @@ import type { Library, Song, CreateLibraryInput, UpdateLibraryInput, SongSortOpt
 
 // Re-export shared types for convenience
 export type { CreateLibraryInput, UpdateLibraryInput };
+
+/**
+ * Response data for song upload
+ */
+export interface UploadSongData {
+  song: {
+    id: string;
+    title: string;
+    artist?: string;
+    album?: string;
+    file?: {
+      duration?: number;
+      bitrate?: number;
+    };
+  };
+  file: {
+    id: string;
+    hash: string;
+    duration?: number;
+  };
+  isNewFile: boolean;
+}
 
 export const libraries = {
   /**
@@ -57,5 +85,27 @@ export const libraries = {
    */
   delete: async (id: string): Promise<void> => {
     return mainApiClient.delete(MAIN_API_ENDPOINTS.libraries.delete(id));
+  },
+
+  /**
+   * Upload audio file to library with hash for deduplication
+   * Returns unwrapped data (mainApiClient handles success/error)
+   * 
+   * Uses RESTful endpoint: POST /api/libraries/:libraryId/songs
+   * libraryId is in URL path for early validation before streaming
+   */
+  uploadSong: async (libraryId: string, file: File, hash: string): Promise<UploadSongData> => {
+    const formData = new FormData();
+    
+    // When using webkitdirectory, file.webkitRelativePath contains the folder path
+    // We need to ensure only the pure filename is sent to the server
+    // Create a new File object with just the filename (no path)
+    const pureFileName = file.name;
+    const fileToUpload = new File([file], pureFileName, { type: file.type });
+    
+    formData.append("file", fileToUpload);
+    formData.append("hash", hash);
+
+    return mainApiClient.upload<UploadSongData>(MAIN_API_ENDPOINTS.libraries.uploadSong(libraryId), formData);
   },
 };

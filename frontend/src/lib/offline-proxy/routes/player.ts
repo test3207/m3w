@@ -1,5 +1,11 @@
 /**
  * Player routes for offline-proxy (Guest Mode - IndexedDB backed)
+ * 
+ * @related When modifying routes, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - backend/src/routes/player.ts - Backend route handlers
+ * - frontend/src/services/api/main/endpoints.ts - Frontend endpoint definitions
+ * - frontend/src/services/api/main/resources/player.ts - Frontend API methods
  */
 
 import { Hono } from "hono";

@@ -2,7 +2,7 @@
  * Offline Proxy with Hono
  * 
  * Main router that composes all sub-routers for handling user data routes
- * (libraries, playlists, songs, upload, player) with IndexedDB.
+ * (libraries, playlists, songs, player) with IndexedDB.
  * 
  * Architecture:
  * - Each domain has its own route file in ./routes/
@@ -15,7 +15,6 @@ import {
   libraryRoutes,
   playlistRoutes,
   songRoutes,
-  uploadRoutes,
   playerRoutes,
 } from "./routes";
 
@@ -26,7 +25,6 @@ const app = new Hono().basePath("/api");
 app.route("/libraries", libraryRoutes);
 app.route("/playlists", playlistRoutes);
 app.route("/songs", songRoutes);
-app.route("/upload", uploadRoutes);
 app.route("/player", playerRoutes);
 
 export default app;

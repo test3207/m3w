@@ -6,9 +6,13 @@
  * 2. Router knows which routes can fallback to IndexedDB when offline
  * 3. Clear documentation of which operations work without network
  * 
- * Used by:
- * - frontend/src/lib/api/router.ts - Route requests between backend and offline proxy
- * - frontend/src/lib/offline-proxy/index.ts - Implements offline-capable routes
+ * @related When modifying routes, sync these files:
+ * - backend/src/routes/*.ts - Backend route handlers
+ * - backend/src/index.ts - Backend route registration
+ * - frontend/src/lib/offline-proxy/routes/*.ts - Offline proxy handlers
+ * - frontend/src/lib/offline-proxy/index.ts - Offline proxy registration
+ * - frontend/src/services/api/main/endpoints.ts - Frontend endpoint definitions
+ * - frontend/src/services/api/main/resources/*.ts - Frontend API service methods
  * 
  * Contract enforcement:
  * - Route paths and methods must match between backend and offline-proxy
@@ -64,6 +68,12 @@ export const userDataRoutes: RouteDefinition[] = [
     method: 'GET',
     offlineCapable: true,
     description: 'List songs in library',
+  },
+  {
+    path: '/api/libraries/:id/songs',
+    method: 'POST',
+    offlineCapable: true,
+    description: 'Upload audio file to library (local storage when offline)',
   },
 
   // Playlists
@@ -158,12 +168,6 @@ export const userDataRoutes: RouteDefinition[] = [
     method: 'DELETE',
     offlineCapable: true,
     description: 'Delete song (queued when offline)',
-  },
-  {
-    path: '/api/upload',
-    method: 'POST',
-    offlineCapable: true,
-    description: 'Upload audio file (local storage when offline)',
   },
   {
     path: '/api/songs/:id/stream',

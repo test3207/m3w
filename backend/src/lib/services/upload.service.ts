@@ -34,7 +34,6 @@ const MAX_FILE_SIZE = 500 * 1024 * 1024;
 // ============================================================================
 
 export interface UploadFormFields {
-  libraryId: string;
   hash?: string; // Frontend-calculated hash for verification
   title?: string;
   artist?: string;
@@ -274,24 +273,14 @@ export async function parseStreamingUpload(
         // Extract form fields (formidable v3 returns arrays)
         const parsedFields = extractFields(fields);
 
-        // Validate required fields
-        // NOTE: libraryId validation happens after upload because formidable's streaming
-        // model processes file data before form fields are fully parsed. This is a known
-        // limitation - the temp file is cleaned up if validation fails.
-        if (!parsedFields.libraryId) {
+        // Get file info from formidable
+        const fileArray = files.file;
+        if (!fileArray || fileArray.length === 0) {
           try {
             await minioClient.removeObject(bucketName, tempObjectName);
           } catch (cleanupError) {
             logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
           }
-          reject(new Error('Library ID is required'));
-          return;
-        }
-
-        // Get file info from formidable
-        const fileArray = files.file;
-        if (!fileArray || fileArray.length === 0) {
-          await minioClient.removeObject(bucketName, tempObjectName);
           reject(new Error('No file provided'));
           return;
         }
@@ -452,7 +441,6 @@ function extractFields(fields: formidable.Fields): UploadFormFields {
   };
 
   return {
-    libraryId: getValue('libraryId') || '',
     hash: getValue('hash'),
     title: getValue('title'),
     artist: getValue('artist'),
