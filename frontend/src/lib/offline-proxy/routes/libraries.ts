@@ -338,6 +338,7 @@ app.post("/:id/songs", async (c: Context) => {
         {
           success: false,
           error: "This song already exists in the selected library",
+          details: `"${existingSong.title}" is already in this library`,
         },
         409
       );
