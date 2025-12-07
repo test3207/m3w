@@ -86,7 +86,7 @@ export interface ParsedUpload {
  * 1. formidable parses multipart form data
  * 2. For file parts, create a custom write stream that:
  *    a. Buffers first 1MB for metadata extraction
- *    b. Calculates SHA256 hash incrementally
+ *    b. Hash calculated by formidable (hashAlgorithm: 'sha256')
  *    c. Streams data to MinIO using putObject with stream
  * 3. After upload, extract metadata from head buffer
  * 4. Return hash, metadata, and cover image
@@ -201,8 +201,18 @@ export async function parseStreamingUpload(
       },
     });
 
+    // Track file count to reject multi-file uploads
+    let fileCount = 0;
+
     // Listen to file events to capture metadata
     form.on('fileBegin', (_formName, file) => {
+      fileCount++;
+      if (fileCount > 1) {
+        // Reject multi-file uploads - closure variables are per-request, not per-file
+        logger.warn({ fileCount }, 'Multi-file upload rejected');
+        form.emit('error', new Error('Only single file upload is supported per request'));
+        return;
+      }
       if (file) {
         mimeType = file.mimetype || 'application/octet-stream';
         originalFilename = file.originalFilename || 'unknown';
@@ -218,8 +228,8 @@ export async function parseStreamingUpload(
         if (tempObjectName) {
           try {
             await minioClient.removeObject(bucketName, tempObjectName);
-          } catch {
-            // Ignore cleanup errors
+          } catch (cleanupError) {
+            logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
           }
         }
         reject(new Error(`Upload failed: ${err.message}`));
@@ -239,8 +249,8 @@ export async function parseStreamingUpload(
             try {
               await minioClient.removeObject(bucketName, tempObjectName);
               logger.info({ tempObjectName }, 'Cleaned up temp file after upload error');
-            } catch {
-              // Ignore cleanup errors
+            } catch (cleanupError) {
+              logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
             }
           }
           reject(uploadError);
@@ -251,8 +261,15 @@ export async function parseStreamingUpload(
         const parsedFields = extractFields(fields);
 
         // Validate required fields
+        // NOTE: libraryId validation happens after upload because formidable's streaming
+        // model processes file data before form fields are fully parsed. This is a known
+        // limitation - the temp file is cleaned up if validation fails.
         if (!parsedFields.libraryId) {
-          await minioClient.removeObject(bucketName, tempObjectName);
+          try {
+            await minioClient.removeObject(bucketName, tempObjectName);
+          } catch (cleanupError) {
+            logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
+          }
           reject(new Error('Library ID is required'));
           return;
         }
@@ -294,17 +311,45 @@ export async function parseStreamingUpload(
         try {
           await minioClient.statObject(bucketName, objectName);
           // Object exists, delete temp and use existing
-          await minioClient.removeObject(bucketName, tempObjectName);
+          try {
+            await minioClient.removeObject(bucketName, tempObjectName);
+          } catch (cleanupError) {
+            logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
+          }
           logger.info({ objectName }, 'File already exists in MinIO, reusing');
         } catch {
-          // Object doesn't exist, rename temp to final
-          await minioClient.copyObject(
-            bucketName,
-            objectName,
-            `/${bucketName}/${tempObjectName}`
-          );
-          await minioClient.removeObject(bucketName, tempObjectName);
-          logger.info({ objectName, fileSize }, 'File uploaded to MinIO');
+          // Object doesn't exist, attempt to rename temp to final
+          try {
+            await minioClient.copyObject(
+              bucketName,
+              objectName,
+              `/${bucketName}/${tempObjectName}`
+            );
+            await minioClient.removeObject(bucketName, tempObjectName);
+            logger.info({ objectName, fileSize }, 'File uploaded to MinIO');
+          } catch (copyErr) {
+            // Possible race: object was created by another concurrent upload
+            try {
+              await minioClient.statObject(bucketName, objectName);
+              // Object now exists, treat as deduplication
+              try {
+                await minioClient.removeObject(bucketName, tempObjectName);
+              } catch (cleanupError) {
+                logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
+              }
+              logger.info({ objectName }, 'File already exists after race, reusing');
+            } catch {
+              // If still doesn't exist, propagate error
+              try {
+                await minioClient.removeObject(bucketName, tempObjectName);
+              } catch (cleanupError) {
+                logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
+              }
+              logger.error({ objectName, copyErr }, 'Failed to upload file to MinIO');
+              reject(new Error('Failed to upload file to MinIO'));
+              return;
+            }
+          }
         }
 
         // Extract metadata from head buffer
@@ -366,8 +411,8 @@ export async function parseStreamingUpload(
         if (tempObjectName) {
           try {
             await minioClient.removeObject(bucketName, tempObjectName);
-          } catch {
-            // Ignore cleanup errors
+          } catch (cleanupError) {
+            logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
           }
         }
         reject(error);
