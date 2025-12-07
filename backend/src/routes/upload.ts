@@ -1,57 +1,48 @@
 /**
  * Upload Routes (Hono Backend)
  * Admin routes - online only
+ *
+ * Implements streaming upload with:
+ * - Head buffering for metadata extraction (first 1MB)
+ * - Direct streaming to MinIO (no full file buffering)
+ * - SHA256 hash calculation during streaming
+ *
+ * @see https://github.com/test3207/m3w/issues/120
  */
 
 import { Hono } from 'hono';
-import crypto from 'crypto';
-import { parseBuffer } from 'music-metadata';
-import type { Context } from 'hono';
+import type { HttpBindings } from '@hono/node-server';
 import { prisma } from '../lib/prisma';
-import { getMinioClient } from '../lib/minio-client';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 import { resolveCoverUrl } from '../lib/cover-url-helper';
+import {
+  parseStreamingUpload,
+  uploadCoverImage,
+} from '../lib/services/upload.service';
 
 // Compile-time constant injected by tsup for tree-shaking
 declare const __IS_DEMO_BUILD__: boolean;
 
-const app = new Hono();
+const app = new Hono<{ Bindings: HttpBindings }>();
 
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
 
-// POST /api/upload - Upload audio file to MinIO
-app.post('/', async (c: Context) => {
+// POST /api/upload - Upload audio file to MinIO (streaming)
+app.post('/', async (c) => {
   try {
     const userId = getUserId(c);
-    const formData = await c.req.formData();
-    
-    // 1. Extract file and metadata from form data
-    const file = formData.get('file') as File;
-    const frontendHash = formData.get('hash') as string;
-    const libraryId = formData.get('libraryId') as string;
-    
-    if (!file) {
-      return c.json(
-        {
-          success: false,
-          error: 'No file provided',
-        },
-        400
-      );
-    }
+    const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
 
-    if (!libraryId) {
-      return c.json(
-        {
-          success: false,
-          error: 'Library ID is required',
-        },
-        400
-      );
-    }
+    // Access Node.js IncomingMessage from Hono's env binding
+    const nodeRequest = c.env.incoming;
+
+    // Parse streaming upload using Node.js IncomingMessage
+    const { fields, file } = await parseStreamingUpload(nodeRequest, bucketName);
+
+    const { libraryId } = fields;
 
     // Verify library ownership
     const library = await prisma.library.findFirst({
@@ -68,35 +59,17 @@ app.post('/', async (c: Context) => {
       );
     }
 
-    // 2. Read file buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    logger.info(
+      { fileHash: file.hash, fileName: file.originalFilename, fileSize: file.size },
+      'Processing upload'
+    );
 
-    // 3. Calculate and verify hash
-    const actualHash = crypto.createHash('sha256').update(buffer).digest('hex');
-    
-    if (frontendHash && frontendHash !== actualHash) {
-      logger.warn({ frontendHash, actualHash }, 'Hash mismatch');
-      return c.json(
-        {
-          success: false,
-          error: 'File integrity check failed',
-        },
-        400
-      );
-    }
-
-    const fileHash = actualHash;
-    logger.info({ fileHash, fileName: file.name, fileSize: file.size }, 'Processing upload');
-
-    // 4. Check if file already exists (deduplication)
+    // Check if file already exists (deduplication)
     let fileRecord = await prisma.file.findUnique({
-      where: { hash: fileHash },
+      where: { hash: file.hash },
     });
 
     let isNewFile = false;
-    let coverImageBuffer: Buffer | null = null;
-    let coverImageFormat: string | null = null;
 
     if (!fileRecord) {
       isNewFile = true;
@@ -106,10 +79,13 @@ app.post('/', async (c: Context) => {
         try {
           const { storageTracker } = await import('../lib/demo/storage-tracker');
           if (storageTracker.enabled && !storageTracker.canUpload(file.size)) {
-            return c.json({
-              success: false,
-              error: 'Storage limit reached (5GB). Please wait for next reset.',
-            }, 403);
+            return c.json(
+              {
+                success: false,
+                error: 'Storage limit reached (5GB). Please wait for next reset.',
+              },
+              403
+            );
           }
         } catch {
           // Demo modules not available, continue normally
@@ -117,78 +93,23 @@ app.post('/', async (c: Context) => {
         }
       }
 
-      // 5. Extract metadata using music-metadata
-      let metadata: {
-        duration?: number;
-        bitrate?: number;
-        sampleRate?: number;
-        channels?: number;
-      } = {};
-
-      try {
-        const parsed = await parseBuffer(buffer, { mimeType: file.type });
-        metadata = {
-          duration: parsed.format.duration ? Math.floor(parsed.format.duration) : undefined,
-          bitrate: parsed.format.bitrate ? Math.floor(parsed.format.bitrate / 1000) : undefined,
-          sampleRate: parsed.format.sampleRate,
-          channels: parsed.format.numberOfChannels,
-        };
-        
-        // Extract cover art from ID3 tags
-        if (parsed.common.picture && parsed.common.picture.length > 0) {
-          const picture = parsed.common.picture[0];
-          coverImageBuffer = Buffer.from(picture.data);
-          coverImageFormat = picture.format; // e.g., 'image/jpeg', 'image/png'
-          logger.info({ format: coverImageFormat, size: coverImageBuffer.length }, 'Cover art extracted');
-        }
-        
-        logger.info(metadata, 'Metadata extracted');
-      } catch (error) {
-        logger.warn({ error }, 'Failed to extract metadata');
-      }
-
-      // 6. Upload to MinIO
-      const minioClient = getMinioClient();
-      const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
-      const objectName = `files/${fileHash}${getFileExtension(file.name)}`;
-
-      // Ensure bucket exists
-      const bucketExists = await minioClient.bucketExists(bucketName);
-      if (!bucketExists) {
-        await minioClient.makeBucket(bucketName);
-        logger.info({ bucketName }, 'Created bucket');
-      }
-
-      // Upload file
-      await minioClient.putObject(
-        bucketName,
-        objectName,
-        buffer,
-        buffer.length,
-        {
-          'Content-Type': file.type,
-        }
-      );
-
-      logger.info({ objectName }, 'File uploaded to MinIO');
-
-      // 7. Create File record
+      // Create File record
       fileRecord = await prisma.file.create({
         data: {
-          hash: fileHash,
-          path: objectName,
+          hash: file.hash,
+          path: file.objectName,
           size: file.size,
-          mimeType: file.type,
-          duration: metadata.duration,
-          bitrate: metadata.bitrate,
-          sampleRate: metadata.sampleRate,
-          channels: metadata.channels,
+          mimeType: file.mimeType,
+          duration: file.metadata.duration,
+          bitrate: file.metadata.bitrate,
+          sampleRate: file.metadata.sampleRate,
+          channels: file.metadata.channels,
           refCount: 0,
         },
       });
 
       logger.info({ fileId: fileRecord.id }, 'File record created');
-      
+
       // Increment storage usage (Demo mode only)
       if (__IS_DEMO_BUILD__) {
         try {
@@ -205,37 +126,17 @@ app.post('/', async (c: Context) => {
       logger.info({ fileId: fileRecord.id }, 'File already exists, reusing');
     }
 
-    // 8. Upload cover image to MinIO if extracted
+    // Upload cover image to MinIO if extracted
     let coverUrl: string | null = null;
-    if (isNewFile && coverImageBuffer && coverImageFormat) {
+    if (isNewFile && file.coverImage) {
       try {
-        const minioClient = getMinioClient();
-        const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
-        
-        // Determine file extension from MIME type
-        const coverExt = coverImageFormat === 'image/png' ? 'png' : 'jpg';
-        const coverObjectName = `covers/${fileHash}.${coverExt}`;
-        
-        // Upload cover image
-        await minioClient.putObject(
-          bucketName,
-          coverObjectName,
-          coverImageBuffer,
-          coverImageBuffer.length,
-          {
-            'Content-Type': coverImageFormat,
-          }
-        );
-        
-        logger.info({ coverObjectName }, 'Cover image uploaded to MinIO');
-        // Store as relative path - frontend will use /api/songs/:id/cover
-        coverUrl = coverObjectName;
+        coverUrl = await uploadCoverImage(file.coverImage, file.hash, bucketName);
       } catch (error) {
         logger.warn({ error }, 'Failed to upload cover image');
       }
     }
 
-    // 9. Extract user-provided metadata
+    // Build user metadata
     const userMetadata: {
       libraryId: string;
       title: string;
@@ -250,27 +151,29 @@ app.post('/', async (c: Context) => {
       discNumber?: number;
     } = {
       libraryId,
-      title: (formData.get('title') as string) || file.name.replace(/\.[^.]+$/, ''),
+      title: fields.title || file.originalFilename.replace(/\.[^.]+$/, ''),
     };
 
-    if (formData.get('artist')) userMetadata.artist = formData.get('artist') as string;
-    if (formData.get('album')) userMetadata.album = formData.get('album') as string;
-    if (formData.get('albumArtist')) userMetadata.albumArtist = formData.get('albumArtist') as string;
-    if (formData.get('genre')) userMetadata.genre = formData.get('genre') as string;
-    if (formData.get('composer')) userMetadata.composer = formData.get('composer') as string;
-    
+    if (fields.artist) userMetadata.artist = fields.artist;
+    if (fields.album) userMetadata.album = fields.album;
+    if (fields.albumArtist) userMetadata.albumArtist = fields.albumArtist;
+    if (fields.genre) userMetadata.genre = fields.genre;
+    if (fields.composer) userMetadata.composer = fields.composer;
+
     // Use extracted cover if available, otherwise user-provided URL
     if (coverUrl) {
       userMetadata.coverUrl = coverUrl;
-    } else if (formData.get('coverUrl')) {
-      userMetadata.coverUrl = formData.get('coverUrl') as string;
+    } else if (fields.coverUrl) {
+      userMetadata.coverUrl = fields.coverUrl;
     }
-    
-    if (formData.get('year')) userMetadata.year = parseInt(formData.get('year') as string, 10);
-    if (formData.get('trackNumber')) userMetadata.trackNumber = parseInt(formData.get('trackNumber') as string, 10);
-    if (formData.get('discNumber')) userMetadata.discNumber = parseInt(formData.get('discNumber') as string, 10);
 
-    // 10. Check if song already exists in this library
+    if (fields.year) userMetadata.year = parseInt(fields.year, 10);
+    if (fields.trackNumber)
+      userMetadata.trackNumber = parseInt(fields.trackNumber, 10);
+    if (fields.discNumber)
+      userMetadata.discNumber = parseInt(fields.discNumber, 10);
+
+    // Check if song already exists in this library
     const existingSong = await prisma.song.findFirst({
       where: {
         libraryId,
@@ -282,7 +185,10 @@ app.post('/', async (c: Context) => {
     });
 
     if (existingSong) {
-      logger.info({ songId: existingSong.id, libraryId }, 'Song already exists in this library');
+      logger.info(
+        { songId: existingSong.id, libraryId },
+        'Song already exists in this library'
+      );
       return c.json(
         {
           success: false,
@@ -293,7 +199,7 @@ app.post('/', async (c: Context) => {
       );
     }
 
-    // 11. Create Song record, increment refCount and library songCount
+    // Create Song record, increment refCount and library songCount
     const song = await prisma.$transaction(async (tx) => {
       // Create song
       const newSong = await tx.song.create({
@@ -336,7 +242,9 @@ app.post('/', async (c: Context) => {
     });
   } catch (error) {
     logger.error(error, 'Upload failed');
-    logger.error(`Error details: ${error instanceof Error ? error.stack : String(error)}`);
+    logger.error(
+      `Error details: ${error instanceof Error ? error.stack : String(error)}`
+    );
     return c.json(
       {
         success: false,
@@ -347,13 +255,5 @@ app.post('/', async (c: Context) => {
     );
   }
 });
-
-/**
- * Helper function to extract file extension
- */
-function getFileExtension(filename: string): string {
-  const match = filename.match(/\.[^.]+$/);
-  return match ? match[0] : '';
-}
 
 export default app;
