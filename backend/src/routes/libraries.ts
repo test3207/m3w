@@ -22,6 +22,7 @@ import {
   parseStreamingUpload,
   uploadCoverImage,
 } from '../lib/services/upload.service';
+import { getMinioClient } from '../lib/minio-client';
 import {
   createLibrarySchema,
   updateLibrarySchema,
@@ -430,7 +431,10 @@ app.post('/:id/songs', async (c) => {
       where: { hash: file.hash },
     });
 
+    let isNewFile = false;
+
     if (!fileRecord) {
+      isNewFile = true;
 
       // Check storage limit before processing (Demo mode only)
       if (__IS_DEMO_BUILD__) {
