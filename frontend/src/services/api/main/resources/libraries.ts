@@ -16,25 +16,10 @@ import type { Library, Song, CreateLibraryInput, UpdateLibraryInput, SongSortOpt
 export type { CreateLibraryInput, UpdateLibraryInput };
 
 /**
- * Response data for song upload
+ * Response data for song upload (matches backend: { song })
  */
 export interface UploadSongData {
-  song: {
-    id: string;
-    title: string;
-    artist?: string;
-    album?: string;
-    file?: {
-      duration?: number;
-      bitrate?: number;
-    };
-  };
-  file: {
-    id: string;
-    hash: string;
-    duration?: number;
-  };
-  isNewFile: boolean;
+  song: Song & { coverUrl?: string };
 }
 
 export const libraries = {

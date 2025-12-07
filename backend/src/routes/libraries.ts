@@ -430,16 +430,21 @@ app.post('/:id/songs', async (c) => {
       where: { hash: file.hash },
     });
 
-    let isNewFile = false;
-
     if (!fileRecord) {
-      isNewFile = true;
 
       // Check storage limit before processing (Demo mode only)
       if (__IS_DEMO_BUILD__) {
         try {
           const { storageTracker } = await import('../lib/demo/storage-tracker');
           if (storageTracker.enabled && !storageTracker.canUpload(file.size)) {
+            // Clean up uploaded file from MinIO before returning
+            try {
+              const minioClient = getMinioClient();
+              await minioClient.removeObject(bucketName, file.objectName);
+              logger.info({ objectName: file.objectName }, 'Cleaned up file after storage limit exceeded');
+            } catch (cleanupError) {
+              logger.warn({ error: cleanupError }, 'Failed to clean up file after storage limit check');
+            }
             return c.json(
               {
                 success: false,
