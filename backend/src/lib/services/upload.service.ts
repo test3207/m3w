@@ -130,10 +130,16 @@ export async function parseStreamingUpload(
       hashAlgorithm: 'sha256', // formidable calculates hash for us
 
       // Custom file write stream handler - the key to streaming upload
-      fileWriteStreamHandler: (file?: VolatileFile): Writable => {
-        // Only stream the audio file, buffer cover file normally
-        if (file && file.originalFilename && !file.originalFilename.startsWith('cover')) {
-          // This is the audio file - stream it to MinIO
+      fileWriteStreamHandler: (file?: VolatileFile): Writable | undefined => {
+        // Only stream the audio file, let formidable buffer cover file normally
+        // In our FormData, audio file is named 'file', cover is named 'cover'
+        // formidable's fileWriteStreamHandler is called before we know the form field name
+        // so we need to check if this is being called for streaming or not
+        // The solution: Only return custom handler for the first file (audio)
+        // and return undefined for subsequent files (cover) to use default buffering
+        
+        if (!uploadPromise) {
+          // This is the first file (audio file) - stream it to MinIO
           
           // Generate temporary object name (will rename after hash is known from formidable)
           const tempId = crypto.randomUUID();
@@ -194,8 +200,8 @@ export async function parseStreamingUpload(
           return writeStream;
         }
         
-        // For cover file or other files, return null to use default buffering
-        return null as unknown as Writable;
+        // For cover file or other files, return undefined to use default buffering
+        return undefined;
       },
     });
 
