@@ -53,7 +53,7 @@ export const api = {
  * const playlist = await playlists.getById(id);
  * ```
  */
-export { libraries, playlists, songs, upload, player, auth };
+export { libraries, playlists, songs, player, auth };
 
 /**
  * Re-export types for convenience
@@ -61,6 +61,5 @@ export { libraries, playlists, songs, upload, player, auth };
 export type * from "./api/main/resources/libraries";
 export type * from "./api/main/resources/playlists";
 export type * from "./api/main/resources/songs";
-export type * from "./api/main/resources/upload";
 export type * from "./api/main/resources/player";
 export type * from "./api/main/resources/auth";
