@@ -26,6 +26,7 @@ import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { eventBus, EVENTS } from "@/lib/events";
 import { calculateFileHash } from "@/lib/utils/hash";
+import { extractAudioMetadata } from "@/lib/utils/metadata-extractor";
 import { api } from "@/services";
 import type { LibraryOption } from "@/types/models";
 import { LibraryBig } from "lucide-react";
@@ -110,8 +111,16 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
     );
 
     const { file } = item;
+    
+    // Extract metadata and cover art before upload
+    logger.info("Extracting metadata for upload", { fileName: file.name });
+    const metadata = await extractAudioMetadata(file);
+    
+    // Calculate hash for deduplication
     const hash = await calculateFileHash(file);
-    const data = await api.main.libraries.uploadSong(libraryId, file, hash);
+    
+    // Upload file with all metadata
+    const data = await api.main.libraries.uploadSong(libraryId, file, hash, metadata);
     const songTitle = data.song.title || file.name;
 
     setFiles((prev) =>

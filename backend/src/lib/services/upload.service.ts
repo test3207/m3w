@@ -2,12 +2,13 @@
  * Streaming Upload Service
  *
  * Implements streaming file upload with:
- * - Head buffering for metadata extraction (first 1MB)
- * - Direct streaming to MinIO (remaining data)
- * - SHA256 hash calculation during streaming
- * - Cover art extraction from audio files
+ * - Direct streaming to MinIO (no head buffering)
+ * - SHA256 hash calculation during streaming (via formidable)
+ * - Metadata provided by frontend via FormData
+ * - Cover art provided by frontend as separate blob
  *
- * @see https://github.com/test3207/m3w/issues/120
+ * Refactored: Metadata extraction moved to frontend
+ * @see https://github.com/test3207/m3w/issues/125
  */
 
 import { PassThrough, Writable } from 'node:stream';
@@ -15,16 +16,12 @@ import type { IncomingMessage } from 'node:http';
 import crypto from 'node:crypto';
 import formidable from 'formidable';
 import type VolatileFile from 'formidable/VolatileFile';
-import { parseBuffer } from 'music-metadata';
 import { getMinioClient } from '../minio-client';
 import { logger } from '../logger';
 
 // ============================================================================
 // Constants
 // ============================================================================
-
-/** Size of head buffer for metadata extraction (1MB) */
-const HEAD_BUFFER_SIZE = 1024 * 1024;
 
 /** Maximum file size (500MB) */
 const MAX_FILE_SIZE = 500 * 1024 * 1024;
@@ -45,6 +42,11 @@ export interface UploadFormFields {
   year?: string;
   trackNumber?: string;
   discNumber?: string;
+  // Technical metadata (from frontend extraction)
+  duration?: string;
+  bitrate?: string;
+  sampleRate?: string;
+  channels?: string;
 }
 
 export interface AudioMetadata {
@@ -65,13 +67,14 @@ export interface StreamingUploadResult {
   size: number;
   mimeType: string;
   metadata: AudioMetadata;
-  coverImage: CoverImage | null;
+  coverImage: CoverImage | null; // From frontend FormData
   originalFilename: string;
 }
 
 export interface ParsedUpload {
   fields: UploadFormFields;
   file: StreamingUploadResult;
+  coverFile?: VolatileFile; // Cover file from FormData
 }
 
 // ============================================================================
@@ -83,12 +86,14 @@ export interface ParsedUpload {
  *
  * Flow:
  * 1. formidable parses multipart form data
- * 2. For file parts, create a custom write stream that:
- *    a. Buffers first 1MB for metadata extraction
- *    b. Hash calculated by formidable (hashAlgorithm: 'sha256')
- *    c. Streams data to MinIO using putObject with stream
- * 3. After upload, extract metadata from head buffer
- * 4. Return hash, metadata, and cover image
+ * 2. For audio file part, create a custom write stream that:
+ *    a. Hash calculated by formidable (hashAlgorithm: 'sha256')
+ *    b. Streams data directly to MinIO using putObject with stream
+ * 3. For cover file part (optional), buffer it in memory
+ * 4. Extract metadata from FormData fields (provided by frontend)
+ * 5. Return hash, metadata, and cover image
+ *
+ * No head buffering needed - metadata comes from frontend!
  */
 export async function parseStreamingUpload(
   req: IncomingMessage,
@@ -111,7 +116,6 @@ export async function parseStreamingUpload(
     let fileSize = 0;
     let mimeType = '';
     let originalFilename = '';
-    let headBuffer: Buffer | null = null;
     let tempObjectName = '';
     let uploadError: Error | null = null;
 
@@ -120,94 +124,92 @@ export async function parseStreamingUpload(
 
     const form = formidable({
       maxFileSize: MAX_FILE_SIZE,
-      maxFiles: 1, // Only allow single file upload per request
+      maxFiles: 2, // Audio file + optional cover file
       maxFields: 20,
       allowEmptyFiles: false,
       hashAlgorithm: 'sha256', // formidable calculates hash for us
 
       // Custom file write stream handler - the key to streaming upload
-      fileWriteStreamHandler: (_file?: VolatileFile): Writable => {
-        // Generate temporary object name (will rename after hash is known from formidable)
-        const tempId = crypto.randomUUID();
-        tempObjectName = `temp/${tempId}`;
+      fileWriteStreamHandler: (file?: VolatileFile): Writable => {
+        // Only stream the audio file, buffer cover file normally
+        if (file && file.originalFilename && !file.originalFilename.startsWith('cover')) {
+          // This is the audio file - stream it to MinIO
+          
+          // Generate temporary object name (will rename after hash is known from formidable)
+          const tempId = crypto.randomUUID();
+          tempObjectName = `temp/${tempId}`;
 
-        logger.info({ tempObjectName }, 'Starting streaming upload');
+          logger.info({ tempObjectName }, 'Starting streaming upload');
 
-        const passThrough = new PassThrough();
+          const passThrough = new PassThrough();
+          let uploadedSize = 0;
 
-        // Head buffering state (for metadata extraction)
-        const headChunks: Buffer[] = [];
-        let headBytesBuffered = 0;
-        let uploadedSize = 0;
+          // Create a writable stream that pipes to MinIO
+          const writeStream = new Writable({
+            write(chunk: Buffer, _encoding, callback) {
+              uploadedSize += chunk.length;
 
-        // Create a writable stream that handles everything
-        const writeStream = new Writable({
-          write(chunk: Buffer, _encoding, callback) {
-            uploadedSize += chunk.length;
+              // Write to passThrough for MinIO with proper backpressure handling
+              const canContinue = passThrough.write(chunk);
+              if (canContinue) {
+                callback();
+              } else {
+                // Wait for drain event before accepting more data
+                passThrough.once('drain', callback);
+              }
+            },
 
-            // Buffer head portion (first 1MB for metadata extraction)
-            if (headBytesBuffered < HEAD_BUFFER_SIZE) {
-              const remaining = HEAD_BUFFER_SIZE - headBytesBuffered;
-              const headPortion = chunk.subarray(0, Math.min(chunk.length, remaining));
-              headChunks.push(headPortion);
-              headBytesBuffered += headPortion.length;
+            final(callback) {
+              fileSize = uploadedSize;
+              logger.info({ fileSize }, 'File streaming complete');
+
+              // End the passThrough stream
+              passThrough.end(callback);
+            },
+
+            destroy(err, callback) {
+              passThrough.destroy(err || undefined);
+              callback(err);
+            },
+          });
+
+          // Start MinIO upload with the passThrough stream (just upload to temp, rename later)
+          uploadPromise = (async () => {
+            try {
+              await minioClient.putObject(
+                bucketName,
+                tempObjectName,
+                passThrough,
+                undefined, // size unknown for streaming
+                { 'Content-Type': 'application/octet-stream' }
+              );
+              logger.info({ tempObjectName }, 'Temp file uploaded to MinIO');
+            } catch (error) {
+              uploadError = error instanceof Error ? error : new Error(String(error));
+              logger.error({ error, tempObjectName }, 'Failed to upload to MinIO');
+              throw error;
             }
+          })();
 
-            // Write to passThrough for MinIO with proper backpressure handling
-            const canContinue = passThrough.write(chunk);
-            if (canContinue) {
-              callback();
-            } else {
-              // Wait for drain event before accepting more data
-              passThrough.once('drain', callback);
-            }
-          },
-
-          final(callback) {
-            fileSize = uploadedSize;
-            headBuffer = Buffer.concat(headChunks);
-
-            logger.info({ fileSize, headBufferSize: headBuffer.length }, 'File streaming complete');
-
-            // End the passThrough stream
-            passThrough.end(callback);
-          },
-
-          destroy(err, callback) {
-            passThrough.destroy(err || undefined);
-            callback(err);
-          },
-        });
-
-        // Start MinIO upload with the passThrough stream (just upload to temp, rename later)
-        uploadPromise = (async () => {
-          try {
-            await minioClient.putObject(
-              bucketName,
-              tempObjectName,
-              passThrough,
-              undefined, // size unknown for streaming
-              { 'Content-Type': 'application/octet-stream' }
-            );
-            logger.info({ tempObjectName }, 'Temp file uploaded to MinIO');
-          } catch (error) {
-            uploadError = error instanceof Error ? error : new Error(String(error));
-            logger.error({ error, tempObjectName }, 'Failed to upload to MinIO');
-            throw error;
-          }
-        })();
-
-        return writeStream;
+          return writeStream;
+        }
+        
+        // For cover file or other files, return null to use default buffering
+        return null as unknown as Writable;
       },
     });
 
     // Listen to file events to capture metadata
-    // Note: maxFiles: 1 in formidable options handles multi-file rejection
-    form.on('fileBegin', (_formName, file) => {
-      if (file) {
+    // Note: maxFiles: 2 in formidable options (audio + optional cover)
+    form.on('fileBegin', (formName, file) => {
+      if (file && formName === 'file') {
+        // Audio file
         mimeType = file.mimetype || 'application/octet-stream';
         originalFilename = file.originalFilename || 'unknown';
-        logger.info({ originalFilename, mimeType }, 'File upload started');
+        logger.info({ originalFilename, mimeType }, 'Audio file upload started');
+      } else if (file && formName === 'cover') {
+        // Cover file
+        logger.info({ originalFilename: file.originalFilename }, 'Cover file upload started');
       }
     });
 
@@ -333,44 +335,43 @@ export async function parseStreamingUpload(
           }
         }
 
-        // Extract metadata from head buffer
+        // Extract metadata from FormData fields (provided by frontend)
         let metadata: AudioMetadata = {};
         let coverImage: CoverImage | null = null;
 
-        if (headBuffer && headBuffer.length > 0) {
+        // Get metadata from FormData
+        if (parsedFields.duration) {
+          metadata.duration = parseInt(parsedFields.duration, 10);
+        }
+        if (parsedFields.bitrate) {
+          metadata.bitrate = parseInt(parsedFields.bitrate, 10);
+        }
+        if (parsedFields.sampleRate) {
+          metadata.sampleRate = parseInt(parsedFields.sampleRate, 10);
+        }
+        if (parsedFields.channels) {
+          metadata.channels = parseInt(parsedFields.channels, 10);
+        }
+
+        logger.info(metadata, 'Metadata from frontend FormData');
+
+        // Get cover image from FormData if provided
+        const coverArray = files.cover;
+        if (coverArray && coverArray.length > 0) {
+          const coverFile = coverArray[0];
           try {
-            const parsed = await parseBuffer(headBuffer, {
-              mimeType: mimeType,
-              size: fileSize,
-            });
-
-            metadata = {
-              duration: parsed.format.duration
-                ? Math.floor(parsed.format.duration)
-                : undefined,
-              bitrate: parsed.format.bitrate
-                ? Math.floor(parsed.format.bitrate / 1000)
-                : undefined,
-              sampleRate: parsed.format.sampleRate,
-              channels: parsed.format.numberOfChannels,
+            const fs = await import('fs/promises');
+            const coverBuffer = await fs.readFile(coverFile.filepath);
+            coverImage = {
+              buffer: coverBuffer,
+              format: coverFile.mimetype || 'image/jpeg',
             };
-
-            // Extract cover art
-            if (parsed.common.picture && parsed.common.picture.length > 0) {
-              const picture = parsed.common.picture[0];
-              coverImage = {
-                buffer: Buffer.from(picture.data),
-                format: picture.format,
-              };
-              logger.info(
-                { format: coverImage.format, size: coverImage.buffer.length },
-                'Cover art extracted from head buffer'
-              );
-            }
-
-            logger.info(metadata, 'Metadata extracted from head buffer');
+            logger.info(
+              { format: coverImage.format, size: coverImage.buffer.length },
+              'Cover art from frontend FormData'
+            );
           } catch (error) {
-            logger.warn({ error }, 'Failed to extract metadata from head buffer');
+            logger.warn({ error }, 'Failed to read cover file');
           }
         }
 
@@ -430,6 +431,11 @@ function extractFields(fields: formidable.Fields): UploadFormFields {
     year: getValue('year'),
     trackNumber: getValue('trackNumber'),
     discNumber: getValue('discNumber'),
+    // Technical metadata from frontend
+    duration: getValue('duration'),
+    bitrate: getValue('bitrate'),
+    sampleRate: getValue('sampleRate'),
+    channels: getValue('channels'),
   };
 }
 

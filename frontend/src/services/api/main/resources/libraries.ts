@@ -73,13 +73,38 @@ export const libraries = {
   },
 
   /**
-   * Upload audio file to library with hash for deduplication
+   * Upload audio file to library with hash and metadata for deduplication
    * Returns unwrapped data (mainApiClient handles success/error)
    * 
    * Uses RESTful endpoint: POST /api/libraries/:libraryId/songs
    * libraryId is in URL path for early validation before streaming
+   * 
+   * @param libraryId - Target library ID
+   * @param file - Audio file to upload
+   * @param hash - SHA256 hash for deduplication
+   * @param metadata - Extracted metadata including cover art
    */
-  uploadSong: async (libraryId: string, file: File, hash: string): Promise<UploadSongData> => {
+  uploadSong: async (
+    libraryId: string, 
+    file: File, 
+    hash: string,
+    metadata?: {
+      title?: string;
+      artist?: string;
+      album?: string;
+      albumArtist?: string;
+      genre?: string;
+      composer?: string;
+      year?: string;
+      trackNumber?: string;
+      discNumber?: string;
+      duration?: number;
+      bitrate?: number;
+      sampleRate?: number;
+      channels?: number;
+      coverBlob?: Blob;
+    }
+  ): Promise<UploadSongData> => {
     const formData = new FormData();
     
     // When using webkitdirectory, file.webkitRelativePath contains the folder path
@@ -90,6 +115,28 @@ export const libraries = {
     
     formData.append("file", fileToUpload);
     formData.append("hash", hash);
+    
+    // Append metadata fields if provided
+    if (metadata) {
+      if (metadata.title) formData.append("title", metadata.title);
+      if (metadata.artist) formData.append("artist", metadata.artist);
+      if (metadata.album) formData.append("album", metadata.album);
+      if (metadata.albumArtist) formData.append("albumArtist", metadata.albumArtist);
+      if (metadata.genre) formData.append("genre", metadata.genre);
+      if (metadata.composer) formData.append("composer", metadata.composer);
+      if (metadata.year) formData.append("year", metadata.year);
+      if (metadata.trackNumber) formData.append("trackNumber", metadata.trackNumber);
+      if (metadata.discNumber) formData.append("discNumber", metadata.discNumber);
+      if (metadata.duration !== undefined) formData.append("duration", metadata.duration.toString());
+      if (metadata.bitrate !== undefined) formData.append("bitrate", metadata.bitrate.toString());
+      if (metadata.sampleRate !== undefined) formData.append("sampleRate", metadata.sampleRate.toString());
+      if (metadata.channels !== undefined) formData.append("channels", metadata.channels.toString());
+      
+      // Append cover blob if provided
+      if (metadata.coverBlob) {
+        formData.append("cover", metadata.coverBlob, "cover.jpg");
+      }
+    }
 
     return mainApiClient.upload<UploadSongData>(MAIN_API_ENDPOINTS.libraries.uploadSong(libraryId), formData);
   },
