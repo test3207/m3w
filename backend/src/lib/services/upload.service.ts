@@ -106,6 +106,9 @@ export async function parseStreamingUpload(
 
   return new Promise((resolve, reject) => {
     // State for file processing
+    // IMPORTANT: This implementation assumes single-file upload per request.
+    // The frontend sends one file at a time (see frontend/src/components/features/upload/).
+    // For multi-file support, these variables would need to be per-file (e.g., using a Map).
     let fileSize = 0;
     let mimeType = '';
     let originalFilename = '';
@@ -150,8 +153,14 @@ export async function parseStreamingUpload(
               headBytesBuffered += headPortion.length;
             }
 
-            // Write to passThrough for MinIO
-            passThrough.write(chunk, callback);
+            // Write to passThrough for MinIO with proper backpressure handling
+            const canContinue = passThrough.write(chunk);
+            if (canContinue) {
+              callback();
+            } else {
+              // Wait for drain event before accepting more data
+              passThrough.once('drain', callback);
+            }
           },
 
           final(callback) {
@@ -225,6 +234,15 @@ export async function parseStreamingUpload(
 
         // Check for upload errors
         if (uploadError) {
+          // Clean up temp file on upload error
+          if (tempObjectName) {
+            try {
+              await minioClient.removeObject(bucketName, tempObjectName);
+              logger.info({ tempObjectName }, 'Cleaned up temp file after upload error');
+            } catch {
+              // Ignore cleanup errors
+            }
+          }
           reject(uploadError);
           return;
         }
