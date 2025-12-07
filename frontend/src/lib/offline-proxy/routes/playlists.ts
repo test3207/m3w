@@ -4,6 +4,12 @@
  * Data storage strategy:
  * - Playlist metadata (including songCount) stored in `playlists` table
  * - Song relationships stored in `playlistSongs` table (junction table)
+ * 
+ * @related When modifying routes, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - backend/src/routes/playlists.ts - Backend route handlers
+ * - frontend/src/services/api/main/endpoints.ts - Frontend endpoint definitions
+ * - frontend/src/services/api/main/resources/playlists.ts - Frontend API methods
  */
 
 import { Hono } from "hono";

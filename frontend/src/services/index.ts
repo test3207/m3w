@@ -6,7 +6,6 @@
 import { libraries } from "./api/main/resources/libraries";
 import { playlists } from "./api/main/resources/playlists";
 import { songs } from "./api/main/resources/songs";
-import { upload } from "./api/main/resources/upload";
 import { player } from "./api/main/resources/player";
 import { auth } from "./api/main/resources/auth";
 import { user } from "./api/main/resources/user";
@@ -18,7 +17,6 @@ const main = {
   libraries,
   playlists,
   songs,
-  upload,
   player,
   auth,
   user,
@@ -55,7 +53,7 @@ export const api = {
  * const playlist = await playlists.getById(id);
  * ```
  */
-export { libraries, playlists, songs, upload, player, auth };
+export { libraries, playlists, songs, player, auth };
 
 /**
  * Re-export types for convenience
@@ -63,6 +61,5 @@ export { libraries, playlists, songs, upload, player, auth };
 export type * from "./api/main/resources/libraries";
 export type * from "./api/main/resources/playlists";
 export type * from "./api/main/resources/songs";
-export type * from "./api/main/resources/upload";
 export type * from "./api/main/resources/player";
 export type * from "./api/main/resources/auth";

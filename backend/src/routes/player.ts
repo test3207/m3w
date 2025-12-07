@@ -1,6 +1,12 @@
 /**
  * Player Routes (Hono Backend)
  * Handles playback preferences and progress persistence
+ * 
+ * @related When modifying routes, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - frontend/src/lib/offline-proxy/routes/player.ts - Offline proxy handlers
+ * - frontend/src/services/api/main/endpoints.ts - Frontend endpoint definitions
+ * - frontend/src/services/api/main/resources/player.ts - Frontend API methods
  */
 
 import { Hono } from 'hono';

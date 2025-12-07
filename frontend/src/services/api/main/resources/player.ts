@@ -1,5 +1,11 @@
 /**
  * Player Resource Service
+ * 
+ * @related When modifying API methods, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - backend/src/routes/player.ts - Backend route handlers
+ * - frontend/src/lib/offline-proxy/routes/player.ts - Offline proxy handlers
+ * - frontend/src/services/api/main/endpoints.ts - Endpoint URL definitions
  */
 
 import { mainApiClient } from "../client";

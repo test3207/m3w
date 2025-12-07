@@ -2,6 +2,12 @@
  * Song routes for offline-proxy
  * 
  * All cache operations use /api/ URLs.
+ * 
+ * @related When modifying routes, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - backend/src/routes/songs.ts - Backend route handlers
+ * - frontend/src/services/api/main/endpoints.ts - Frontend endpoint definitions
+ * - frontend/src/services/api/main/resources/songs.ts - Frontend API methods
  */
 
 import { Hono } from "hono";

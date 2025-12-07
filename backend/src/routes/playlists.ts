@@ -1,3 +1,14 @@
+/**
+ * Playlists Routes (Hono Backend)
+ * User data routes - offline capable
+ * 
+ * @related When modifying routes, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - frontend/src/lib/offline-proxy/routes/playlists.ts - Offline proxy handlers
+ * - frontend/src/services/api/main/endpoints.ts - Frontend endpoint definitions
+ * - frontend/src/services/api/main/resources/playlists.ts - Frontend API methods
+ */
+
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';

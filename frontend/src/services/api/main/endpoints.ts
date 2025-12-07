@@ -1,6 +1,12 @@
 /**
  * Main API Endpoints
  * All endpoints are relative paths. Base URL is configured in apiClient.
+ * 
+ * @related When modifying endpoints, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - backend/src/routes/*.ts - Backend route handlers
+ * - frontend/src/lib/offline-proxy/routes/*.ts - Offline proxy handlers
+ * - frontend/src/services/api/main/resources/*.ts - Frontend API methods
  */
 
 /**
@@ -41,6 +47,7 @@ export const MAIN_API_ENDPOINTS = {
     create: "/api/libraries",
     update: (id: string) => `/api/libraries/${id}`,
     delete: (id: string) => `/api/libraries/${id}`,
+    uploadSong: (id: string) => `/api/libraries/${id}/songs`,
   },
   // Playlists
   playlists: {
@@ -62,10 +69,6 @@ export const MAIN_API_ENDPOINTS = {
     stream: (id: string) => `/api/songs/${id}/stream`,
     playlistCount: (id: string) => `/api/songs/${id}/playlist-count`,
     delete: (id: string, libraryId: string) => `/api/songs/${id}?libraryId=${libraryId}`,
-  },
-  // Upload
-  upload: {
-    file: "/api/upload",
   },
   // Player
   player: {

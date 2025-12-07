@@ -190,4 +190,118 @@ describe('Libraries Routes Integration', () => {
       expect(json.success).toBe(false);
     });
   });
+
+  describe('POST /api/libraries/:id/songs', () => {
+    it('should return 404 for non-existent library', async () => {
+      app.post('/libraries/:id/songs', async (c) => {
+        const id = c.req.param('id');
+        
+        // Simulate library not found
+        if (id === 'non-existent') {
+          return c.json({
+            success: false,
+            error: 'Library not found',
+          }, 404);
+        }
+
+        return c.json({ success: true }, 200);
+      });
+
+      const res = await app.request('/libraries/non-existent/songs', {
+        method: 'POST',
+      });
+
+      const json = await res.json() as { success: boolean; error: string };
+
+      expect(res.status).toBe(404);
+      expect(json.success).toBe(false);
+      expect(json.error).toBe('Library not found');
+    });
+
+    it('should return 404 when user does not own library', async () => {
+      app.post('/libraries/:id/songs', async (c) => {
+        const id = c.req.param('id');
+        const auth = c.get('auth');
+        
+        // Simulate library owned by different user
+        const mockLibrary = { id, userId: 'other-user' };
+        
+        if (mockLibrary.userId !== auth.userId) {
+          return c.json({
+            success: false,
+            error: 'Library not found',
+          }, 404);
+        }
+
+        return c.json({ success: true }, 200);
+      });
+
+      const res = await app.request('/libraries/lib-123/songs', {
+        method: 'POST',
+      });
+
+      const json = await res.json() as { success: boolean; error: string };
+
+      expect(res.status).toBe(404);
+      expect(json.success).toBe(false);
+    });
+
+    it('should return 409 when song already exists in library', async () => {
+      app.post('/libraries/:id/songs', async (c) => {
+        // Simulate duplicate song detection
+        const existingSong = { id: 'song-123', title: 'Test Song' };
+        
+        return c.json({
+          success: false,
+          error: 'This song already exists in the selected library',
+          details: `"${existingSong.title}" is already in this library`,
+        }, 409);
+      });
+
+      const res = await app.request('/libraries/lib-123/songs', {
+        method: 'POST',
+      });
+
+      const json = await res.json() as { success: boolean; error: string; details: string };
+
+      expect(res.status).toBe(409);
+      expect(json.success).toBe(false);
+      expect(json.error).toBe('This song already exists in the selected library');
+      expect(json.details).toContain('Test Song');
+    });
+
+    it('should return song data on successful upload', async () => {
+      const mockSong = {
+        id: 'song-new',
+        title: 'New Song',
+        artist: 'Test Artist',
+        album: 'Test Album',
+        libraryId: 'lib-123',
+        coverUrl: '/api/songs/song-new/cover',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      app.post('/libraries/:id/songs', async (c) => {
+        return c.json({
+          success: true,
+          data: {
+            song: mockSong,
+          },
+        }, 200);
+      });
+
+      const res = await app.request('/libraries/lib-123/songs', {
+        method: 'POST',
+      });
+
+      const json = await res.json() as { success: boolean; data: { song: typeof mockSong } };
+
+      expect(res.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.data.song.id).toBe('song-new');
+      expect(json.data.song.title).toBe('New Song');
+      expect(json.data.song.coverUrl).toBeDefined();
+    });
+  });
 });

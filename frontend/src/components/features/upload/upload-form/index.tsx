@@ -111,7 +111,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
 
     const { file } = item;
     const hash = await calculateFileHash(file);
-    const data = await api.main.upload.uploadFile(libraryId, file, hash);
+    const data = await api.main.libraries.uploadSong(libraryId, file, hash);
     const songTitle = data.song.title || file.name;
 
     setFiles((prev) =>

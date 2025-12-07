@@ -1,6 +1,12 @@
 /**
  * Songs Routes (Hono Backend)
  * User data routes - offline capable
+ * 
+ * @related When modifying routes, sync these files:
+ * - shared/src/api-contracts.ts - Route definitions and offline capability
+ * - frontend/src/lib/offline-proxy/routes/songs.ts - Offline proxy handlers
+ * - frontend/src/services/api/main/endpoints.ts - Frontend endpoint definitions
+ * - frontend/src/services/api/main/resources/songs.ts - Frontend API methods
  */
 
 import { Hono } from 'hono';

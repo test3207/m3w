@@ -83,7 +83,6 @@ import userRoutes from './routes/user';
 import librariesRoutes from './routes/libraries';
 import playlistsRoutes from './routes/playlists';
 import songsRoutes from './routes/songs';
-import uploadRoutes from './routes/upload';
 import playerRoutes from './routes/player';
 
 // ============================================================================
@@ -225,7 +224,6 @@ app.route('/api/user', userRoutes);
 app.route('/api/libraries', librariesRoutes);
 app.route('/api/playlists', playlistsRoutes);
 app.route('/api/songs', songsRoutes);
-app.route('/api/upload', uploadRoutes);
 app.route('/api/player', playerRoutes);
 
 // ============================================================================
