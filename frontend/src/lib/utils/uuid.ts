@@ -28,7 +28,7 @@ function isRandomUUIDAvailable(): boolean {
 function generateUUIDFallback(): string {
   // Use crypto.getRandomValues which works in non-secure contexts
   const getRandomValues =
-    typeof crypto !== "undefined" && crypto.getRandomValues
+    typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function"
       ? (arr: Uint8Array) => crypto.getRandomValues(arr)
       : // Final fallback to Math.random (not cryptographically secure, but works)
       (arr: Uint8Array) => {
