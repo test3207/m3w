@@ -203,6 +203,7 @@ export async function parseStreamingUpload(
 
     // Track file count to reject multi-file uploads
     let fileCount = 0;
+    let multiFileError: Error | null = null;
 
     // Listen to file events to capture metadata
     form.on('fileBegin', (_formName, file) => {
@@ -210,7 +211,7 @@ export async function parseStreamingUpload(
       if (fileCount > 1) {
         // Reject multi-file uploads - closure variables are per-request, not per-file
         logger.warn({ fileCount }, 'Multi-file upload rejected');
-        form.emit('error', new Error('Only single file upload is supported per request'));
+        multiFileError = new Error('Only single file upload is supported per request');
         return;
       }
       if (file) {
@@ -254,6 +255,19 @@ export async function parseStreamingUpload(
             }
           }
           reject(uploadError);
+          return;
+        }
+
+        // Check for multi-file upload error
+        if (multiFileError) {
+          if (tempObjectName) {
+            try {
+              await minioClient.removeObject(bucketName, tempObjectName);
+            } catch (cleanupError) {
+              logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
+            }
+          }
+          reject(multiFileError);
           return;
         }
 
