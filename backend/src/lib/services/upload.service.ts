@@ -76,7 +76,6 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
   const minioClient = getMinioClient();
   let mimeType = '';
   let originalFilename = '';
-  let uploadPromise: Promise<unknown> | null = null;
 
   const form = formidable({
     maxFileSize: 500 * 1024 * 1024,
@@ -84,11 +83,7 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
     hashAlgorithm: 'sha256',
     fileWriteStreamHandler: () => {
       const passThrough = new PassThrough();
-      uploadPromise = minioClient.putObject(bucketName, tempObjectPath, passThrough);
-      uploadPromise.catch((err) => {
-        passThrough.destroy(err instanceof Error ? err : new Error(String(err)));
-        logger.error({ error: err }, 'MinIO upload failed');
-      });
+      minioClient.putObject(bucketName, tempObjectPath, passThrough);
       return passThrough;
     },
   });
@@ -99,20 +94,16 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
   });
 
   return new Promise((resolve, reject) => {
+    // Handle formidable errors (network issues, malformed requests, etc.)
+    form.on('error', async (err) => {
+      await cleanupTempObject(bucketName, tempObjectPath);
+      reject(err);
+    });
+
     form.parse(request, async (parseError, fields, files) => {
       if (parseError) {
         await cleanupTempObject(bucketName, tempObjectPath);
         return reject(parseError);
-      }
-
-      // Wait for MinIO upload to complete
-      if (uploadPromise) {
-        try {
-          await uploadPromise;
-        } catch (err) {
-          await cleanupTempObject(bucketName, tempObjectPath);
-          return reject(err);
-        }
       }
 
       const uploadedFile = files.file?.[0];
