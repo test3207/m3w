@@ -1,40 +1,27 @@
 /**
- * Streaming Upload Service
+ * Streaming Upload Service - Three-Phase Approach
  *
- * Implements streaming file upload with:
- * - Head buffering for metadata extraction (first 1MB)
- * - Direct streaming to MinIO (remaining data)
- * - SHA256 hash calculation during streaming
- * - Cover art extraction from audio files
+ * Phase 1: Stream file to MinIO temp location via formidable
+ * Phase 2: Verify hash and extract metadata from MinIO stream (parseStream)
+ * Phase 3: Rename temp → files/{hash} with deduplication
  *
- * @see https://github.com/test3207/m3w/issues/120
+ * Benefits: No buffering in memory, cleaner separation of concerns
  */
 
-import { PassThrough, Writable } from 'node:stream';
+import { PassThrough } from 'node:stream';
 import type { IncomingMessage } from 'node:http';
 import crypto from 'node:crypto';
 import formidable from 'formidable';
-import type VolatileFile from 'formidable/VolatileFile';
-import { parseBuffer } from 'music-metadata';
+import * as mm from 'music-metadata';
 import { getMinioClient } from '../minio-client';
 import { logger } from '../logger';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-/** Size of head buffer for metadata extraction (1MB) */
-const HEAD_BUFFER_SIZE = 1024 * 1024;
-
-/** Maximum file size (500MB) */
-const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export interface UploadFormFields {
-  hash?: string; // Frontend-calculated hash for verification
+  hash?: string;
   title?: string;
   artist?: string;
   album?: string;
@@ -56,7 +43,7 @@ export interface AudioMetadata {
 
 export interface CoverImage {
   buffer: Buffer;
-  format: string; // MIME type, e.g., 'image/jpeg'
+  format: string;
 }
 
 export interface StreamingUploadResult {
@@ -75,416 +62,263 @@ export interface ParsedUpload {
 }
 
 // ============================================================================
-// Main Upload Function
+// Phase 1: Stream to MinIO
 // ============================================================================
 
-/**
- * Parse multipart upload with streaming to MinIO
- *
- * Flow:
- * 1. formidable parses multipart form data
- * 2. For file parts, create a custom write stream that:
- *    a. Buffers first 1MB for metadata extraction
- *    b. Hash calculated by formidable (hashAlgorithm: 'sha256')
- *    c. Streams data to MinIO using putObject with stream
- * 3. After upload, extract metadata from head buffer
- * 4. Return hash, metadata, and cover image
- */
-export async function parseStreamingUpload(
-  req: IncomingMessage,
-  bucketName: string
-): Promise<ParsedUpload> {
-  const minioClient = getMinioClient();
+interface StreamUploadResult {
+  tempPath: string;
+  hash: string;
+  size: number;
+  mimeType: string;
+  originalFilename: string;
+  fields: UploadFormFields;
+}
 
-  // Ensure bucket exists
-  const bucketExists = await minioClient.bucketExists(bucketName);
-  if (!bucketExists) {
-    await minioClient.makeBucket(bucketName);
-    logger.info({ bucketName }, 'Created bucket');
-  }
+function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectPath: string): Promise<StreamUploadResult> {
+  const minioClient = getMinioClient();
+  let mimeType = '';
+  let originalFilename = '';
+  let uploadPromise: Promise<unknown> | null = null;
+
+  const form = formidable({
+    maxFileSize: 500 * 1024 * 1024,
+    maxFiles: 1,
+    maxFields: 20,
+    allowEmptyFiles: false,
+    hashAlgorithm: 'sha256',
+    fileWriteStreamHandler: () => {
+      const passThrough = new PassThrough();
+      // Store promise to await after parse completes
+      uploadPromise = minioClient.putObject(bucketName, tempObjectPath, passThrough);
+      return passThrough;
+    },
+  });
 
   return new Promise((resolve, reject) => {
-    // State for file processing
-    // IMPORTANT: This implementation assumes single-file upload per request.
-    // The frontend sends one file at a time (see frontend/src/components/features/upload/).
-    // For multi-file support, these variables would need to be per-file (e.g., using a Map).
-    let fileSize = 0;
-    let mimeType = '';
-    let originalFilename = '';
-    let headBuffer: Buffer | null = null;
-    let tempObjectName = '';
-    let uploadError: Error | null = null;
-
-    // Store upload promise to wait for MinIO putObject completion
-    let uploadPromise: Promise<void> | null = null;
-
-    const form = formidable({
-      maxFileSize: MAX_FILE_SIZE,
-      maxFiles: 1, // Only allow single file upload per request
-      maxFields: 20,
-      allowEmptyFiles: false,
-      hashAlgorithm: 'sha256', // formidable calculates hash for us
-
-      // Custom file write stream handler - the key to streaming upload
-      fileWriteStreamHandler: (_file?: VolatileFile): Writable => {
-        // Generate temporary object name (will rename after hash is known from formidable)
-        const tempId = crypto.randomUUID();
-        tempObjectName = `temp/${tempId}`;
-
-        logger.info({ tempObjectName }, 'Starting streaming upload');
-
-        const passThrough = new PassThrough();
-
-        // Head buffering state (for metadata extraction)
-        const headChunks: Buffer[] = [];
-        let headBytesBuffered = 0;
-        let uploadedSize = 0;
-
-        // Create a writable stream that handles everything
-        const writeStream = new Writable({
-          write(chunk: Buffer, _encoding, callback) {
-            uploadedSize += chunk.length;
-
-            // Buffer head portion (first 1MB for metadata extraction)
-            if (headBytesBuffered < HEAD_BUFFER_SIZE) {
-              const remaining = HEAD_BUFFER_SIZE - headBytesBuffered;
-              const headPortion = chunk.subarray(0, Math.min(chunk.length, remaining));
-              headChunks.push(headPortion);
-              headBytesBuffered += headPortion.length;
-            }
-
-            // Write to passThrough for MinIO with proper backpressure handling
-            const canContinue = passThrough.write(chunk);
-            if (canContinue) {
-              callback();
-            } else {
-              // Wait for drain event before accepting more data
-              passThrough.once('drain', callback);
-            }
-          },
-
-          final(callback) {
-            fileSize = uploadedSize;
-            headBuffer = Buffer.concat(headChunks);
-
-            logger.info({ fileSize, headBufferSize: headBuffer.length }, 'File streaming complete');
-
-            // End the passThrough stream
-            passThrough.end(callback);
-          },
-
-          destroy(err, callback) {
-            passThrough.destroy(err || undefined);
-            callback(err);
-          },
-        });
-
-        // Start MinIO upload with the passThrough stream (just upload to temp, rename later)
-        uploadPromise = (async () => {
-          try {
-            await minioClient.putObject(
-              bucketName,
-              tempObjectName,
-              passThrough,
-              undefined, // size unknown for streaming
-              { 'Content-Type': 'application/octet-stream' }
-            );
-            logger.info({ tempObjectName }, 'Temp file uploaded to MinIO');
-          } catch (error) {
-            uploadError = error instanceof Error ? error : new Error(String(error));
-            logger.error({ error, tempObjectName }, 'Failed to upload to MinIO');
-            throw error;
-          }
-        })();
-
-        return writeStream;
-      },
+    // Register event handlers before parsing to avoid race conditions
+    form.on('fileBegin', (_, file) => {
+      mimeType = file.mimetype || 'audio/mpeg';
+      originalFilename = file.originalFilename || 'unknown';
     });
 
-    // Listen to file events to capture metadata
-    // Note: maxFiles: 1 in formidable options handles multi-file rejection
-    form.on('fileBegin', (_formName, file) => {
-      if (file) {
-        mimeType = file.mimetype || 'application/octet-stream';
-        originalFilename = file.originalFilename || 'unknown';
-        logger.info({ originalFilename, mimeType }, 'File upload started');
-      }
-    });
+    // Note: formidable's error event automatically calls parse callback with error,
+    // so cleanup is handled in the callback to avoid double cleanup
 
-    // Parse the request
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        logger.error({ error: err }, 'formidable parse error');
-        // Clean up temp file on error
-        if (tempObjectName) {
-          try {
-            await minioClient.removeObject(bucketName, tempObjectName);
-          } catch (cleanupError) {
-            logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
-          }
-        }
-        reject(new Error(`Upload failed: ${err.message}`));
-        return;
+    form.parse(request, async (parseError, fields, files) => {
+      if (parseError) {
+        await cleanupTempObject(bucketName, tempObjectPath);
+        return reject(parseError);
       }
 
-      try {
-        // Wait for MinIO upload to complete
-        if (uploadPromise) {
-          await uploadPromise;
-        }
+      const uploadedFile = files.file?.[0];
+      if (!uploadedFile) {
+        await cleanupTempObject(bucketName, tempObjectPath);
+        return reject(new Error('File upload failed: no file received'));
+      }
+      if (!uploadedFile.hash) {
+        await cleanupTempObject(bucketName, tempObjectPath);
+        return reject(new Error('File upload failed: hash calculation missing'));
+      }
 
-        // Check for upload errors
-        if (uploadError) {
-          // Clean up temp file on upload error
-          if (tempObjectName) {
-            try {
-              await minioClient.removeObject(bucketName, tempObjectName);
-              logger.info({ tempObjectName }, 'Cleaned up temp file after upload error');
-            } catch (cleanupError) {
-              logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
-            }
-          }
-          reject(uploadError);
-          return;
-        }
-
-        // Extract form fields (formidable v3 returns arrays)
-        const parsedFields = extractFields(fields);
-
-        // Get file info from formidable
-        const fileArray = files.file;
-        if (!fileArray || fileArray.length === 0) {
-          try {
-            await minioClient.removeObject(bucketName, tempObjectName);
-          } catch (cleanupError) {
-            logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
-          }
-          reject(new Error('No file provided'));
-          return;
-        }
-
-        const uploadedFile = fileArray[0];
-
-        // Get hash from formidable (it calculated it via hashAlgorithm option)
-        const fileHash = uploadedFile.hash;
-        if (!fileHash) {
-          await minioClient.removeObject(bucketName, tempObjectName);
-          reject(new Error('Failed to calculate file hash'));
-          return;
-        }
-
-        // Verify hash if frontend provided one
-        if (parsedFields.hash && parsedFields.hash !== fileHash) {
-          logger.warn(
-            { frontendHash: parsedFields.hash, actualHash: fileHash },
-            'Hash mismatch'
-          );
-          await minioClient.removeObject(bucketName, tempObjectName);
-          reject(new Error('File integrity check failed'));
-          return;
-        }
-
-        // Now rename temp file to final name based on hash
-        const ext = getFileExtension(originalFilename || 'unknown');
-        const objectName = `files/${fileHash}${ext}`;
-
-        // Check if object with this hash already exists (deduplication)
+      // Wait for MinIO upload to actually complete
+      if (uploadPromise) {
         try {
-          await minioClient.statObject(bucketName, objectName);
-          // Object exists, delete temp and use existing
-          try {
-            await minioClient.removeObject(bucketName, tempObjectName);
-          } catch (cleanupError) {
-            logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
-          }
-          logger.info({ objectName }, 'File already exists in MinIO, reusing');
-        } catch {
-          // Object doesn't exist, attempt to rename temp to final
-          try {
-            await minioClient.copyObject(
-              bucketName,
-              objectName,
-              `/${bucketName}/${tempObjectName}`
-            );
-            await minioClient.removeObject(bucketName, tempObjectName);
-            logger.info({ objectName, fileSize }, 'File uploaded to MinIO');
-          } catch (copyErr) {
-            // Possible race: object was created by another concurrent upload
-            try {
-              await minioClient.statObject(bucketName, objectName);
-              // Object now exists, treat as deduplication
-              try {
-                await minioClient.removeObject(bucketName, tempObjectName);
-              } catch (cleanupError) {
-                logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
-              }
-              logger.info({ objectName }, 'File already exists after race, reusing');
-            } catch {
-              // If still doesn't exist, propagate error
-              try {
-                await minioClient.removeObject(bucketName, tempObjectName);
-              } catch (cleanupError) {
-                logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
-              }
-              logger.error({ objectName, copyErr }, 'Failed to upload file to MinIO');
-              reject(new Error('Failed to upload file to MinIO'));
-              return;
-            }
-          }
+          await uploadPromise;
+        } catch (err) {
+          await cleanupTempObject(bucketName, tempObjectPath);
+          return reject(new Error(`MinIO upload failed: ${err instanceof Error ? err.message : String(err)}`));
         }
-
-        // Extract metadata from head buffer
-        let metadata: AudioMetadata = {};
-        let coverImage: CoverImage | null = null;
-
-        if (headBuffer && headBuffer.length > 0) {
-          try {
-            const parsed = await parseBuffer(headBuffer, {
-              mimeType: mimeType,
-              size: fileSize,
-            });
-
-            metadata = {
-              duration: parsed.format.duration
-                ? Math.floor(parsed.format.duration)
-                : undefined,
-              bitrate: parsed.format.bitrate
-                ? Math.floor(parsed.format.bitrate / 1000)
-                : undefined,
-              sampleRate: parsed.format.sampleRate,
-              channels: parsed.format.numberOfChannels,
-            };
-
-            // Extract cover art
-            if (parsed.common.picture && parsed.common.picture.length > 0) {
-              const picture = parsed.common.picture[0];
-              coverImage = {
-                buffer: Buffer.from(picture.data),
-                format: picture.format,
-              };
-              logger.info(
-                { format: coverImage.format, size: coverImage.buffer.length },
-                'Cover art extracted from head buffer'
-              );
-            }
-
-            logger.info(metadata, 'Metadata extracted from head buffer');
-          } catch (error) {
-            logger.warn({ error }, 'Failed to extract metadata from head buffer');
-          }
-        }
-
-        resolve({
-          fields: parsedFields,
-          file: {
-            hash: fileHash,
-            objectName,
-            size: fileSize || uploadedFile.size,
-            mimeType: mimeType || uploadedFile.mimetype || 'application/octet-stream',
-            metadata,
-            coverImage,
-            originalFilename,
-          },
-        });
-      } catch (error) {
-        logger.error({ error }, 'Error processing upload');
-        // Clean up temp file on error
-        if (tempObjectName) {
-          try {
-            await minioClient.removeObject(bucketName, tempObjectName);
-          } catch (cleanupError) {
-            logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
-          }
-        }
-        reject(error);
       }
+
+      resolve({
+        tempPath: tempObjectPath,
+        hash: uploadedFile.hash,
+        size: uploadedFile.size,
+        mimeType,
+        originalFilename,
+        fields: extractFields(fields),
+      });
     });
   });
 }
 
 // ============================================================================
-// Helper Functions
+// Phase 2: Extract Metadata
 // ============================================================================
 
-/**
- * Extract first value from formidable field arrays
- */
-function extractFields(fields: formidable.Fields): UploadFormFields {
-  const getValue = (key: string): string | undefined => {
-    const value = fields[key];
-    if (Array.isArray(value)) {
-      return value[0];
+interface ExtractedMetadataResult {
+  metadata: AudioMetadata;
+  coverImage: CoverImage | null;
+}
+
+async function extractMetadata(bucketName: string, objectPath: string, mimeType: string): Promise<ExtractedMetadataResult> {
+  const fileStream = await getMinioClient().getObject(bucketName, objectPath);
+
+  try {
+    const parsedMetadata = await mm.parseStream(fileStream, { mimeType });
+    const coverArt = parsedMetadata.common.picture?.[0];
+
+    return {
+      metadata: {
+        duration: parsedMetadata.format.duration ? Math.floor(parsedMetadata.format.duration) : undefined,
+        bitrate: parsedMetadata.format.bitrate ? Math.floor(parsedMetadata.format.bitrate / 1000) : undefined,
+        sampleRate: parsedMetadata.format.sampleRate,
+        channels: parsedMetadata.format.numberOfChannels,
+      },
+      coverImage: coverArt ? { buffer: Buffer.from(coverArt.data), format: coverArt.format } : null,
+    };
+  } catch (error) {
+    logger.warn({ error }, 'Metadata extraction failed');
+    return { metadata: {}, coverImage: null };
+  } finally {
+    if (!fileStream.destroyed) {
+      fileStream.destroy();
     }
-    return value as string | undefined;
-  };
-
-  return {
-    hash: getValue('hash'),
-    title: getValue('title'),
-    artist: getValue('artist'),
-    album: getValue('album'),
-    albumArtist: getValue('albumArtist'),
-    genre: getValue('genre'),
-    composer: getValue('composer'),
-    coverUrl: getValue('coverUrl'),
-    year: getValue('year'),
-    trackNumber: getValue('trackNumber'),
-    discNumber: getValue('discNumber'),
-  };
+  }
 }
 
-/**
- * Extract file extension from filename
- */
-function getFileExtension(filename: string): string {
-  const match = filename.match(/\.[^.]+$/);
-  return match ? match[0].toLowerCase() : '';
+// ============================================================================
+// Phase 3: Finalize (rename temp → files/{hash})
+// ============================================================================
+
+async function finalizeUpload(bucketName: string, tempObjectPath: string, fileHash: string, fileExtension: string): Promise<string> {
+  const minioClient = getMinioClient();
+  const finalObjectPath = `files/${fileHash}${fileExtension}`;
+
+  try {
+    await minioClient.statObject(bucketName, finalObjectPath);
+    // Already exists (dedup)
+  } catch {
+    // Doesn't exist, copy
+    try {
+      await minioClient.copyObject(bucketName, finalObjectPath, `/${bucketName}/${tempObjectPath}`);
+    } catch (copyError) {
+      // Race condition: another upload may have completed
+      try {
+        await minioClient.statObject(bucketName, finalObjectPath);
+        // File exists now, proceed with cleanup
+      } catch {
+        // Copy genuinely failed
+        throw new Error(`Failed to finalize upload: ${copyError instanceof Error ? copyError.message : String(copyError)}`);
+      }
+    }
+  }
+
+  await cleanupTempObject(bucketName, tempObjectPath);
+  return finalObjectPath;
 }
 
-/**
- * Upload cover image to MinIO
- */
-export async function uploadCoverImage(
-  coverImage: CoverImage,
-  fileHash: string,
-  bucketName: string
-): Promise<string> {
+// ============================================================================
+// Main Entry Point
+// ============================================================================
+
+export async function parseStreamingUpload(request: IncomingMessage, bucketName: string): Promise<ParsedUpload> {
   const minioClient = getMinioClient();
 
-  const coverExt = getExtensionFromMimeType(coverImage.format);
-  const coverObjectName = `covers/${fileHash}.${coverExt}`;
+  // Ensure bucket exists
+  if (!(await minioClient.bucketExists(bucketName))) {
+    await minioClient.makeBucket(bucketName);
+  }
 
-  await minioClient.putObject(
-    bucketName,
-    coverObjectName,
-    coverImage.buffer,
-    coverImage.buffer.length,
-    { 'Content-Type': coverImage.format }
+  const tempObjectPath = `temp/${crypto.randomUUID()}`;
+
+  // Phase 1: Stream file to MinIO temp location
+  const streamResult = await streamToMinIO(request, bucketName, tempObjectPath);
+
+  // Verify hash if frontend provided one
+  if (streamResult.fields.hash && streamResult.fields.hash !== streamResult.hash) {
+    logger.warn(
+      { frontendHash: streamResult.fields.hash, actualHash: streamResult.hash },
+      'Hash mismatch'
+    );
+    await cleanupTempObject(bucketName, tempObjectPath);
+    throw new Error('File integrity check failed');
+  }
+
+  // Validate MIME type
+  if (!streamResult.mimeType) {
+    await cleanupTempObject(bucketName, tempObjectPath);
+    throw new Error('Failed to determine file MIME type');
+  }
+
+  // Phase 2: Extract metadata from uploaded file
+  let metadataResult;
+  try {
+    metadataResult = await extractMetadata(bucketName, tempObjectPath, streamResult.mimeType);
+  } catch (err) {
+    await cleanupTempObject(bucketName, tempObjectPath);
+    throw err;
+  }
+
+  // Phase 3: Move temp to final hash-based path
+  const fileExtension = streamResult.originalFilename.match(/\.[^.]+$/)?.[0]?.toLowerCase() || '';
+  const finalObjectPath = await finalizeUpload(bucketName, tempObjectPath, streamResult.hash, fileExtension);
+
+  logger.info(
+    { objectName: finalObjectPath, size: streamResult.size },
+    'File uploaded to MinIO'
   );
 
-  logger.info({ coverObjectName }, 'Cover image uploaded to MinIO');
-
-  return coverObjectName;
+  return {
+    fields: streamResult.fields,
+    file: {
+      hash: streamResult.hash,
+      objectName: finalObjectPath,
+      size: streamResult.size,
+      mimeType: streamResult.mimeType,
+      metadata: metadataResult.metadata,
+      coverImage: metadataResult.coverImage,
+      originalFilename: streamResult.originalFilename,
+    },
+  };
 }
 
-/**
- * Extract file extension from MIME type
- * e.g., 'image/jpeg' -> 'jpg', 'image/png' -> 'png'
- */
+// ============================================================================
+// Helpers
+// ============================================================================
+
+async function cleanupTempObject(bucketName: string, objectPath: string) {
+  try {
+    await getMinioClient().removeObject(bucketName, objectPath);
+  } catch (error) {
+    logger.warn({ error, objectPath }, 'Failed to cleanup temp object');
+  }
+}
+
+function extractFields(fields: formidable.Fields): UploadFormFields {
+  const getFieldValue = (key: string): string | undefined => {
+    const value = fields[key];
+    if (Array.isArray(value)) return value[0];
+    if (typeof value === 'string') return value;
+    return undefined;
+  };
+  return {
+    hash: getFieldValue('hash'),
+    title: getFieldValue('title'),
+    artist: getFieldValue('artist'),
+    album: getFieldValue('album'),
+    albumArtist: getFieldValue('albumArtist'),
+    genre: getFieldValue('genre'),
+    composer: getFieldValue('composer'),
+    coverUrl: getFieldValue('coverUrl'),
+    year: getFieldValue('year'),
+    trackNumber: getFieldValue('trackNumber'),
+    discNumber: getFieldValue('discNumber'),
+  };
+}
+
 function getExtensionFromMimeType(mimeType: string): string {
-  // Extract subtype from MIME type (e.g., 'jpeg' from 'image/jpeg')
-  const subtype = mimeType.split('/')[1];
-  if (!subtype) {
-    return 'bin';
-  }
+  const subtype = mimeType.split('/')[1]?.split(';')[0]?.trim();
+  if (subtype === 'jpeg') return 'jpg';
+  return subtype || 'bin';
+}
 
-  // Handle common special cases
-  if (subtype === 'jpeg') {
-    return 'jpg';
-  }
-
-  // Remove any parameters (e.g., 'png; charset=utf-8' -> 'png')
-  const ext = subtype.split(';')[0].trim();
-
-  return ext || 'bin';
+export async function uploadCoverImage(coverImage: CoverImage, fileHash: string, bucketName: string): Promise<string> {
+  const imageExtension = getExtensionFromMimeType(coverImage.format);
+  const coverObjectPath = `covers/${fileHash}.${imageExtension}`;
+  await getMinioClient().putObject(bucketName, coverObjectPath, coverImage.buffer, coverImage.buffer.length, {
+    'Content-Type': coverImage.format,
+  });
+  logger.info({ coverObjectPath, fileHash }, 'Cover image uploaded to MinIO');
+  return coverObjectPath;
 }
