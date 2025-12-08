@@ -101,11 +101,8 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
       originalFilename = file.originalFilename || 'unknown';
     });
 
-    // Handle formidable errors (network issues, malformed requests, etc.)
-    form.on('error', async (err) => {
-      await cleanupTempObject(bucketName, tempObjectPath);
-      reject(err);
-    });
+    // Note: formidable's error event automatically calls parse callback with error,
+    // so cleanup is handled in the callback to avoid double cleanup
 
     form.parse(request, async (parseError, fields, files) => {
       if (parseError) {
@@ -114,9 +111,13 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
       }
 
       const uploadedFile = files.file?.[0];
-      if (!uploadedFile?.hash) {
+      if (!uploadedFile) {
         await cleanupTempObject(bucketName, tempObjectPath);
-        return reject(new Error('No file or hash'));
+        return reject(new Error('File upload failed: no file received'));
+      }
+      if (!uploadedFile.hash) {
+        await cleanupTempObject(bucketName, tempObjectPath);
+        return reject(new Error('File upload failed: hash calculation missing'));
       }
 
       // Wait for MinIO upload to actually complete
@@ -241,7 +242,13 @@ export async function parseStreamingUpload(request: IncomingMessage, bucketName:
   }
 
   // Phase 2: Extract metadata from uploaded file
-  const metadataResult = await extractMetadata(bucketName, tempObjectPath, streamResult.mimeType);
+  let metadataResult;
+  try {
+    metadataResult = await extractMetadata(bucketName, tempObjectPath, streamResult.mimeType);
+  } catch (err) {
+    await cleanupTempObject(bucketName, tempObjectPath);
+    throw err;
+  }
 
   // Phase 3: Move temp to final hash-based path
   const fileExtension = streamResult.originalFilename.match(/\.[^.]+$/)?.[0]?.toLowerCase() || '';
