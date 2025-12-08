@@ -76,6 +76,7 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
   const minioClient = getMinioClient();
   let mimeType = '';
   let originalFilename = '';
+  let uploadPromise: Promise<unknown> | null = null;
 
   const form = formidable({
     maxFileSize: 500 * 1024 * 1024,
@@ -83,7 +84,11 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
     hashAlgorithm: 'sha256',
     fileWriteStreamHandler: () => {
       const passThrough = new PassThrough();
-      minioClient.putObject(bucketName, tempObjectPath, passThrough);
+      uploadPromise = minioClient.putObject(bucketName, tempObjectPath, passThrough);
+      uploadPromise.catch((err) => {
+        passThrough.destroy(err instanceof Error ? err : new Error(String(err)));
+        logger.error({ error: err }, 'MinIO upload failed');
+      });
       return passThrough;
     },
   });
@@ -94,11 +99,27 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
   });
 
   return new Promise((resolve, reject) => {
-    form.parse(request, (parseError, fields, files) => {
-      if (parseError) return reject(parseError);
+    form.parse(request, async (parseError, fields, files) => {
+      if (parseError) {
+        await cleanupTempObject(bucketName, tempObjectPath);
+        return reject(parseError);
+      }
+
+      // Wait for MinIO upload to complete
+      if (uploadPromise) {
+        try {
+          await uploadPromise;
+        } catch (err) {
+          await cleanupTempObject(bucketName, tempObjectPath);
+          return reject(err);
+        }
+      }
 
       const uploadedFile = files.file?.[0];
-      if (!uploadedFile?.hash) return reject(new Error('No file or hash'));
+      if (!uploadedFile?.hash) {
+        await cleanupTempObject(bucketName, tempObjectPath);
+        return reject(new Error('No file or hash'));
+      }
 
       resolve({
         tempPath: tempObjectPath,
@@ -141,7 +162,9 @@ async function extractMetadata(bucketName: string, objectPath: string, mimeType:
     logger.warn({ error }, 'Metadata extraction failed');
     return { metadata: {}, coverImage: null };
   } finally {
-    fileStream.destroy();
+    if (!fileStream.destroyed) {
+      fileStream.destroy();
+    }
   }
 }
 
@@ -158,7 +181,18 @@ async function finalizeUpload(bucketName: string, tempObjectPath: string, fileHa
     // Already exists (dedup)
   } catch {
     // Doesn't exist, copy
-    await minioClient.copyObject(bucketName, finalObjectPath, `/${bucketName}/${tempObjectPath}`);
+    try {
+      await minioClient.copyObject(bucketName, finalObjectPath, `/${bucketName}/${tempObjectPath}`);
+    } catch (copyError) {
+      // Race condition: another upload may have completed
+      try {
+        await minioClient.statObject(bucketName, finalObjectPath);
+        // File exists now, proceed with cleanup
+      } catch {
+        // Copy genuinely failed
+        throw new Error(`Failed to finalize upload: ${copyError instanceof Error ? copyError.message : String(copyError)}`);
+      }
+    }
   }
 
   await cleanupTempObject(bucketName, tempObjectPath);
@@ -181,6 +215,16 @@ export async function parseStreamingUpload(request: IncomingMessage, bucketName:
 
   // Phase 1: Stream file to MinIO temp location
   const streamResult = await streamToMinIO(request, bucketName, tempObjectPath);
+
+  // Verify hash if frontend provided one
+  if (streamResult.fields.hash && streamResult.fields.hash !== streamResult.hash) {
+    logger.warn(
+      { frontendHash: streamResult.fields.hash, actualHash: streamResult.hash },
+      'Hash mismatch'
+    );
+    await cleanupTempObject(bucketName, tempObjectPath);
+    throw new Error('File integrity check failed');
+  }
 
   // Phase 2: Extract metadata from uploaded file
   const metadataResult = await extractMetadata(bucketName, tempObjectPath, streamResult.mimeType);
@@ -235,8 +279,14 @@ function extractFields(fields: formidable.Fields): UploadFormFields {
   };
 }
 
+function getImageExtension(mimeType: string): string {
+  const subtype = mimeType.split('/')[1]?.split(';')[0]?.trim();
+  if (subtype === 'jpeg') return 'jpg';
+  return subtype || 'bin';
+}
+
 export async function uploadCoverImage(coverImage: CoverImage, fileHash: string, bucketName: string): Promise<string> {
-  const imageExtension = coverImage.format === 'image/jpeg' ? 'jpg' : coverImage.format.split('/')[1] || 'bin';
+  const imageExtension = getImageExtension(coverImage.format);
   const coverObjectPath = `covers/${fileHash}.${imageExtension}`;
   await getMinioClient().putObject(bucketName, coverObjectPath, coverImage.buffer, coverImage.buffer.length, {
     'Content-Type': coverImage.format,
