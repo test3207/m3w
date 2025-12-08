@@ -1,12 +1,14 @@
 /**
  * Streaming Upload Service - Three-Phase Approach
  *
- * Phase 1: formidable → PassThrough → MinIO (temp)
- * Phase 2: MinIO stream → parseStream → metadata
- * Phase 3: rename temp → files/{hash}
+ * Phase 1: Stream file to MinIO temp location via formidable
+ * Phase 2: Verify hash and extract metadata from MinIO stream (parseStream)
+ * Phase 3: Rename temp → files/{hash} with deduplication
+ *
+ * Benefits: No buffering in memory, cleaner separation of concerns
  */
 
-import { PassThrough, type Readable } from 'node:stream';
+import { PassThrough } from 'node:stream';
 import type { IncomingMessage } from 'node:http';
 import crypto from 'node:crypto';
 import formidable from 'formidable';
@@ -80,6 +82,8 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
   const form = formidable({
     maxFileSize: 500 * 1024 * 1024,
     maxFiles: 1,
+    maxFields: 20,
+    allowEmptyFiles: false,
     hashAlgorithm: 'sha256',
     fileWriteStreamHandler: () => {
       const passThrough = new PassThrough();
@@ -88,12 +92,13 @@ function streamToMinIO(request: IncomingMessage, bucketName: string, tempObjectP
     },
   });
 
-  form.on('fileBegin', (_, file) => {
-    mimeType = file.mimetype || 'audio/mpeg';
-    originalFilename = file.originalFilename || 'unknown';
-  });
-
   return new Promise((resolve, reject) => {
+    // Register event handlers before parsing to avoid race conditions
+    form.on('fileBegin', (_, file) => {
+      mimeType = file.mimetype || 'audio/mpeg';
+      originalFilename = file.originalFilename || 'unknown';
+    });
+
     // Handle formidable errors (network issues, malformed requests, etc.)
     form.on('error', async (err) => {
       await cleanupTempObject(bucketName, tempObjectPath);
@@ -137,7 +142,7 @@ async function extractMetadata(bucketName: string, objectPath: string, mimeType:
   const fileStream = await getMinioClient().getObject(bucketName, objectPath);
 
   try {
-    const parsedMetadata = await mm.parseStream(fileStream as unknown as Readable, { mimeType });
+    const parsedMetadata = await mm.parseStream(fileStream, { mimeType });
     const coverArt = parsedMetadata.common.picture?.[0];
 
     return {
@@ -217,6 +222,12 @@ export async function parseStreamingUpload(request: IncomingMessage, bucketName:
     throw new Error('File integrity check failed');
   }
 
+  // Validate MIME type
+  if (!streamResult.mimeType) {
+    await cleanupTempObject(bucketName, tempObjectPath);
+    throw new Error('Failed to determine file MIME type');
+  }
+
   // Phase 2: Extract metadata from uploaded file
   const metadataResult = await extractMetadata(bucketName, tempObjectPath, streamResult.mimeType);
 
@@ -245,7 +256,9 @@ export async function parseStreamingUpload(request: IncomingMessage, bucketName:
 async function cleanupTempObject(bucketName: string, objectPath: string) {
   try {
     await getMinioClient().removeObject(bucketName, objectPath);
-  } catch { /* ignore */ }
+  } catch (error) {
+    logger.warn({ error, objectPath }, 'Failed to cleanup temp object');
+  }
 }
 
 function extractFields(fields: formidable.Fields): UploadFormFields {
