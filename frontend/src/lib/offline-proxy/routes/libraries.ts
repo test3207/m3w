@@ -306,67 +306,20 @@ app.post("/:id/songs", async (c: Context) => {
     // 1. Calculate hash
     const hash = await calculateFileHash(file);
 
-    // 2. Extract metadata from FormData or file
-    let metadata;
-    let coverBlob: Blob | null = null;
-    
-    // Try to get metadata from FormData first (frontend pre-extracted)
-    const hasFrontendMetadata = formData.has("duration") || formData.has("bitrate");
-    
-    if (hasFrontendMetadata) {
-      // Use metadata from frontend (already extracted)
-      logger.info("Using pre-extracted metadata from FormData");
-      
-      const duration = formData.get("duration");
-      const bitrate = formData.get("bitrate");
-      const sampleRate = formData.get("sampleRate");
-      const channels = formData.get("channels");
-      const title = formData.get("title");
-      const artist = formData.get("artist");
-      const album = formData.get("album");
-      const coverFile = formData.get("cover") as File | null;
-      
-      metadata = {
-        common: {
-          title: title as string | undefined,
-          artist: artist as string | undefined,
-          album: album as string | undefined,
-          albumartist: formData.get("albumArtist") as string | undefined,
-          genre: formData.get("genre") ? [formData.get("genre") as string] : undefined,
-          composer: formData.get("composer") ? [formData.get("composer") as string] : undefined,
-          year: formData.get("year") ? parseInt(formData.get("year") as string, 10) : undefined,
-          track: { no: formData.get("trackNumber") ? parseInt(formData.get("trackNumber") as string, 10) : undefined },
-          disk: { no: formData.get("discNumber") ? parseInt(formData.get("discNumber") as string, 10) : undefined },
-          picture: [], // Will be handled separately
-        },
-        format: {
-          duration: duration ? parseFloat(duration as string) : undefined,
-          bitrate: bitrate ? parseInt(bitrate as string, 10) * 1000 : undefined, // Convert kbps to bps
-          sampleRate: sampleRate ? parseInt(sampleRate as string, 10) : undefined,
-          numberOfChannels: channels ? parseInt(channels as string, 10) : undefined,
-        },
-      };
-      
-      // Get cover from FormData if provided
-      if (coverFile) {
-        coverBlob = coverFile;
-      }
-    } else {
-      // Fallback: Extract metadata from file (offline mode without frontend extraction)
-      logger.info("Extracting metadata from audio file");
-      const parsedMetadata = await parseBlob(file);
-      metadata = parsedMetadata;
-      
-      // Extract cover art from file
-      if (parsedMetadata.common.picture && parsedMetadata.common.picture.length > 0) {
-        const picture = parsedMetadata.common.picture[0];
-        coverBlob = new Blob([new Uint8Array(picture.data)], {
-          type: picture.format,
-        });
-      }
-    }
-    
+    // 2. Extract metadata from audio file
+    // Always extract from file directly - do not trust FormData metadata
+    logger.info("Extracting metadata from audio file");
+    const metadata = await parseBlob(file);
     const { common, format } = metadata;
+    
+    // Extract cover art from file if available
+    let coverBlob: Blob | null = null;
+    if (common.picture && common.picture.length > 0) {
+      const picture = common.picture[0];
+      coverBlob = new Blob([new Uint8Array(picture.data)], {
+        type: picture.format,
+      });
+    }
 
     // 3. Check if File entity exists or create new one
     let fileEntity = await db.files.where("hash").equals(hash).first();

@@ -11,7 +11,7 @@
  * @see https://github.com/test3207/m3w/issues/125
  */
 
-import { PassThrough, Writable } from 'node:stream';
+import { PassThrough } from 'node:stream';
 import type { IncomingMessage } from 'node:http';
 import crypto from 'node:crypto';
 import formidable from 'formidable';
@@ -117,10 +117,6 @@ export async function parseStreamingUpload(
     let mimeType = '';
     let originalFilename = '';
     let tempObjectName = '';
-    let uploadError: Error | null = null;
-
-    // Store upload promise to wait for MinIO putObject completion
-    let uploadPromise: Promise<void> | null = null;
 
     const form = formidable({
       maxFileSize: MAX_FILE_SIZE,
@@ -129,79 +125,43 @@ export async function parseStreamingUpload(
       allowEmptyFiles: false,
       hashAlgorithm: 'sha256', // formidable calculates hash for us
 
-      // Custom file write stream handler - the key to streaming upload
-      fileWriteStreamHandler: (file?: VolatileFile): Writable | undefined => {
-        // Only stream the audio file, let formidable buffer cover file normally
-        // In our FormData, audio file is named 'file', cover is named 'cover'
-        // formidable's fileWriteStreamHandler is called before we know the form field name
-        // so we need to check if this is being called for streaming or not
-        // The solution: Only return custom handler for the first file (audio)
-        // and return undefined for subsequent files (cover) to use default buffering
-        
-        if (!uploadPromise) {
-          // This is the first file (audio file) - stream it to MinIO
-          
-          // Generate temporary object name (will rename after hash is known from formidable)
-          const tempId = crypto.randomUUID();
-          tempObjectName = `temp/${tempId}`;
+      // Stream audio file directly to MinIO via PassThrough
+      // formidable writes to PassThrough, MinIO reads from it
+      // When parse() callback fires, all streams are already closed
+      fileWriteStreamHandler: (file?: VolatileFile): PassThrough => {
+        const passThrough = new PassThrough();
 
-          logger.info({ tempObjectName }, 'Starting streaming upload');
+        // Use mimetype to distinguish audio vs cover (more reliable than order)
+        // Note: VolatileFile has mimetype at runtime but @types/formidable is incomplete
+        const fileRecord = file ?? {};
+        const mime = 'mimetype' in fileRecord ? String(fileRecord.mimetype) : '';
+        const isAudioFile = mime.startsWith('audio/') || mime === 'application/octet-stream';
 
-          const passThrough = new PassThrough();
-          let uploadedSize = 0;
+        if (isAudioFile && !tempObjectName) {
+          // Audio file - stream to MinIO
+          tempObjectName = `temp/${crypto.randomUUID()}`;
+          logger.info({ tempObjectName, mimetype: mime }, 'Starting streaming upload');
 
-          // Create a writable stream that pipes to MinIO
-          const writeStream = new Writable({
-            write(chunk: Buffer, _encoding, callback) {
-              uploadedSize += chunk.length;
-
-              // Write to passThrough for MinIO with proper backpressure handling
-              const canContinue = passThrough.write(chunk);
-              if (canContinue) {
-                callback();
-              } else {
-                // Wait for drain event before accepting more data
-                passThrough.once('drain', callback);
-              }
-            },
-
-            final(callback) {
-              fileSize = uploadedSize;
-              logger.info({ fileSize }, 'File streaming complete');
-
-              // End the passThrough stream
-              passThrough.end(callback);
-            },
-
-            destroy(err, callback) {
-              passThrough.destroy(err || undefined);
-              callback(err);
-            },
+          // Track size as data flows through
+          passThrough.on('data', (chunk: Buffer) => {
+            fileSize += chunk.length;
           });
 
-          // Start MinIO upload with the passThrough stream (just upload to temp, rename later)
-          uploadPromise = (async () => {
-            try {
-              await minioClient.putObject(
-                bucketName,
-                tempObjectName,
-                passThrough,
-                undefined, // size unknown for streaming
-                { 'Content-Type': 'application/octet-stream' }
-              );
-              logger.info({ tempObjectName }, 'Temp file uploaded to MinIO');
-            } catch (error) {
-              uploadError = error instanceof Error ? error : new Error(String(error));
+          // MinIO consumes the stream; formidable writes to it
+          // No need to await - when parse() callback fires, stream is done
+          minioClient
+            .putObject(bucketName, tempObjectName, passThrough, undefined, {
+              'Content-Type': mime || 'application/octet-stream',
+            })
+            .then(() => {
+              logger.info({ tempObjectName, fileSize }, 'Temp file uploaded to MinIO');
+            })
+            .catch((error) => {
               logger.error({ error, tempObjectName }, 'Failed to upload to MinIO');
-              throw error;
-            }
-          })();
-
-          return writeStream;
+            });
         }
-        
-        // For cover file or other files, return undefined to use default buffering
-        return undefined;
+        // Cover file (image/*) or fallback: just buffer it
+        return passThrough;
       },
     });
 
@@ -236,26 +196,6 @@ export async function parseStreamingUpload(
       }
 
       try {
-        // Wait for MinIO upload to complete
-        if (uploadPromise) {
-          await uploadPromise;
-        }
-
-        // Check for upload errors
-        if (uploadError) {
-          // Clean up temp file on upload error
-          if (tempObjectName) {
-            try {
-              await minioClient.removeObject(bucketName, tempObjectName);
-              logger.info({ tempObjectName }, 'Cleaned up temp file after upload error');
-            } catch (cleanupError) {
-              logger.warn({ error: cleanupError, tempObjectName }, 'Failed to clean up temp file');
-            }
-          }
-          reject(uploadError);
-          return;
-        }
-
         // Extract form fields (formidable v3 returns arrays)
         const parsedFields = extractFields(fields);
 

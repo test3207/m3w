@@ -103,6 +103,7 @@ export const libraries = {
       sampleRate?: number;
       channels?: number;
       coverBlob?: Blob;
+      coverFormat?: string;  // MIME type of cover, e.g., 'image/jpeg', 'image/png'
     }
   ): Promise<UploadSongData> => {
     const formData = new FormData();
@@ -134,7 +135,9 @@ export const libraries = {
       
       // Append cover blob if provided
       if (metadata.coverBlob) {
-        formData.append("cover", metadata.coverBlob, "cover.jpg");
+        // Determine file extension from format (e.g., 'image/jpeg' -> 'jpg', 'image/png' -> 'png')
+        const coverExt = metadata.coverFormat?.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+        formData.append("cover", metadata.coverBlob, `cover.${coverExt}`);
       }
     }
 
