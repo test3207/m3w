@@ -3,14 +3,43 @@
 ## Metadata
 
 **Created**: 2025-11-18  
-**Last Updated**: 2025-11-18  
+**Last Updated**: 2025-12-10  
 **Status**: Active
 
 ---
 
 ## Overview
 
-This document defines all user stories and product goals for M3W. It covers both online and offline user experiences, serving as the single source of truth for product requirements and design decisions.
+This document defines all user stories and product goals for M3W. Stories are organized by **user type** and **network state** to provide clear boundaries and avoid overlap.
+
+### User Type × Network State Matrix
+
+```
+┌─────────────┬───────────────────────────────────────┐
+│             │           Network State               │
+│ User Type   ├───────────────────┬───────────────────┤
+│             │      Online       │      Offline      │
+├─────────────┼───────────────────┼───────────────────┤
+│   Guest     │  Part 2: Local    │  Part 2: Local    │
+│ (no account)│  (No difference)  │  (No difference)  │
+├─────────────┼───────────────────┼───────────────────┤
+│   Auth      │  Part 1: Online   │  Part 3: Offline  │
+│(has account)│  Part 4: Sync     │  Degradation      │
+└─────────────┴───────────────────┴───────────────────┘
+
+Transition:
+├── Guest → Auth: Part 2.5: Account Binding & Data Migration
+```
+
+### Document Structure
+
+| Part | Title | User Type | Focus |
+|------|-------|-----------|-------|
+| **Part 1** | Online Experience | Auth + Online | Core features (✅ Complete) |
+| **Part 2** | Guest Mode (Local-Only) | Guest | Pure local player (✅ Complete) |
+| **Part 2.5** | Guest to Auth Migration | Guest → Auth | Account binding & data merge |
+| **Part 3** | Auth Offline Experience | Auth + Offline | Offline degradation & recovery |
+| **Part 4** | Cross-Device Sync | Auth | Multi-device data consistency |
 
 ---
 
@@ -24,21 +53,21 @@ This document defines all user stories and product goals for M3W. It covers both
 
 ### 2. Library vs Playlist Separation
 ```
-Library (音乐库)
+Library
   ├─ User's music file collections
   ├─ Multiple Libraries allowed (e.g., "My Music", "Work Music", "Classical")
   ├─ Each Library independently managed
   ├─ Songs can exist in multiple Libraries (by design - for sharing)
   └─ Future: Can be shared with other users
 
-Playlist (播放列表)
+Playlist
   ├─ Cross-Library playback queues
   ├─ User-created and managed
   ├─ Can contain songs from different Libraries
-  ├─ Default Playlist "我喜欢的音乐" (Favorites) - cannot be deleted
+  ├─ Default Playlist "Favorites" - cannot be deleted
   └─ Playing from Library auto-generates temporary Playlist
 
-Song (歌曲)
+Song
   ├─ Belongs to a Library
   ├─ Information from file Metadata (ID3 tags only - no external API)
   ├─ Can exist in multiple Libraries (same file, different Libraries)
@@ -58,7 +87,7 @@ Song (歌曲)
 ### 5. Sorting and Ordering
 - **Playlists**: User-defined order (drag & drop), saved by frontend
 - **Libraries**: Support alphabetical sorting (A-Z, Z-A)
-- **Chinese songs**: Sort by Pinyin (拼音排序)
+- **Chinese songs**: Sort by Pinyin
 - **Default sort**: Date added (newest first)
 
 ### 6. Library Cover Image
@@ -67,24 +96,26 @@ Song (歌曲)
 
 ---
 
-## Part 1: Online Experience (✅ Completed)
+## Part 1: Online Experience (Auth + Online) ✅ Complete
 
-### Story 1: First-Time User (Cold Start)
+**Context**: Authenticated user with stable network connection. This is the primary use case.
+
+### Story 1.1: First-Time User (Cold Start)
 
 **Goal**: New user signs in and uploads their first song
 
 **Flow**:
 ```
 1. Open app → Welcome page (not logged in)
-2. Click "开始使用" → GitHub OAuth sign-in
+2. Click "Get Started" → GitHub OAuth sign-in
 3. Sign-in success → Redirect to main interface
    └─ Backend auto-creates:
-      - "默认音乐库" (Default Library, isDefault: true, canDelete: false)
-      - "我喜欢的音乐" (Favorites Playlist, isDefault: true, canDelete: false)
+      - "Default Library" (isDefault: true, canDelete: false)
+      - "Favorites" Playlist (isDefault: true, canDelete: false)
 
 4. User sees mobile-first UI with 3-tab bottom navigation
-5. Navigate to "音乐库" Tab → See "默认音乐库" card
-6. Click Library card → Empty state + "上传歌曲" button
+5. Navigate to "Libraries" Tab → See "Default Library" card
+6. Click Library card → Empty state + "Upload Songs" button
 7. Click upload → Upload drawer appears (Library pre-selected)
 8. Select files → Auto-extract Metadata → Upload
 9. Upload complete → Song appears in Library
@@ -101,7 +132,7 @@ Song (歌曲)
 
 ---
 
-### Story 2: Managing Multiple Libraries
+### Story 1.2: Managing Multiple Libraries
 
 **Goal**: User creates and manages multiple music collections
 
@@ -109,25 +140,25 @@ Song (歌曲)
 
 **Creating New Library**:
 ```
-1. In "音乐库" Tab → Click floating "+" button
-2. Enter Library name (e.g., "工作音乐")
+1. In "Libraries" Tab → Click floating "+" button
+2. Enter Library name (e.g., "Work Music")
 3. Create success → New Library appears in list
 4. Click to enter → Upload songs
 ```
 
 **Switching Between Libraries**:
 ```
-1. In "音乐库" Tab → See all Library cards:
-   - 默认音乐库 (234 首歌曲) [封面图]
-   - 工作音乐 (56 首歌曲) [封面图]
-   - 健身音乐 (89 首歌曲) [封面图]
+1. In "Libraries" Tab → See all Library cards:
+   - Default Library (234 songs) [cover]
+   - Work Music (56 songs) [cover]
+   - Workout Music (89 songs) [cover]
 2. Click any Library → View songs in that Library
 ```
 
 **Playing from Library**:
 ```
 1. Enter a Library → See song list
-2. Click "播放全部" → Start playing (creates linked playlist)
+2. Click "Play All" → Start playing (creates linked playlist)
 3. Or click single song → Play from that song
 4. Mini Player shows at bottom
 5. Tap Mini Player → Expand to Full Player
@@ -142,7 +173,7 @@ Song (歌曲)
 
 ---
 
-### Story 3: Managing Playlists (Cross-Library)
+### Story 1.3: Managing Playlists (Cross-Library)
 
 **Goal**: User creates and manages playlists with songs from different Libraries
 
@@ -150,32 +181,25 @@ Song (歌曲)
 
 **Creating Playlist**:
 ```
-1. In "播放列表" Tab → Click floating "+"
-2. Enter name (e.g., "深夜驾车")
+1. In "Playlists" Tab → Click floating "+"
+2. Enter name (e.g., "Late Night Drive")
 3. Create success → Empty Playlist appears
 ```
 
 **Adding Songs to Playlist**:
-
-Method 1 - From Library:
 ```
 1. Enter any Library → Long press on song
-2. Popup menu → "添加到播放列表"
+2. Popup menu → "Add to Playlist"
 3. Select target Playlist (or create new)
 4. Add success
 ```
 
-Method 2 - From Now Playing (removed in current implementation):
-```
-Functionality integrated into Full Player actions
-```
-
 **Playing Playlist**:
 ```
-1. In "播放列表" Tab → Click Playlist
-2. Enter detail → Click "播放全部" or single song
+1. In "Playlists" Tab → Click Playlist
+2. Enter detail → Click "Play All" or single song
 3. Playback queue = songs in Playlist (may come from different Libraries)
-4. In Playlist detail, show song source: "来自：工作音乐"
+4. In Playlist detail, show song source: "From: Work Music"
 ```
 
 **Reordering Playlist Songs**:
@@ -192,11 +216,11 @@ Functionality integrated into Full Player actions
 - [x] Drag & drop reordering in Playlist
 - [x] Sort by multiple criteria (date, title, artist, album)
 - [x] Chinese song titles sorted by Pinyin
-- [x] "我喜欢的音乐" Playlist cannot be deleted
+- [x] "Favorites" Playlist cannot be deleted
 
 ---
 
-### Story 4: Daily Playback Experience
+### Story 1.4: Daily Playback Experience
 
 **Goal**: User opens app and plays music seamlessly
 
@@ -208,10 +232,10 @@ Functionality integrated into Full Player actions
 
 2. Mobile UI Components:
 
-   Bottom Navigation (固定 3 个 Tab):
-     - 音乐库 (Libraries)
-     - 播放列表 (Playlists)  
-     - 设置 (Settings)
+   Bottom Navigation (fixed 3 tabs):
+     - Libraries
+     - Playlists
+     - Settings
 
    Mini Player (floating above bottom nav, always visible when song loaded):
      ┌─────────────────────────────────────┐
@@ -227,7 +251,7 @@ Functionality integrated into Full Player actions
      - Progress bar + timestamps
      - Playback controls: Previous, Play/Pause, Next
      - Action buttons:
-       ├─ Add to Favorites ("我喜欢的音乐")
+       ├─ Add to Favorites
        ├─ Add to Playlist
        ├─ Shuffle
        └─ Repeat (off / one / all)
@@ -236,9 +260,9 @@ Functionality integrated into Full Player actions
 
 3. Play Queue Drawer (swipe up from Full Player):
    ┌─────────────────────────────────────┐
-   │ 播放队列 (12 首)    [清空] [保存]  │
+   │ Play Queue (12 songs)  [Clear][Save]│
    ├─────────────────────────────────────┤
-   │ 当前播放自：工作音乐 Library         │
+   │ Now playing from: Work Music Library │
    ├─────────────────────────────────────┤
    │ [Cover] Song 1 - Artist 1  [⋮] ← Now│
    │ [Cover] Song 2 - Artist 2  [⋮]     │
@@ -247,7 +271,7 @@ Functionality integrated into Full Player actions
    - Shows queue source (Library or Playlist)
    - Tap to switch songs
    - Delete from queue
-   - Bottom buttons: "清空队列" "保存为播放列表"
+   - Bottom buttons: "Clear Queue" "Save as Playlist"
 ```
 
 **Acceptance Criteria**:
@@ -261,7 +285,7 @@ Functionality integrated into Full Player actions
 
 ---
 
-### Story 5: Uploading New Songs
+### Story 1.5: Uploading New Songs
 
 **Goal**: User uploads songs to a specific Library
 
@@ -269,12 +293,12 @@ Functionality integrated into Full Player actions
 
 **Upload from Library**:
 ```
-1. Enter a Library → Click "上传歌曲" button
+1. Enter a Library → Click "Upload Songs" button
 2. Upload drawer appears (current Library pre-selected)
 3. Select files (multi-select supported)
 4. Auto-extract Metadata → Show preview
 5. User can manually edit: Title, Artist, Album
-6. Click "开始上传"
+6. Click "Start Upload"
 7. Show progress (can close drawer, upload continues in background)
 8. Upload complete → Auto-refresh Library list
 ```
@@ -298,378 +322,1424 @@ Functionality integrated into Full Player actions
 
 ---
 
-## Part 2: Standalone Offline Experience (Phase 1 Design)
+## Part 2: Guest Mode (Local-Only) ✅ Complete
 
-**Concept**: A fully functional local music player that requires **zero** server interaction. This is the "Guest Mode" or "Local Mode".
+**Context**: User without account, or user choosing to use app offline-first. All data stored locally in browser. No server interaction.
 
-### Story 6: Guest Entry (Zero Friction)
+**Key Characteristics**:
+- No authentication required
+- All data in IndexedDB + Cache Storage
+- Network state irrelevant (always "local")
+- Feature parity with Auth mode (except sync)
+
+### Story 2.1: Guest Entry (Zero Friction)
 
 **Goal**: User opens the app and starts using it immediately without an account.
 
 **Flow**:
-1.  **Entry**: On the Sign-in page, user clicks "Offline Mode" (离线使用).
-2.  **Initialization**:
-    - System initializes a `Guest` session (no token).
-    - Router switches to `OfflineProxy` mode.
-    - Auto-creates local resources in IndexedDB: "Local Library" and "Favorites".
-3.  **Landing**: User lands on the Dashboard, UI is identical to logged-in state but strictly local.
-
-**Acceptance Criteria**:
-- [x] "Offline Mode" button on Sign-in page.
-- [x] No network requests sent to backend API.
-- [x] `authStore` handles Guest state correctly.
-- [x] Default local library and playlist created in IndexedDB.
-
-### Story 7: Local Resource Management
-
-**Goal**: Guest user manages Libraries and Playlists locally.
-
-**Flow**:
-1.  **Create**: User creates a "Gym Playlist" or "Work Library".
-2.  **Storage**: Data is stored **only** in browser IndexedDB.
-3.  **Persistence**: Data survives browser restarts.
-4.  **Isolation**: These resources have `userId: 'guest'` and are invisible to other users (if multiple people used the same browser).
-
-**Acceptance Criteria**:
-- [x] CRUD operations for Libraries/Playlists work via `OfflineProxy`.
-- [x] Data persists across reloads.
-
-### Story 8: Local File Import
-
-**Goal**: Guest user adds music to their local library.
-
-**Context**: In Offline Mode, we don't "upload" to a server. We "import" to the browser.
-
-**Flow**:
-1.  **Action**: User clicks "Import Songs" (replaces "Upload" text in Guest Mode).
-2.  **Processing**:
-    - Files selected from device.
-    - Metadata extracted in-browser (`music-metadata-browser`).
-    - Audio file cached in Cache Storage API via Service Worker.
-    - Cover art extracted and cached locally.
-    - Metadata stored in IndexedDB.
-3.  **Result**: Song appears in Local Library immediately.
-
-**Acceptance Criteria**:
-- [x] File import stores audio in Cache Storage API.
-- [x] Metadata stored in IndexedDB.
-- [x] Cover art cached via Service Worker.
-- [ ] Storage quota checked before import.
-- [ ] Progress bar reflects local processing speed.
-
----
-
-## Part 3: Account Binding (Phase 2 Design)
-
-**Concept**: Bridging the gap. A Guest user decides to sign up/in to a Self-hosted server and wants to keep their data.
-
-### Story 9: Guest to Account Migration
-
-**Goal**: Guest user logs in and merges local data to the server.
-
-**Flow**:
-1.  **Trigger**: Guest user clicks "Sign In" in Settings.
-2.  **Authentication**: User completes GitHub OAuth flow.
-3.  **Decision Prompt**:
-    - "We found local data. What would you like to do?"
-    - Option A: **Merge to Account** (Upload local songs/playlists to server).
-    - Option B: **Keep Local Only** (Stay as local data, separate from account - *Complex, maybe V2*).
-    - Option C: **Discard** (Clear guest data).
-4.  **Execution (Merge)**:
-    - Background process uploads local songs to Server.
-    - Creates corresponding Libraries/Playlists on Server.
-    - Updates local IndexedDB IDs to match new Server IDs.
-5.  **Completion**: User is now fully "Online" with their previous data.
-
-**Acceptance Criteria**:
-- [ ] Detect pre-existing guest data on login.
-- [ ] Migration UI/Wizard.
-- [ ] Batch upload mechanism for migration.
-
----
-
-## Part 4: Temporary Offline Experience (Phase 3 Design)
-
-**Concept**: The "Classic" offline mode. An Online (Self-hosted) user loses internet connection or wants to save data for travel.
-
-### Story 10: Transparent Caching (Online -> Local)
-
-**Goal**: Online user's content is automatically available offline.
-
-**Flow**:
-1.  **Passive Cache**: When playing a song online, it is cached to IndexedDB/Cache API.
-2.  **Active Download**: User clicks "Download" on a Playlist/Library.
-3.  **Sync**: Metadata (text) is synced periodically to IndexedDB.
-
-**Acceptance Criteria**:
-- [ ] Audio files cached on play.
-- [ ] Metadata synced locally.
-
-### Story 11: Offline Fallback (Roaming)
-
-**Goal**: Seamless transition when network drops.
-
-**Flow**:
-1.  **Event**: Network disconnects.
-2.  **UI Update**: "Offline" badge appears.
-3.  **Router Switch**: API requests fallback to `OfflineProxy` (Read-Only for server data, or Queue for mutations).
-4.  **Playback**:
-    - Cached songs play normally.
-    - Uncached songs show disabled state.
-
-**Acceptance Criteria**:
-- [ ] Graceful degradation when offline.
-- [ ] Clear indication of what is playable.
-
----
-
-## Key Data Flows│                                      │
-│ ██████████░░░░░░░░░░ 5.2 GB / 60 GB│
-│                                      │
-│ 详细信息:                            │
-│ ├─ 音频文件: 4.8 GB (234 首)        │
-│ ├─ 封面图片: 0.3 GB                 │
-│ └─ 元数据: 0.1 GB                   │
-│                                      │
-│ [请求持久化存储]                     │
-│ [清理缓存]                           │
-└─────────────────────────────────────┘
 ```
-
-**Quota Warning**:
+1. Open app → Sign-in page
+2. Click "Offline Mode" button
+3. System initializes Guest session:
+   └─ authStore sets user to Guest identity
+   └─ Router switches to OfflineProxy mode
+   └─ IndexedDB initialized with schema
+   └─ Auto-creates local default resources:
+      - "Local Library"
+      - "Favorites"
+4. User lands on Dashboard
+5. UI identical to logged-in state
 ```
-When storage >80%:
-┌─────────────────────────────────────┐
-│ ⚠️ 存储空间即将用尽                  │
-│                                      │
-│ 已使用 52 GB / 60 GB                │
-│                                      │
-│ 建议操作:                            │
-│ • 清理30天未播放的歌曲              │
-│ • 删除不需要的播放列表              │
-│ • 请求更多存储空间                  │
-│                                      │
-│ [立即清理] [稍后提醒]                │
-└─────────────────────────────────────┘
-```
-
-**Acceptance Criteria**:
-- [ ] Storage usage displayed in Settings
-- [ ] Breakdown by category (audio/covers/metadata)
-- [ ] Request persistent storage option
-- [ ] Quota warning at 80%
-- [ ] Auto-cleanup suggestions
-- [ ] Manual cache cleanup
-
----
-
-### Story 11: PWA Installation
-
-**Goal**: User installs M3W as a standalone app
-
-**Flow**:
-
-**Install Prompt**:
-```
-1. User visits M3W (2nd+ visit)
-2. Browser shows install prompt
-3. User clicks "Install"
-4. App icon added to home screen
-5. App launches in standalone mode (no browser UI)
-```
-
-**Installed App Experience**:
-```
-1. Launches in full screen
-2. No browser address bar
-3. Native feel on mobile
-4. Works offline by default
-5. Background sync when app closed
-```
-
-**Acceptance Criteria**:
-- [ ] PWA manifest configured
-- [ ] Service Worker registered
-- [ ] Install prompt appears
-- [ ] App installs to home screen
-- [ ] Standalone mode works
-- [ ] Offline functionality intact
-
----
-
-### Story 12: Guest Mode (Offline First)
-
-**Goal**: Enable immediate, full-featured app usage without requiring an account or internet connection.
-
-**Context**:
-Currently, the app requires GitHub login to start. This creates friction for users who just want to play local files or test the app. Guest Mode allows the app to function as a purely local music player.
-
-**Flow**:
-
-1.  **Guest Entry**:
-    - On the Sign-In page, user sees a "Use Offline" (离线使用) button.
-    - Clicking it bypasses OAuth and initializes a "Guest Session".
-
-2.  **System Initialization (Invisible to User)**:
-    - `AuthStore` sets user to a local Guest identity.
-    - `Router` switches to **Offline Mode**, directing ALL API requests to the `OfflineProxy`.
-    - `OfflineProxy` initializes a local database (IndexedDB) if not present.
-    - Default resources are created locally: "Local Library" (Default) and "Favorites".
-
-3.  **The Guest Experience**:
-    - **Interface**: Identical to the logged-in experience.
-    - **Upload**: Files are processed locally; metadata extracted in browser; audio cached in Cache Storage.
-    - **Playback**: Full player features work (queue, loop, shuffle, seek with Range requests).
-    - **Persistence**: Data survives browser restarts (metadata in IndexedDB, audio in Cache Storage).
-
-4.  **Limitations & Feedback**:
-    - **Sync**: Disabled. Settings page shows "Guest Mode - Local Only".
-    - **Network**: App behaves as if "Offline" regarding server communication, but "Online" for local operations.
-
-5.  **Transition to Account (Future Scope)**:
-    - User clicks "Sign In" in Settings.
-    - Prompt: "Switching to account will hide guest data" (MVP) or "Merge data" (Future).
 
 **Acceptance Criteria**:
 - [x] "Offline Mode" button on Sign-in page
-- [x] Guest user identity managed in AuthStore
-- [x] Router intercepts API calls and directs to Offline Proxy
-- [x] Offline Proxy handles "guest" userId
-- [x] Full feature set available locally (Create Library, Upload, Play)
-- [x] No server calls made in Guest Mode
-- [x] Cover art extraction from audio files
-- [x] HMR fixes and proper initialization
-- [x] IndexedDB v2 with linkedLibraryId index
-- [x] Audio files cached in Cache Storage API
-- [x] Service Worker with Range request support for seek
-- [x] Player preferences and progress persistence
+- [x] No network requests to backend API
+- [x] authStore handles Guest state correctly
+- [x] Default local library and playlist created in IndexedDB
+- [x] Settings page shows "Guest Mode - Local Storage Only"
 
 ---
 
-## Key Data Flows
+### Story 2.2: Local Music Management
 
-### 1. Cache Strategy
+**Goal**: Guest user manages Libraries, Playlists, and Songs locally.
+
+**Flow**:
+```
+1. Create Library/Playlist → Stored in IndexedDB
+2. Import songs → Audio cached in Cache Storage, metadata in IndexedDB
+3. Play songs → Served from Cache Storage via Service Worker
+4. Edit metadata → Updated in IndexedDB
+5. Delete songs → Removed from both IndexedDB and Cache Storage
+6. All data persists across browser restarts
+```
+
+**Key Differences from Auth Mode**:
+| Feature | Auth Mode | Guest Mode |
+|---------|-----------|------------|
+| Storage | Server (MinIO) | Cache Storage API |
+| Metadata | PostgreSQL | IndexedDB |
+| Upload text | "Upload Songs" | "Import Songs" |
+| Sync | Available | N/A |
+| Cross-device | Yes | No |
+
+**Acceptance Criteria**:
+- [x] CRUD operations work via OfflineProxy
+- [x] Data persists across browser restarts
+- [x] Cover art extracted from audio files locally
+- [x] Service Worker handles Range requests for seek
+- [x] Player preferences and progress persistence
+- [ ] Storage quota warning before import (Issue #50)
+
+---
+
+### Story 2.3: Guest Limitations & Feedback
+
+**Goal**: User understands Guest mode limitations clearly.
+
+**UI Indicators**:
+```
+Settings Page:
+┌─────────────────────────────────────┐
+│ Account                             │
+├─────────────────────────────────────┤
+│ 👤 Guest Mode                       │
+│    Local storage only, no sync      │
+│                                     │
+│ [Sign in with GitHub]               │
+│    Sign in to sync across devices   │
+└─────────────────────────────────────┘
+
+Storage Section:
+┌─────────────────────────────────────┐
+│ Local Storage                       │
+├─────────────────────────────────────┤
+│ ██████████░░░░░░░░░░ 5.2 GB / 60 GB│
+│                                     │
+│ Audio files: 4.8 GB (234 songs)     │
+│ Cover images: 0.3 GB                │
+│ Metadata: 0.1 GB                    │
+│                                     │
+│ [Request Persistent Storage][Clear] │
+└─────────────────────────────────────┘
+```
+
+**Acceptance Criteria**:
+- [x] Settings clearly shows Guest mode status
+- [ ] Storage usage breakdown displayed (Issue #50)
+- [ ] "Request Persistent Storage" button (Issue #50)
+- [ ] Cache cleanup option (Issue #51)
+
+---
+
+## Part 2.5: Guest to Auth Migration
+
+**Context**: Guest user decides to create an account and wants to keep their local data.
+
+**Related Issues**: #33, #129, #131 (Epic 8)
+
+### Story 2.5.1: Migration Decision
+
+**Goal**: Guest user is prompted about their data when signing in.
+
+**Flow**:
+```
+1. Guest user clicks "Sign in with GitHub" in Settings
+2. Complete GitHub OAuth flow
+3. System detects existing local data:
+   - X libraries, Y playlists, Z songs
+4. Migration prompt appears:
+   ┌─────────────────────────────────────┐
+   │ Local Data Detected                 │
+   ├─────────────────────────────────────┤
+   │ You have 3 libraries, 5 playlists,  │
+   │ and 234 songs stored locally.       │
+   │                                     │
+   │ Choose how to proceed:              │
+   │                                     │
+   │ [Merge to Account]                  │
+   │   Upload local data to server       │
+   │                                     │
+   │ [Keep Local]                        │
+   │   Sign in but keep local data       │
+   │   separate (can merge later)        │
+   │                                     │
+   │ [Discard Local Data]                │
+   │   Clear local data, use account data│
+   └─────────────────────────────────────┘
+```
+
+**Acceptance Criteria**:
+- [ ] Detect pre-existing guest data on login
+- [ ] Show data summary (counts)
+- [ ] Three-option migration prompt
+- [ ] "Keep Local" allows coexistence (complex, may be V2)
+
+---
+
+### Story 2.5.2: Data Migration Execution
+
+**Goal**: Guest data is merged into authenticated account.
+
+**Flow** (when user chooses "Merge to Account"):
+```
+1. Show migration progress:
+   ┌─────────────────────────────────────┐
+   │ Migrating data...                   │
+   ├─────────────────────────────────────┤
+   │ ████████░░░░░░░░░░░░ 40%           │
+   │                                     │
+   │ ✓ Libraries: 3/3                    │
+   │ ✓ Playlists: 5/5                    │
+   │ ⋯ Songs: 94/234                     │
+   │                                     │
+   │ Estimated time remaining: 3 min     │
+   └─────────────────────────────────────┘
+
+2. For each local entity:
+   a. Upload to server (songs: upload audio file)
+   b. Server returns new server ID
+   c. Update local ID mapping (localId → serverId)
+   d. Mark as synced
+
+3. Handle conflicts:
+   - Same-name library/playlist: Prompt user to rename or merge
+   - Duplicate song (by hash): Skip upload, link to existing
+
+4. Migration complete:
+   ┌─────────────────────────────────────┐
+   │ ✓ Migration Complete                │
+   ├─────────────────────────────────────┤
+   │ Migrated:                           │
+   │ • 3 libraries                       │
+   │ • 5 playlists                       │
+   │ • 234 songs                         │
+   │                                     │
+   │ Your data is now synced to cloud    │
+   │                                     │
+   │ [Done]                              │
+   └─────────────────────────────────────┘
+```
+
+**Acceptance Criteria**:
+- [ ] Batch upload mechanism for songs
+- [ ] ID mapping: local ID → server ID (#129)
+- [ ] Playlist references updated after song ID changes
+- [ ] Conflict resolution for name collisions
+- [ ] Partial failure recovery (resume from last point)
+- [ ] Progress indication with ETA
+
+---
+
+## Part 3: Auth Offline Experience
+
+**Context**: Authenticated user loses network connection or is in offline environment. App should degrade gracefully and recover when back online.
+
+**Related Issues**: #87 (Epic 5), #131 (Epic 8)
+
+### Story 3.1: Offline Detection & UI Feedback
+
+**Goal**: User is clearly informed when offline and what features are available.
+
+**Flow**:
+```
+1. Network disconnects (navigator.onLine = false OR backend unreachable)
+2. UI updates:
+   - Network indicator changes to "Offline"
+   - Toast: "Network disconnected, some features limited"
+3. Feature availability:
+   ┌─────────────────────────────────────┐
+   │ Feature         │ Online │ Offline │
+   ├─────────────────────────────────────┤
+   │ Play cached     │   ✓    │    ✓    │
+   │ Play uncached   │   ✓    │    ✗*   │
+   │ Browse library  │   ✓    │    ✓**  │
+   │ Create library  │   ✓    │    ✓*** │
+   │ Create playlist │   ✓    │    ✓*** │
+   │ Upload songs    │   ✓    │    ✓*** │
+   │ Delete songs    │   ✓    │    ✓*** │
+   └─────────────────────────────────────┘
+   * Auto-skip to next cached song, toast with debounce
+   ** If metadata cached locally
+   *** Queued for sync when online
+```
+
+**Uncached Song Auto-Skip Behavior**:
+```
+When playing a queue with mixed cached/uncached songs:
+1. Player attempts to play next song
+2. If uncached and offline → Auto-skip to next cached song
+3. Show debounced toast: "Skipped [N] songs (network required)"
+   - Debounce: One toast per user interaction (play/next/prev)
+   - Accumulate skipped count during single skip sequence
+4. If no cached songs remaining → Stop playback, show "No cached songs available"
+```
+
+**Acceptance Criteria**:
+- [x] Network status indicator in UI
+- [x] Dual detection: navigator.onLine + backend ping
+- [ ] Clear indication of cached vs uncached content
+- [ ] Uncached songs show disabled state with "Network required" badge
+- [ ] Auto-skip uncached songs when offline with debounced toast
+- [ ] Create library/playlist works offline (queued for sync)
+- [ ] Upload songs works offline (stored locally, queued for sync)
+
+---
+
+### Story 3.2: Offline Playback
+
+**Goal**: User can play previously cached songs while offline.
+
+**Prerequisite**: Songs must be cached (via Story 3.4 or Story 4.3).
+
+**Flow**:
+```
+1. User is offline
+2. Opens a Library or Playlist
+3. Song list shows:
+   - Cached songs: Normal appearance, playable
+   - Uncached songs: Normal appearance with "cloud" badge (still clickable)
+4. Click cached song → Plays from Cache Storage
+5. Click uncached song → Auto-skip to next cached song (per Story 3.1)
+6. Service Worker intercepts request → Returns cached audio
+7. Playback works normally (seek, progress, etc.)
+```
+
+**Acceptance Criteria**:
+- [x] Cached songs playable offline
+- [x] Service Worker serves audio from Cache Storage
+- [x] Range request support for seeking
+- [x] Visual badge indicating cached/uncached status
+- [ ] Uncached songs auto-skip when offline (per Story 3.1)
+
+---
+
+### Story 3.3: Offline Mutations (State-Based Sync)
+
+**Goal**: User can make changes offline that sync when back online.
+
+**Flow**:
+```
+1. User is offline
+2. User creates a new playlist "My Collection"
+3. System:
+   - Creates playlist in IndexedDB immediately
+   - Marks entity with sync flags: _isDirty=true, _isLocalOnly=true
+   - UI shows playlist normally (with sync pending indicator)
+4. User continues making changes (add songs, reorder, etc.)
+   - Each mutation updates IndexedDB and sets _isDirty=true
+5. Network reconnects
+6. Sync triggers (on reconnect / app foreground / timer):
+   a. PUSH: Find all dirty entities, send current state to server
+   b. Server returns IDs for new entities (localId → serverId mapping)
+   c. PULL: Fetch latest server state, merge into local
+   d. Clear sync flags (_isDirty=false, _isLocalOnly=false)
+7. UI updates: sync indicator disappears
+```
+
+**Key Design**: State-based sync, NOT request replay
+- We sync the **current state** of entities, not a log of operations
+- Multiple offline edits to the same entity = one sync operation
+- Conflict resolution happens at entity level (server-wins default)
+
+**Supported Offline Mutations**:
+| Mutation | Offline Behavior |
+|----------|------------------|
+| Create Library | IndexedDB + _isLocalOnly |
+| Edit Library | IndexedDB + _isDirty |
+| Delete Library | IndexedDB + _isDeleted (except Default Library) |
+| Create Playlist | IndexedDB + _isLocalOnly |
+| Edit Playlist | IndexedDB + _isDirty |
+| Delete Playlist | IndexedDB + _isDeleted (except Favorites) |
+| Add to Playlist | IndexedDB + _isDirty |
+| Remove from Playlist | IndexedDB + _isDirty |
+| Reorder Playlist | IndexedDB + _isDirty |
+| Delete Song | IndexedDB + _isDeleted |
+| Upload Song | Cache Storage + IndexedDB + _isLocalOnly |
+
+**Note**: Default Library and Favorites Playlist (auto-created on init) have `canDelete: false` and cannot be deleted in both online and offline modes.
+
+**Acceptance Criteria**:
+- [ ] All mutations work offline via IndexedDB
+- [ ] Dirty tracking with sync flags (_isDirty, _isLocalOnly, _isDeleted)
+- [ ] Sync indicator on entities with pending changes
+- [ ] State-based push on reconnect (not request replay)
+- [ ] ID mapping for locally-created entities
+- [ ] Server-wins conflict resolution
+
+---
+
+### Story 3.4: Proactive Caching
+
+**Goal**: User controls which libraries are cached for offline use.
+
+**Cache Strategy Overview**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Layer           │ Setting              │ Behavior           │
+├─────────────────────────────────────────────────────────────┤
+│ Backend Global  │ cacheAllEnabled      │ Sync across devices│
+│                 │ (default: false)     │ when enabled       │
+├─────────────────────────────────────────────────────────────┤
+│ Frontend Global │ Download Timing      │ WiFi-only / Always │
+│                 │                      │ / Manual           │
+├─────────────────────────────────────────────────────────────┤
+│ Frontend Library│ Manual cache button  │ Cache this library │
+│                 │ (per-library)        │ regardless of above│
+├─────────────────────────────────────────────────────────────┤
+│ Automatic       │ Cache-on-play        │ Always enabled     │
+└─────────────────────────────────────────────────────────────┘
+
+Key behaviors:
+- Backend default: NO auto-cache (conservative, save bandwidth)
+- Backend cacheAllEnabled=true → Honor frontend Download Timing
+- Frontend can always manually cache any library
+- Played songs always cached automatically
+```
+
+**Flow**:
+
+**Manual Library Cache**:
+```
+1. Open Library detail → More menu (⋮)
+2. Click "Download for Offline"
+3. Progress indicator shows download status
+4. All songs in library cached when complete
+5. Works regardless of backend cacheAllEnabled setting
+```
+
+**Global Cache Setting**:
+```
+Settings → Offline Settings:
+┌─────────────────────────────────────┐
+│ Download Timing                     │
+├─────────────────────────────────────┤
+│   ○ WiFi only (default)             │
+│   ○ Any network                     │
+│   ○ Manual only                     │
+│                                     │
+│ Cache All Libraries                 │
+│   [x] Enabled                       │
+│       (Synced to account, downloads │
+│       all libraries when timing     │
+│       allows)                       │
+│                                     │
+│ Storage: 156/234 songs cached       │
+└─────────────────────────────────────┘
+```
+
+**Cache on Upload** (Issue #124):
+```
+When uploading in online mode:
+1. Upload file to server
+2. Immediately cache locally (file already in memory)
+3. Song available offline instantly after upload
+```
+
+**Cache-on-Play** (Always enabled):
+```
+When playing an uncached song online:
+1. Stream from server
+2. Cache audio file after playback completes
+3. Song available offline for next play
+```
+
+**Acceptance Criteria**:
+- [ ] Backend cacheAllEnabled preference synced (#106)
+- [ ] Frontend Download Timing control (WiFi-only / Always / Manual)
+- [ ] Manual "Download for Offline" per library
+- [ ] Cache-on-play for streamed songs
+- [ ] Cache immediately after upload (#124)
+- [ ] Download respects timing when backend cacheAllEnabled
+- [ ] Cache status indicator on libraries
+
+---
+
+## Part 4: Cross-Device Sync
+
+**Context**: Authenticated user uses M3W on multiple devices. Data should be consistent across devices.
+
+**Related Issues**: #106, #124, #131 (Epic 8)
+
+### Story 4.1: Initial Sync (New Device)
+
+**Goal**: User logs in on a new device and sees all their data.
+
+**Flow**:
+```
+1. User logs in on Device B (already has account with data on Device A)
+2. Initial sync triggers:
+   - Pull all libraries from server (includes cacheOverride setting)
+   - Pull all playlists from server
+   - Pull all song metadata from server
+   - Pull player preferences from server (includes cacheAllEnabled)
+3. UI shows data immediately
+4. Audio files downloaded based on cache policy (4-layer hierarchy):
+   - For each library: evaluate shouldCacheLibrary()
+   - If true and canDownloadNow(): queue background download
+5. User can browse all content
+6. Playing uncached song → Stream from server → Cache after playback
+```
+
+**Acceptance Criteria**:
+- [x] Metadata synced on login
+- [x] Libraries, playlists, songs visible
+- [ ] Preferences synced (shuffle, repeat, cacheAllEnabled) (#106)
+- [ ] Backend library cacheOverride setting synced
+- [ ] Audio download respects 4-layer cache policy
+- [ ] Download timing respected (WiFi-only / Always / Manual)
+- [ ] Cache-on-play for streamed songs
+
+---
+
+### Story 4.2: Ongoing Sync (Multi-Device)
+
+**Goal**: Changes on one device appear on other devices.
+
+**Flow**:
+```
+Device A (Online):
+1. User creates new playlist "Road Trip"
+2. Adds 10 songs to playlist
+3. Changes sync to server immediately
+
+Device B (Online, app open):
+1. Periodic sync check (every 5 minutes)
+2. Detects new playlist
+3. Downloads metadata
+4. Playlist appears in UI
+
+Device B (Online, app reopened):
+1. Full metadata sync on app start
+2. All changes from Device A visible
+```
+
+**Pull-to-Refresh**:
+```
+Supported Pages:
+┌─────────────────────────────────────────────────────────┐
+│ Page              │ Sync Scope                          │
+├─────────────────────────────────────────────────────────┤
+│ Libraries list    │ Full: all libraries + preferences   │
+│ Library detail    │ Incremental: songs in this library  │
+│ Playlists list    │ Full: all playlists                 │
+│ Playlist detail   │ Incremental: songs + order          │
+└─────────────────────────────────────────────────────────┘
+
+Not supported: Settings, Full Player (not list pages)
+
+Trigger Conditions (to avoid conflict with normal scroll):
+- Only triggers when list is at top (scrollTop === 0)
+- Requires pull distance > threshold (e.g., 60px)
+- Visual indicator appears during pull to signal refresh intent
+
+Interaction:
+1. User pulls down on list → Loading indicator appears
+2. Sync completes → Indicator disappears, list updates
+3. Sync fails → Toast: "Sync failed" or "Network unavailable"
+4. Offline mode → Pull still triggers, shows "Network unavailable"
+```
+
+**Sync Triggers**:
+- App start/foreground
+- Every 5 minutes while active
+- Pull-to-refresh gesture
+- After local mutation
+
+**Acceptance Criteria**:
+- [x] Push changes to server on mutation
+- [x] Pull changes on app start
+- [ ] Pull-to-refresh on list pages (Libraries, Playlists, details)
+- [ ] Periodic background sync (5 minutes)
+- [ ] Sync indicator during refresh
+- [ ] Appropriate error feedback when offline
+
+---
+
+### Story 4.3: Sync Conflict Resolution
+
+**Goal**: Conflicts between devices are resolved gracefully.
+
+**Conflict Resolution Strategy**: Server-Wins (Push-First)
+```
+The same Push → Pull flow handles all conflicts:
+
+Device A (connects first):
+1. Push local changes → Success (server updated)
+2. Pull server state → Normal merge
+
+Device B (connects later):
+1. Push local changes → Fail (version conflict)
+2. Discard local conflicting changes
+3. Pull server state → Overwrite local with server version
+4. Toast: "Changes synced from another device"
+
+Result: Whoever pushes first wins, others get overwritten.
+```
+
+**Conflict Scenarios**:
+
+1. **Playlist Modified on Two Devices**:
+   ```
+   Device A: Adds 3 songs to playlist "Road Trip"
+   Device B: Removes 2 songs from playlist "Road Trip"
+   
+   Resolution: First to push wins
+   - Device A pushes first → Server has A's version
+   - Device B pushes → Conflict detected → Pull A's version
+   - Device B's changes discarded
+   ```
+
+2. **Playlist Deleted vs Modified**:
+   ```
+   Device A: Deletes playlist "Road Trip"
+   Device B: Adds song to playlist "Road Trip"
+   
+   Resolution: First to push wins
+   - If A pushes first → Playlist deleted on both
+   - If B pushes first → Playlist exists with new song
+   - Toast on losing device: "Playlist 'Road Trip' was deleted on another device"
+   ```
+
+3. **Library Order Changed**:
+   ```
+   Device A: Reorders libraries to [C, A, B]
+   Device B: Reorders libraries to [B, C, A]
+   
+   Resolution: First to push wins on order field
+   ```
+
+**Note**: Song rename conflicts do not exist (edit metadata not supported).
+
+**Acceptance Criteria**:
+- [x] Server-Wins default strategy
+- [ ] Push failure triggers automatic pull
+- [ ] Local changes discarded on conflict
+- [ ] Toast feedback for sync from other device
+
+---
+
+### Story 4.4: Preferences Sync
+
+**Goal**: User preferences are consistent across devices.
+
+**Synced Preferences**:
+| Preference | Current | Target |
+|------------|---------|--------|
+| Shuffle mode | ✅ Synced | ✅ Done |
+| Repeat mode | ✅ Synced | ✅ Done |
+| cacheAllEnabled | ❌ Local only | ✅ Sync (#106) |
+| Language | ❌ Local only | ❓ TBD (may follow device) |
+
+**Note**: Volume is not synced (device-specific, not provided in our app).
+
+**Local-Only Settings** (device-specific, NOT synced):
+- Download Timing (WiFi-only / Always / Manual)
+- Per-library manual cache status
+
+**Flow**:
+```
+1. User enables "Cache All Libraries" on Device A
+2. Preference syncs to server (cacheAllEnabled = true)
+3. Device B pulls preferences on next sync
+4. Device B sees cacheAllEnabled = true
+5. Device B honors its local Download Timing setting
+6. If Download Timing allows → Start background download
+```
+
+**Example Scenario**:
+```
+Device A (Phone, cellular):
+- cacheAllEnabled = true (from server)
+- Download Timing = WiFi only
+- Result: Waits for WiFi before downloading
+
+Device B (Tablet, home WiFi):
+- cacheAllEnabled = true (from server)
+- Download Timing = Always
+- Result: Starts downloading immediately
+```
+
+**Acceptance Criteria**:
+- [x] Shuffle/Repeat mode synced
+- [ ] Backend API for cacheAllEnabled preference (#106)
+- [ ] cacheAllEnabled synced across devices
+- [ ] Download Timing remains device-local
+- [ ] Manual library cache remains device-local
+
+---
+
+## Technical Architecture
+
+### Data Flow Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         M3W Data Architecture                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
+│  │   Guest      │    │  Auth Online │    │ Auth Offline │          │
+│  │   Mode       │    │              │    │              │          │
+│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘          │
+│         │                   │                   │                   │
+│         ▼                   ▼                   ▼                   │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │                      Router Layer                             │  │
+│  │  isGuest? ─────────────────────────────────────────┐         │  │
+│  │     │                                               │         │  │
+│  │     ▼                                               ▼         │  │
+│  │  OfflineProxy                              isOnline?          │  │
+│  │  (IndexedDB)                                   │              │  │
+│  │                              ┌─────────────────┴──────────┐   │  │
+│  │                              ▼                            ▼   │  │
+│  │                         Backend API              OfflineProxy │  │
+│  │                         (PostgreSQL)             (IndexedDB)  │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  Storage Layer:                                                      │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
+│  │  IndexedDB   │    │   Backend    │    │ Cache Storage│          │
+│  │  (metadata)  │    │   (MinIO)    │    │   (audio)    │          │
+│  └──────────────┘    └──────────────┘    └──────────────┘          │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Sync Architecture
+
+#### Entity Tracking Schema
+
+All syncable entities extend this interface for dirty tracking:
 
 ```typescript
-// Service Worker cache strategy
-const CACHE_NAME = 'm3w-v1';
+interface SyncTrackingFields {
+  _isDirty?: boolean;       // Has local changes pending sync
+  _isDeleted?: boolean;     // Soft deleted, pending server delete
+  _isLocalOnly?: boolean;   // Created locally, never synced (no server ID)
+  _lastModifiedAt?: number; // Local timestamp for ordering
+}
 
-// Cache-first for audio files
+// Example: Library with sync tracking
+interface LocalLibrary extends Library, SyncTrackingFields {}
+```
+
+#### Sync Flow (Push-First Server-Wins)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                       Sync Engine Flow                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Trigger: App start | Foreground | 5min timer | Pull-to-refresh     │
+│                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  PHASE 1: PUSH (Local → Server)                              │   │
+│  │                                                              │   │
+│  │  for each entity where _isDirty || _isDeleted || _isLocalOnly│   │
+│  │    if (_isLocalOnly)                                         │   │
+│  │      POST → Server returns serverId                          │   │
+│  │      updateEntityId(localId, serverId) // cascade references │   │
+│  │    else if (_isDeleted)                                      │   │
+│  │      DELETE → Server removes entity                          │   │
+│  │      removeFromLocal(id)                                     │   │
+│  │    else if (_isDirty)                                        │   │
+│  │      PUT → Server updates entity                             │   │
+│  │                                                              │   │
+│  │  on conflict (409):                                          │   │
+│  │    discard local changes, proceed to PULL                    │   │
+│  │    toast("Changes synced from another device")               │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                              ↓                                      │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  PHASE 2: PULL (Server → Local)                              │   │
+│  │                                                              │   │
+│  │  GET /api/sync/metadata?since={lastSyncTimestamp}            │   │
+│  │  → Returns: libraries[], playlists[], songs[], preferences   │   │
+│  │                                                              │   │
+│  │  for each server entity:                                     │   │
+│  │    upsert into IndexedDB (server version wins)               │   │
+│  │    clear sync flags: _isDirty=false, _isLocalOnly=false      │   │
+│  │                                                              │   │
+│  │  update lastSyncTimestamp                                    │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### ID Mapping (Local → Server)
+
+When a locally-created entity gets a server ID:
+
+```typescript
+async function updateEntityId(
+  table: 'libraries' | 'playlists' | 'songs',
+  localId: string,
+  serverId: string
+): Promise<void> {
+  await db.transaction('rw', [db.libraries, db.playlists, db.songs, db.playlistSongs], async () => {
+    // 1. Update the entity itself
+    await db[table].update(localId, { id: serverId });
+    
+    // 2. Cascade update references
+    if (table === 'libraries') {
+      // Update songs.libraryId
+      await db.songs.where('libraryId').equals(localId)
+        .modify({ libraryId: serverId });
+    }
+    if (table === 'songs') {
+      // Update playlistSongs.songId
+      await db.playlistSongs.where('songId').equals(localId)
+        .modify({ songId: serverId });
+    }
+    if (table === 'playlists') {
+      // Update playlistSongs.playlistId
+      await db.playlistSongs.where('playlistId').equals(localId)
+        .modify({ playlistId: serverId });
+    }
+  });
+}
+```
+
+#### Sync Triggers
+
+| Trigger | Scope | Debounce |
+|---------|-------|----------|
+| App start / foreground | Full sync | None |
+| 5-minute timer | Full sync | N/A |
+| Pull-to-refresh | Page-specific (see below) | 1s |
+| After local mutation | Push only | 2s |
+| Network reconnect | Full sync | 5s |
+
+---
+
+### Cache Strategy
+
+#### Cache Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      Cache Decision Flow                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Should cache library X?                                             │
+│                                                                      │
+│  1. Was library manually cached?                                     │
+│     └─ YES → Cache (user explicit intent)                           │
+│                                                                      │
+│  2. Is cacheAllEnabled = true? (backend setting, synced)            │
+│     └─ NO → Don't auto-cache (default behavior)                     │
+│     └─ YES ↓                                                        │
+│                                                                      │
+│  3. Check Download Timing (frontend setting, local-only):           │
+│     ├─ "Manual only" → Don't auto-cache                             │
+│     ├─ "WiFi only" → Cache if on WiFi                               │
+│     └─ "Always" → Cache immediately                                 │
+│                                                                      │
+│  4. Cache-on-play (always enabled):                                  │
+│     └─ Playing uncached song online → Cache after stream complete   │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### Settings Storage
+
+| Setting | Storage | Sync | Default |
+|---------|---------|------|---------|
+| `cacheAllEnabled` | Backend (user prefs) | ✅ Cross-device | `false` |
+| `downloadTiming` | Frontend (localStorage) | ❌ Device-local | `"wifi-only"` |
+| `libraryCacheStatus[id]` | Frontend (IndexedDB) | ❌ Device-local | `false` |
+
+#### Service Worker Implementation
+
+```typescript
+// Audio cache strategy: Cache-first with Range support
+const AUDIO_CACHE = 'm3w-audio-v1';
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  if (url.pathname.includes('/api/songs/') && url.pathname.includes('/stream')) {
-    event.respondWith(
-      caches.match(event.request).then((cached) => {
-        if (cached) return cached;
-        
-        return fetch(event.request).then((response) => {
-          // Cache successful responses
-          if (response.ok) {
-            const cloned = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, cloned);
-            });
-          }
-          return response;
-        });
-      })
-    );
+  // Match: /api/songs/:id/stream OR /guest/songs/:id/stream
+  if (url.pathname.match(/\/(api|guest)\/songs\/[^/]+\/stream/)) {
+    event.respondWith(handleAudioRequest(event.request));
   }
 });
-```
 
-### 2. Sync Queue
-
-```typescript
-interface SyncAction {
-  id: string;
-  type: 'add_song' | 'remove_song' | 'reorder' | 'create_playlist' | 'delete_playlist';
-  payload: any;
-  timestamp: number;
-  retries: number;
+async function handleAudioRequest(request: Request): Promise<Response> {
+  const cache = await caches.open(AUDIO_CACHE);
+  const cached = await cache.match(request, { ignoreSearch: true });
+  
+  if (cached) {
+    // Handle Range requests from cache
+    const range = request.headers.get('Range');
+    if (range) {
+      return createRangeResponse(cached, range);
+    }
+    return cached;
+  }
+  
+  // Not cached: fetch from network (will fail if offline)
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      // Cache-on-play: store for future offline use
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    // Network error while offline
+    throw new Error('Song not available offline');
+  }
 }
 
-// Store in IndexedDB
-const syncQueue: SyncAction[] = [];
+async function createRangeResponse(cached: Response, range: string): Promise<Response> {
+  const blob = await cached.blob();
+  const [, start, end] = range.match(/bytes=(\d+)-(\d*)/) || [];
+  const startNum = parseInt(start, 10);
+  const endNum = end ? parseInt(end, 10) : blob.size - 1;
+  
+  const slice = blob.slice(startNum, endNum + 1);
+  return new Response(slice, {
+    status: 206,
+    headers: {
+      'Content-Range': `bytes ${startNum}-${endNum}/${blob.size}`,
+      'Content-Length': String(slice.size),
+      'Content-Type': cached.headers.get('Content-Type') || 'audio/mpeg',
+    },
+  });
+}
+```
 
-// Process on reconnect
-async function processSyncQueue() {
-  for (const action of syncQueue) {
-    try {
-      await executeAction(action);
-      removeFromQueue(action.id);
-    } catch (error) {
-      if (error.status === 409) {
-        // Conflict: server wins
-        revertLocalChange(action);
-        notify('操作已被服务器更新覆盖');
-      } else {
-        action.retries++;
-        if (action.retries > 3) {
-          notify('操作同步失败，请手动重试');
+---
+
+### Offline Mutation Handling
+
+#### Supported Offline Operations
+
+| Operation | Offline Behavior | Sync Flags |
+|-----------|------------------|------------|
+| Create Library | IndexedDB + local ID | `_isLocalOnly=true` |
+| Edit Library | IndexedDB update | `_isDirty=true` |
+| Delete Library* | Soft delete | `_isDeleted=true` |
+| Create Playlist | IndexedDB + local ID | `_isLocalOnly=true` |
+| Edit Playlist | IndexedDB update | `_isDirty=true` |
+| Delete Playlist* | Soft delete | `_isDeleted=true` |
+| Add to Playlist | IndexedDB update | `_isDirty=true` |
+| Remove from Playlist | IndexedDB update | `_isDirty=true` |
+| Reorder Playlist | IndexedDB update | `_isDirty=true` |
+| Delete Song | Soft delete | `_isDeleted=true` |
+| Upload Song | Cache Storage + IndexedDB | `_isLocalOnly=true` |
+
+*Note: Default Library and Favorites Playlist have `canDelete: false` and cannot be deleted.
+
+#### Offline Upload Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Offline Upload Flow                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  1. User selects files for upload (offline)                         │
+│                                                                      │
+│  2. For each file:                                                   │
+│     a. Extract metadata (music-metadata-browser)                    │
+│     b. Extract cover art if present                                 │
+│     c. Generate local ID: `local_${crypto.randomUUID()}`            │
+│     d. Store audio in Cache Storage                                 │
+│     e. Store metadata in IndexedDB with sync flags:                 │
+│        { ..., _isLocalOnly: true, _isDirty: false }                 │
+│                                                                      │
+│  3. Song immediately playable locally                               │
+│                                                                      │
+│  4. When online + sync triggers:                                     │
+│     a. Upload audio file to server                                  │
+│     b. Server returns { songId, fileHash }                          │
+│     c. updateEntityId('songs', localId, songId)                     │
+│     d. Clear sync flags                                             │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Playback: Auto-Skip Uncached Songs
+
+When offline and attempting to play an uncached song:
+
+```typescript
+interface AutoSkipState {
+  skippedCount: number;
+  lastToastTime: number;
+}
+
+async function playNext(queue: Song[], currentIndex: number, state: AutoSkipState): Promise<void> {
+  const TOAST_DEBOUNCE_MS = 3000;
+  
+  for (let i = currentIndex + 1; i < queue.length; i++) {
+    const song = queue[i];
+    const isCached = await isAudioCached(song.id);
+    
+    if (isCached || navigator.onLine) {
+      // Can play this song
+      if (state.skippedCount > 0) {
+        const now = Date.now();
+        if (now - state.lastToastTime > TOAST_DEBOUNCE_MS) {
+          toast.info(`Skipped ${state.skippedCount} song(s) (network required)`);
+          state.lastToastTime = now;
+        }
+        state.skippedCount = 0;
+      }
+      await playSong(song);
+      return;
+    }
+    
+    // Song not cached and offline: skip
+    state.skippedCount++;
+  }
+  
+  // No playable songs remaining
+  if (state.skippedCount > 0) {
+    toast.warning(`No cached songs available (${state.skippedCount} skipped)`);
+  }
+  stopPlayback();
+}
+
+async function isAudioCached(songId: string): Promise<boolean> {
+  const cache = await caches.open('m3w-audio-v1');
+  const cached = await cache.match(`/api/songs/${songId}/stream`);
+  return !!cached;
+}
+```
+
+---
+
+### Pull-to-Refresh Implementation
+
+#### Trigger Conditions
+
+```typescript
+interface PullToRefreshConfig {
+  threshold: number;        // Minimum pull distance (60px)
+  maxPull: number;          // Maximum visual pull (120px)
+  resistance: number;       // Pull resistance factor (0.4)
+}
+
+function usePullToRefresh(onRefresh: () => Promise<void>) {
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const handleTouchStart = (e: TouchEvent) => {
+    // Only enable if scrolled to top
+    if (containerRef.current?.scrollTop !== 0) return;
+    // ... capture start position
+  };
+  
+  const handleTouchMove = (e: TouchEvent) => {
+    // Apply resistance and update pullDistance
+    // Show visual indicator when pullDistance > threshold
+  };
+  
+  const handleTouchEnd = async () => {
+    if (pullDistance > config.threshold) {
+      setIsPulling(true);
+      try {
+        await onRefresh();
+      } catch (error) {
+        if (!navigator.onLine) {
+          toast.error('Network unavailable');
+        } else {
+          toast.error('Sync failed');
         }
       }
+      setIsPulling(false);
+    }
+    setPullDistance(0);
+  };
+  
+  return { containerRef, isPulling, pullDistance };
+}
+```
+
+#### Page-Specific Sync Scope
+
+| Page | Pull-to-Refresh | Sync Scope |
+|------|-----------------|------------|
+| Libraries List | ✅ | All libraries + preferences |
+| Library Detail | ✅ | Songs in this library only |
+| Playlists List | ✅ | All playlists |
+| Playlist Detail | ✅ | Songs + order in this playlist |
+| Settings | ❌ | N/A |
+| Full Player | ❌ | N/A |
+
+---
+
+### Conflict Resolution Algorithm
+
+```typescript
+async function syncEntity<T extends SyncTrackingFields>(
+  entity: T,
+  table: string,
+  serverVersion?: T
+): Promise<SyncResult> {
+  // PUSH phase
+  if (entity._isLocalOnly) {
+    const result = await api.post(`/api/${table}`, entity);
+    if (result.success) {
+      await updateEntityId(table, entity.id, result.data.id);
+      return { status: 'created', newId: result.data.id };
+    }
+    // Conflict: same entity created on another device (rare)
+    return { status: 'conflict', resolution: 'pull' };
+  }
+  
+  if (entity._isDeleted) {
+    const result = await api.delete(`/api/${table}/${entity.id}`);
+    if (result.success || result.status === 404) {
+      // 404 = already deleted on server, that's fine
+      await db[table].delete(entity.id);
+      return { status: 'deleted' };
+    }
+    return { status: 'conflict', resolution: 'pull' };
+  }
+  
+  if (entity._isDirty) {
+    const result = await api.put(`/api/${table}/${entity.id}`, entity);
+    if (result.success) {
+      return { status: 'updated' };
+    }
+    if (result.status === 409) {
+      // Conflict: modified on another device
+      // Server-Wins: discard local, pull server version
+      toast.info('Changes synced from another device');
+      return { status: 'conflict', resolution: 'pull' };
+    }
+  }
+  
+  return { status: 'unchanged' };
+}
+```
+
+---
+
+### Backend API Design
+
+#### New Sync Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/api/sync/metadata` | Pull all metadata (libraries, playlists, songs, preferences) |
+| `POST` | `/api/sync/push` | Batch push local changes (optional, can use individual endpoints) |
+
+**GET /api/sync/metadata**
+
+```typescript
+// Request
+GET /api/sync/metadata?since=1702200000000
+
+// Response
+{
+  success: true,
+  data: {
+    libraries: Library[],
+    playlists: Playlist[],
+    songs: Song[],
+    preferences: UserPreferences,
+    serverTime: number,  // For next sync
+    deletedIds: {        // Entities deleted since `since`
+      libraries: string[],
+      playlists: string[],
+      songs: string[]
     }
   }
 }
 ```
 
-### 3. Metadata Sync
+#### Modified Existing Endpoints (Version Control)
+
+Add `version` field to support optimistic concurrency control:
+
+**Schema Change (Prisma)**:
+
+```prisma
+model Library {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  version   Int      @default(1)  // NEW: Increment on each update
+  updatedAt DateTime @updatedAt
+  // ...
+}
+
+model Playlist {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  version   Int      @default(1)  // NEW
+  updatedAt DateTime @updatedAt
+  // ...
+}
+```
+
+**PUT /api/libraries/:id** (with conflict detection):
 
 ```typescript
-interface MetadataCache {
-  libraries: Library[];
-  playlists: Playlist[];
-  songs: Song[];
-  lastSync: number;
+// Request
+PUT /api/libraries/abc123
+{
+  name: "Renamed Library",
+  version: 3  // Client's known version
 }
 
-// Initial sync on app load
-async function syncMetadata() {
-  if (!navigator.onLine) {
-    return loadFromIndexedDB();
+// Success Response (200)
+{
+  success: true,
+  data: {
+    id: "abc123",
+    name: "Renamed Library",
+    version: 4,  // Incremented
+    updatedAt: "2025-12-10T..."
   }
-  
-  const [libraries, playlists, songs] = await Promise.all([
-    api.main.libraries.list(),
-    api.main.playlists.list(),
-    api.main.songs.listAll(),
-  ]);
-  
-  await saveToIndexedDB({ libraries, playlists, songs, lastSync: Date.now() });
-  
-  return { libraries, playlists, songs };
 }
 
-// Incremental sync every 5 minutes
-setInterval(async () => {
-  if (navigator.onLine) {
-    const lastSync = await getLastSyncTime();
-    const changes = await api.main.sync.getChanges(lastSync);
-    await applyChanges(changes);
+// Conflict Response (409)
+{
+  success: false,
+  error: "Version conflict",
+  data: {
+    serverVersion: 5,  // Server's current version
+    serverData: { ... }  // Current server state for client to merge
   }
-}, 5 * 60 * 1000);
+}
+```
+
+**Backend Implementation**:
+
+```typescript
+// backend/src/routes/libraries.ts
+app.put('/api/libraries/:id', async (c) => {
+  const { id } = c.req.param();
+  const { name, version } = await c.req.json();
+  const userId = c.get('userId');
+
+  // Optimistic concurrency check
+  const existing = await prisma.library.findFirst({
+    where: { id, userId }
+  });
+
+  if (!existing) {
+    return c.json({ success: false, error: 'Not found' }, 404);
+  }
+
+  // Version mismatch = conflict
+  if (existing.version !== version) {
+    return c.json({
+      success: false,
+      error: 'Version conflict',
+      data: {
+        serverVersion: existing.version,
+        serverData: existing
+      }
+    }, 409);
+  }
+
+  // Update with version increment
+  const updated = await prisma.library.update({
+    where: { id },
+    data: {
+      name,
+      version: { increment: 1 }
+    }
+  });
+
+  return c.json({ success: true, data: updated });
+});
+```
+
+**DELETE /api/libraries/:id** (with conflict detection):
+
+```typescript
+// Request
+DELETE /api/libraries/abc123?version=3
+
+// Success: 200 (deleted)
+// Conflict: 409 (modified since client's version)
+// Already deleted: 404 (treat as success on client)
+```
+
+#### User Preferences Endpoint
+
+**GET /api/user/preferences**:
+
+```typescript
+// Response
+{
+  success: true,
+  data: {
+    shuffle: boolean,
+    repeat: 'off' | 'one' | 'all',
+    cacheAllEnabled: boolean,
+    // Future: language preference
+  }
+}
+```
+
+**PUT /api/user/preferences**:
+
+```typescript
+// Request
+PUT /api/user/preferences
+{
+  shuffle: true,
+  repeat: 'all',
+  cacheAllEnabled: true
+}
+
+// Response
+{
+  success: true,
+  data: { ... }
+}
+```
+
+**Backend Implementation**:
+
+```typescript
+// backend/src/routes/user.ts
+app.get('/api/user/preferences', async (c) => {
+  const userId = c.get('userId');
+  
+  const prefs = await prisma.userPreferences.findUnique({
+    where: { userId }
+  });
+  
+  // Return defaults if not exists
+  return c.json({
+    success: true,
+    data: prefs ?? {
+      shuffle: false,
+      repeat: 'off',
+      cacheAllEnabled: false
+    }
+  });
+});
+
+app.put('/api/user/preferences', async (c) => {
+  const userId = c.get('userId');
+  const { shuffle, repeat, cacheAllEnabled } = await c.req.json();
+  
+  const prefs = await prisma.userPreferences.upsert({
+    where: { userId },
+    update: { shuffle, repeat, cacheAllEnabled },
+    create: { userId, shuffle, repeat, cacheAllEnabled }
+  });
+  
+  return c.json({ success: true, data: prefs });
+});
+```
+
+**Schema for UserPreferences**:
+
+```prisma
+model UserPreferences {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  shuffle         Boolean @default(false)
+  repeat          String  @default("off")  // 'off' | 'one' | 'all'
+  cacheAllEnabled Boolean @default(false)
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+#### Conflict Detection Summary
+
+| Scenario | Detection Method | Response |
+|----------|------------------|----------|
+| Update entity | Compare `version` field | 409 with server data |
+| Delete entity | Compare `version` in query | 409 if modified |
+| Delete already deleted | 404 | Client treats as success |
+| Create duplicate | Unique constraint | 409 or merge logic |
+
+#### Client-Side Handling
+
+```typescript
+// Frontend: Handle 409 conflict
+async function updateLibrary(library: Library): Promise<Library> {
+  const result = await api.put(`/api/libraries/${library.id}`, {
+    name: library.name,
+    version: library.version
+  });
+  
+  if (result.status === 409) {
+    // Conflict: server has newer version
+    const serverData = result.data.serverData;
+    
+    // Server-Wins: discard local, use server version
+    await db.libraries.put(serverData);
+    toast.info('Changes synced from another device');
+    
+    return serverData;
+  }
+  
+  if (result.success) {
+    // Update local with new version
+    await db.libraries.put(result.data);
+    return result.data;
+  }
+  
+  throw new Error(result.error);
+}
 ```
 
 ---
 
-## Technical Requirements
+## Issue Mapping
 
-### Frontend
+### Epic 8: Unified Offline Sync Architecture (#131)
 
-1. **Service Worker**: Custom implementation with token injection (Vite PWA Plugin injectManifest strategy)
-2. **IndexedDB**: Dexie for metadata storage (libraries, playlists, songs, preferences, progress)
-3. **Cache Storage API**: For audio/cover file caching with Range request support
-4. **Background Sync API**: For offline mutations (planned)
-5. **Storage Quota API**: For quota management (Issue #50)
+| Story | Related Issues |
+|-------|----------------|
+| Story 2.5.1 | #33 (Guest to Auth Migration) |
+| Story 2.5.2 | #129 (ID Conflict Resolution) |
+| Story 3.3 | #48 (State-based Sync) |
+| Story 3.4 | #124 (Cache After Upload) |
+| Story 4.1 | #106 (Preferences Sync) |
+| Story 4.4 | #106 (Preferences Sync) |
 
-### Backend
+### Other Related Issues
 
-1. **Sync Endpoint**: `GET /api/sync/changes?since={timestamp}`
-2. **Conflict Resolution**: Last-write-wins with timestamps
-3. **Batch Operations**: Accept multiple actions in single request
-4. **Idempotency**: All mutations must be idempotent
+| Story | Related Issues |
+|-------|----------------|
+| Story 2.3 | #50 (Storage Quota UI), #51 (Cache Management) |
+| Story 3.4 | #92 (Cache All Library Setting) |
+
+---
+
+## Acceptance Criteria Summary
+
+### Completed (✅)
+
+| Part | Stories | Status |
+|------|---------|--------|
+| Part 1 | 1.1 - 1.5 | ✅ All complete |
+| Part 2 | 2.1 - 2.2 | ✅ Core complete |
+
+### In Progress (🟡)
+
+| Part | Stories | Blockers |
+|------|---------|----------|
+| Part 2 | 2.3 | #50, #51 |
+
+### Not Started (❌)
+
+| Part | Stories | Dependencies |
+|------|---------|--------------|
+| Part 2.5 | 2.5.1, 2.5.2 | #129, #33 |
+| Part 3 | 3.1 - 3.4 | #124, Epic 8 design |
+| Part 4 | 4.1 - 4.4 | #106, Epic 8 implementation |
 
 ---
 
@@ -693,8 +1763,9 @@ setInterval(async () => {
 - Development standards: `.github/instructions/development-standards.instructions.md`
 - API patterns: `.github/instructions/api-patterns.instructions.md`
 - i18n system: `.github/instructions/i18n-system.instructions.md`
+- Epic 8: https://github.com/test3207/m3w/issues/131
 
 ---
 
-**Document Version**: v1.1  
-**Last Updated**: 2025-11-20
+**Document Version**: v2.0  
+**Last Updated**: 2025-12-10
