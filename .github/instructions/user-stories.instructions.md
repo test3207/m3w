@@ -971,105 +971,171 @@ Device B (Tablet, home WiFi):
 
 ## Technical Architecture
 
+### Core Design: Piggyback Sync
+
+M3W uses a **Piggyback Sync** architecture: every API call carries sync data bidirectionally, eliminating the need for dedicated sync endpoints or scheduled sync tasks.
+
+**Key Principles**:
+1. **No dedicated sync** - Sync happens naturally with every API call
+2. **Backend is Source of Truth** - IndexedDB is a cache for offline/performance
+3. **First-Push-Wins** - For conflicts, whoever pushes first wins
+4. **Operation-Based Merge** - Playlist song order preserved via operation log
+5. **Global Delete** - Deletions cascade across all devices
+
 ### Data Flow Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         M3W Data Architecture                        │
+│                      M3W Piggyback Sync Architecture                 │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
-│  │   Guest      │    │  Auth Online │    │ Auth Offline │          │
-│  │   Mode       │    │              │    │              │          │
-│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘          │
-│         │                   │                   │                   │
-│         ▼                   ▼                   ▼                   │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │                      Router Layer                             │  │
-│  │  isGuest? ─────────────────────────────────────────┐         │  │
-│  │     │                                               │         │  │
-│  │     ▼                                               ▼         │  │
-│  │  OfflineProxy                              isOnline?          │  │
-│  │  (IndexedDB)                                   │              │  │
-│  │                              ┌─────────────────┴──────────┐   │  │
-│  │                              ▼                            ▼   │  │
-│  │                         Backend API              OfflineProxy │  │
-│  │                         (PostgreSQL)             (IndexedDB)  │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│                                                                      │
-│  Storage Layer:                                                      │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
-│  │  IndexedDB   │    │   Backend    │    │ Cache Storage│          │
-│  │  (metadata)  │    │   (MinIO)    │    │   (audio)    │          │
-│  └──────────────┘    └──────────────┘    └──────────────┘          │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │                        Frontend                                 │ │
+│  ├────────────────────────────────────────────────────────────────┤ │
+│  │                                                                 │ │
+│  │   User Action ──────────────────────────────────────────────►  │ │
+│  │       │                                                         │ │
+│  │       ▼                                                         │ │
+│  │   ┌─────────────────┐      ┌─────────────────┐                 │ │
+│  │   │  IndexedDB      │◄────►│  API Call       │                 │ │
+│  │   │  (cache/offline)│      │  + _sync payload│                 │ │
+│  │   └─────────────────┘      └────────┬────────┘                 │ │
+│  │                                     │                           │ │
+│  └─────────────────────────────────────┼───────────────────────────┘ │
+│                                        │                             │
+│                    ┌───────────────────┴───────────────────┐        │
+│                    │                                       │        │
+│                    ▼ Online                                ▼ Offline│
+│           ┌────────────────────┐              ┌────────────────────┐│
+│           │   Backend API      │              │  OfflineProxy      ││
+│           │   (Hono + Prisma)  │              │  (IndexedDB only)  ││
+│           └─────────┬──────────┘              └────────────────────┘│
+│                     │                                               │
+│                     ▼                                               │
+│           ┌────────────────────┐                                    │
+│           │  PostgreSQL        │                                    │
+│           │  (Source of Truth) │                                    │
+│           └────────────────────┘                                    │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Sync Architecture
+### Sync Protocol
 
-#### Entity Tracking Schema
-
-All syncable entities extend this interface for dirty tracking:
+#### Request Format (Every API Call)
 
 ```typescript
+interface ApiRequestWithSync<T> {
+  // Original request payload
+  ...payload: T;
+  
+  // Sync metadata (optional, present when dirty data exists)
+  _sync?: {
+    dirty?: {
+      libraries?: Library[];
+      playlists?: Playlist[];
+      songs?: Song[];
+      operations?: PlaylistOperation[];  // For order changes
+      deletions?: {
+        libraryIds?: string[];
+        playlistIds?: string[];
+        songIds?: string[];
+      };
+    };
+  };
+}
+```
+
+#### Response Format (Every API Response)
+
+```typescript
+interface ApiResponseWithSync<T> {
+  success: boolean;
+  data: T;                    // Requested data (always latest)
+  pagination?: {              // For paginated endpoints
+    page: number;
+    pageSize: number;
+    total: number;
+    hasMore: boolean;
+  };
+  _sync?: {
+    idMappings?: {            // For newly created entities
+      localId: string;
+      serverId: string;
+    }[];
+  };
+}
+```
+
+#### Sync Flow
+
+```
+Every API Call:
+
+┌──────────────────────────────────────────────────────────────────┐
+│  1. Frontend collects dirty data from IndexedDB                  │
+│     - Entities with _isDirty, _isLocalOnly, or _isDeleted       │
+│     - Unsynced PlaylistOperations                                │
+└──────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  2. API Request with _sync payload                               │
+│     POST /api/playlists                                          │
+│     {                                                            │
+│       name: "New Playlist",                                      │
+│       _sync: {                                                   │
+│         dirty: {                                                 │
+│           libraries: [{ id: 'local_xxx', name: 'My Lib', ... }] │
+│         }                                                        │
+│       }                                                          │
+│     }                                                            │
+└──────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  3. Backend processes:                                           │
+│     a. Apply dirty changes (First-Push-Wins)                    │
+│     b. Process main request                                      │
+│     c. Return latest data + ID mappings                         │
+└──────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  4. Frontend receives response:                                  │
+│     a. Update local IDs from idMappings                         │
+│     b. Cache response.data in IndexedDB                         │
+│     c. Clear synced dirty flags                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Entity Tracking Schema
+
+```typescript
+// Sync tracking fields for IndexedDB entities
 interface SyncTrackingFields {
   _isDirty?: boolean;       // Has local changes pending sync
   _isDeleted?: boolean;     // Soft deleted, pending server delete
-  _isLocalOnly?: boolean;   // Created locally, never synced (no server ID)
-  _lastModifiedAt?: number; // Local timestamp for ordering
+  _isLocalOnly?: boolean;   // Created locally, no server ID yet
 }
 
-// Example: Library with sync tracking
-interface LocalLibrary extends Library, SyncTrackingFields {}
+// Playlist operation log (for order preservation)
+interface PlaylistOperation {
+  id: string;               // UUID
+  playlistId: string;
+  type: 'ADD' | 'REMOVE' | 'MOVE';
+  songId: string;
+  position?: number;        // Target position for ADD/MOVE
+  timestamp: number;        // For ordering operations
+  synced: boolean;          // Has been sent to server
+}
 ```
 
-#### Sync Flow (Push-First Server-Wins)
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                       Sync Engine Flow                               │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Trigger: App start | Foreground | 5min timer | Pull-to-refresh     │
-│                                                                      │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  PHASE 1: PUSH (Local → Server)                              │   │
-│  │                                                              │   │
-│  │  for each entity where _isDirty || _isDeleted || _isLocalOnly│   │
-│  │    if (_isLocalOnly)                                         │   │
-│  │      POST → Server returns serverId                          │   │
-│  │      updateEntityId(localId, serverId) // cascade references │   │
-│  │    else if (_isDeleted)                                      │   │
-│  │      DELETE → Server removes entity                          │   │
-│  │      removeFromLocal(id)                                     │   │
-│  │    else if (_isDirty)                                        │   │
-│  │      PUT → Server updates entity                             │   │
-│  │                                                              │   │
-│  │  on conflict (409):                                          │   │
-│  │    discard local changes, proceed to PULL                    │   │
-│  │    toast("Changes synced from another device")               │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                              ↓                                      │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  PHASE 2: PULL (Server → Local)                              │   │
-│  │                                                              │   │
-│  │  GET /api/sync/metadata?since={lastSyncTimestamp}            │   │
-│  │  → Returns: libraries[], playlists[], songs[], preferences   │   │
-│  │                                                              │   │
-│  │  for each server entity:                                     │   │
-│  │    upsert into IndexedDB (server version wins)               │   │
-│  │    clear sync flags: _isDirty=false, _isLocalOnly=false      │   │
-│  │                                                              │   │
-│  │  update lastSyncTimestamp                                    │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-#### ID Mapping (Local → Server)
+### ID Mapping (Local → Server)
 
 When a locally-created entity gets a server ID:
 
@@ -1085,17 +1151,14 @@ async function updateEntityId(
     
     // 2. Cascade update references
     if (table === 'libraries') {
-      // Update songs.libraryId
       await db.songs.where('libraryId').equals(localId)
         .modify({ libraryId: serverId });
     }
     if (table === 'songs') {
-      // Update playlistSongs.songId
       await db.playlistSongs.where('songId').equals(localId)
         .modify({ songId: serverId });
     }
     if (table === 'playlists') {
-      // Update playlistSongs.playlistId
       await db.playlistSongs.where('playlistId').equals(localId)
         .modify({ playlistId: serverId });
     }
@@ -1103,15 +1166,121 @@ async function updateEntityId(
 }
 ```
 
-#### Sync Triggers
+---
 
-| Trigger | Scope | Debounce |
-|---------|-------|----------|
-| App start / foreground | Full sync | None |
-| 5-minute timer | Full sync | N/A |
-| Pull-to-refresh | Page-specific (see below) | 1s |
-| After local mutation | Push only | 2s |
-| Network reconnect | Full sync | 5s |
+### Data Limits
+
+To keep sync payloads manageable:
+
+| Entity | Limit | Rationale |
+|--------|-------|-----------|
+| Libraries per user | 50 | Sufficient for most use cases |
+| Playlists per user | 50 | Sufficient for most use cases |
+| Songs per Library | 1000 | Performance and UX balance |
+| Songs per Playlist | 1000 | Performance and UX balance |
+
+---
+
+### Songs Progressive Loading
+
+Songs are loaded progressively using automatic pagination, providing seamless UX even with large libraries.
+
+#### Frontend Implementation
+
+```typescript
+function SongList({ libraryId }: { libraryId: string }) {
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState({ loaded: 0, total: 0 });
+
+  useEffect(() => {
+    loadAllSongs();
+  }, [libraryId]);
+
+  async function loadAllSongs() {
+    setLoading(true);
+    let page = 1;
+    let allSongs: Song[] = [];
+    let hasMore = true;
+
+    // Automatic continuous loading with concurrency
+    const CONCURRENCY = 3;
+    const PAGE_SIZE = 100;
+
+    // First request to get total
+    const first = await api.libraries.getSongs(libraryId, { page: 1, pageSize: PAGE_SIZE });
+    allSongs = first.data;
+    setSongs(allSongs);
+    setProgress({ loaded: allSongs.length, total: first.pagination.total });
+
+    const totalPages = Math.ceil(first.pagination.total / PAGE_SIZE);
+
+    // Concurrent loading for remaining pages
+    for (let i = 2; i <= totalPages; i += CONCURRENCY) {
+      const batch = [];
+      for (let j = i; j < i + CONCURRENCY && j <= totalPages; j++) {
+        batch.push(api.libraries.getSongs(libraryId, { page: j, pageSize: PAGE_SIZE }));
+      }
+
+      const results = await Promise.all(batch);
+      results.forEach(r => {
+        allSongs = [...allSongs, ...r.data];
+      });
+
+      setSongs(allSongs);  // Update UI progressively
+      setProgress({ loaded: allSongs.length, total: first.pagination.total });
+    }
+
+    setLoading(false);
+  }
+
+  return (
+    <div>
+      {songs.map(song => <SongItem key={song.id} song={song} />)}
+      {loading && (
+        <div className="text-center text-muted-foreground py-2">
+          Loading {progress.loaded} / {progress.total}...
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+#### User Experience
+
+```
+User clicks Library with 850 songs:
+
+0.0s  → Show cached songs (if any) + Loading indicator
+0.3s  → Display 1-100 songs (Loading 100/850...)
+0.3s  → Concurrent requests for pages 2, 3, 4
+0.6s  → Display 1-400 songs (Loading 400/850...)
+0.9s  → Display 1-700 songs (Loading 700/850...)
+1.1s  → Display all 850 songs ✓
+
+User can scroll and interact with loaded songs immediately.
+No manual "Load More" required.
+```
+
+#### Backend API
+
+```typescript
+// GET /api/libraries/:id/songs?page=1&pageSize=100
+interface SongsResponse {
+  success: true;
+  data: Song[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    hasMore: boolean;
+  };
+  _sync?: {
+    idMappings?: { localId: string; serverId: string }[];
+  };
+}
+```
 
 ---
 
@@ -1426,147 +1595,123 @@ async function syncEntity<T extends SyncTrackingFields>(
 
 ### Backend API Design
 
-#### New Sync Endpoints
+#### Piggyback Sync Integration
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| `GET` | `/api/sync/metadata` | Pull all metadata (libraries, playlists, songs, preferences) |
-| `POST` | `/api/sync/push` | Batch push local changes (optional, can use individual endpoints) |
+All existing RESTful endpoints remain unchanged but gain sync capabilities:
 
-**GET /api/sync/metadata**
-
+**Request Enhancement** (all endpoints):
 ```typescript
-// Request
-GET /api/sync/metadata?since=1702200000000
-
-// Response
+// Every request can optionally include dirty data
+POST /api/playlists
 {
-  success: true,
-  data: {
-    libraries: Library[],
-    playlists: Playlist[],
-    songs: Song[],
-    preferences: UserPreferences,
-    serverTime: number,  // For next sync
-    deletedIds: {        // Entities deleted since `since`
-      libraries: string[],
-      playlists: string[],
-      songs: string[]
+  name: "My Playlist",           // Original payload
+  _sync: {                       // Optional sync payload
+    dirty: {
+      libraries: [...],          // Pending local changes
+      playlists: [...],
+      songs: [...],
+      operations: [...],         // Playlist order operations
+      deletions: { ... }
     }
   }
 }
 ```
 
-#### Modified Existing Endpoints (Version Control)
-
-Add `version` field to support optimistic concurrency control:
-
-**Schema Change (Prisma)**:
-
-```prisma
-model Library {
-  id        String   @id @default(cuid())
-  name      String
-  userId    String
-  version   Int      @default(1)  // NEW: Increment on each update
-  updatedAt DateTime @updatedAt
-  // ...
-}
-
-model Playlist {
-  id        String   @id @default(cuid())
-  name      String
-  userId    String
-  version   Int      @default(1)  // NEW
-  updatedAt DateTime @updatedAt
-  // ...
-}
-```
-
-**PUT /api/libraries/:id** (with conflict detection):
-
+**Response Enhancement** (all endpoints):
 ```typescript
-// Request
-PUT /api/libraries/abc123
-{
-  name: "Renamed Library",
-  version: 3  // Client's known version
-}
-
-// Success Response (200)
+// Every response returns latest data + sync metadata
 {
   success: true,
-  data: {
-    id: "abc123",
-    name: "Renamed Library",
-    version: 4,  // Incremented
-    updatedAt: "2025-12-10T..."
+  data: { ... },                 // Always latest from server
+  pagination: { ... },           // For paginated endpoints
+  _sync: {
+    idMappings: [                // For newly created entities
+      { localId: 'local_xxx', serverId: 'abc123' }
+    ]
   }
 }
+```
 
-// Conflict Response (409)
+#### Delete Semantics (Global Delete)
+
+Deletions propagate across all devices:
+
+```typescript
+// DELETE /api/libraries/:id
+// Deletes: Library + all Songs in Library + Audio files
+
+// DELETE /api/playlists/:id  
+// Deletes: Playlist only (Songs remain in their Libraries)
+
+// DELETE /api/songs/:id
+// Deletes: Song + Audio file + removes from all Playlists
+```
+
+**Note**: Default Library and Favorites Playlist have `canDelete: false`.
+
+#### Songs Pagination Endpoint
+
+```typescript
+// GET /api/libraries/:id/songs?page=1&pageSize=100
 {
-  success: false,
-  error: "Version conflict",
-  data: {
-    serverVersion: 5,  // Server's current version
-    serverData: { ... }  // Current server state for client to merge
+  success: true,
+  data: Song[],
+  pagination: {
+    page: 1,
+    pageSize: 100,
+    total: 850,
+    hasMore: true
+  },
+  _sync: {
+    idMappings: [...]  // If dirty songs were pushed
   }
 }
 ```
 
-**Backend Implementation**:
+---
+
+#### Conflict Handling in API
+
+All mutating endpoints support First-Push-Wins conflict resolution:
 
 ```typescript
-// backend/src/routes/libraries.ts
-app.put('/api/libraries/:id', async (c) => {
-  const { id } = c.req.param();
-  const { name, version } = await c.req.json();
-  const userId = c.get('userId');
-
-  // Optimistic concurrency check
-  const existing = await prisma.library.findFirst({
-    where: { id, userId }
+// Frontend wrapper for API calls with sync
+async function apiCallWithSync<T>(
+  endpoint: string,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  payload?: any
+): Promise<T> {
+  // 1. Collect dirty data from IndexedDB
+  const dirtyData = await collectDirtyData();
+  
+  // 2. Make API call with _sync payload
+  const response = await fetch(endpoint, {
+    method,
+    body: JSON.stringify({
+      ...payload,
+      ...(dirtyData.hasChanges && { _sync: { dirty: dirtyData } })
+    })
   });
-
-  if (!existing) {
-    return c.json({ success: false, error: 'Not found' }, 404);
-  }
-
-  // Version mismatch = conflict
-  if (existing.version !== version) {
-    return c.json({
-      success: false,
-      error: 'Version conflict',
-      data: {
-        serverVersion: existing.version,
-        serverData: existing
-      }
-    }, 409);
-  }
-
-  // Update with version increment
-  const updated = await prisma.library.update({
-    where: { id },
-    data: {
-      name,
-      version: { increment: 1 }
+  
+  const result = await response.json();
+  
+  // 3. Process sync response
+  if (result._sync?.idMappings) {
+    for (const { localId, serverId } of result._sync.idMappings) {
+      await updateEntityId(localId, serverId);
     }
-  });
-
-  return c.json({ success: true, data: updated });
-});
-```
-
-**DELETE /api/libraries/:id** (with conflict detection):
-
-```typescript
-// Request
-DELETE /api/libraries/abc123?version=3
-
-// Success: 200 (deleted)
-// Conflict: 409 (modified since client's version)
-// Already deleted: 404 (treat as success on client)
+  }
+  
+  // 4. Update IndexedDB with server response
+  await cacheResponseData(result.data);
+  
+  // 5. Clear synced dirty flags
+  if (dirtyData.hasChanges) {
+    await clearDirtyFlags(dirtyData);
+  }
+  
+  return result.data;
+}
 ```
 
 #### User Preferences Endpoint
@@ -1767,5 +1912,5 @@ async function updateLibrary(library: Library): Promise<Library> {
 
 ---
 
-**Document Version**: v2.0  
+**Document Version**: v2.1  
 **Last Updated**: 2025-12-10
