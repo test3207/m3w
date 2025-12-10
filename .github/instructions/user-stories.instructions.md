@@ -155,6 +155,16 @@ Song
 2. Click any Library → View songs in that Library
 ```
 
+**Viewing Library Songs** (Progressive Loading):
+```
+1. Enter a Library → Songs start loading automatically
+2. First batch (100 songs) appears immediately
+3. Remaining songs load in background (3 concurrent requests)
+4. Progress shown at bottom: "Loading 300/850..."
+5. User can scroll and interact with loaded songs immediately
+6. No manual "Load More" button needed
+```
+
 **Playing from Library**:
 ```
 1. Enter a Library → See song list
@@ -170,6 +180,7 @@ Song
 - [x] Library cover = last added song's album cover
 - [x] Play from Library creates/updates linked playlist
 - [x] Mini Player and Full Player working
+- [ ] Progressive loading for large libraries (auto-paginate)
 
 ---
 
@@ -1132,6 +1143,101 @@ interface PlaylistOperation {
   synced: boolean;          // Has been sent to server
 }
 ```
+
+---
+
+### Router Layer Design
+
+The frontend uses a unified Router layer to abstract online/offline differences:
+
+```typescript
+// Router decides: Backend API or OfflineProxy?
+async function routeRequest(request: ApiRequest): Promise<ApiResponse> {
+  if (isGuest()) {
+    // Guest mode: Always use OfflineProxy
+    return offlineProxy.handle(request);
+  }
+  
+  if (isOnline()) {
+    // Auth + Online: Call Backend with _sync
+    return backendApi.call({
+      ...request,
+      _sync: await collectDirtyData(request.endpoint)
+    });
+  } else {
+    // Auth + Offline: Use OfflineProxy, mark dirty
+    const result = await offlineProxy.handle(request);
+    await markDirty(request);
+    return result;
+  }
+}
+```
+
+#### Contract Differences
+
+| Aspect | Backend API | OfflineProxy |
+|--------|-------------|---------------|
+| Request `_sync` | ✅ Present (dirty data) | ❌ Not needed |
+| Response `_sync` | ✅ Present (idMappings) | ❌ Not present |
+| Data source | PostgreSQL | IndexedDB |
+| Pagination | Server-side | Client-side (Dexie) |
+| ID format | Server cuid | `local_${uuid}` |
+
+#### Unified Response Contract
+
+```typescript
+// Both Backend and OfflineProxy return same shape
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    hasMore: boolean;
+  };
+  // Only present in Backend responses
+  _sync?: {
+    idMappings?: { localId: string; serverId: string }[];
+  };
+}
+```
+
+#### OfflineProxy Implementation Pattern
+
+```typescript
+// OfflineProxy mirrors Backend API structure
+const offlineProxy = {
+  // GET /api/libraries
+  async getLibraries(): Promise<ApiResponse<Library[]>> {
+    const libraries = await db.libraries.toArray();
+    return { success: true, data: libraries };
+  },
+  
+  // GET /api/libraries/:id/songs?page=1&pageSize=100
+  async getLibrarySongs(libraryId: string, page: number, pageSize: number) {
+    const total = await db.songs.where('libraryId').equals(libraryId).count();
+    const songs = await db.songs
+      .where('libraryId').equals(libraryId)
+      .offset((page - 1) * pageSize)
+      .limit(pageSize)
+      .toArray();
+    
+    return {
+      success: true,
+      data: songs,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        hasMore: page * pageSize < total
+      }
+    };
+  }
+};
+```
+
+---
 
 ### ID Mapping (Local → Server)
 
