@@ -768,26 +768,22 @@ When playing an uncached song online:
 **Flow**:
 ```
 1. User logs in on Device B (already has account with data on Device A)
-2. Initial sync triggers:
-   - Pull all libraries from server (includes cacheOverride setting)
-   - Pull all playlists from server
-   - Pull all song metadata from server
-   - Pull player preferences from server (includes cacheAllEnabled)
-3. UI shows data immediately
-4. Audio files downloaded based on cache policy (4-layer hierarchy):
-   - For each library: evaluate shouldCacheLibrary()
-   - If true and canDownloadNow(): queue background download
-5. User can browse all content
-6. Playing uncached song → Stream from server → Cache after playback
+2. User navigates to Libraries page
+   → GET /api/libraries returns all libraries (progressive loading)
+3. User clicks a Library
+   → GET /api/libraries/:id/songs returns songs (paginated, auto-load)
+4. User navigates to Playlists page
+   → GET /api/playlists returns all playlists
+5. Each API call returns latest data from server
+6. Data cached to IndexedDB for offline access
+7. Audio files downloaded based on cache policy
 ```
 
 **Acceptance Criteria**:
-- [x] Metadata synced on login
+- [x] Metadata fetched on navigation (not bulk sync)
 - [x] Libraries, playlists, songs visible
 - [ ] Preferences synced (shuffle, repeat, cacheAllEnabled) (#106)
-- [ ] Backend library cacheOverride setting synced
-- [ ] Audio download respects 4-layer cache policy
-- [ ] Download timing respected (WiFi-only / Always / Manual)
+- [ ] Progressive loading for large libraries
 - [ ] Cache-on-play for streamed songs
 
 ---
@@ -796,63 +792,47 @@ When playing an uncached song online:
 
 **Goal**: Changes on one device appear on other devices.
 
-**Flow**:
+**Flow** (Piggyback Sync):
 ```
 Device A (Online):
 1. User creates new playlist "Road Trip"
-2. Adds 10 songs to playlist
-3. Changes sync to server immediately
+2. POST /api/playlists → Server creates playlist
+3. User adds 10 songs to playlist
+4. PUT /api/playlists/:id → Server updates playlist
 
-Device B (Online, app open):
-1. Periodic sync check (every 5 minutes)
-2. Detects new playlist
-3. Downloads metadata
-4. Playlist appears in UI
-
-Device B (Online, app reopened):
-1. Full metadata sync on app start
-2. All changes from Device A visible
+Device B (Online, navigates to Playlists):
+1. GET /api/playlists → Returns latest (includes "Road Trip")
+2. If Device B has dirty changes:
+   → Request includes _sync.dirty.playlists
+   → Server applies changes first, then returns latest
+3. Playlist appears in UI immediately
 ```
+
+**Key Insight**: No dedicated sync needed. Each page navigation fetches latest data.
 
 **Pull-to-Refresh**:
 ```
 Supported Pages:
 ┌─────────────────────────────────────────────────────────┐
-│ Page              │ Sync Scope                          │
+│ Page              │ API Called                          │
 ├─────────────────────────────────────────────────────────┤
-│ Libraries list    │ Full: all libraries + preferences   │
-│ Library detail    │ Incremental: songs in this library  │
-│ Playlists list    │ Full: all playlists                 │
-│ Playlist detail   │ Incremental: songs + order          │
+│ Libraries list    │ GET /api/libraries                  │
+│ Library detail    │ GET /api/libraries/:id/songs        │
+│ Playlists list    │ GET /api/playlists                  │
+│ Playlist detail   │ GET /api/playlists/:id/songs        │
 └─────────────────────────────────────────────────────────┘
 
-Not supported: Settings, Full Player (not list pages)
-
-Trigger Conditions (to avoid conflict with normal scroll):
-- Only triggers when list is at top (scrollTop === 0)
-- Requires pull distance > threshold (e.g., 60px)
-- Visual indicator appears during pull to signal refresh intent
-
-Interaction:
-1. User pulls down on list → Loading indicator appears
-2. Sync completes → Indicator disappears, list updates
-3. Sync fails → Toast: "Sync failed" or "Network unavailable"
-4. Offline mode → Pull still triggers, shows "Network unavailable"
+Behavior:
+- Pull triggers API call → Returns latest data
+- If dirty data exists for that resource → Pushed with request
+- Result: UI always shows latest after pull
 ```
-
-**Sync Triggers**:
-- App start/foreground
-- Every 5 minutes while active
-- Pull-to-refresh gesture
-- After local mutation
 
 **Acceptance Criteria**:
 - [x] Push changes to server on mutation
-- [x] Pull changes on app start
-- [ ] Pull-to-refresh on list pages (Libraries, Playlists, details)
-- [ ] Periodic background sync (5 minutes)
-- [ ] Sync indicator during refresh
-- [ ] Appropriate error feedback when offline
+- [x] Pull latest on page navigation
+- [ ] Pull-to-refresh on list pages
+- [ ] Toast feedback when data updated from server
 
 ---
 
@@ -1031,13 +1011,17 @@ interface ApiRequestWithSync<T> {
   // Original request payload
   ...payload: T;
   
-  // Sync metadata (optional, present when dirty data exists)
+  // Sync metadata (optional, only for related dirty data)
   _sync?: {
     dirty?: {
+      // Only include dirty data relevant to this endpoint
+      // GET /api/libraries → dirty.libraries only
+      // GET /api/playlists → dirty.playlists only
+      // GET /api/libraries/:id/songs → dirty.songs (for this library)
       libraries?: Library[];
       playlists?: Playlist[];
       songs?: Song[];
-      operations?: PlaylistOperation[];  // For order changes
+      operations?: PlaylistOperation[];  // For playlist order changes
       deletions?: {
         libraryIds?: string[];
         playlistIds?: string[];
@@ -1047,6 +1031,20 @@ interface ApiRequestWithSync<T> {
   };
 }
 ```
+
+#### Dirty Scope by Endpoint
+
+| Endpoint | Dirty Data Scope |
+|----------|------------------|
+| `GET /api/libraries` | `dirty.libraries`, `dirty.deletions.libraryIds` |
+| `GET /api/libraries/:id/songs` | `dirty.songs` (where libraryId matches) |
+| `GET /api/playlists` | `dirty.playlists`, `dirty.deletions.playlistIds` |
+| `GET /api/playlists/:id/songs` | `dirty.operations` (for this playlist) |
+| `POST /api/libraries` | `dirty.libraries` (the new one) |
+| `PUT /api/libraries/:id` | `dirty.libraries` (the updated one) |
+| `DELETE /api/libraries/:id` | N/A (direct deletion) |
+
+**Key Principle**: Each API call only syncs data relevant to its response.
 
 #### Response Format (Every API Response)
 
@@ -1602,16 +1600,23 @@ All existing RESTful endpoints remain unchanged but gain sync capabilities:
 **Request Enhancement** (all endpoints):
 ```typescript
 // Every request can optionally include dirty data
-POST /api/playlists
+// IMPORTANT: Only include dirty data relevant to this endpoint
+GET /api/libraries
 {
-  name: "My Playlist",           // Original payload
   _sync: {                       // Optional sync payload
     dirty: {
-      libraries: [...],          // Pending local changes
-      playlists: [...],
-      songs: [...],
-      operations: [...],         // Playlist order operations
-      deletions: { ... }
+      libraries: [...],          // Only libraries - not songs/playlists
+      deletions: { libraryIds: [...] }
+    }
+  }
+}
+
+GET /api/libraries/:id/songs?page=1
+{
+  _sync: {
+    dirty: {
+      songs: [...],              // Only songs for this library
+      deletions: { songIds: [...] }
     }
   }
 }
