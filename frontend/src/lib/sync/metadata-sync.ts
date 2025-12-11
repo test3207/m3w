@@ -214,6 +214,10 @@ let isSyncing = false;
 
 /**
  * Perform sync if conditions are met (debounced)
+ * 
+ * Note: Unlike manualSync(), this does NOT call notifySyncStatusChange().
+ * Background auto-sync runs silently without UI feedback to avoid
+ * distracting users with frequent status updates.
  */
 async function performSyncIfNeeded(): Promise<void> {
   if (isSyncing) return;

@@ -91,8 +91,7 @@ export async function cacheResponseToIndexedDB(
         }
         break;
 
-      default:
-        logger.warn("Unknown cache table", { table: config.table, path });
+      // No default case needed - TypeScript ensures exhaustive switch on CacheTable union
     }
 
     logger.debug("[ResponseCache] Cached response", { path, table: config.table, strategy: config.strategy });

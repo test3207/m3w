@@ -25,22 +25,29 @@
  * Determines how router caches responses to IndexedDB for offline access
  * Uses discriminated union to ensure keyParam is required for 'replace-by-key' strategy
  */
+/**
+ * Target IndexedDB tables for caching
+ * Note: 'playlistSongs' join table is updated internally by cacheSongsForPlaylist(),
+ * not directly via CacheConfig. It's managed through updateJoinTable flag.
+ */
+export type CacheTable = 'libraries' | 'playlists' | 'songs';
+
 export type CacheConfig = 
   | {
       /** Target IndexedDB table */
-      table: 'libraries' | 'playlists' | 'songs' | 'playlistSongs';
+      table: CacheTable;
       /** Cache strategy: full replacement of table data */
       strategy: 'replace-all';
     }
   | {
       /** Target IndexedDB table */
-      table: 'libraries' | 'playlists' | 'songs' | 'playlistSongs';
+      table: CacheTable;
       /** Cache strategy: insert or update single record */
       strategy: 'upsert';
     }
   | {
       /** Target IndexedDB table */
-      table: 'libraries' | 'playlists' | 'songs' | 'playlistSongs';
+      table: CacheTable;
       /** Cache strategy: replace all records matching a key */
       strategy: 'replace-by-key';
       /** The parameter name to use as key (e.g., 'id' for libraryId) - required for this strategy */

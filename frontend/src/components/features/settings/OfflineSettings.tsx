@@ -46,6 +46,25 @@ import { logger } from "@/lib/logger-client";
 import { isGuestUser } from "@/lib/offline-proxy/utils";
 import { useAuthStore } from "@/stores/authStore";
 
+/**
+ * Format last sync time as human-readable relative time
+ * Moved outside component since it's a pure function with no dependencies
+ */
+function formatLastSync(timestamp: number | null): string {
+  if (!timestamp) return I18n.sync.never;
+  
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  
+  if (minutes < 1) return I18n.sync.justNow;
+  if (minutes < 60) return I18n.sync.minutesAgo.replace("{0}", String(minutes));
+  if (hours < 24) return I18n.sync.hoursAgo.replace("{0}", String(hours));
+  return I18n.sync.daysAgo.replace("{0}", String(days));
+}
+
 export default function OfflineSettings() {
   const { isGuest } = useAuthStore();
   
@@ -206,21 +225,7 @@ export default function OfflineSettings() {
     }
   }, [isSyncing]);
 
-  // Format last sync time
-  const formatLastSync = useCallback((timestamp: number | null): string => {
-    if (!timestamp) return I18n.sync.never;
-    
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return I18n.sync.justNow;
-    if (minutes < 60) return I18n.sync.minutesAgo.replace("{0}", String(minutes));
-    if (hours < 24) return I18n.sync.hoursAgo.replace("{0}", String(hours));
-    return I18n.sync.daysAgo.replace("{0}", String(days));
-  }, []);
+
 
   if (loading) {
     return (
