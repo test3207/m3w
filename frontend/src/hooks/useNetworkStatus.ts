@@ -1,16 +1,14 @@
 /**
  * Network Status Hook
- * Monitors online/offline status and sync queue
+ * Monitors online/offline status for UI feedback
  * Combines browser network status with API connectivity
  */
 
 import { useState, useEffect } from "react";
-import { getDirtyCount } from "../lib/db/schema";
 
 export function useNetworkStatus() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isApiReachable, setIsApiReachable] = useState(true);
-  const [pendingSyncs, setPendingSyncs] = useState(0);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -35,21 +33,11 @@ export function useNetworkStatus() {
     window.addEventListener("api-error", handleApiError);
     window.addEventListener("api-success", handleApiSuccess);
 
-    // Check dirty entity count periodically
-    const checkDirtyEntities = async () => {
-      const count = await getDirtyCount();
-      setPendingSyncs(count);
-    };
-
-    checkDirtyEntities();
-    const interval = setInterval(checkDirtyEntities, 5000);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("api-error", handleApiError);
       window.removeEventListener("api-success", handleApiSuccess);
-      clearInterval(interval);
     };
   }, []);
 
@@ -57,7 +45,9 @@ export function useNetworkStatus() {
 
   return {
     isOnline: effectiveOnline,
-    pendingSyncs,
-    isOfflineMode: !effectiveOnline || pendingSyncs > 0,
+    // Simplified: No sync queue in new architecture
+    // Auth users: backend is source of truth, offline is read-only
+    // Guest users: full local CRUD, no sync needed
+    isOfflineMode: !effectiveOnline,
   };
 }

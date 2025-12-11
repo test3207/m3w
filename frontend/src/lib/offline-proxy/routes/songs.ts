@@ -12,9 +12,8 @@
 
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { db, markDeleted } from "../../db/schema";
+import { db } from "../../db/schema";
 import { deleteFromCache } from "../../pwa/cache-manager";
-import { isGuestUser } from "../utils";
 import { logger } from "@/lib/logger-client";
 
 const app = new Hono();
@@ -25,8 +24,7 @@ app.get("/:id", async (c: Context) => {
     const id = c.req.param("id");
     const song = await db.songs.get(id);
 
-    // Treat soft-deleted as not found
-    if (!song || song._isDeleted) {
+    if (!song) {
       return c.json(
         {
           success: false,
@@ -93,21 +91,11 @@ app.delete("/:id", async (c: Context) => {
 
     // Get affected playlist IDs before deletion (for songCount update)
     const affectedPlaylistSongs = await db.playlistSongs.where("songId").equals(id).toArray();
-    const affectedPlaylistIds = [...new Set(affectedPlaylistSongs.filter(ps => !ps._isDeleted).map(ps => ps.playlistId))];
+    const affectedPlaylistIds = [...new Set(affectedPlaylistSongs.map(ps => ps.playlistId))];
 
-    if (isGuestUser()) {
-      // Guest user: hard delete immediately (no sync needed)
-      await db.songs.delete(id);
-      
-      // Hard delete playlistSongs referencing this song
-      await db.playlistSongs.where("songId").equals(id).delete();
-    } else {
-      // Auth user: soft delete for sync
-      await db.songs.put(markDeleted(song));
-      
-      // Soft delete playlistSongs referencing this song
-      await Promise.all(affectedPlaylistSongs.map(ps => db.playlistSongs.put(markDeleted(ps))));
-    }
+    // Hard delete song and its playlist references
+    await db.songs.delete(id);
+    await db.playlistSongs.where("songId").equals(id).delete();
 
     // Update library songCount
     const library = await db.libraries.get(libraryId);

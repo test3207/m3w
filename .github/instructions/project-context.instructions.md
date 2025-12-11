@@ -431,7 +431,7 @@ m3w/
 - IndexedDB usage (metadata only):
   - Libraries, playlists, songs (no blobs)
   - Player preferences and progress
-  - Sync queue for offline mutations (planned)
+  - Read cache for Auth offline (no dirty tracking)
 - Token Storage:
   - Dual-layer: localStorage (main thread) + IndexedDB (Service Worker access)
   - Auto-sync on login/logout
@@ -578,41 +578,23 @@ if (isGuest) {
 ```
 
 **Known Issues** (Technical Debt):
-1. ~~**Sync Queue Design**: Current implementation replays API operations (create/update/delete), which causes conflicts and accumulation. Should be refactored to state-based synchronization with three-way merge.~~ ✅ Resolved in Issue #48
-2. **Storage Quota Monitoring**: No user-facing UI for storage usage (Issue #50).
-3. **Cache Management**: Manual cleanup and statistics utilities needed (Issue #51).
+1. **Storage Quota Monitoring**: No user-facing UI for storage usage (Issue #50).
+2. **Cache Management**: Manual cleanup and statistics utilities needed (Issue #51).
 
-### Offline Sync Strategy (2025-12-02) ✅ **IMPLEMENTED** (Issue #48)
+### Offline Architecture (2025-12-11)
 
-**Implementation**: State-Based with Server-Wins + Push First
-- Track dirty entities via `_isDirty`, `_isDeleted`, `_isLocalOnly` fields
-- Push local changes to server first, then pull latest
-- Server-Wins conflict resolution (simpler, no data loss)
-- ID mapping for locally-created entities (local ID → server ID)
+**Design Decision**: Simplified read-through cache with no dirty tracking.
 
-**Architecture**:
-```
-Local Mutation → markDirty(entity, isNew)
-    ↓
-Sync Triggers: 5min timer | online event | visibilitychange
-    ↓
-Push dirty entities to server (create/update/delete)
-    ↓
-ID Mapping: updateEntityId(table, localId, serverId)
-    ↓
-Pull latest from server (syncMetadata)
-    ↓
-markSynced(entity) - clear all sync flags
-```
+- **Guest Mode**: Full CRUD in IndexedDB, no sync needed (local-only forever)
+- **Auth Online**: All writes go directly to backend, IndexedDB caches GET responses
+- **Auth Offline**: Read-only from IndexedDB cache (write operations blocked)
 
-**Key Functions** (`frontend/src/lib/db/schema.ts`):
-- `markDirty(entity, isNew)` - Mark entity dirty, set `_isLocalOnly` if new
-- `markSynced(entity)` - Clear sync flags after successful sync
-- `markDeleted(entity)` - Soft delete for sync
-- `updateEntityId(table, localId, serverId)` - Cascading ID update
-- `getDirtyCount()` / `getDirtyEntities()` - Query dirty entities
+**Key Principle**: Backend is the single source of truth. No complex sync protocol.
 
-**Guest Mode**: Guest users bypass dirty tracking entirely (local-only forever)
+**Metadata Sync** (`frontend/src/lib/sync/metadata-sync.ts`):
+- Pull-only service - fetches latest data from backend
+- Triggers: periodic (5min), online event
+- Updates IndexedDB cache after each fetch
 
 ### Media Storage Strategy (2025-11-20)
 

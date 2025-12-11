@@ -4,6 +4,9 @@
  * Automatically downloads libraries, playlists, and songs metadata from backend
  * to IndexedDB for offline use. Runs on app startup, periodically, and after PWA install.
  * 
+ * This is a PULL-only service (backend → IndexedDB). Auth users never push local changes.
+ * Backend is the source of truth.
+ * 
  * Internally manages network status - automatically pauses when offline and resumes when online.
  */
 
@@ -49,23 +52,13 @@ export async function syncMetadata(): Promise<SyncResult> {
     // Fetch all libraries
     const libraries = await api.main.libraries.list();
 
-    await db.libraries.bulkPut(
-      libraries.map((lib) => ({
-        ...lib,
-        _isDirty: false,
-      }))
-    );
+    await db.libraries.bulkPut(libraries);
     logger.info("Libraries synced", { count: libraries.length });
 
     // Fetch all playlists
     const playlists = await api.main.playlists.list();
 
-    await db.playlists.bulkPut(
-      playlists.map((playlist) => ({
-        ...playlist,
-        _isDirty: false,
-      }))
-    );
+    await db.playlists.bulkPut(playlists);
     logger.info("Playlists synced", { count: playlists.length });
 
     // Pre-load existing songs to preserve cache status
@@ -95,7 +88,6 @@ export async function syncMetadata(): Promise<SyncResult> {
               cacheSize: existing?.cacheSize,
               lastCacheCheck: existing?.lastCacheCheck ?? 0,
               fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
-              _isDirty: false,
             };
           })
         );
@@ -136,7 +128,6 @@ export async function syncMetadata(): Promise<SyncResult> {
             songId: song.id,
             order: index, // Use index since Song doesn't have order field
             addedAt: new Date().toISOString(),
-            _isDirty: false,
           }))
         );
 
@@ -151,7 +142,6 @@ export async function syncMetadata(): Promise<SyncResult> {
               cacheSize: existing?.cacheSize,
               lastCacheCheck: existing?.lastCacheCheck ?? 0,
               fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
-              _isDirty: false,
             };
           })
         );

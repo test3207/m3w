@@ -8,34 +8,15 @@
  * - Player State: PlayerPreferences, PlayerProgress
  * - Local Settings: LocalSetting (device-specific preferences)
  * 
- * Sync Strategy: State-Based with Server-Wins
- * - _isDirty: true when local changes need to be pushed to server
- * - _isDeleted: true when entity was deleted locally (soft delete for sync)
- * - _lastModifiedAt: timestamp for conflict detection
+ * Storage Strategy:
+ * - Guest users: Full local CRUD, all data in IndexedDB
+ * - Auth users: Backend is source of truth
+ *   - Online: Direct API calls, IndexedDB as read cache
+ *   - Offline: Read-only from IndexedDB cache
  */
 
 import Dexie, { type EntityTable, type Table } from "dexie";
 import { RepeatMode, type Library, type Playlist, type Song, type PlaylistSong, type CacheOverride } from "@m3w/shared";
-import { isGuestUser } from "../offline-proxy/utils";
-
-// ============================================================
-// Sync Tracking Fields (common to all syncable entities)
-// ============================================================
-/**
- * Note: Boolean fields should be queried using filter() instead of where().equals()
- * because IndexedDB boolean indexing behavior varies across environments.
- * Example: db.libraries.filter(e => e._isDirty === true).toArray()
- */
-export interface SyncTrackingFields {
-  /** True when local changes need to be pushed to server */
-  _isDirty?: boolean;
-  /** True when entity was deleted locally (soft delete for sync) */
-  _isDeleted?: boolean;
-  /** True when entity was created locally and hasn't been synced yet (needs ID mapping) */
-  _isLocalOnly?: boolean;
-  /** Timestamp of last local modification */
-  _lastModifiedAt?: number;
-}
 
 // ============================================================
 // Core Entities (extended from @m3w/shared)
@@ -47,18 +28,18 @@ export interface SyncTrackingFields {
  */
 export type LocalCacheOverride = CacheOverride;
 
-export interface OfflineLibrary extends Library, SyncTrackingFields {
+export interface OfflineLibrary extends Library {
   /** Local device override for cache policy (not synced to server) */
   localCacheOverride?: LocalCacheOverride;
 }
 
-export interface OfflinePlaylist extends Playlist, SyncTrackingFields {}
+export type OfflinePlaylist = Playlist;
 
 /**
  * File entity for deduplication (aligned with backend Prisma File model)
  * Tracks physical audio files with reference counting for garbage collection
  */
-export interface OfflineFile extends SyncTrackingFields {
+export interface OfflineFile {
   id: string;
   hash: string;          // SHA256 hash of file content
   size: number;          // File size in bytes
@@ -68,7 +49,7 @@ export interface OfflineFile extends SyncTrackingFields {
   createdAt: Date;
 }
 
-export interface OfflineSong extends Omit<Song, "fileId" | "libraryName" | "mimeType">, SyncTrackingFields {
+export interface OfflineSong extends Omit<Song, "fileId" | "libraryName" | "mimeType"> {
   /** Audio stream URL (/api/songs/:id/stream) */
   streamUrl?: string;
   /** Cache status fields */
@@ -95,10 +76,10 @@ export interface OfflineSong extends Omit<Song, "fileId" | "libraryName" | "mime
 // ============================================================
 
 /**
- * Offline PlaylistSong - extends shared PlaylistSong with sync tracking
+ * Offline PlaylistSong - same as shared PlaylistSong
  * Composite primary key: [playlistId, songId] (matches backend Prisma model)
  */
-export interface OfflinePlaylistSong extends PlaylistSong, SyncTrackingFields {}
+export type OfflinePlaylistSong = PlaylistSong;
 
 // ============================================================
 // Player State (Guest mode only, Auth uses backend)
@@ -167,13 +148,16 @@ export class M3WDatabase extends Dexie {
   constructor() {
     super("m3w-offline");
 
-    // State-based sync schema (dirty tracking instead of sync queue)
+    // Schema v1: Simple cache storage (no sync tracking)
+    // Guest users: Full local CRUD, all data in IndexedDB
+    // Auth users: Backend is source of truth, IndexedDB is read cache
+    // Note: If schema changes during development, clear local data manually
     this.version(1).stores({
-      libraries: "id, userId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly",
-      playlists: "id, userId, linkedLibraryId, name, createdAt, _isDirty, _isDeleted, _isLocalOnly",
-      files: "id, hash, size, refCount, _isDirty, _isDeleted",
-      songs: "id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck, _isDirty, _isDeleted, _isLocalOnly",
-      playlistSongs: "[playlistId+songId], playlistId, songId, order, _isDirty, _isDeleted",
+      libraries: "id, userId, name, createdAt",
+      playlists: "id, userId, linkedLibraryId, name, createdAt",
+      files: "id, hash, size, refCount",
+      songs: "id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck",
+      playlistSongs: "[playlistId+songId], playlistId, songId, order",
       playerPreferences: "userId, updatedAt",
       playerProgress: "userId, songId, contextType, contextId, updatedAt",
       localSettings: "key, updatedAt",
@@ -190,137 +174,7 @@ export const db = new M3WDatabase();
 
 // Helper functions
 export async function clearAllData() {
-  await Promise.all([
-    db.libraries.clear(),
-    db.playlists.clear(),
-    db.files.clear(),
-    db.songs.clear(),
-    db.playlistSongs.clear(),
-    db.playerPreferences.clear(),
-    db.playerProgress.clear(),
-  ]);
-  
-  // Reopen database to ensure consistent state after clearing all tables
-  await db.close();
+  // Delete entire database (including schema), Dexie will recreate on next open
+  await db.delete();
   await db.open();
-}
-
-/**
- * Get count of dirty entities that need to be synced
- * Note: Use filter() for boolean fields as IndexedDB boolean indexing varies by environment
- */
-export async function getDirtyCount(): Promise<number> {
-  const [libraries, playlists, songs, playlistSongs] = await Promise.all([
-    db.libraries.filter(e => e._isDirty === true).count(),
-    db.playlists.filter(e => e._isDirty === true).count(),
-    db.songs.filter(e => e._isDirty === true).count(),
-    db.playlistSongs.filter(e => e._isDirty === true).count(),
-  ]);
-  return libraries + playlists + songs + playlistSongs;
-}
-
-/**
- * Mark entity as dirty (needs sync)
- * Guest users never need sync, so _isDirty stays false for them.
- * @param isNew - True if this is a newly created entity (not yet on server)
- */
-export function markDirty<T extends SyncTrackingFields>(entity: T, isNew = false): T {
-  // Guest users don't need sync - their data is local only
-  const shouldMarkDirty = !isGuestUser();
-  return {
-    ...entity,
-    _isDirty: shouldMarkDirty,
-    _isLocalOnly: isNew ? shouldMarkDirty : entity._isLocalOnly,
-    _lastModifiedAt: Date.now(),
-  };
-}
-
-/**
- * Mark entity as synced (no longer dirty, no longer local-only)
- */
-export function markSynced<T extends SyncTrackingFields>(entity: T): T {
-  return {
-    ...entity,
-    _isDirty: false,
-    _isDeleted: false,
-    _isLocalOnly: false,
-    _lastModifiedAt: Date.now(),
-  };
-}
-
-/**
- * Mark entity as deleted (soft delete for sync)
- * Guest users can hard delete immediately since they don't need sync.
- */
-export function markDeleted<T extends SyncTrackingFields>(entity: T): T {
-  // Guest users don't need sync - their data is local only
-  const shouldMarkDirty = !isGuestUser();
-  return {
-    ...entity,
-    _isDirty: shouldMarkDirty,
-    _isDeleted: true,
-    _lastModifiedAt: Date.now(),
-  };
-}
-
-/**
- * Get all local-only entities (created offline, need server ID assignment)
- */
-export async function getLocalOnlyEntities() {
-  const [libraries, playlists, songs] = await Promise.all([
-    db.libraries.where("_isLocalOnly").equals(1).toArray(),
-    db.playlists.where("_isLocalOnly").equals(1).toArray(),
-    db.songs.where("_isLocalOnly").equals(1).toArray(),
-  ]);
-  return { libraries, playlists, songs };
-}
-
-/**
- * Update entity ID after server assigns a new ID
- * Also updates all foreign key references
- */
-export async function updateEntityId(
-  table: "libraries" | "playlists" | "songs",
-  localId: string,
-  serverId: string
-): Promise<void> {
-  await db.transaction("rw", [db.libraries, db.playlists, db.songs, db.playlistSongs], async () => {
-    if (table === "libraries") {
-      // Get the library
-      const library = await db.libraries.get(localId);
-      if (!library) return;
-      
-      // Update songs that reference this library
-      await db.songs.where("libraryId").equals(localId).modify({ libraryId: serverId });
-      
-      // Update playlists linked to this library
-      await db.playlists.where("linkedLibraryId").equals(localId).modify({ linkedLibraryId: serverId });
-      
-      // Delete old, add new with server ID (use markSynced to clear all sync flags)
-      await db.libraries.delete(localId);
-      await db.libraries.add(markSynced({ ...library, id: serverId }));
-      
-    } else if (table === "playlists") {
-      const playlist = await db.playlists.get(localId);
-      if (!playlist) return;
-      
-      // Update playlistSongs that reference this playlist
-      await db.playlistSongs.where("playlistId").equals(localId).modify({ playlistId: serverId });
-      
-      // Delete old, add new with server ID (use markSynced to clear all sync flags)
-      await db.playlists.delete(localId);
-      await db.playlists.add(markSynced({ ...playlist, id: serverId }));
-      
-    } else if (table === "songs") {
-      const song = await db.songs.get(localId);
-      if (!song) return;
-      
-      // Update playlistSongs that reference this song
-      await db.playlistSongs.where("songId").equals(localId).modify({ songId: serverId });
-      
-      // Delete old, add new with server ID (use markSynced to clear all sync flags)
-      await db.songs.delete(localId);
-      await db.songs.add(markSynced({ ...song, id: serverId }));
-    }
-  });
 }

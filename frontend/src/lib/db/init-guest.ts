@@ -27,8 +27,6 @@ export async function initGuestResources() {
       coverUrl: null,  // No songs yet
       createdAt: now,
       updatedAt: now,
-      // Guest data is local only, no sync needed
-      _isDirty: false,
     };
     await db.libraries.add(defaultLibrary);
   }
@@ -53,8 +51,6 @@ export async function initGuestResources() {
       coverUrl: null,  // No songs yet
       createdAt: now,
       updatedAt: now,
-      // Guest data is local only, no sync needed
-      _isDirty: false,
     };
     await db.playlists.add(favoritesPlaylist);
   }
