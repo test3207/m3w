@@ -6,6 +6,7 @@
  * Clears all local development data:
  * - PostgreSQL database (via Docker volume)
  * - MinIO storage (via Docker volume)
+ * - Automatically runs database migrations
  *
  * Usage:
  *   node scripts/reset-local-data.cjs           # Interactive confirmation
@@ -13,8 +14,7 @@
  *   npm run reset                               # Via npm script
  *
  * After reset:
- *   1. Run: npm run db:migrate
- *   2. Restart dev server
+ *   Just run: npm run dev
  */
 
 const { execSync, spawnSync } = require('child_process');
@@ -118,8 +118,8 @@ Options:
   -h, --help     Show this help message
 
 Description:
-  Clears all local development data by removing Docker/Podman volumes
-  and restarting containers with fresh state.
+  Clears all local development data by removing Docker/Podman volumes,
+  restarting containers with fresh state, and running database migrations.
 
   This will DELETE:
     - PostgreSQL database (m3w_postgres_data volume)
@@ -127,8 +127,7 @@ Description:
     - All uploaded music files
     - All user data and settings
 
-After reset, run:
-  npm run db:migrate    # Apply database migrations
+After reset, just run:
   npm run dev           # Start development server
 `);
     process.exit(0);
@@ -208,17 +207,24 @@ After reset, run:
     log.warn('   ⚠ PostgreSQL health check timed out (may still be starting)');
   }
 
+  // Step 5: Run database migrations
+  log.info('🗄️  Running database migrations...');
+  const backendDir = path.join(projectRoot, 'backend');
+  if (!exec('npx prisma migrate dev', { cwd: backendDir })) {
+    log.error('❌ Failed to run database migrations');
+    log.gray('   You can try manually: cd backend && npx prisma migrate dev');
+    process.exit(1);
+  }
+  log.success('   ✓ Database migrations applied');
+
   // Done
   console.log('');
   log.success('========================================');
   log.success('  Reset Complete! 🎉');
   log.success('========================================');
   console.log('');
-  log.info('Next steps:');
-  log.gray('   1. Run database migrations:');
-  console.log('      npm run db:migrate');
-  console.log('');
-  log.gray('   2. Start development server:');
+  log.info('Next step:');
+  log.gray('   Start development server:');
   console.log('      npm run dev');
   console.log('');
 }

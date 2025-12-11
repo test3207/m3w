@@ -2,33 +2,58 @@ import { Sha256 } from "@aws-crypto/sha256-browser";
 import { logger } from "../logger-client";
 
 /**
- * Calculate SHA256 hash using @aws-crypto/sha256-browser
- *
- * This library automatically:
- * - Uses native crypto.subtle when available (HTTPS/localhost) - fast
- * - Falls back to pure JS implementation otherwise (HTTP LAN) - slower but works
- *
- * @see https://github.com/aws/aws-sdk-js-crypto-helpers
+ * Convert hash digest to hex string
  */
-async function sha256(data: Uint8Array): Promise<string> {
-  const hash = new Sha256();
-  hash.update(data);
-  const digest = await hash.digest();
+function digestToHex(digest: Uint8Array): string {
   return Array.from(digest)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
 /**
- * Calculate SHA256 hash of a File
+ * Calculate SHA256 hash from a ReadableStream (memory-efficient)
+ *
+ * Processes data in chunks as provided by the browser's ReadableStream
+ * implementation, instead of loading the entire file into memory.
+ * This library automatically:
+ * - Uses native crypto.subtle when available (HTTPS/localhost) - fast
+ * - Falls back to pure JS implementation otherwise (HTTP LAN) - slower but works
+ *
+ * @param stream - ReadableStream to hash
+ * @returns SHA256 hash as hex string
+ */
+export async function calculateHashFromStream(
+  stream: ReadableStream<Uint8Array>
+): Promise<string> {
+  const hash = new Sha256();
+  const reader = stream.getReader();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      hash.update(value);
+    }
+
+    const digest = await hash.digest();
+    return digestToHex(digest);
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * Calculate SHA256 hash of a File using streaming (memory-efficient)
  * Works in both secure (HTTPS) and non-secure (HTTP LAN) contexts
+ *
+ * @param file - File to hash
+ * @returns SHA256 hash as hex string
  */
 export async function calculateFileHash(file: File): Promise<string> {
   try {
-    const buffer = await file.arrayBuffer();
-    const hashHex = await sha256(new Uint8Array(buffer));
+    const hashHex = await calculateHashFromStream(file.stream());
 
-    logger.info("Calculated file hash", {
+    logger.info("Calculated file hash (streaming)", {
       fileName: file.name,
       fileSize: file.size,
       hash: hashHex,
@@ -47,7 +72,10 @@ export async function calculateFileHash(file: File): Promise<string> {
  */
 export async function calculateBufferHash(buffer: ArrayBuffer): Promise<string> {
   try {
-    const hashHex = await sha256(new Uint8Array(buffer));
+    const hash = new Sha256();
+    hash.update(new Uint8Array(buffer));
+    const digest = await hash.digest();
+    const hashHex = digestToHex(digest);
 
     logger.info("Calculated buffer hash", {
       size: buffer.byteLength,
