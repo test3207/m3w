@@ -21,9 +21,10 @@ export interface AudioFileInfo {
  *
  * This is memory-efficient because:
  * 1. Uses stream.tee() to split the file stream into two
- * 2. Hash calculation processes chunks incrementally (64KB at a time)
+ * 2. Hash calculation processes chunks incrementally
  * 3. Metadata parsing also uses streaming internally
- * 4. Never loads the entire file into memory at once
+ * 4. Avoids loading the entire file into memory at once.
+ *    Note: tee() may buffer data if one consumer is faster than the other.
  *
  * @param file - Audio file to process
  * @returns Hash, metadata, and cover art (if present)

@@ -13,7 +13,8 @@ function digestToHex(digest: Uint8Array): string {
 /**
  * Calculate SHA256 hash from a ReadableStream (memory-efficient)
  *
- * Processes data in 64KB chunks instead of loading entire file into memory.
+ * Processes data in chunks as provided by the browser's ReadableStream
+ * implementation, instead of loading the entire file into memory.
  * This library automatically:
  * - Uses native crypto.subtle when available (HTTPS/localhost) - fast
  * - Falls back to pure JS implementation otherwise (HTTP LAN) - slower but works

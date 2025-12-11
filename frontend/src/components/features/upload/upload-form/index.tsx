@@ -222,7 +222,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
     }
   };
 
-  // Count completed files (success + error) to show upload progress (N completed / M total)
+  // Count completed files (success + error) for progress display like "Uploading (2/5)"
   const completedCount = files.filter(
     (f) => f.status === UploadStatus.Success || f.status === UploadStatus.Error
   ).length;
