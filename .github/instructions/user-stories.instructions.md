@@ -21,10 +21,10 @@ This document defines all user stories and product goals for M3W. Stories are or
 │             │      Online       │      Offline      │
 ├─────────────┼───────────────────┼───────────────────┤
 │   Guest     │  Part 2: Local    │  Part 2: Local    │
-│ (no account)│  (No difference)  │  (No difference)  │
+│ (no account)│  Full features    │  Full features    │
 ├─────────────┼───────────────────┼───────────────────┤
 │   Auth      │  Part 1: Online   │  Part 3: Offline  │
-│(has account)│  Part 4: Sync     │  Degradation      │
+│(has account)│  Full features    │  READ-ONLY        │
 └─────────────┴───────────────────┴───────────────────┘
 
 Transition:
@@ -38,8 +38,8 @@ Transition:
 | **Part 1** | Online Experience | Auth + Online | Core features (✅ Complete) |
 | **Part 2** | Guest Mode (Local-Only) | Guest | Pure local player (✅ Complete) |
 | **Part 2.5** | Guest to Auth Migration | Guest → Auth | Account binding & data merge |
-| **Part 3** | Auth Offline Experience | Auth + Offline | Offline degradation & recovery |
-| **Part 4** | Cross-Device Sync | Auth | Multi-device data consistency |
+| **Part 3** | Auth Offline Experience | Auth + Offline | **Read-only** cached data |
+| **Part 4** | Cross-Device Sync | Auth | Simple: backend is source of truth |
 
 ---
 
@@ -544,20 +544,22 @@ Storage Section:
 
 ## Part 3: Auth Offline Experience
 
-**Context**: Authenticated user loses network connection or is in offline environment. App should degrade gracefully and recover when back online.
+**Context**: Authenticated user loses network connection. App degrades to **read-only mode** using cached data.
 
-**Related Issues**: #87 (Epic 5), #131 (Epic 8)
+**Design Decision**: Auth users get read-only offline experience (not full offline editing). This dramatically simplifies the architecture by avoiding complex sync logic.
+
+**Related Issues**: #87 (Epic 5)
 
 ### Story 3.1: Offline Detection & UI Feedback
 
-**Goal**: User is clearly informed when offline and what features are available.
+**Goal**: User is clearly informed when offline and understands the read-only limitation.
 
 **Flow**:
 ```
 1. Network disconnects (navigator.onLine = false OR backend unreachable)
 2. UI updates:
    - Network indicator changes to "Offline"
-   - Toast: "Network disconnected, some features limited"
+   - Toast: "You're offline. Browsing cached data (read-only)."
 3. Feature availability:
    ┌─────────────────────────────────────┐
    │ Feature         │ Online │ Offline │
@@ -565,716 +567,499 @@ Storage Section:
    │ Play cached     │   ✓    │    ✓    │
    │ Play uncached   │   ✓    │    ✗*   │
    │ Browse library  │   ✓    │    ✓**  │
-   │ Create library  │   ✓    │    ✓*** │
-   │ Create playlist │   ✓    │    ✓*** │
-   │ Upload songs    │   ✓    │    ✓*** │
-   │ Delete songs    │   ✓    │    ✓*** │
+   │ Browse playlist │   ✓    │    ✓**  │
+   │ Create library  │   ✓    │    ✗    │
+   │ Create playlist │   ✓    │    ✗    │
+   │ Edit playlist   │   ✓    │    ✗    │
+   │ Upload songs    │   ✓    │    ✗    │
+   │ Delete songs    │   ✓    │    ✗    │
    └─────────────────────────────────────┘
-   * Auto-skip to next cached song, toast with debounce
-   ** If metadata cached locally
-   *** Queued for sync when online
+   * Auto-skip to next cached song
+   ** Only if metadata cached locally
+   All write operations disabled with clear feedback
 ```
 
-**Uncached Song Auto-Skip Behavior**:
+**Write Operation Handling**:
 ```
-When playing a queue with mixed cached/uncached songs:
-1. Player attempts to play next song
-2. If uncached and offline → Auto-skip to next cached song
-3. Show debounced toast: "Skipped [N] songs (network required)"
-   - Debounce: One toast per user interaction (play/next/prev)
-   - Accumulate skipped count during single skip sequence
-4. If no cached songs remaining → Stop playback, show "No cached songs available"
+When user attempts a write operation while offline:
+1. Button/action appears disabled (grayed out)
+2. Tooltip: "Connect to internet to make changes"
+3. If somehow triggered → Toast: "You're offline. This action requires internet."
+4. No data modification occurs
 ```
 
 **Acceptance Criteria**:
 - [x] Network status indicator in UI
 - [x] Dual detection: navigator.onLine + backend ping
-- [ ] Clear indication of cached vs uncached content
-- [ ] Uncached songs show disabled state with "Network required" badge
-- [ ] Auto-skip uncached songs when offline with debounced toast
-- [ ] Create library/playlist works offline (queued for sync)
-- [ ] Upload songs works offline (stored locally, queued for sync)
+- [ ] Clear indication of read-only mode
+- [ ] All write buttons disabled when offline
+- [ ] Helpful tooltip on disabled buttons
+- [ ] Toast feedback when write attempted offline
 
 ---
 
-### Story 3.2: Offline Playback
+### Story 3.2: Offline Playback (Read-Only)
 
 **Goal**: User can play previously cached songs while offline.
 
-**Prerequisite**: Songs must be cached (via Story 3.4 or Story 4.3).
+**Prerequisite**: Songs must be cached (via cache-on-play or manual download).
 
 **Flow**:
 ```
 1. User is offline
-2. Opens a Library or Playlist
+2. Opens a Library or Playlist (from cache)
 3. Song list shows:
    - Cached songs: Normal appearance, playable
-   - Uncached songs: Normal appearance with "cloud" badge (still clickable)
+   - Uncached songs: Dimmed with "cloud" badge
 4. Click cached song → Plays from Cache Storage
-5. Click uncached song → Auto-skip to next cached song (per Story 3.1)
-6. Service Worker intercepts request → Returns cached audio
-7. Playback works normally (seek, progress, etc.)
+5. Click uncached song → Toast: "This song isn't downloaded"
+   → Auto-skip to next cached song in queue
+6. Playback works normally (seek, progress, etc.)
+```
+
+**Uncached Song Auto-Skip**:
+```
+When playing a queue with mixed cached/uncached songs:
+1. Player attempts to play next song
+2. If uncached and offline → Auto-skip to next cached song
+3. Show debounced toast: "Skipped [N] songs (not downloaded)"
+4. If no cached songs remaining → Stop playback
 ```
 
 **Acceptance Criteria**:
 - [x] Cached songs playable offline
 - [x] Service Worker serves audio from Cache Storage
 - [x] Range request support for seeking
-- [x] Visual badge indicating cached/uncached status
-- [ ] Uncached songs auto-skip when offline (per Story 3.1)
+- [ ] Visual distinction for cached vs uncached songs
+- [ ] Auto-skip uncached songs with toast feedback
+- [ ] Graceful handling when no cached songs available
 
 ---
 
-### Story 3.3: Offline Mutations (State-Based Sync)
+### Story 3.3: Cached Data Browsing (Read-Only)
 
-**Goal**: User can make changes offline that sync when back online.
+**Goal**: User can browse their libraries and playlists using cached metadata.
+
+**How Caching Works**:
+```
+When online and user navigates:
+1. GET /api/libraries → Response cached to IndexedDB
+2. GET /api/playlists → Response cached to IndexedDB
+3. GET /api/libraries/:id/songs → Response cached to IndexedDB
+
+When offline:
+1. Router detects offline → Routes to IndexedDB cache
+2. User sees last-cached data
+3. All data is read-only
+```
 
 **Flow**:
 ```
-1. User is offline
-2. User creates a new playlist "My Collection"
-3. System:
-   - Creates playlist in IndexedDB immediately
-   - Marks entity with sync flags: _isDirty=true, _isLocalOnly=true
-   - UI shows playlist normally (with sync pending indicator)
-4. User continues making changes (add songs, reorder, etc.)
-   - Each mutation updates IndexedDB and sets _isDirty=true
-5. Network reconnects
-6. Sync triggers (on reconnect / app foreground / timer):
-   a. PUSH: Find all dirty entities, send current state to server
-   b. Server returns IDs for new entities (localId → serverId mapping)
-   c. PULL: Fetch latest server state, merge into local
-   d. Clear sync flags (_isDirty=false, _isLocalOnly=false)
-7. UI updates: sync indicator disappears
+1. User goes offline
+2. Opens Libraries tab → Shows cached libraries
+3. Opens a Library → Shows cached songs
+4. Opens Playlists tab → Shows cached playlists
+5. All data reflects last online state
+6. No "pull to refresh" (would fail anyway)
+7. Banner: "Viewing cached data. Connect to see latest."
 ```
 
-**Key Design**: State-based sync, NOT request replay
-- We sync the **current state** of entities, not a log of operations
-- Multiple offline edits to the same entity = one sync operation
-- Conflict resolution happens at entity level (server-wins default)
-
-**Supported Offline Mutations**:
-| Mutation | Offline Behavior |
-|----------|------------------|
-| Create Library | IndexedDB + _isLocalOnly |
-| Edit Library | IndexedDB + _isDirty |
-| Delete Library | IndexedDB + _isDeleted (except Default Library) |
-| Create Playlist | IndexedDB + _isLocalOnly |
-| Edit Playlist | IndexedDB + _isDirty |
-| Delete Playlist | IndexedDB + _isDeleted (except Favorites) |
-| Add to Playlist | IndexedDB + _isDirty |
-| Remove from Playlist | IndexedDB + _isDirty |
-| Reorder Playlist | IndexedDB + _isDirty |
-| Delete Song | IndexedDB + _isDeleted |
-| Upload Song | Cache Storage + IndexedDB + _isLocalOnly |
-
-**Note**: Default Library and Favorites Playlist (auto-created on init) have `canDelete: false` and cannot be deleted in both online and offline modes.
-
 **Acceptance Criteria**:
-- [ ] All mutations work offline via IndexedDB
-- [ ] Dirty tracking with sync flags (_isDirty, _isLocalOnly, _isDeleted)
-- [ ] Sync indicator on entities with pending changes
-- [ ] State-based push on reconnect (not request replay)
-- [ ] ID mapping for locally-created entities
-- [ ] Server-wins conflict resolution
+- [ ] Libraries list from IndexedDB cache
+- [ ] Playlists list from IndexedDB cache
+- [ ] Songs list from IndexedDB cache
+- [ ] Clear indication that data may be stale
+- [ ] No refresh attempts when offline
 
 ---
 
 ### Story 3.4: Proactive Caching
 
-**Goal**: User controls which libraries are cached for offline use.
+**Goal**: User controls which content is available offline.
 
-**Cache Strategy Overview**:
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Layer           │ Setting              │ Behavior           │
-├─────────────────────────────────────────────────────────────┤
-│ Backend Global  │ cacheAllEnabled      │ Sync across devices│
-│                 │ (default: false)     │ when enabled       │
-├─────────────────────────────────────────────────────────────┤
-│ Frontend Global │ Download Timing      │ WiFi-only / Always │
-│                 │                      │ / Manual           │
-├─────────────────────────────────────────────────────────────┤
-│ Frontend Library│ Manual cache button  │ Cache this library │
-│                 │ (per-library)        │ regardless of above│
-├─────────────────────────────────────────────────────────────┤
-│ Automatic       │ Cache-on-play        │ Always enabled     │
-└─────────────────────────────────────────────────────────────┘
+**Caching Mechanisms**:
 
-Key behaviors:
-- Backend default: NO auto-cache (conservative, save bandwidth)
-- Backend cacheAllEnabled=true → Honor frontend Download Timing
-- Frontend can always manually cache any library
-- Played songs always cached automatically
-```
+| Mechanism | Trigger | What's Cached |
+|-----------|---------|---------------|
+| Cache-on-Play | Play any song | Audio file |
+| Cache-on-Navigate | Visit any page | Metadata (libraries, playlists, songs) |
+| Manual Download | User clicks "Download" | Entire library's audio files |
+| Cache-on-Upload | Upload completes | Audio file (already in memory) |
 
-**Flow**:
-
-**Manual Library Cache**:
+**Manual Library Download**:
 ```
 1. Open Library detail → More menu (⋮)
 2. Click "Download for Offline"
 3. Progress indicator shows download status
 4. All songs in library cached when complete
-5. Works regardless of backend cacheAllEnabled setting
+5. Library card shows "Downloaded" badge
 ```
 
-**Global Cache Setting**:
+**Settings Page**:
 ```
-Settings → Offline Settings:
+Settings → Storage:
 ┌─────────────────────────────────────┐
-│ Download Timing                     │
+│ Offline Storage                     │
 ├─────────────────────────────────────┤
-│   ○ WiFi only (default)             │
-│   ○ Any network                     │
-│   ○ Manual only                     │
+│ Downloaded: 156 songs (4.2 GB)      │
 │                                     │
-│ Cache All Libraries                 │
-│   [x] Enabled                       │
-│       (Synced to account, downloads │
-│       all libraries when timing     │
-│       allows)                       │
+│ Auto-download:                      │
+│   ○ Off (manual only)               │
+│   ○ On WiFi only                    │
+│   ○ Always                          │
 │                                     │
-│ Storage: 156/234 songs cached       │
+│ [Clear All Cached Audio]            │
 └─────────────────────────────────────┘
 ```
 
-**Cache on Upload** (Issue #124):
-```
-When uploading in online mode:
-1. Upload file to server
-2. Immediately cache locally (file already in memory)
-3. Song available offline instantly after upload
-```
-
-**Cache-on-Play** (Always enabled):
-```
-When playing an uncached song online:
-1. Stream from server
-2. Cache audio file after playback completes
-3. Song available offline for next play
-```
-
 **Acceptance Criteria**:
-- [ ] Backend cacheAllEnabled preference synced (#106)
-- [ ] Frontend Download Timing control (WiFi-only / Always / Manual)
-- [ ] Manual "Download for Offline" per library
 - [ ] Cache-on-play for streamed songs
-- [ ] Cache immediately after upload (#124)
-- [ ] Download respects timing when backend cacheAllEnabled
-- [ ] Cache status indicator on libraries
+- [ ] Cache-on-upload for newly uploaded songs
+- [ ] Manual "Download for Offline" per library
+- [ ] Visual indicator for downloaded libraries/songs
+- [ ] Auto-download settings (off/wifi/always)
+- [ ] Storage management UI
 
 ---
 
 ## Part 4: Cross-Device Sync
 
-**Context**: Authenticated user uses M3W on multiple devices. Data should be consistent across devices.
+**Context**: Authenticated user uses M3W on multiple devices. Backend is the **single source of truth**.
 
-**Related Issues**: #106, #124, #131 (Epic 8)
+**Design Decision**: No complex sync protocol. Backend always wins. Each device fetches latest on navigation.
 
-### Story 4.1: Initial Sync (New Device)
+### Story 4.1: Multi-Device Data Consistency
 
-**Goal**: User logs in on a new device and sees all their data.
+**Goal**: User sees consistent data across all devices.
+
+**How It Works**:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Simple Sync Model                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Device A (Online):                                              │
+│    1. User creates playlist "Road Trip"                          │
+│    2. POST /api/playlists → Server stores it                    │
+│    3. Done. No sync needed.                                      │
+│                                                                  │
+│  Device B (Online, later):                                       │
+│    1. User opens Playlists page                                  │
+│    2. GET /api/playlists → Returns all playlists                │
+│    3. "Road Trip" appears (fetched fresh from server)           │
+│                                                                  │
+│  No sync protocol. Just normal REST API calls.                   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Insight**: Since Auth offline is read-only, there's never local-only data to sync. Every write goes directly to backend.
 
 **Flow**:
 ```
-1. User logs in on Device B (already has account with data on Device A)
-2. User navigates to Libraries page
-   → GET /api/libraries returns all libraries (progressive loading)
-3. User clicks a Library
-   → GET /api/libraries/:id/songs returns songs (paginated, auto-load)
-4. User navigates to Playlists page
-   → GET /api/playlists returns all playlists
-5. Each API call returns latest data from server
-6. Data cached to IndexedDB for offline access
-7. Audio files downloaded based on cache policy
+1. User logs in on Device B
+2. Navigates to Libraries → GET /api/libraries (fresh from server)
+3. Clicks a Library → GET /api/libraries/:id/songs (fresh)
+4. All data always current (no stale cache issues for writes)
+5. IndexedDB updated with latest for offline reading
 ```
 
 **Acceptance Criteria**:
-- [x] Metadata fetched on navigation (not bulk sync)
-- [x] Libraries, playlists, songs visible
-- [ ] Preferences synced (shuffle, repeat, cacheAllEnabled) (#106)
-- [ ] Progressive loading for large libraries
-- [ ] Cache-on-play for streamed songs
+- [x] All writes go directly to backend
+- [x] All reads fetch from backend when online
+- [x] No dedicated sync mechanism needed
+- [ ] IndexedDB cache updated after each fetch
+- [ ] Pull-to-refresh for manual update
 
 ---
 
-### Story 4.2: Ongoing Sync (Multi-Device)
-
-**Goal**: Changes on one device appear on other devices.
-
-**Flow** (Piggyback Sync):
-```
-Device A (Online):
-1. User creates new playlist "Road Trip"
-2. POST /api/playlists → Server creates playlist
-3. User adds 10 songs to playlist
-4. PUT /api/playlists/:id → Server updates playlist
-
-Device B (Online, navigates to Playlists):
-1. GET /api/playlists → Returns latest (includes "Road Trip")
-2. If Device B has dirty changes:
-   → Request includes _sync.dirty.playlists
-   → Server applies changes first, then returns latest
-3. Playlist appears in UI immediately
-```
-
-**Key Insight**: No dedicated sync needed. Each page navigation fetches latest data.
-
-**Pull-to-Refresh**:
-```
-Supported Pages:
-┌─────────────────────────────────────────────────────────┐
-│ Page              │ API Called                          │
-├─────────────────────────────────────────────────────────┤
-│ Libraries list    │ GET /api/libraries                  │
-│ Library detail    │ GET /api/libraries/:id/songs        │
-│ Playlists list    │ GET /api/playlists                  │
-│ Playlist detail   │ GET /api/playlists/:id/songs        │
-└─────────────────────────────────────────────────────────┘
-
-Behavior:
-- Pull triggers API call → Returns latest data
-- If dirty data exists for that resource → Pushed with request
-- Result: UI always shows latest after pull
-```
-
-**Acceptance Criteria**:
-- [x] Push changes to server on mutation
-- [x] Pull latest on page navigation
-- [ ] Pull-to-refresh on list pages
-- [ ] Toast feedback when data updated from server
-
----
-
-### Story 4.3: Sync Conflict Resolution
-
-**Goal**: Conflicts between devices are resolved gracefully.
-
-**Conflict Resolution Strategy**: Server-Wins (Push-First)
-```
-The same Push → Pull flow handles all conflicts:
-
-Device A (connects first):
-1. Push local changes → Success (server updated)
-2. Pull server state → Normal merge
-
-Device B (connects later):
-1. Push local changes → Fail (version conflict)
-2. Discard local conflicting changes
-3. Pull server state → Overwrite local with server version
-4. Toast: "Changes synced from another device"
-
-Result: Whoever pushes first wins, others get overwritten.
-```
-
-**Conflict Scenarios**:
-
-1. **Playlist Modified on Two Devices**:
-   ```
-   Device A: Adds 3 songs to playlist "Road Trip"
-   Device B: Removes 2 songs from playlist "Road Trip"
-   
-   Resolution: First to push wins
-   - Device A pushes first → Server has A's version
-   - Device B pushes → Conflict detected → Pull A's version
-   - Device B's changes discarded
-   ```
-
-2. **Playlist Deleted vs Modified**:
-   ```
-   Device A: Deletes playlist "Road Trip"
-   Device B: Adds song to playlist "Road Trip"
-   
-   Resolution: First to push wins
-   - If A pushes first → Playlist deleted on both
-   - If B pushes first → Playlist exists with new song
-   - Toast on losing device: "Playlist 'Road Trip' was deleted on another device"
-   ```
-
-3. **Library Order Changed**:
-   ```
-   Device A: Reorders libraries to [C, A, B]
-   Device B: Reorders libraries to [B, C, A]
-   
-   Resolution: First to push wins on order field
-   ```
-
-**Note**: Song rename conflicts do not exist (edit metadata not supported).
-
-**Acceptance Criteria**:
-- [x] Server-Wins default strategy
-- [ ] Push failure triggers automatic pull
-- [ ] Local changes discarded on conflict
-- [ ] Toast feedback for sync from other device
-
----
-
-### Story 4.4: Preferences Sync
+### Story 4.2: Preferences Sync
 
 **Goal**: User preferences are consistent across devices.
 
-**Synced Preferences**:
-| Preference | Current | Target |
-|------------|---------|--------|
-| Shuffle mode | ✅ Synced | ✅ Done |
-| Repeat mode | ✅ Synced | ✅ Done |
-| cacheAllEnabled | ❌ Local only | ✅ Sync (#106) |
-| Language | ❌ Local only | ❓ TBD (may follow device) |
+**Synced Preferences** (stored in backend):
+| Preference | Synced |
+|------------|--------|
+| Shuffle mode | ✅ |
+| Repeat mode | ✅ |
 
-**Note**: Volume is not synced (device-specific, not provided in our app).
-
-**Local-Only Settings** (device-specific, NOT synced):
-- Download Timing (WiFi-only / Always / Manual)
-- Per-library manual cache status
+**Local-Only Settings** (device-specific):
+| Setting | Why Local |
+|---------|-----------|
+| Auto-download (off/wifi/always) | Network varies by device |
+| Downloaded libraries | Storage varies by device |
+| Language | User may want different per device |
 
 **Flow**:
 ```
-1. User enables "Cache All Libraries" on Device A
-2. Preference syncs to server (cacheAllEnabled = true)
-3. Device B pulls preferences on next sync
-4. Device B sees cacheAllEnabled = true
-5. Device B honors its local Download Timing setting
-6. If Download Timing allows → Start background download
-```
-
-**Example Scenario**:
-```
-Device A (Phone, cellular):
-- cacheAllEnabled = true (from server)
-- Download Timing = WiFi only
-- Result: Waits for WiFi before downloading
-
-Device B (Tablet, home WiFi):
-- cacheAllEnabled = true (from server)
-- Download Timing = Always
-- Result: Starts downloading immediately
+1. User enables shuffle on Phone
+2. PUT /api/user/preferences { shuffle: true }
+3. User opens app on Tablet
+4. GET /api/user/preferences → { shuffle: true }
+5. Tablet shows shuffle enabled
 ```
 
 **Acceptance Criteria**:
-- [x] Shuffle/Repeat mode synced
-- [ ] Backend API for cacheAllEnabled preference (#106)
-- [ ] cacheAllEnabled synced across devices
-- [ ] Download Timing remains device-local
-- [ ] Manual library cache remains device-local
+- [x] Shuffle/repeat synced via backend
+- [ ] Auto-download setting stays local
+- [ ] Downloaded content stays local
+- [ ] Preferences API endpoint
 
 ---
 
 ## Technical Architecture
 
-### Core Design: Piggyback Sync
+### Core Design: Read-Through Cache with Offline Fallback
 
-M3W uses a **Piggyback Sync** architecture: every API call carries sync data bidirectionally, eliminating the need for dedicated sync endpoints or scheduled sync tasks.
+M3W uses a simple architecture where **backend is always the source of truth** for Auth users. IndexedDB serves as a read-only cache for offline access.
 
 **Key Principles**:
-1. **No dedicated sync** - Sync happens naturally with every API call
-2. **Backend is Source of Truth** - IndexedDB is a cache for offline/performance
-3. **First-Push-Wins** - For conflicts, whoever pushes first wins
-4. **Operation-Based Merge** - Playlist song order preserved via operation log
-5. **Global Delete** - Deletions cascade across all devices
+1. **Backend is Source of Truth** - All writes go directly to backend (Auth users)
+2. **IndexedDB is Read Cache** - Stores backend responses for offline access
+3. **Guest Mode is Local-Only** - Full IndexedDB CRUD, no backend involvement
+4. **No Sync Protocol** - Auth offline is read-only, no dirty tracking needed
 
 ### Data Flow Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      M3W Piggyback Sync Architecture                 │
+│                    M3W Simplified Architecture                       │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │                        Frontend                                 │ │
 │  ├────────────────────────────────────────────────────────────────┤ │
 │  │                                                                 │ │
-│  │   User Action ──────────────────────────────────────────────►  │ │
-│  │       │                                                         │ │
-│  │       ▼                                                         │ │
-│  │   ┌─────────────────┐      ┌─────────────────┐                 │ │
-│  │   │  IndexedDB      │◄────►│  API Call       │                 │ │
-│  │   │  (cache/offline)│      │  + _sync payload│                 │ │
-│  │   └─────────────────┘      └────────┬────────┘                 │ │
-│  │                                     │                           │ │
-│  └─────────────────────────────────────┼───────────────────────────┘ │
-│                                        │                             │
-│                    ┌───────────────────┴───────────────────┐        │
-│                    │                                       │        │
-│                    ▼ Online                                ▼ Offline│
-│           ┌────────────────────┐              ┌────────────────────┐│
-│           │   Backend API      │              │  OfflineProxy      ││
-│           │   (Hono + Prisma)  │              │  (IndexedDB only)  ││
-│           └─────────┬──────────┘              └────────────────────┘│
-│                     │                                               │
-│                     ▼                                               │
-│           ┌────────────────────┐                                    │
-│           │  PostgreSQL        │                                    │
-│           │  (Source of Truth) │                                    │
-│           └────────────────────┘                                    │
+│  │   User Action ──► Router ──┬──► Backend API (Auth + Online)   │ │
+│  │                            │     │                              │ │
+│  │                            │     ▼                              │ │
+│  │                            │   Cache to IndexedDB               │ │
+│  │                            │                                    │ │
+│  │                            ├──► IndexedDB Read (Auth + Offline)│ │
+│  │                            │     (Read-only, cached data)       │ │
+│  │                            │                                    │ │
+│  │                            └──► OfflineProxy (Guest, any state)│ │
+│  │                                  (Full CRUD, local storage)     │ │
+│  └────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Sync Protocol
-
-#### Request Format (Every API Call)
-
-```typescript
-interface ApiRequestWithSync<T> {
-  // Original request payload
-  ...payload: T;
-  
-  // Sync metadata (optional, only for related dirty data)
-  _sync?: {
-    dirty?: {
-      // Only include dirty data relevant to this endpoint
-      // GET /api/libraries → dirty.libraries only
-      // GET /api/playlists → dirty.playlists only
-      // GET /api/libraries/:id/songs → dirty.songs (for this library)
-      libraries?: Library[];
-      playlists?: Playlist[];
-      songs?: Song[];
-      operations?: PlaylistOperation[];  // For playlist order changes
-      deletions?: {
-        libraryIds?: string[];
-        playlistIds?: string[];
-        songIds?: string[];
-      };
-    };
-  };
-}
-```
-
-#### Dirty Scope by Endpoint
-
-| Endpoint | Dirty Data Scope |
-|----------|------------------|
-| `GET /api/libraries` | `dirty.libraries`, `dirty.deletions.libraryIds` |
-| `GET /api/libraries/:id/songs` | `dirty.songs` (where libraryId matches) |
-| `GET /api/playlists` | `dirty.playlists`, `dirty.deletions.playlistIds` |
-| `GET /api/playlists/:id/songs` | `dirty.operations` (for this playlist) |
-| `POST /api/libraries` | `dirty.libraries` (the new one) |
-| `PUT /api/libraries/:id` | `dirty.libraries` (the updated one) |
-| `DELETE /api/libraries/:id` | N/A (direct deletion) |
-
-**Key Principle**: Each API call only syncs data relevant to its response.
-
-#### Response Format (Every API Response)
-
-```typescript
-interface ApiResponseWithSync<T> {
-  success: boolean;
-  data: T;                    // Requested data (always latest)
-  pagination?: {              // For paginated endpoints
-    page: number;
-    pageSize: number;
-    total: number;
-    hasMore: boolean;
-  };
-  _sync?: {
-    idMappings?: {            // For newly created entities
-      localId: string;
-      serverId: string;
-    }[];
-  };
-}
-```
-
-#### Sync Flow
-
-```
-Every API Call:
-
-┌──────────────────────────────────────────────────────────────────┐
-│  1. Frontend collects dirty data from IndexedDB                  │
-│     - Entities with _isDirty, _isLocalOnly, or _isDeleted       │
-│     - Unsynced PlaylistOperations                                │
-└──────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  2. API Request with _sync payload                               │
-│     POST /api/playlists                                          │
-│     {                                                            │
-│       name: "New Playlist",                                      │
-│       _sync: {                                                   │
-│         dirty: {                                                 │
-│           libraries: [{ id: 'local_xxx', name: 'My Lib', ... }] │
-│         }                                                        │
-│       }                                                          │
-│     }                                                            │
-└──────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  3. Backend processes:                                           │
-│     a. Apply dirty changes (First-Push-Wins)                    │
-│     b. Process main request                                      │
-│     c. Return latest data + ID mappings                         │
-└──────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  4. Frontend receives response:                                  │
-│     a. Update local IDs from idMappings                         │
-│     b. Cache response.data in IndexedDB                         │
-│     c. Clear synced dirty flags                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Entity Tracking Schema
-
-```typescript
-// Sync tracking fields for IndexedDB entities
-interface SyncTrackingFields {
-  _isDirty?: boolean;       // Has local changes pending sync
-  _isDeleted?: boolean;     // Soft deleted, pending server delete
-  _isLocalOnly?: boolean;   // Created locally, no server ID yet
-}
-
-// Playlist operation log (for order preservation)
-interface PlaylistOperation {
-  id: string;               // UUID
-  playlistId: string;
-  type: 'ADD' | 'REMOVE' | 'MOVE';
-  songId: string;
-  position?: number;        // Target position for ADD/MOVE
-  timestamp: number;        // For ordering operations
-  synced: boolean;          // Has been sent to server
-}
-```
-
----
-
 ### Router Layer Design
 
-The frontend uses a unified Router layer to abstract online/offline differences:
+The frontend Router handles three scenarios:
 
 ```typescript
-// Router decides: Backend API or OfflineProxy?
-async function routeRequest(request: ApiRequest): Promise<ApiResponse> {
+async function routeRequest(endpoint: string, method: string, data?: any) {
+  // Scenario 1: Guest user → Always use OfflineProxy (full CRUD)
   if (isGuest()) {
-    // Guest mode: Always use OfflineProxy
-    return offlineProxy.handle(request);
+    return offlineProxy.handle(endpoint, method, data);
   }
   
+  // Scenario 2: Auth + Online → Use Backend API
   if (isOnline()) {
-    // Auth + Online: Call Backend with _sync
-    return backendApi.call({
-      ...request,
-      _sync: await collectDirtyData(request.endpoint)
-    });
-  } else {
-    // Auth + Offline: Use OfflineProxy, mark dirty
-    const result = await offlineProxy.handle(request);
-    await markDirty(request);
+    const result = await backendApi.call(endpoint, method, data);
+    
+    // Cache GET responses to IndexedDB for offline access
+    if (method === 'GET') {
+      await cacheToIndexedDB(endpoint, result.data);
+    }
+    
     return result;
   }
-}
-```
-
-#### Contract Differences
-
-| Aspect | Backend API | OfflineProxy |
-|--------|-------------|---------------|
-| Request `_sync` | ✅ Present (dirty data) | ❌ Not needed |
-| Response `_sync` | ✅ Present (idMappings) | ❌ Not present |
-| Data source | PostgreSQL | IndexedDB |
-| Pagination | Server-side | Client-side (Dexie) |
-| ID format | Server cuid | `local_${uuid}` |
-
-#### Unified Response Contract
-
-```typescript
-// Both Backend and OfflineProxy return same shape
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  pagination?: {
-    page: number;
-    pageSize: number;
-    total: number;
-    hasMore: boolean;
-  };
-  // Only present in Backend responses
-  _sync?: {
-    idMappings?: { localId: string; serverId: string }[];
-  };
-}
-```
-
-#### OfflineProxy Implementation Pattern
-
-```typescript
-// OfflineProxy mirrors Backend API structure
-const offlineProxy = {
-  // GET /api/libraries
-  async getLibraries(): Promise<ApiResponse<Library[]>> {
-    const libraries = await db.libraries.toArray();
-    return { success: true, data: libraries };
-  },
   
-  // GET /api/libraries/:id/songs?page=1&pageSize=100
-  async getLibrarySongs(libraryId: string, page: number, pageSize: number) {
-    const total = await db.songs.where('libraryId').equals(libraryId).count();
-    const songs = await db.songs
-      .where('libraryId').equals(libraryId)
-      .offset((page - 1) * pageSize)
-      .limit(pageSize)
-      .toArray();
-    
-    return {
-      success: true,
-      data: songs,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        hasMore: page * pageSize < total
-      }
-    };
+  // Scenario 3: Auth + Offline → Read-only from cache
+  if (method !== 'GET') {
+    // Block write operations when offline
+    throw new OfflineWriteError('You are offline. Connect to make changes.');
   }
+  
+  return readFromCache(endpoint);
+}
+```
+
+#### Behavior Matrix
+
+| User Type | Network | Read | Write |
+|-----------|---------|------|-------|
+| Guest | Any | OfflineProxy (IndexedDB) | OfflineProxy (IndexedDB) |
+| Auth | Online | Backend → Cache | Backend |
+| Auth | Offline | Cache (IndexedDB) | ❌ Blocked |
+
+---
+
+### OfflineProxy: Shared Read, Guest-Only Write
+
+OfflineProxy is split into read and write operations:
+
+```typescript
+// Read operations: Used by both Guest and Auth Offline
+const readOperations = {
+  getLibraries: () => db.libraries.toArray(),
+  getLibrary: (id) => db.libraries.get(id),
+  getLibrarySongs: (libraryId) => db.songs.where('libraryId').equals(libraryId).toArray(),
+  getPlaylists: () => db.playlists.toArray(),
+  getPlaylist: (id) => db.playlists.get(id),
+  getPlaylistSongs: (playlistId) => /* ... */,
 };
+
+// Write operations: Guest only (Auth users blocked when offline)
+const writeOperations = {
+  createLibrary: (name) => db.libraries.add({ id: `local_${uuid()}`, name, ... }),
+  deleteLibrary: (id) => db.libraries.delete(id),
+  createPlaylist: (name) => db.playlists.add({ id: `local_${uuid()}`, name, ... }),
+  addSongToPlaylist: (playlistId, songId) => /* ... */,
+  // ... other mutations
+};
+
+// Combined for Guest mode
+export const offlineProxy = {
+  ...readOperations,
+  ...writeOperations,
+};
+
+// Auth Offline only uses read operations
+export const offlineReadProxy = readOperations;
 ```
 
 ---
 
-### ID Mapping (Local → Server)
+### Caching Strategy
 
-When a locally-created entity gets a server ID:
+#### When to Cache (Auth Users)
+
+```
+Online Navigation:
+┌─────────────────────────────────────────────────────────┐
+│  User visits page → GET from backend → Cache response   │
+│                                                         │
+│  Libraries page:   GET /api/libraries → cache           │
+│  Library detail:   GET /api/libraries/:id/songs → cache │
+│  Playlists page:   GET /api/playlists → cache           │
+│  Playlist detail:  GET /api/playlists/:id/songs → cache │
+└─────────────────────────────────────────────────────────┘
+
+The cache is always the "last seen online state".
+```
+
+#### IndexedDB Schema
 
 ```typescript
-async function updateEntityId(
-  table: 'libraries' | 'playlists' | 'songs',
-  localId: string,
-  serverId: string
-): Promise<void> {
-  await db.transaction('rw', [db.libraries, db.playlists, db.songs, db.playlistSongs], async () => {
-    // 1. Update the entity itself
-    await db[table].update(localId, { id: serverId });
+// Simple cache structure (no sync flags needed for Auth)
+interface LibraryCache {
+  id: string;
+  name: string;
+  songCount: number;
+  coverUrl?: string;
+  // No _isDirty, _isLocalOnly - Auth is read-only offline
+}
+
+interface PlaylistCache {
+  id: string;
+  name: string;
+  songIds: string[];
+  // No sync tracking
+}
+
+interface SongCache {
+  id: string;
+  libraryId: string;
+  title: string;
+  artist?: string;
+  album?: string;
+  duration?: number;
+  coverUrl?: string;
+}
+```
+
+#### Audio File Caching
+
+Audio files use Cache Storage API (separate from metadata):
+
+| Trigger | Behavior |
+|---------|----------|
+| **Cache-on-play** | Stream → Cache after complete |
+| **Manual download** | User clicks "Download Library" → Batch cache |
+| **Cache-on-upload** | Upload complete → Immediately cache locally |
+
+---
+
+### UI Handling for Offline State
+
+#### Disabling Write Operations
+
+```typescript
+function CreatePlaylistButton() {
+  const { isGuest, isOnline } = useAuth();
+  const canWrite = isGuest || isOnline;
+  
+  return (
+    <Button 
+      onClick={canWrite ? handleCreate : undefined}
+      disabled={!canWrite}
+      title={!canWrite ? 'Connect to internet to create' : undefined}
+    >
+      <Plus className="h-4 w-4" />
+      Create Playlist
+    </Button>
+  );
+}
+```
+
+#### Offline Banner
+
+```typescript
+function OfflineBanner() {
+  const { isOnline, isGuest } = useAuth();
+  
+  if (isGuest || isOnline) return null;
+  
+  return (
+    <div className="bg-yellow-100 text-yellow-800 px-4 py-2 text-sm">
+      You're offline. Viewing cached data (read-only).
+    </div>
+  );
+}
+```
+
+---
+
+### Songs Progressive Loading
+
+Songs are loaded progressively using automatic pagination:
+
+```typescript
+async function loadAllSongs(libraryId: string) {
+  const PAGE_SIZE = 100;
+  const CONCURRENCY = 3;
+  let allSongs: Song[] = [];
+  
+  // First request to get total
+  const first = await api.libraries.getSongs(libraryId, { page: 1, pageSize: PAGE_SIZE });
+  allSongs = first.data;
+  
+  const totalPages = Math.ceil(first.pagination.total / PAGE_SIZE);
+  
+  // Concurrent loading for remaining pages
+  for (let i = 2; i <= totalPages; i += CONCURRENCY) {
+    const batch = Array.from(
+      { length: Math.min(CONCURRENCY, totalPages - i + 1) },
+      (_, j) => api.libraries.getSongs(libraryId, { page: i + j, pageSize: PAGE_SIZE })
+    );
     
-    // 2. Cascade update references
-    if (table === 'libraries') {
-      await db.songs.where('libraryId').equals(localId)
-        .modify({ libraryId: serverId });
-    }
-    if (table === 'songs') {
-      await db.playlistSongs.where('songId').equals(localId)
-        .modify({ songId: serverId });
-    }
-    if (table === 'playlists') {
-      await db.playlistSongs.where('playlistId').equals(localId)
-        .modify({ playlistId: serverId });
-    }
-  });
+    const results = await Promise.all(batch);
+    results.forEach(r => allSongs.push(...r.data));
+  }
+  
+  return allSongs;
 }
 ```
 
 ---
 
 ### Data Limits
-
-To keep sync payloads manageable:
 
 | Entity | Limit | Rationale |
 |--------|-------|-----------|
@@ -1285,692 +1070,54 @@ To keep sync payloads manageable:
 
 ---
 
-### Songs Progressive Loading
+### Backend API (Unchanged)
 
-Songs are loaded progressively using automatic pagination, providing seamless UX even with large libraries.
-
-#### Frontend Implementation
-
-```typescript
-function SongList({ libraryId }: { libraryId: string }) {
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState({ loaded: 0, total: 0 });
-
-  useEffect(() => {
-    loadAllSongs();
-  }, [libraryId]);
-
-  async function loadAllSongs() {
-    setLoading(true);
-    let page = 1;
-    let allSongs: Song[] = [];
-    let hasMore = true;
-
-    // Automatic continuous loading with concurrency
-    const CONCURRENCY = 3;
-    const PAGE_SIZE = 100;
-
-    // First request to get total
-    const first = await api.libraries.getSongs(libraryId, { page: 1, pageSize: PAGE_SIZE });
-    allSongs = first.data;
-    setSongs(allSongs);
-    setProgress({ loaded: allSongs.length, total: first.pagination.total });
-
-    const totalPages = Math.ceil(first.pagination.total / PAGE_SIZE);
-
-    // Concurrent loading for remaining pages
-    for (let i = 2; i <= totalPages; i += CONCURRENCY) {
-      const batch = [];
-      for (let j = i; j < i + CONCURRENCY && j <= totalPages; j++) {
-        batch.push(api.libraries.getSongs(libraryId, { page: j, pageSize: PAGE_SIZE }));
-      }
-
-      const results = await Promise.all(batch);
-      results.forEach(r => {
-        allSongs = [...allSongs, ...r.data];
-      });
-
-      setSongs(allSongs);  // Update UI progressively
-      setProgress({ loaded: allSongs.length, total: first.pagination.total });
-    }
-
-    setLoading(false);
-  }
-
-  return (
-    <div>
-      {songs.map(song => <SongItem key={song.id} song={song} />)}
-      {loading && (
-        <div className="text-center text-muted-foreground py-2">
-          Loading {progress.loaded} / {progress.total}...
-        </div>
-      )}
-    </div>
-  );
-}
-```
-
-#### User Experience
+The existing RESTful API remains unchanged:
 
 ```
-User clicks Library with 850 songs:
+GET    /api/libraries              - List all libraries
+POST   /api/libraries              - Create library
+GET    /api/libraries/:id          - Get library
+PUT    /api/libraries/:id          - Update library
+DELETE /api/libraries/:id          - Delete library
+GET    /api/libraries/:id/songs    - List songs in library
 
-0.0s  → Show cached songs (if any) + Loading indicator
-0.3s  → Display 1-100 songs (Loading 100/850...)
-0.3s  → Concurrent requests for pages 2, 3, 4
-0.6s  → Display 1-400 songs (Loading 400/850...)
-0.9s  → Display 1-700 songs (Loading 700/850...)
-1.1s  → Display all 850 songs ✓
+GET    /api/playlists              - List all playlists
+POST   /api/playlists              - Create playlist
+GET    /api/playlists/:id          - Get playlist
+PUT    /api/playlists/:id          - Update playlist
+DELETE /api/playlists/:id          - Delete playlist
 
-User can scroll and interact with loaded songs immediately.
-No manual "Load More" required.
+GET    /api/songs/:id/stream       - Stream audio file
+GET    /api/songs/:id/cover        - Get cover image
+
+GET    /api/user/preferences       - Get user preferences
+PUT    /api/user/preferences       - Update preferences
 ```
 
-#### Backend API
-
-```typescript
-// GET /api/libraries/:id/songs?page=1&pageSize=100
-interface SongsResponse {
-  success: true;
-  data: Song[];
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
-    hasMore: boolean;
-  };
-  _sync?: {
-    idMappings?: { localId: string; serverId: string }[];
-  };
-}
-```
-
----
-
-### Cache Strategy
-
-#### Cache Hierarchy
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Cache Decision Flow                             │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Should cache library X?                                             │
-│                                                                      │
-│  1. Was library manually cached?                                     │
-│     └─ YES → Cache (user explicit intent)                           │
-│                                                                      │
-│  2. Is cacheAllEnabled = true? (backend setting, synced)            │
-│     └─ NO → Don't auto-cache (default behavior)                     │
-│     └─ YES ↓                                                        │
-│                                                                      │
-│  3. Check Download Timing (frontend setting, local-only):           │
-│     ├─ "Manual only" → Don't auto-cache                             │
-│     ├─ "WiFi only" → Cache if on WiFi                               │
-│     └─ "Always" → Cache immediately                                 │
-│                                                                      │
-│  4. Cache-on-play (always enabled):                                  │
-│     └─ Playing uncached song online → Cache after stream complete   │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-#### Settings Storage
-
-| Setting | Storage | Sync | Default |
-|---------|---------|------|---------|
-| `cacheAllEnabled` | Backend (user prefs) | ✅ Cross-device | `false` |
-| `downloadTiming` | Frontend (localStorage) | ❌ Device-local | `"wifi-only"` |
-| `libraryCacheStatus[id]` | Frontend (IndexedDB) | ❌ Device-local | `false` |
-
-#### Service Worker Implementation
-
-```typescript
-// Audio cache strategy: Cache-first with Range support
-const AUDIO_CACHE = 'm3w-audio-v1';
-
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // Match: /api/songs/:id/stream OR /guest/songs/:id/stream
-  if (url.pathname.match(/\/(api|guest)\/songs\/[^/]+\/stream/)) {
-    event.respondWith(handleAudioRequest(event.request));
-  }
-});
-
-async function handleAudioRequest(request: Request): Promise<Response> {
-  const cache = await caches.open(AUDIO_CACHE);
-  const cached = await cache.match(request, { ignoreSearch: true });
-  
-  if (cached) {
-    // Handle Range requests from cache
-    const range = request.headers.get('Range');
-    if (range) {
-      return createRangeResponse(cached, range);
-    }
-    return cached;
-  }
-  
-  // Not cached: fetch from network (will fail if offline)
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      // Cache-on-play: store for future offline use
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    // Network error while offline
-    throw new Error('Song not available offline');
-  }
-}
-
-async function createRangeResponse(cached: Response, range: string): Promise<Response> {
-  const blob = await cached.blob();
-  const [, start, end] = range.match(/bytes=(\d+)-(\d*)/) || [];
-  const startNum = parseInt(start, 10);
-  const endNum = end ? parseInt(end, 10) : blob.size - 1;
-  
-  const slice = blob.slice(startNum, endNum + 1);
-  return new Response(slice, {
-    status: 206,
-    headers: {
-      'Content-Range': `bytes ${startNum}-${endNum}/${blob.size}`,
-      'Content-Length': String(slice.size),
-      'Content-Type': cached.headers.get('Content-Type') || 'audio/mpeg',
-    },
-  });
-}
-```
-
----
-
-### Offline Mutation Handling
-
-#### Supported Offline Operations
-
-| Operation | Offline Behavior | Sync Flags |
-|-----------|------------------|------------|
-| Create Library | IndexedDB + local ID | `_isLocalOnly=true` |
-| Edit Library | IndexedDB update | `_isDirty=true` |
-| Delete Library* | Soft delete | `_isDeleted=true` |
-| Create Playlist | IndexedDB + local ID | `_isLocalOnly=true` |
-| Edit Playlist | IndexedDB update | `_isDirty=true` |
-| Delete Playlist* | Soft delete | `_isDeleted=true` |
-| Add to Playlist | IndexedDB update | `_isDirty=true` |
-| Remove from Playlist | IndexedDB update | `_isDirty=true` |
-| Reorder Playlist | IndexedDB update | `_isDirty=true` |
-| Delete Song | Soft delete | `_isDeleted=true` |
-| Upload Song | Cache Storage + IndexedDB | `_isLocalOnly=true` |
-
-*Note: Default Library and Favorites Playlist have `canDelete: false` and cannot be deleted.
-
-#### Offline Upload Flow
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Offline Upload Flow                               │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  1. User selects files for upload (offline)                         │
-│                                                                      │
-│  2. For each file:                                                   │
-│     a. Extract metadata (music-metadata-browser)                    │
-│     b. Extract cover art if present                                 │
-│     c. Generate local ID: `local_${crypto.randomUUID()}`            │
-│     d. Store audio in Cache Storage                                 │
-│     e. Store metadata in IndexedDB with sync flags:                 │
-│        { ..., _isLocalOnly: true, _isDirty: false }                 │
-│                                                                      │
-│  3. Song immediately playable locally                               │
-│                                                                      │
-│  4. When online + sync triggers:                                     │
-│     a. Upload audio file to server                                  │
-│     b. Server returns { songId, fileHash }                          │
-│     c. updateEntityId('songs', localId, songId)                     │
-│     d. Clear sync flags                                             │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Playback: Auto-Skip Uncached Songs
-
-When offline and attempting to play an uncached song:
-
-```typescript
-interface AutoSkipState {
-  skippedCount: number;
-  lastToastTime: number;
-}
-
-async function playNext(queue: Song[], currentIndex: number, state: AutoSkipState): Promise<void> {
-  const TOAST_DEBOUNCE_MS = 3000;
-  
-  for (let i = currentIndex + 1; i < queue.length; i++) {
-    const song = queue[i];
-    const isCached = await isAudioCached(song.id);
-    
-    if (isCached || navigator.onLine) {
-      // Can play this song
-      if (state.skippedCount > 0) {
-        const now = Date.now();
-        if (now - state.lastToastTime > TOAST_DEBOUNCE_MS) {
-          toast.info(`Skipped ${state.skippedCount} song(s) (network required)`);
-          state.lastToastTime = now;
-        }
-        state.skippedCount = 0;
-      }
-      await playSong(song);
-      return;
-    }
-    
-    // Song not cached and offline: skip
-    state.skippedCount++;
-  }
-  
-  // No playable songs remaining
-  if (state.skippedCount > 0) {
-    toast.warning(`No cached songs available (${state.skippedCount} skipped)`);
-  }
-  stopPlayback();
-}
-
-async function isAudioCached(songId: string): Promise<boolean> {
-  const cache = await caches.open('m3w-audio-v1');
-  const cached = await cache.match(`/api/songs/${songId}/stream`);
-  return !!cached;
-}
-```
-
----
-
-### Pull-to-Refresh Implementation
-
-#### Trigger Conditions
-
-```typescript
-interface PullToRefreshConfig {
-  threshold: number;        // Minimum pull distance (60px)
-  maxPull: number;          // Maximum visual pull (120px)
-  resistance: number;       // Pull resistance factor (0.4)
-}
-
-function usePullToRefresh(onRefresh: () => Promise<void>) {
-  const [isPulling, setIsPulling] = useState(false);
-  const [pullDistance, setPullDistance] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  const handleTouchStart = (e: TouchEvent) => {
-    // Only enable if scrolled to top
-    if (containerRef.current?.scrollTop !== 0) return;
-    // ... capture start position
-  };
-  
-  const handleTouchMove = (e: TouchEvent) => {
-    // Apply resistance and update pullDistance
-    // Show visual indicator when pullDistance > threshold
-  };
-  
-  const handleTouchEnd = async () => {
-    if (pullDistance > config.threshold) {
-      setIsPulling(true);
-      try {
-        await onRefresh();
-      } catch (error) {
-        if (!navigator.onLine) {
-          toast.error('Network unavailable');
-        } else {
-          toast.error('Sync failed');
-        }
-      }
-      setIsPulling(false);
-    }
-    setPullDistance(0);
-  };
-  
-  return { containerRef, isPulling, pullDistance };
-}
-```
-
-#### Page-Specific Sync Scope
-
-| Page | Pull-to-Refresh | Sync Scope |
-|------|-----------------|------------|
-| Libraries List | ✅ | All libraries + preferences |
-| Library Detail | ✅ | Songs in this library only |
-| Playlists List | ✅ | All playlists |
-| Playlist Detail | ✅ | Songs + order in this playlist |
-| Settings | ❌ | N/A |
-| Full Player | ❌ | N/A |
-
----
-
-### Conflict Resolution Algorithm
-
-```typescript
-async function syncEntity<T extends SyncTrackingFields>(
-  entity: T,
-  table: string,
-  serverVersion?: T
-): Promise<SyncResult> {
-  // PUSH phase
-  if (entity._isLocalOnly) {
-    const result = await api.post(`/api/${table}`, entity);
-    if (result.success) {
-      await updateEntityId(table, entity.id, result.data.id);
-      return { status: 'created', newId: result.data.id };
-    }
-    // Conflict: same entity created on another device (rare)
-    return { status: 'conflict', resolution: 'pull' };
-  }
-  
-  if (entity._isDeleted) {
-    const result = await api.delete(`/api/${table}/${entity.id}`);
-    if (result.success || result.status === 404) {
-      // 404 = already deleted on server, that's fine
-      await db[table].delete(entity.id);
-      return { status: 'deleted' };
-    }
-    return { status: 'conflict', resolution: 'pull' };
-  }
-  
-  if (entity._isDirty) {
-    const result = await api.put(`/api/${table}/${entity.id}`, entity);
-    if (result.success) {
-      return { status: 'updated' };
-    }
-    if (result.status === 409) {
-      // Conflict: modified on another device
-      // Server-Wins: discard local, pull server version
-      toast.info('Changes synced from another device');
-      return { status: 'conflict', resolution: 'pull' };
-    }
-  }
-  
-  return { status: 'unchanged' };
-}
-```
-
----
-
-### Backend API Design
-
-#### Piggyback Sync Integration
-
-All existing RESTful endpoints remain unchanged but gain sync capabilities:
-
-**Request Enhancement** (all endpoints):
-```typescript
-// Every request can optionally include dirty data
-// IMPORTANT: Only include dirty data relevant to this endpoint
-GET /api/libraries
-{
-  _sync: {                       // Optional sync payload
-    dirty: {
-      libraries: [...],          // Only libraries - not songs/playlists
-      deletions: { libraryIds: [...] }
-    }
-  }
-}
-
-GET /api/libraries/:id/songs?page=1
-{
-  _sync: {
-    dirty: {
-      songs: [...],              // Only songs for this library
-      deletions: { songIds: [...] }
-    }
-  }
-}
-```
-
-**Response Enhancement** (all endpoints):
-```typescript
-// Every response returns latest data + sync metadata
-{
-  success: true,
-  data: { ... },                 // Always latest from server
-  pagination: { ... },           // For paginated endpoints
-  _sync: {
-    idMappings: [                // For newly created entities
-      { localId: 'local_xxx', serverId: 'abc123' }
-    ]
-  }
-}
-```
-
-#### Delete Semantics (Global Delete)
-
-Deletions propagate across all devices:
-
-```typescript
-// DELETE /api/libraries/:id
-// Deletes: Library + all Songs in Library + Audio files
-
-// DELETE /api/playlists/:id  
-// Deletes: Playlist only (Songs remain in their Libraries)
-
-// DELETE /api/songs/:id
-// Deletes: Song + Audio file + removes from all Playlists
-```
-
-**Note**: Default Library and Favorites Playlist have `canDelete: false`.
-
-#### Songs Pagination Endpoint
-
-```typescript
-// GET /api/libraries/:id/songs?page=1&pageSize=100
-{
-  success: true,
-  data: Song[],
-  pagination: {
-    page: 1,
-    pageSize: 100,
-    total: 850,
-    hasMore: true
-  },
-  _sync: {
-    idMappings: [...]  // If dirty songs were pushed
-  }
-}
-```
-
----
-
-#### Conflict Handling in API
-
-All mutating endpoints support First-Push-Wins conflict resolution:
-
-```typescript
-// Frontend wrapper for API calls with sync
-async function apiCallWithSync<T>(
-  endpoint: string,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-  payload?: any
-): Promise<T> {
-  // 1. Collect dirty data from IndexedDB
-  const dirtyData = await collectDirtyData();
-  
-  // 2. Make API call with _sync payload
-  const response = await fetch(endpoint, {
-    method,
-    body: JSON.stringify({
-      ...payload,
-      ...(dirtyData.hasChanges && { _sync: { dirty: dirtyData } })
-    })
-  });
-  
-  const result = await response.json();
-  
-  // 3. Process sync response
-  if (result._sync?.idMappings) {
-    for (const { localId, serverId } of result._sync.idMappings) {
-      await updateEntityId(localId, serverId);
-    }
-  }
-  
-  // 4. Update IndexedDB with server response
-  await cacheResponseData(result.data);
-  
-  // 5. Clear synced dirty flags
-  if (dirtyData.hasChanges) {
-    await clearDirtyFlags(dirtyData);
-  }
-  
-  return result.data;
-}
-```
-
-#### User Preferences Endpoint
-
-**GET /api/user/preferences**:
-
-```typescript
-// Response
-{
-  success: true,
-  data: {
-    shuffle: boolean,
-    repeat: 'off' | 'one' | 'all',
-    cacheAllEnabled: boolean,
-    // Future: language preference
-  }
-}
-```
-
-**PUT /api/user/preferences**:
-
-```typescript
-// Request
-PUT /api/user/preferences
-{
-  shuffle: true,
-  repeat: 'all',
-  cacheAllEnabled: true
-}
-
-// Response
-{
-  success: true,
-  data: { ... }
-}
-```
-
-**Backend Implementation**:
-
-```typescript
-// backend/src/routes/user.ts
-app.get('/api/user/preferences', async (c) => {
-  const userId = c.get('userId');
-  
-  const prefs = await prisma.userPreferences.findUnique({
-    where: { userId }
-  });
-  
-  // Return defaults if not exists
-  return c.json({
-    success: true,
-    data: prefs ?? {
-      shuffle: false,
-      repeat: 'off',
-      cacheAllEnabled: false
-    }
-  });
-});
-
-app.put('/api/user/preferences', async (c) => {
-  const userId = c.get('userId');
-  const { shuffle, repeat, cacheAllEnabled } = await c.req.json();
-  
-  const prefs = await prisma.userPreferences.upsert({
-    where: { userId },
-    update: { shuffle, repeat, cacheAllEnabled },
-    create: { userId, shuffle, repeat, cacheAllEnabled }
-  });
-  
-  return c.json({ success: true, data: prefs });
-});
-```
-
-**Schema for UserPreferences**:
-
-```prisma
-model UserPreferences {
-  id              String  @id @default(cuid())
-  userId          String  @unique
-  shuffle         Boolean @default(false)
-  repeat          String  @default("off")  // 'off' | 'one' | 'all'
-  cacheAllEnabled Boolean @default(false)
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-```
-
-#### Conflict Detection Summary
-
-| Scenario | Detection Method | Response |
-|----------|------------------|----------|
-| Update entity | Compare `version` field | 409 with server data |
-| Delete entity | Compare `version` in query | 409 if modified |
-| Delete already deleted | 404 | Client treats as success |
-| Create duplicate | Unique constraint | 409 or merge logic |
-
-#### Client-Side Handling
-
-```typescript
-// Frontend: Handle 409 conflict
-async function updateLibrary(library: Library): Promise<Library> {
-  const result = await api.put(`/api/libraries/${library.id}`, {
-    name: library.name,
-    version: library.version
-  });
-  
-  if (result.status === 409) {
-    // Conflict: server has newer version
-    const serverData = result.data.serverData;
-    
-    // Server-Wins: discard local, use server version
-    await db.libraries.put(serverData);
-    toast.info('Changes synced from another device');
-    
-    return serverData;
-  }
-  
-  if (result.success) {
-    // Update local with new version
-    await db.libraries.put(result.data);
-    return result.data;
-  }
-  
-  throw new Error(result.error);
-}
-```
+No changes needed for the simplified offline architecture.
 
 ---
 
 ## Issue Mapping
 
-### Epic 8: Unified Offline Sync Architecture (#131)
+### Epic 5: Auth User Offline (#87)
 
-| Story | Related Issues |
-|-------|----------------|
-| Story 2.5.1 | #33 (Guest to Auth Migration) |
-| Story 2.5.2 | #129 (ID Conflict Resolution) |
-| Story 3.3 | #48 (State-based Sync) |
-| Story 3.4 | #124 (Cache After Upload) |
-| Story 4.1 | #106 (Preferences Sync) |
-| Story 4.4 | #106 (Preferences Sync) |
+| Story | Description |
+|-------|-------------|
+| Story 3.1 | Offline detection & UI feedback |
+| Story 3.2 | Offline playback (read-only) |
+| Story 3.3 | Cached data browsing (read-only) |
+| Story 3.4 | Proactive caching |
 
 ### Other Related Issues
 
 | Story | Related Issues |
 |-------|----------------|
 | Story 2.3 | #50 (Storage Quota UI), #51 (Cache Management) |
-| Story 3.4 | #92 (Cache All Library Setting) |
+| Story 2.5.1, 2.5.2 | #33 (Guest to Auth Migration), #129 (ID Mapping) |
+| Story 3.4 | #124 (Cache After Upload) |
+| Story 4.2 | #106 (Preferences Sync) |
 
 ---
 
@@ -1993,14 +1140,15 @@ async function updateLibrary(library: Library): Promise<Library> {
 
 | Part | Stories | Dependencies |
 |------|---------|--------------|
-| Part 2.5 | 2.5.1, 2.5.2 | #129, #33 |
-| Part 3 | 3.1 - 3.4 | #124, Epic 8 design |
-| Part 4 | 4.1 - 4.4 | #106, Epic 8 implementation |
+| Part 2.5 | 2.5.1, 2.5.2 | #33, #129 |
+| Part 3 | 3.1 - 3.4 | Read-only offline design |
+| Part 4 | 4.1 - 4.2 | #106 (Preferences Sync) |
 
 ---
 
 ## Out of Scope (Future Enhancements)
 
+- ❌ Auth offline write operations (full sync)
 - ❌ Library sharing with other users
 - ❌ External metadata API integration (Last.fm, MusicBrainz)
 - ❌ Smart playlists (auto-generated based on criteria)
@@ -2019,9 +1167,9 @@ async function updateLibrary(library: Library): Promise<Library> {
 - Development standards: `.github/instructions/development-standards.instructions.md`
 - API patterns: `.github/instructions/api-patterns.instructions.md`
 - i18n system: `.github/instructions/i18n-system.instructions.md`
-- Epic 8: https://github.com/test3207/m3w/issues/131
+- Epic 5 (Auth Offline): https://github.com/test3207/m3w/issues/87
 
 ---
 
-**Document Version**: v2.1  
-**Last Updated**: 2025-12-10
+**Document Version**: v3.0  
+**Last Updated**: 2025-12-11
