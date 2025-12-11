@@ -235,7 +235,7 @@ export default function LibraryDetailPage() {
     setIsDownloading(true);
     try {
       // Force download - user manually clicked, bypass policy check
-      const queued = await queueLibraryDownload(id, { userPreferences: null, backendLibrary: null }, true);
+      const queued = await queueLibraryDownload(id, true);
       if (queued > 0) {
         toast({
           title: I18n.libraries.detail.cache.downloadStarted,

@@ -4,13 +4,12 @@
  * Background download queue for caching library songs.
  * - Silent downloads (no progress UI)
  * - 3 concurrent downloads
- * - Respects download timing policy
- * - Integrates with cache-policy for decision making
+ * - Respects auto-download setting
  */
 
 import { db } from "../db/schema";
 import { cacheSong, isSongCached, isAudioCacheAvailable } from "./audio-cache";
-import { canDownloadNow, shouldCacheLibrary, type CachePolicyContext } from "./cache-policy";
+import { canAutoDownload } from "./cache-policy";
 import { logger } from "../logger-client";
 import { useAuthStore } from "@/stores/authStore";
 import { GUEST_USER_ID } from "@/lib/constants/guest";
@@ -44,11 +43,10 @@ let isProcessing = false;
 
 /**
  * Queue all songs from a library for download
- * @param force - If true, bypass policy check (for manual user-initiated downloads)
+ * @param force - If true, bypass auto-download check (for manual user-initiated downloads)
  */
 export async function queueLibraryDownload(
   libraryId: string,
-  context: CachePolicyContext,
   force: boolean = false
 ): Promise<number> {
   // Check if caching is available (requires Cache API and sufficient quota)
@@ -58,11 +56,11 @@ export async function queueLibraryDownload(
     return 0;
   }
 
-  // Check policy (skip if force=true, i.e., user manually triggered download)
+  // Check auto-download setting (skip if force=true, i.e., user manually triggered download)
   if (!force) {
-    const shouldCache = await shouldCacheLibrary(libraryId, context);
-    if (!shouldCache) {
-      logger.debug(`Library ${libraryId} not configured for caching`);
+    const canDownload = await canAutoDownload();
+    if (!canDownload) {
+      logger.debug("Auto-download not allowed based on setting/network");
       return 0;
     }
   }
@@ -133,22 +131,36 @@ export function getQueueStatus(): {
 }
 
 /**
- * Trigger download for all libraries that should be cached
- * Called after sync completes
+ * Trigger auto-download for all libraries
+ * Called on app startup if auto-download is enabled
  */
-export async function triggerAutoCacheAfterSync(
-  libraries: Array<{ id: string }>,
-  context: CachePolicyContext
-): Promise<void> {
-  // Check if we can download now
-  const canDownload = await canDownloadNow();
+export async function triggerAutoDownload(): Promise<void> {
+  // Check if we can auto-download
+  const canDownload = await canAutoDownload();
   if (!canDownload) {
-    logger.debug("Download not allowed based on timing policy");
+    logger.debug("Auto-download not allowed based on setting/network");
     return;
   }
 
-  for (const library of libraries) {
-    await queueLibraryDownload(library.id, context);
+  // Get current user's libraries
+  const { user, isGuest } = useAuthStore.getState();
+  const userId = isGuest ? GUEST_USER_ID : user?.id;
+  
+  if (!userId) {
+    logger.debug("No user ID, skipping auto-download");
+    return;
+  }
+
+  // Get user's libraries from IndexedDB
+  const userLibraries = await db.libraries
+    .filter(lib => lib.userId === userId)
+    .toArray();
+
+  logger.info(`Auto-download triggered for ${userLibraries.length} libraries`);
+
+  for (const library of userLibraries) {
+    // Use force=false since we already checked canAutoDownload
+    await queueLibraryDownload(library.id, false);
   }
 }
 
@@ -182,10 +194,10 @@ async function processQueue(): Promise<void> {
     }
 
     while (downloadQueue.length > 0 && activeDownloads < MAX_CONCURRENT_DOWNLOADS) {
-      // Check if we can still download
-      const canDownload = await canDownloadNow();
+      // Check if we can still download (auto-download may have been disabled or network changed)
+      const canDownload = await canAutoDownload();
       if (!canDownload) {
-        logger.debug("processQueue: pausing downloads, timing policy not met");
+        logger.debug("processQueue: pausing downloads, auto-download not allowed");
         break;
       }
 

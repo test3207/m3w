@@ -1,7 +1,10 @@
 /**
  * Offline Settings Component
  * 
- * Compact UI for cache-all settings with inline dropdowns
+ * Compact UI for offline cache settings:
+ * - Auto-download: Off / WiFi Only / Always
+ * - Metadata sync (for authenticated users)
+ * - Cache status display
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -25,14 +28,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Info, Cloud, RefreshCw } from "lucide-react";
 import { I18n } from "@/locales/i18n";
-import { api } from "@/services";
 import {
-  getLocalCacheAllOverride,
-  setLocalCacheAllOverride,
-  getDownloadTiming,
-  setDownloadTiming,
+  getAutoDownloadSetting,
+  setAutoDownloadSetting,
 } from "@/lib/storage/cache-policy";
-import type { LocalCacheOverride, DownloadTiming } from "@/lib/db/schema";
+import type { AutoDownloadSetting } from "@/lib/db/schema";
 import { getQueueStatus, getTotalCacheStats } from "@/lib/storage/download-manager";
 import { isAudioCacheAvailable } from "@/lib/storage/audio-cache";
 import {
@@ -43,7 +43,6 @@ import {
   onSyncStatusChange,
 } from "@/lib/sync/metadata-sync";
 import { logger } from "@/lib/logger-client";
-import { isGuestUser } from "@/lib/offline-proxy/utils";
 import { useAuthStore } from "@/stores/authStore";
 
 /**
@@ -68,12 +67,8 @@ function formatLastSync(timestamp: number | null): string {
 export default function OfflineSettings() {
   const { isGuest } = useAuthStore();
   
-  // Backend settings (only for authenticated users)
-  const [backendCacheAll, setBackendCacheAll] = useState(false);
-  
-  // Local settings
-  const [localOverride, setLocalOverride] = useState<LocalCacheOverride>("inherit");
-  const [downloadTimingVal, setDownloadTimingVal] = useState<DownloadTiming>("wifi-only");
+  // Auto-download setting (local only)
+  const [autoDownload, setAutoDownload] = useState<AutoDownloadSetting>("off");
   
   // Queue status
   const [queueStatus, setQueueStatus] = useState({ pending: 0, active: 0, isProcessing: false });
@@ -84,7 +79,7 @@ export default function OfflineSettings() {
   // Cache availability
   const [cacheAvailable, setCacheAvailable] = useState<boolean | null>(null);
   
-  // Metadata sync settings
+  // Metadata sync settings (only for authenticated users)
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
@@ -104,30 +99,18 @@ export default function OfflineSettings() {
         const stats = await getTotalCacheStats();
         setCacheStats(stats);
 
-        // Load local settings
-        const [localOvr, timing] = await Promise.all([
-          getLocalCacheAllOverride(),
-          getDownloadTiming(),
-        ]);
-        setLocalOverride(localOvr ?? "inherit");
-        setDownloadTimingVal(timing);
+        // Load auto-download setting
+        const setting = await getAutoDownloadSetting();
+        setAutoDownload(setting);
 
-        // Load metadata sync settings
-        const syncSettings = getSyncSettings();
-        setAutoSyncEnabled(syncSettings.autoSync);
-        
-        const syncStatus = getSyncStatus();
-        setLastSyncTime(syncStatus.lastSyncTime);
-        setIsSyncing(syncStatus.isSyncing);
-
-        // Load backend settings (only for authenticated users)
-        if (!isGuestUser()) {
-          try {
-            const prefs = await api.main.user.getPreferences();
-            setBackendCacheAll(prefs.cacheAllEnabled);
-          } catch (error) {
-            logger.warn("Failed to load user preferences", error);
-          }
+        // Load metadata sync settings (only for authenticated users)
+        if (!isGuest) {
+          const syncSettings = getSyncSettings();
+          setAutoSyncEnabled(syncSettings.autoSync);
+          
+          const syncStatus = getSyncStatus();
+          setLastSyncTime(syncStatus.lastSyncTime);
+          setIsSyncing(syncStatus.isSyncing);
         }
       } catch (error) {
         logger.error("Failed to load offline settings", error);
@@ -137,7 +120,7 @@ export default function OfflineSettings() {
     };
 
     loadSettings();
-  }, []);
+  }, [isGuest]);
 
   // Subscribe to sync status changes
   useEffect(() => {
@@ -177,33 +160,13 @@ export default function OfflineSettings() {
     };
   }, []);
 
-  // Handle backend cache-all toggle
-  const handleBackendCacheAllChange = useCallback(async (enabled: boolean) => {
+  // Handle auto-download setting change
+  const handleAutoDownloadChange = useCallback(async (value: AutoDownloadSetting) => {
     try {
-      await api.main.user.updatePreferences({ cacheAllEnabled: enabled });
-      setBackendCacheAll(enabled);
+      await setAutoDownloadSetting(value);
+      setAutoDownload(value);
     } catch (error) {
-      logger.error("Failed to update cache-all setting", error);
-    }
-  }, []);
-
-  // Handle local override change
-  const handleLocalOverrideChange = useCallback(async (value: LocalCacheOverride) => {
-    try {
-      await setLocalCacheAllOverride(value === "inherit" ? null : value);
-      setLocalOverride(value);
-    } catch (error) {
-      logger.error("Failed to update local override", error);
-    }
-  }, []);
-
-  // Handle download timing change
-  const handleDownloadTimingChange = useCallback(async (value: DownloadTiming) => {
-    try {
-      await setDownloadTiming(value);
-      setDownloadTimingVal(value);
-    } catch (error) {
-      logger.error("Failed to update download timing", error);
+      logger.error("Failed to update auto-download setting", error);
     }
   }, []);
 
@@ -261,36 +224,10 @@ export default function OfflineSettings() {
 
         {/* Settings List - tighter spacing between items */}
         <Stack gap="sm">
-          {/* Backend Cache-All Toggle (only for authenticated users) */}
-          {!isGuest && (
-            <Stack direction="horizontal" align="center" justify="between" className="min-h-8">
-              <Stack direction="horizontal" align="center" gap="sm">
-                <Label className="text-sm">{I18n.settings.offline.cacheAll}</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
-                      <Info className="h-3 w-3 text-muted-foreground" />
-                      <span className="sr-only">Info</span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-64">
-                    <Text variant="caption" className="text-muted-foreground">
-                      {I18n.settings.offline.cacheAllDescription}
-                    </Text>
-                  </PopoverContent>
-                </Popover>
-              </Stack>
-              <Switch
-                checked={backendCacheAll}
-                onCheckedChange={handleBackendCacheAllChange}
-              />
-            </Stack>
-          )}
-
-          {/* Local Override - inline */}
+          {/* Auto-download Setting */}
           <Stack direction="horizontal" align="center" justify="between" className="min-h-8">
             <Stack direction="horizontal" align="center" gap="sm">
-              <Label className="text-sm">{I18n.settings.offline.localOverride}</Label>
+              <Label className="text-sm">{I18n.settings.offline.syncMusic}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
@@ -300,34 +237,19 @@ export default function OfflineSettings() {
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-64">
                   <Text variant="caption" className="text-muted-foreground">
-                    {I18n.settings.offline.localOverrideDescription}
+                    {I18n.settings.offline.syncMusicDescription}
                   </Text>
                 </PopoverContent>
               </Popover>
             </Stack>
-            <Select value={localOverride} onValueChange={handleLocalOverrideChange}>
-              <SelectTrigger className="w-auto min-w-[120px] h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="inherit">{I18n.settings.offline.policyInherit}</SelectItem>
-                <SelectItem value="always">{I18n.settings.offline.policyAlways}</SelectItem>
-                <SelectItem value="never">{I18n.settings.offline.policyNever}</SelectItem>
-              </SelectContent>
-            </Select>
-          </Stack>
-
-          {/* Download Timing - inline */}
-          <Stack direction="horizontal" align="center" justify="between" className="min-h-8">
-            <Label className="text-sm">{I18n.settings.offline.downloadTiming}</Label>
-            <Select value={downloadTimingVal} onValueChange={handleDownloadTimingChange}>
+            <Select value={autoDownload} onValueChange={handleAutoDownloadChange}>
               <SelectTrigger className="w-auto min-w-[100px] h-8">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="always">{I18n.settings.offline.timingAlways}</SelectItem>
-                <SelectItem value="wifi-only">{I18n.settings.offline.timingWifiOnly}</SelectItem>
-                <SelectItem value="manual">{I18n.settings.offline.timingManual}</SelectItem>
+                <SelectItem value="off">{I18n.settings.offline.syncMusicOff}</SelectItem>
+                <SelectItem value="wifi-only">{I18n.settings.offline.syncMusicWifiOnly}</SelectItem>
+                <SelectItem value="always">{I18n.settings.offline.syncMusicAlways}</SelectItem>
               </SelectContent>
             </Select>
           </Stack>
@@ -338,7 +260,7 @@ export default function OfflineSettings() {
               {/* Auto-Sync Toggle */}
               <Stack direction="horizontal" align="center" justify="between" className="min-h-8 pt-2 border-t">
                 <Stack direction="horizontal" align="center" gap="sm">
-                  <Label className="text-sm">{I18n.sync.autoSync}</Label>
+                  <Label className="text-sm">{I18n.sync.syncMetadata}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
@@ -348,7 +270,7 @@ export default function OfflineSettings() {
                     </PopoverTrigger>
                     <PopoverContent align="start" className="w-64">
                       <Text variant="caption" className="text-muted-foreground">
-                        {I18n.sync.autoSyncDescription}
+                        {I18n.sync.syncMetadataDescription}
                       </Text>
                     </PopoverContent>
                   </Popover>

@@ -254,10 +254,10 @@ export interface Messages {
     inProgress: string;
     /** pending changes */
     pendingChanges: string;
-    /** Auto-sync */
-    autoSync: string;
+    /** Sync Metadata */
+    syncMetadata: string;
     /** Automatically sync your library data in the background */
-    autoSyncDescription: string;
+    syncMetadataDescription: string;
     /** Sync Now */
     syncNow: string;
     /** Syncing... */
@@ -943,30 +943,16 @@ export interface Messages {
       title: string;
       /** Configure how your music is cached for offline playback */
       description: string;
-      /** Cache All Libraries */
-      cacheAll: string;
-      /** Automatically download all songs for offline playback (synced across devices) */
-      cacheAllDescription: string;
-      /** Local Override */
-      localOverride: string;
-      /** Override the cache setting for this device only */
-      localOverrideDescription: string;
-      /** Follow Account Setting */
-      policyInherit: string;
-      /** Always Cache */
-      policyAlways: string;
-      /** Never Cache */
-      policyNever: string;
-      /** Download Timing */
-      downloadTiming: string;
-      /** When to download songs for offline playback */
-      downloadTimingDescription: string;
-      /** Always Download */
-      timingAlways: string;
+      /** Sync Music */
+      syncMusic: string;
+      /** When app starts, automatically download all uncached songs. Cache-on-play, manual download, and cache-on-upload always work regardless of this setting. */
+      syncMusicDescription: string;
+      /** Off */
+      syncMusicOff: string;
       /** Wi-Fi Only */
-      timingWifiOnly: string;
-      /** Manual Only */
-      timingManual: string;
+      syncMusicWifiOnly: string;
+      /** Always */
+      syncMusicAlways: string;
       /** {0} / {1} songs cached */
       cacheStatus: string;
       /** Downloading: {0} active, {1} pending */
