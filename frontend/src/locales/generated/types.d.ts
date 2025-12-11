@@ -254,6 +254,26 @@ export interface Messages {
     inProgress: string;
     /** pending changes */
     pendingChanges: string;
+    /** Auto-sync */
+    autoSync: string;
+    /** Automatically sync your library data in the background */
+    autoSyncDescription: string;
+    /** Sync Now */
+    syncNow: string;
+    /** Syncing... */
+    syncing: string;
+    /** Last sync */
+    lastSync: string;
+    /** Never */
+    never: string;
+    /** Just now */
+    justNow: string;
+    /** {0} min ago */
+    minutesAgo: string;
+    /** {0}h ago */
+    hoursAgo: string;
+    /** {0}d ago */
+    daysAgo: string;
   };
   dashboard: {
     /** M3W Dashboard */

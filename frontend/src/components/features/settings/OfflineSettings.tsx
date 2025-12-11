@@ -23,7 +23,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Info, Cloud } from "lucide-react";
+import { Info, Cloud, RefreshCw } from "lucide-react";
 import { I18n } from "@/locales/i18n";
 import { api } from "@/services";
 import {
@@ -35,6 +35,12 @@ import {
 import type { LocalCacheOverride, DownloadTiming } from "@/lib/db/schema";
 import { getQueueStatus, getTotalCacheStats } from "@/lib/storage/download-manager";
 import { isAudioCacheAvailable } from "@/lib/storage/audio-cache";
+import {
+  getSyncStatus,
+  getSyncSettings,
+  updateSyncSettings,
+  manualSync,
+} from "@/lib/sync/metadata-sync";
 import { logger } from "@/lib/logger-client";
 import { isGuestUser } from "@/lib/offline-proxy/utils";
 import { useAuthStore } from "@/stores/authStore";
@@ -58,6 +64,11 @@ export default function OfflineSettings() {
   // Cache availability
   const [cacheAvailable, setCacheAvailable] = useState<boolean | null>(null);
   
+  // Metadata sync settings
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
+  
   // Loading states
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +91,14 @@ export default function OfflineSettings() {
         ]);
         setLocalOverride(localOvr ?? "inherit");
         setDownloadTimingVal(timing);
+
+        // Load metadata sync settings
+        const syncSettings = getSyncSettings();
+        setAutoSyncEnabled(syncSettings.autoSync);
+        
+        const syncStatus = getSyncStatus();
+        setLastSyncTime(syncStatus.lastSyncTime);
+        setIsSyncing(syncStatus.isSyncing);
 
         // Load backend settings (only for authenticated users)
         if (!isGuestUser()) {
@@ -155,6 +174,44 @@ export default function OfflineSettings() {
     } catch (error) {
       logger.error("Failed to update download timing", error);
     }
+  }, []);
+
+  // Handle auto-sync toggle
+  const handleAutoSyncChange = useCallback((enabled: boolean) => {
+    updateSyncSettings({ autoSync: enabled });
+    setAutoSyncEnabled(enabled);
+  }, []);
+
+  // Handle manual sync
+  const handleManualSync = useCallback(async () => {
+    if (isSyncing) return;
+    
+    setIsSyncing(true);
+    try {
+      await manualSync();
+      const status = getSyncStatus();
+      setLastSyncTime(status.lastSyncTime);
+    } catch (error) {
+      logger.error("Manual sync failed", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isSyncing]);
+
+  // Format last sync time
+  const formatLastSync = useCallback((timestamp: number | null): string => {
+    if (!timestamp) return I18n.sync.never;
+    
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return I18n.sync.justNow;
+    if (minutes < 60) return I18n.sync.minutesAgo.replace("{0}", String(minutes));
+    if (hours < 24) return I18n.sync.hoursAgo.replace("{0}", String(hours));
+    return I18n.sync.daysAgo.replace("{0}", String(days));
   }, []);
 
   if (loading) {
@@ -261,6 +318,52 @@ export default function OfflineSettings() {
               </SelectContent>
             </Select>
           </Stack>
+
+          {/* Metadata Sync Section (only for authenticated users) */}
+          {!isGuest && (
+            <>
+              {/* Auto-Sync Toggle */}
+              <Stack direction="horizontal" align="center" justify="between" className="min-h-8 pt-2 border-t">
+                <Stack direction="horizontal" align="center" gap="sm">
+                  <Label className="text-sm">{I18n.sync.autoSync}</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                        <span className="sr-only">Info</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-64">
+                      <Text variant="caption" className="text-muted-foreground">
+                        {I18n.sync.autoSyncDescription}
+                      </Text>
+                    </PopoverContent>
+                  </Popover>
+                </Stack>
+                <Switch
+                  checked={autoSyncEnabled}
+                  onCheckedChange={handleAutoSyncChange}
+                />
+              </Stack>
+
+              {/* Manual Sync Button and Status */}
+              <Stack direction="horizontal" align="center" justify="between" className="min-h-8">
+                <Text variant="caption" className="text-muted-foreground">
+                  {I18n.sync.lastSync}: {formatLastSync(lastSyncTime)}
+                </Text>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7"
+                  onClick={handleManualSync}
+                  disabled={isSyncing || !navigator.onLine}
+                >
+                  <RefreshCw className={`h-3 w-3 mr-1 ${isSyncing ? "animate-spin" : ""}`} />
+                  {isSyncing ? I18n.sync.syncing : I18n.sync.syncNow}
+                </Button>
+              </Stack>
+            </>
+          )}
 
           {/* Cache Status - compact */}
           {cacheAvailable === false ? (

@@ -19,7 +19,8 @@ export interface PWAStatus {
   canCacheAudio: boolean;
   syncStatus: {
     lastSyncTime: number | null;
-    autoSyncRunning: boolean;
+    autoSyncEnabled: boolean;
+    isSyncing: boolean;
   };
 }
 
@@ -69,7 +70,8 @@ export async function getPWAStatus(): Promise<PWAStatus> {
     canCacheAudio: canCache,
     syncStatus: {
       lastSyncTime: syncStatus.lastSyncTime,
-      autoSyncRunning: syncStatus.autoSyncRunning,
+      autoSyncEnabled: syncStatus.autoSyncEnabled,
+      isSyncing: syncStatus.isSyncing,
     },
   };
 }

@@ -135,7 +135,17 @@
     "serverWins": "个冲突已解决（保留服务器版本）",
     "failed": "同步失败",
     "inProgress": "同步中...",
-    "pendingChanges": "个待同步更改"
+    "pendingChanges": "个待同步更改",
+    "autoSync": "自动同步",
+    "autoSyncDescription": "在后台自动同步您的音乐库数据",
+    "syncNow": "立即同步",
+    "syncing": "同步中...",
+    "lastSync": "上次同步",
+    "never": "从未",
+    "justNow": "刚刚",
+    "minutesAgo": "{0}分钟前",
+    "hoursAgo": "{0}小时前",
+    "daysAgo": "{0}天前"
   },
   "dashboard": {
     "title": "M3W 控制台",
