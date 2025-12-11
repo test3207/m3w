@@ -27,6 +27,7 @@ import { logger } from "@/lib/logger-client";
 import { eventBus, EVENTS } from "@/lib/events";
 import { processAudioFileStream } from "@/lib/utils/stream-processor";
 import { cacheAudioForOffline, cacheCoverForOffline } from "@/lib/pwa/cache-manager";
+import { manualSync } from "@/lib/sync/metadata-sync";
 import { api } from "@/services";
 import type { LibraryOption } from "@/types/models";
 import { LibraryBig } from "lucide-react";
@@ -84,6 +85,10 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
 
     await fetchLibraries();
     await fetchPlaylists();
+    
+    // Sync metadata to IndexedDB so Settings page shows correct cache stats
+    manualSync().catch(err => logger.warn("Post-upload sync failed", err));
+    
     eventBus.emit(EVENTS.SONG_UPLOADED);
 
     if (onDrawerClose) {
