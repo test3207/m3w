@@ -1,172 +1,189 @@
 /**
  * Metadata Sync Service
  * 
- * Automatically downloads libraries, playlists, and songs metadata from backend
- * to IndexedDB for offline use. Runs on app startup, periodically, and after PWA install.
+ * Handles periodic and event-driven metadata sync from backend to IndexedDB.
+ * Works in conjunction with router-level caching:
+ * - Router caching: Real-time cache on each GET request
+ * - This service: Background sync for data freshness and completeness
  * 
- * This is a PULL-only service (backend → IndexedDB). Auth users never push local changes.
+ * Sync triggers:
+ * - App startup (initial sync)
+ * - Online event (when reconnecting)
+ * - Manual trigger (Settings page button)
+ * - Optional periodic sync (user configurable)
+ * 
+ * This is a PULL-only service. Auth users never push local changes.
  * Backend is the source of truth.
- * 
- * Internally manages network status - automatically pauses when offline and resumes when online.
  */
 
 import { api } from "@/services";
 import { useAuthStore } from "@/stores/authStore";
-import { db, type OfflineSong } from "../db/schema";
 import { logger } from "../logger-client";
+import {
+  cacheLibraries,
+  cachePlaylists,
+  cacheSongsForLibrary,
+  cacheSongsForPlaylist,
+  deleteStaleSongs,
+  getLastSyncTime,
+  setLastSyncTime,
+} from "../cache/metadata-cache";
 
-const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
-const SYNC_STORAGE_KEY = "m3w_last_sync_timestamp";
+const DEFAULT_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const SYNC_SETTINGS_KEY = "m3w_sync_settings";
 
 export interface SyncResult {
   success: boolean;
   libraries?: number;
   playlists?: number;
   songs?: number;
-  playlistSongs?: number;
   error?: string;
 }
 
-/**
- * Get last sync timestamp from localStorage
- */
-function getLastSyncTime(): number | null {
-  const stored = localStorage.getItem(SYNC_STORAGE_KEY);
-  return stored ? parseInt(stored, 10) : null;
+export interface SyncSettings {
+  /** Auto sync mode: always, manual only */
+  autoSync: boolean;
+  /** Sync interval in milliseconds (0 = disabled) */
+  syncInterval: number;
 }
 
 /**
- * Update last sync timestamp in localStorage
+ * Get sync settings from localStorage
  */
-function setLastSyncTime(timestamp: number): void {
-  localStorage.setItem(SYNC_STORAGE_KEY, timestamp.toString());
+export function getSyncSettings(): SyncSettings {
+  try {
+    const stored = localStorage.getItem(SYNC_SETTINGS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  // Defaults
+  return {
+    autoSync: true,
+    syncInterval: DEFAULT_SYNC_INTERVAL,
+  };
 }
 
 /**
- * Sync all metadata from backend to IndexedDB
+ * Save sync settings to localStorage
+ */
+export function setSyncSettings(settings: SyncSettings): void {
+  localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify(settings));
+}
+
+/**
+ * Update partial sync settings and restart service if needed
+ */
+export function updateSyncSettings(updates: Partial<SyncSettings>): void {
+  const current = getSyncSettings();
+  const newSettings = { ...current, ...updates };
+  setSyncSettings(newSettings);
+  
+  // If autoSync setting changed, restart service accordingly
+  if (updates.autoSync !== undefined) {
+    if (updates.autoSync) {
+      restartAutoSync();
+    } else {
+      stopAutoSync();
+    }
+  } else if (updates.syncInterval !== undefined && current.autoSync) {
+    // If interval changed while autoSync is on, restart with new interval
+    restartAutoSync();
+  }
+  
+  // Notify listeners of settings change
+  notifySyncStatusChange();
+}
+
+// Sync status change listeners
+type SyncStatusListener = () => void;
+const syncStatusListeners = new Set<SyncStatusListener>();
+
+/**
+ * Subscribe to sync status changes
+ */
+export function onSyncStatusChange(listener: SyncStatusListener): () => void {
+  syncStatusListeners.add(listener);
+  return () => syncStatusListeners.delete(listener);
+}
+
+/**
+ * Notify listeners of sync status change
+ */
+function notifySyncStatusChange(): void {
+  syncStatusListeners.forEach(listener => listener());
+}
+
+/**
+ * Full metadata sync - fetches all data from backend
+ * This is more thorough than router caching as it ensures all data is synced,
+ * including data the user hasn't navigated to yet.
  */
 export async function syncMetadata(): Promise<SyncResult> {
   try {
-    logger.info("Starting metadata sync");
+    logger.info("[MetadataSync] Starting full sync");
 
-    // Fetch all libraries
+    // Fetch and cache all libraries
     const libraries = await api.main.libraries.list();
+    await cacheLibraries(libraries);
 
-    await db.libraries.bulkPut(libraries);
-    logger.info("Libraries synced", { count: libraries.length });
-
-    // Fetch all playlists
+    // Fetch and cache all playlists
     const playlists = await api.main.playlists.list();
+    await cachePlaylists(playlists);
 
-    await db.playlists.bulkPut(playlists);
-    logger.info("Playlists synced", { count: playlists.length });
-
-    // Pre-load existing songs to preserve cache status
-    const existingSongs = await db.songs.toArray();
-    const existingSongsMap = new Map(existingSongs.map(s => [s.id, s]));
-
-    // Collect all valid song IDs from server
+    // Collect all server song IDs for stale detection
     const serverSongIds = new Set<string>();
-    
-    // Fetch songs for each library (batched)
+
+    // Fetch songs for each library
     let totalSongs = 0;
     for (const library of libraries) {
       try {
         const songs = await api.main.libraries.getSongs(library.id);
-
-        // Track server song IDs
         songs.forEach(song => serverSongIds.add(song.id));
-
-        // Merge with existing cache status to preserve offline data
-        const mergedSongs: OfflineSong[] = await Promise.all(
-          songs.map(async (song) => {
-            const existing = existingSongsMap.get(song.id);
-            return {
-              ...song,
-              // Preserve existing cache fields or set defaults
-              isCached: existing?.isCached ?? false,
-              cacheSize: existing?.cacheSize,
-              lastCacheCheck: existing?.lastCacheCheck ?? 0,
-              fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
-            };
-          })
-        );
-
-        await db.songs.bulkPut(mergedSongs);
+        await cacheSongsForLibrary(library.id, songs);
         totalSongs += songs.length;
       } catch (error) {
-        logger.error("Failed to sync library songs", { libraryId: library.id, error });
+        logger.error("[MetadataSync] Failed to sync library songs", { libraryId: library.id, error });
       }
     }
-    logger.info("Songs synced", { totalSongs });
-    
-    // Delete songs that no longer exist on server (for current user's owned libraries only)
-    // Filter by userId to ensure we don't delete songs from shared libraries
+
+    // Fetch songs for each playlist
+    for (const playlist of playlists) {
+      try {
+        const songs = await api.main.playlists.getSongs(playlist.id);
+        songs.forEach(song => serverSongIds.add(song.id));
+        await cacheSongsForPlaylist(playlist.id, songs);
+      } catch (error) {
+        logger.error("[MetadataSync] Failed to sync playlist songs", { playlistId: playlist.id, error });
+      }
+    }
+
+    // Clean up stale songs (only from owned libraries)
     const userId = useAuthStore.getState().user?.id;
     const ownedLibraryIds = new Set(
       libraries.filter(lib => lib.userId === userId).map(lib => lib.id)
     );
-    const songsToDelete = existingSongs
-      .filter(song => ownedLibraryIds.has(song.libraryId) && !serverSongIds.has(song.id))
-      .map(song => song.id);
-    
-    if (songsToDelete.length > 0) {
-      await db.songs.bulkDelete(songsToDelete);
-      logger.info("Deleted stale songs from IndexedDB", { count: songsToDelete.length });
-    }
-
-    // Fetch playlist songs for each playlist (batched)
-    let totalPlaylistSongs = 0;
-    for (const playlist of playlists) {
-      try {
-        const songs = await api.main.playlists.getSongs(playlist.id);
-
-        // Store playlist-song relationships with order
-        await db.playlistSongs.bulkPut(
-          songs.map((song, index) => ({
-            playlistId: playlist.id,
-            songId: song.id,
-            order: index, // Use index since Song doesn't have order field
-            addedAt: new Date().toISOString(),
-          }))
-        );
-
-        // Also store the songs themselves (preserve cache status)
-        const mergedSongs: OfflineSong[] = await Promise.all(
-          songs.map(async (song) => {
-            const existing = existingSongsMap.get(song.id);
-            return {
-              ...song,
-              // Preserve existing cache fields or set defaults
-              isCached: existing?.isCached ?? false,
-              cacheSize: existing?.cacheSize,
-              lastCacheCheck: existing?.lastCacheCheck ?? 0,
-              fileHash: existing?.fileHash, // Keep existing hash, server no longer provides it
-            };
-          })
-        );
-
-        await db.songs.bulkPut(mergedSongs);
-
-        totalPlaylistSongs += songs.length;
-      } catch (error) {
-        logger.error("Failed to sync playlist songs", { playlistId: playlist.id, error });
-      }
-    }
-    logger.info("Playlist songs synced", { totalPlaylistSongs });
+    await deleteStaleSongs(serverSongIds, ownedLibraryIds);
 
     // Update last sync timestamp
     setLastSyncTime(Date.now());
+
+    logger.info("[MetadataSync] Full sync completed", {
+      libraries: libraries.length,
+      playlists: playlists.length,
+      songs: totalSongs,
+    });
 
     return {
       success: true,
       libraries: libraries.length,
       playlists: playlists.length,
       songs: totalSongs,
-      playlistSongs: totalPlaylistSongs,
     };
   } catch (error) {
-    logger.error("Metadata sync failed", { error });
+    logger.error("[MetadataSync] Sync failed", { error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -175,89 +192,130 @@ export async function syncMetadata(): Promise<SyncResult> {
 }
 
 /**
- * Check if sync is needed based on last sync time
+ * Check if sync is needed based on last sync time and interval
  */
-export function shouldSync(forceSync: boolean = false): boolean {
-  if (forceSync) return true;
+export function shouldSync(): boolean {
+  const settings = getSyncSettings();
+  if (!settings.autoSync || settings.syncInterval === 0) {
+    return false;
+  }
 
   const lastSync = getLastSyncTime();
   if (!lastSync) return true; // Never synced before
 
   const timeSinceLastSync = Date.now() - lastSync;
-  return timeSinceLastSync >= SYNC_INTERVAL;
+  return timeSinceLastSync >= settings.syncInterval;
 }
 
-/**
- * Start automatic periodic sync
- * Manages its own network status - pauses when offline, resumes when online.
- */
+// Sync state
 let syncIntervalId: NodeJS.Timeout | null = null;
 let networkListenersAttached = false;
+let isSyncing = false;
 
-// Network event handlers
-const handleOnline = () => {
-  logger.info("Network online, triggering sync");
-  if (syncIntervalId && shouldSync()) {
-    syncMetadata().catch((error) => logger.error("Online sync failed", { error }));
+/**
+ * Perform sync if conditions are met (debounced)
+ * 
+ * Note: Unlike manualSync(), this does NOT call notifySyncStatusChange().
+ * Background auto-sync runs silently without UI feedback to avoid
+ * distracting users with frequent status updates.
+ */
+async function performSyncIfNeeded(): Promise<void> {
+  if (isSyncing) return;
+  if (!navigator.onLine) return;
+  if (!shouldSync()) return;
+
+  isSyncing = true;
+  try {
+    await syncMetadata();
+  } catch (error) {
+    logger.error("[MetadataSync] Auto-sync failed", { error });
+  } finally {
+    isSyncing = false;
   }
+}
+
+// Event handlers
+const handleOnline = () => {
+  logger.info("[MetadataSync] Network online, triggering sync");
+  performSyncIfNeeded();
 };
 
-const handleOffline = () => {
-  logger.info("Network offline, sync paused");
-};
-
+/**
+ * Start automatic sync service
+ * - Listens for online events
+ * - Runs periodic sync if enabled
+ * - Performs initial sync on startup
+ */
 export function startAutoSync(): void {
   if (syncIntervalId) {
-    logger.info("Auto-sync already running");
+    logger.debug("[MetadataSync] Auto-sync already running");
     return;
   }
 
-  logger.info("Starting auto-sync");
+  logger.info("[MetadataSync] Starting auto-sync service");
 
-  // Attach network listeners once
+  // Attach network listener
   if (!networkListenersAttached) {
     window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
     networkListenersAttached = true;
   }
 
-  // Initial sync (only if online)
-  if (navigator.onLine && shouldSync()) {
-    syncMetadata().catch((error) => logger.error("Auto-sync failed", { error }));
-  }
+  // Initial sync
+  performSyncIfNeeded();
 
-  // Periodic sync (checks online status internally)
-  syncIntervalId = setInterval(() => {
-    if (navigator.onLine && shouldSync()) {
-      syncMetadata().catch((error) => logger.error("Auto-sync failed", { error }));
-    }
-  }, SYNC_INTERVAL);
+  // Periodic sync
+  const settings = getSyncSettings();
+  if (settings.autoSync && settings.syncInterval > 0) {
+    syncIntervalId = setInterval(() => {
+      performSyncIfNeeded();
+    }, settings.syncInterval);
+  }
 }
 
 /**
- * Stop automatic periodic sync
+ * Stop automatic sync service
  */
 export function stopAutoSync(): void {
   if (syncIntervalId) {
     clearInterval(syncIntervalId);
     syncIntervalId = null;
-    logger.info("Auto-sync stopped");
+    logger.info("[MetadataSync] Auto-sync stopped");
   }
-  
-  // Remove network listeners
+
   if (networkListenersAttached) {
     window.removeEventListener("online", handleOnline);
-    window.removeEventListener("offline", handleOffline);
     networkListenersAttached = false;
   }
+  
+  notifySyncStatusChange();
 }
 
 /**
- * Trigger sync manually
+ * Restart auto-sync with current settings
+ */
+export function restartAutoSync(): void {
+  stopAutoSync();
+  startAutoSync();
+}
+
+/**
+ * Trigger manual sync (ignores shouldSync check)
  */
 export async function manualSync(): Promise<SyncResult> {
-  logger.info("Manual sync triggered");
-  return syncMetadata();
+  logger.info("[MetadataSync] Manual sync triggered");
+  
+  if (isSyncing) {
+    return { success: false, error: "Sync already in progress" };
+  }
+
+  isSyncing = true;
+  notifySyncStatusChange();
+  try {
+    return await syncMetadata();
+  } finally {
+    isSyncing = false;
+    notifySyncStatusChange();
+  }
 }
 
 /**
@@ -266,16 +324,17 @@ export async function manualSync(): Promise<SyncResult> {
 export interface SyncStatus {
   lastSyncTime: number | null;
   lastSyncTimeFormatted: string | null;
-  shouldSync: boolean;
-  autoSyncRunning: boolean;
+  isSyncing: boolean;
+  autoSyncEnabled: boolean;
 }
 
 export function getSyncStatus(): SyncStatus {
   const lastSync = getLastSyncTime();
+  const settings = getSyncSettings();
   return {
     lastSyncTime: lastSync,
     lastSyncTimeFormatted: lastSync ? new Date(lastSync).toLocaleString() : null,
-    shouldSync: shouldSync(),
-    autoSyncRunning: syncIntervalId !== null,
+    isSyncing,
+    autoSyncEnabled: settings.autoSync,
   };
 }

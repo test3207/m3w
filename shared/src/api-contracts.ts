@@ -20,11 +20,49 @@
  * - TypeScript types in shared/src/types.ts enforce data structure compatibility
  */
 
+/**
+ * Cache configuration for GET routes
+ * Determines how router caches responses to IndexedDB for offline access
+ * Uses discriminated union to ensure keyParam is required for 'replace-by-key' strategy
+ */
+/**
+ * Target IndexedDB tables for caching
+ * Note: 'playlistSongs' join table is updated internally by cacheSongsForPlaylist(),
+ * not directly via CacheConfig. It's managed through updateJoinTable flag.
+ */
+export type CacheTable = 'libraries' | 'playlists' | 'songs';
+
+export type CacheConfig = 
+  | {
+      /** Target IndexedDB table */
+      table: CacheTable;
+      /** Cache strategy: full replacement of table data */
+      strategy: 'replace-all';
+    }
+  | {
+      /** Target IndexedDB table */
+      table: CacheTable;
+      /** Cache strategy: insert or update single record */
+      strategy: 'upsert';
+    }
+  | {
+      /** Target IndexedDB table */
+      table: CacheTable;
+      /** Cache strategy: replace all records matching a key */
+      strategy: 'replace-by-key';
+      /** The parameter name to use as key (e.g., 'id' for libraryId) - required for this strategy */
+      keyParam: string;
+      /** For playlist songs: also update playlistSongs join table */
+      updateJoinTable?: boolean;
+    };
+
 export interface RouteDefinition {
   path: string;
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   offlineCapable: boolean;
   description: string;
+  /** Cache configuration for GET routes (router auto-caches responses) */
+  cacheConfig?: CacheConfig;
 }
 
 /**
@@ -38,12 +76,14 @@ export const userDataRoutes: RouteDefinition[] = [
     method: 'GET',
     offlineCapable: true,
     description: 'List all libraries for current user',
+    cacheConfig: { table: 'libraries', strategy: 'replace-all' },
   },
   {
     path: '/api/libraries/:id',
     method: 'GET',
     offlineCapable: true,
     description: 'Get library by ID',
+    cacheConfig: { table: 'libraries', strategy: 'upsert' },
   },
   {
     path: '/api/libraries',
@@ -68,6 +108,7 @@ export const userDataRoutes: RouteDefinition[] = [
     method: 'GET',
     offlineCapable: true,
     description: 'List songs in library',
+    cacheConfig: { table: 'songs', strategy: 'replace-by-key', keyParam: 'id' },
   },
   {
     path: '/api/libraries/:id/songs',
@@ -82,12 +123,14 @@ export const userDataRoutes: RouteDefinition[] = [
     method: 'GET',
     offlineCapable: true,
     description: 'List all playlists for current user',
+    cacheConfig: { table: 'playlists', strategy: 'replace-all' },
   },
   {
     path: '/api/playlists/:id',
     method: 'GET',
     offlineCapable: true,
     description: 'Get playlist by ID',
+    cacheConfig: { table: 'playlists', strategy: 'upsert' },
   },
   {
     path: '/api/playlists',
@@ -112,6 +155,7 @@ export const userDataRoutes: RouteDefinition[] = [
     method: 'GET',
     offlineCapable: true,
     description: 'List songs in playlist',
+    cacheConfig: { table: 'songs', strategy: 'replace-by-key', keyParam: 'id', updateJoinTable: true },
   },
   {
     path: '/api/playlists/:id/songs',
@@ -156,6 +200,7 @@ export const userDataRoutes: RouteDefinition[] = [
     method: 'GET',
     offlineCapable: true,
     description: 'Get song by ID',
+    cacheConfig: { table: 'songs', strategy: 'upsert' },
   },
   {
     path: '/api/songs/:id',
@@ -282,6 +327,23 @@ export function isOfflineCapable(path: string, method: string): boolean {
     (r) => matchPath(r.path, path) && r.method === method
   );
   return route?.offlineCapable ?? false;
+}
+
+/**
+ * Get cache configuration for a route
+ * Returns the cacheConfig if the route should be cached, undefined otherwise
+ */
+export function getCacheConfig(path: string, method: string): { config: CacheConfig; params: Record<string, string> } | undefined {
+  if (method !== 'GET') return undefined;
+  
+  const route = allRoutes.find(
+    (r) => matchPath(r.path, path) && r.method === method
+  );
+  
+  if (!route?.cacheConfig) return undefined;
+  
+  const params = extractParams(route.path, path);
+  return { config: route.cacheConfig, params };
 }
 
 /**

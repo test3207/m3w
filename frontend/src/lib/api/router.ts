@@ -3,6 +3,8 @@
  * Routes requests to backend or offline proxy based on:
  * 1. Network status (navigator.onLine + backend reachability)
  * 2. Route offline capability (from API contracts)
+ * 
+ * Also handles automatic caching of GET responses to IndexedDB for offline access.
  */
 
 import offlineProxy from "../offline-proxy";
@@ -10,6 +12,7 @@ import { isOfflineCapable } from "@m3w/shared";
 import { logger } from "../logger-client";
 import { API_BASE_URL } from "./config";
 import { isGuestUser } from "../offline-proxy/utils";
+import { cacheResponseToIndexedDB } from "../cache/response-cache";
 
 // Track backend reachability
 let isBackendReachable = true;
@@ -167,8 +170,20 @@ export async function routeRequest(
     // Mark backend as reachable on successful connection
     emitNetworkStatus(true);
 
-    // If backend succeeds, return response
-    if (response.ok || !offlineCapable) {
+    // If backend succeeds, cache GET responses and return
+    if (response.ok) {
+      // Cache GET JSON responses to IndexedDB for offline access (non-blocking)
+      // Note: Guest users return early at line 108-124, so only Auth users reach this caching logic
+      if (method === "GET") {
+        cacheResponseToIndexedDB(path, response.clone()).catch(err =>
+          logger.warn("Failed to cache response", { path, err })
+        );
+      }
+      return response;
+    }
+    
+    // If backend fails but route is not offline-capable, return the error response
+    if (!offlineCapable) {
       return response;
     }
 

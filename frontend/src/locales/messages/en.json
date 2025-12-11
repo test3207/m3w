@@ -135,7 +135,17 @@
     "serverWins": "conflicts resolved (server version kept)",
     "failed": "Sync failed",
     "inProgress": "Syncing...",
-    "pendingChanges": "pending changes"
+    "pendingChanges": "pending changes",
+    "autoSync": "Auto-sync",
+    "autoSyncDescription": "Automatically sync your library data in the background",
+    "syncNow": "Sync Now",
+    "syncing": "Syncing...",
+    "lastSync": "Last sync",
+    "never": "Never",
+    "justNow": "Just now",
+    "minutesAgo": "{0} min ago",
+    "hoursAgo": "{0}h ago",
+    "daysAgo": "{0}d ago"
   },
   "dashboard": {
     "title": "M3W Dashboard",
