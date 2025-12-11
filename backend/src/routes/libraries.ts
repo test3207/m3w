@@ -28,7 +28,6 @@ import {
   updateLibrarySchema,
   libraryIdSchema,
   toLibraryResponse,
-  toSongResponse,
   toSongListResponse,
 } from '@m3w/shared';
 import type { Context } from 'hono';
@@ -600,18 +599,13 @@ app.post('/:id/songs', async (c) => {
 
     logger.info({ songId: song.id, fileId: fileRecord.id }, 'Song created');
 
-    // Transform to API response format using shared transformer
-    // Include library relation for libraryName (use current library)
-    const songInput: SongInput = {
-      ...song,
-      library: { name: library.name },
-      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
-    };
-
     return c.json({
       success: true,
       data: {
-        song: toSongResponse(songInput),
+        song: {
+          ...song,
+          coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
+        },
       },
     });
   } catch (error) {
