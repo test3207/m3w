@@ -75,7 +75,12 @@ export async function cacheResponseToIndexedDB(
         if (config.strategy === "upsert") {
           await cacheSong(data);
         } else if (config.strategy === "replace-by-key") {
-          const keyValue = params[config.keyParam || "id"];
+          // Validate keyParam is provided for replace-by-key strategy
+          if (!config.keyParam || !(config.keyParam in params)) {
+            logger.warn("[ResponseCache] Missing keyParam for replace-by-key strategy", { path, config, params });
+            return;
+          }
+          const keyValue = params[config.keyParam];
           if (config.updateJoinTable) {
             // This is playlist songs - update both songs and playlistSongs table
             await cacheSongsForPlaylist(keyValue, data);

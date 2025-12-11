@@ -23,17 +23,31 @@
 /**
  * Cache configuration for GET routes
  * Determines how router caches responses to IndexedDB for offline access
+ * Uses discriminated union to ensure keyParam is required for 'replace-by-key' strategy
  */
-export interface CacheConfig {
-  /** Target IndexedDB table */
-  table: 'libraries' | 'playlists' | 'songs' | 'playlistSongs';
-  /** Cache strategy */
-  strategy: 'replace-all' | 'upsert' | 'replace-by-key';
-  /** For replace-by-key: the parameter name to use as key (e.g., 'id' for libraryId) */
-  keyParam?: string;
-  /** For playlist songs: also update playlistSongs join table */
-  updateJoinTable?: boolean;
-}
+export type CacheConfig = 
+  | {
+      /** Target IndexedDB table */
+      table: 'libraries' | 'playlists' | 'songs' | 'playlistSongs';
+      /** Cache strategy: full replacement of table data */
+      strategy: 'replace-all';
+    }
+  | {
+      /** Target IndexedDB table */
+      table: 'libraries' | 'playlists' | 'songs' | 'playlistSongs';
+      /** Cache strategy: insert or update single record */
+      strategy: 'upsert';
+    }
+  | {
+      /** Target IndexedDB table */
+      table: 'libraries' | 'playlists' | 'songs' | 'playlistSongs';
+      /** Cache strategy: replace all records matching a key */
+      strategy: 'replace-by-key';
+      /** The parameter name to use as key (e.g., 'id' for libraryId) - required for this strategy */
+      keyParam: string;
+      /** For playlist songs: also update playlistSongs join table */
+      updateJoinTable?: boolean;
+    };
 
 export interface RouteDefinition {
   path: string;

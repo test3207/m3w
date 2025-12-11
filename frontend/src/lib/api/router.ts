@@ -173,6 +173,7 @@ export async function routeRequest(
     // If backend succeeds, cache GET responses and return
     if (response.ok) {
       // Cache GET JSON responses to IndexedDB for offline access (non-blocking)
+      // Note: Guest users return early at line 108-124, so only Auth users reach this caching logic
       if (method === "GET") {
         cacheResponseToIndexedDB(path, response.clone()).catch(err =>
           logger.warn("Failed to cache response", { path, err })

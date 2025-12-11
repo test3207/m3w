@@ -40,6 +40,7 @@ import {
   getSyncSettings,
   updateSyncSettings,
   manualSync,
+  onSyncStatusChange,
 } from "@/lib/sync/metadata-sync";
 import { logger } from "@/lib/logger-client";
 import { isGuestUser } from "@/lib/offline-proxy/utils";
@@ -119,6 +120,17 @@ export default function OfflineSettings() {
     loadSettings();
   }, []);
 
+  // Subscribe to sync status changes
+  useEffect(() => {
+    const unsubscribe = onSyncStatusChange(() => {
+      const status = getSyncStatus();
+      setIsSyncing(status.isSyncing);
+      setAutoSyncEnabled(status.autoSyncEnabled);
+      setLastSyncTime(status.lastSyncTime);
+    });
+    return unsubscribe;
+  }, []);
+
   // Poll queue status and cache stats (only poll when downloading)
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -178,23 +190,19 @@ export default function OfflineSettings() {
 
   // Handle auto-sync toggle
   const handleAutoSyncChange = useCallback((enabled: boolean) => {
+    // updateSyncSettings will restart service and notify listeners
     updateSyncSettings({ autoSync: enabled });
-    setAutoSyncEnabled(enabled);
   }, []);
 
   // Handle manual sync
   const handleManualSync = useCallback(async () => {
     if (isSyncing) return;
     
-    setIsSyncing(true);
+    // manualSync will notify listeners of state changes
     try {
       await manualSync();
-      const status = getSyncStatus();
-      setLastSyncTime(status.lastSyncTime);
     } catch (error) {
       logger.error("Manual sync failed", error);
-    } finally {
-      setIsSyncing(false);
     }
   }, [isSyncing]);
 

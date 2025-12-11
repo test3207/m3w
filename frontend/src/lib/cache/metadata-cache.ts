@@ -194,7 +194,7 @@ export async function cacheSong(song: Song): Promise<void> {
  * Delete stale songs that no longer exist on server
  * Only deletes from owned libraries (not shared)
  */
-export async function deleteStalesSongs(
+export async function deleteStaleSongs(
   serverSongIds: Set<string>,
   ownedLibraryIds: Set<string>
 ): Promise<number> {

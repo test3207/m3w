@@ -24,7 +24,7 @@ import {
   cachePlaylists,
   cacheSongsForLibrary,
   cacheSongsForPlaylist,
-  deleteStalesSongs,
+  deleteStaleSongs,
   getLastSyncTime,
   setLastSyncTime,
 } from "../cache/metadata-cache";
@@ -74,11 +74,46 @@ export function setSyncSettings(settings: SyncSettings): void {
 }
 
 /**
- * Update partial sync settings
+ * Update partial sync settings and restart service if needed
  */
 export function updateSyncSettings(updates: Partial<SyncSettings>): void {
   const current = getSyncSettings();
-  setSyncSettings({ ...current, ...updates });
+  const newSettings = { ...current, ...updates };
+  setSyncSettings(newSettings);
+  
+  // If autoSync setting changed, restart service accordingly
+  if (updates.autoSync !== undefined) {
+    if (updates.autoSync) {
+      restartAutoSync();
+    } else {
+      stopAutoSync();
+    }
+  } else if (updates.syncInterval !== undefined && current.autoSync) {
+    // If interval changed while autoSync is on, restart with new interval
+    restartAutoSync();
+  }
+  
+  // Notify listeners of settings change
+  notifySyncStatusChange();
+}
+
+// Sync status change listeners
+type SyncStatusListener = () => void;
+const syncStatusListeners = new Set<SyncStatusListener>();
+
+/**
+ * Subscribe to sync status changes
+ */
+export function onSyncStatusChange(listener: SyncStatusListener): () => void {
+  syncStatusListeners.add(listener);
+  return () => syncStatusListeners.delete(listener);
+}
+
+/**
+ * Notify listeners of sync status change
+ */
+function notifySyncStatusChange(): void {
+  syncStatusListeners.forEach(listener => listener());
 }
 
 /**
@@ -130,7 +165,7 @@ export async function syncMetadata(): Promise<SyncResult> {
     const ownedLibraryIds = new Set(
       libraries.filter(lib => lib.userId === userId).map(lib => lib.id)
     );
-    await deleteStalesSongs(serverSongIds, ownedLibraryIds);
+    await deleteStaleSongs(serverSongIds, ownedLibraryIds);
 
     // Update last sync timestamp
     setLastSyncTime(Date.now());
@@ -247,6 +282,16 @@ export function stopAutoSync(): void {
     window.removeEventListener("online", handleOnline);
     networkListenersAttached = false;
   }
+  
+  notifySyncStatusChange();
+}
+
+/**
+ * Restart auto-sync with current settings
+ */
+export function restartAutoSync(): void {
+  stopAutoSync();
+  startAutoSync();
 }
 
 /**
@@ -260,10 +305,12 @@ export async function manualSync(): Promise<SyncResult> {
   }
 
   isSyncing = true;
+  notifySyncStatusChange();
   try {
     return await syncMetadata();
   } finally {
     isSyncing = false;
+    notifySyncStatusChange();
   }
 }
 
