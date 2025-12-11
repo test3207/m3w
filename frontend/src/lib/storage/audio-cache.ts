@@ -14,7 +14,9 @@ import { MAIN_API_ENDPOINTS } from "@/services/api/main/endpoints";
 import { streamApiClient } from "../../services/api/main/stream-client";
 import { logger } from "../logger-client";
 
-const AUDIO_CACHE_NAME = "m3w-audio-cache-v1";
+// Use same cache name as cache-manager.ts and service-worker-custom.ts
+// This ensures all components check/store in the same cache
+const AUDIO_CACHE_NAME = "m3w-media-v1";
 const ESTIMATED_SONG_SIZE = 5 * 1024 * 1024; // 5 MB average per song
 const MIN_FREE_QUOTA = 100 * 1024 * 1024; // Keep 100 MB free
 
