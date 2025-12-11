@@ -25,7 +25,8 @@ import { usePlaylistStore } from "@/stores/playlistStore";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { eventBus, EVENTS } from "@/lib/events";
-import { calculateFileHash } from "@/lib/utils/hash";
+import { processAudioFileStream } from "@/lib/utils/stream-processor";
+import { cacheAudioForOffline, cacheCoverForOffline } from "@/lib/pwa/cache-manager";
 import { api } from "@/services";
 import type { LibraryOption } from "@/types/models";
 import { LibraryBig } from "lucide-react";
@@ -110,9 +111,37 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
     );
 
     const { file } = item;
-    const hash = await calculateFileHash(file);
+    
+    // Stream-process: extract hash and cover in parallel (memory-efficient)
+    let hash: string;
+    let coverBlob: Blob | null = null;
+    try {
+      const result = await processAudioFileStream(file);
+      hash = result.hash;
+      coverBlob = result.coverBlob;
+    } catch (err) {
+      // If streaming fails, try hash-only fallback
+      logger.warn("Stream processing failed, falling back to hash-only", { fileName: file.name, error: err });
+      const { calculateFileHash } = await import("@/lib/utils/hash");
+      hash = await calculateFileHash(file);
+    }
+    
+    // Upload to backend
     const data = await api.main.libraries.uploadSong(libraryId, file, hash);
+    const songId = data.song.id;
     const songTitle = data.song.title || file.name;
+    
+    // Cache audio and cover for offline use (non-blocking, fail silently)
+    try {
+      await cacheAudioForOffline(songId, file);
+      if (coverBlob) {
+        await cacheCoverForOffline(songId, coverBlob);
+      }
+      logger.debug("Cached uploaded file for offline use", { songId });
+    } catch (err) {
+      // Non-critical: upload succeeded, caching failed
+      logger.warn("Failed to cache uploaded file", { songId, error: err });
+    }
 
     setFiles((prev) =>
       prev.map((f, i) =>
@@ -188,7 +217,10 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
     }
   };
 
-  const uploadingCount = files.filter((f) => f.status === UploadStatus.Uploading).length;
+  // Count completed files (success + error) to show upload progress (N completed / M total)
+  const completedCount = files.filter(
+    (f) => f.status === UploadStatus.Success || f.status === UploadStatus.Error
+  ).length;
   const showLibrarySelector = !targetLibraryId && libraryOptions.length > 1;
 
   // Loading state
@@ -250,7 +282,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
       <HStack gap="sm" className="mt-4 pt-4 border-t bg-background">
         <Button type="submit" disabled={files.length === 0 || !libraryId || uploading}>
           {uploading
-            ? `${I18n.upload.form.uploadingLabel} (${uploadingCount}/${files.length})`
+            ? `${I18n.upload.form.uploadingLabel} (${completedCount}/${files.length})`
             : I18n.upload.form.uploadButton}
         </Button>
         <Button

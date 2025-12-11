@@ -184,7 +184,8 @@ export default function LibraryDetailPage() {
     if (!id || songs.length === 0) return;
     
     try {
-      const stats = await getLibraryCacheStats(id);
+      // Pass songs array directly (works for Auth mode without IndexedDB)
+      const stats = await getLibraryCacheStats(songs);
       setCacheStats(stats);
 
       // Load individual song cache status in parallel

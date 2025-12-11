@@ -282,17 +282,16 @@ async function processTask(task: DownloadTask): Promise<void> {
 
 /**
  * Get cache statistics for a library
+ * Accepts songs array directly to avoid IndexedDB dependency (works for Auth mode)
+ * 
+ * @param songs - Array of songs with id property
+ * @returns Cache statistics: total, cached, percentage
  */
-export async function getLibraryCacheStats(libraryId: string): Promise<{
+export async function getLibraryCacheStats(songs: { id: string }[]): Promise<{
   total: number;
   cached: number;
   percentage: number;
 }> {
-  const songs = await db.songs
-    .where("libraryId")
-    .equals(libraryId)
-    .toArray();
-
   const total = songs.length;
   let cached = 0;
 
