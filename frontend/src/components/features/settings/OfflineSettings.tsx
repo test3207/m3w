@@ -67,8 +67,8 @@ function formatLastSync(timestamp: number | null): string {
 export default function OfflineSettings() {
   const { isGuest } = useAuthStore();
   
-  // Auto-download setting (local only)
-  const [autoDownload, setAutoDownload] = useState<AutoDownloadSetting>("off");
+  // Auto-download setting (local only, default matches getAutoDownloadSetting)
+  const [autoDownload, setAutoDownload] = useState<AutoDownloadSetting>("wifi-only");
   
   // Queue status
   const [queueStatus, setQueueStatus] = useState({ pending: 0, active: 0, isProcessing: false });
