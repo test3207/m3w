@@ -53,9 +53,9 @@ app.get("/progress", async (c: Context) => {
       .first();
     
     let playlistWithSong = null;
-    if (playlistSongEntry && !playlistSongEntry._isDeleted) {
+    if (playlistSongEntry) {
       const playlist = await db.playlists.get(playlistSongEntry.playlistId);
-      if (playlist && !playlist._isDeleted && playlist.userId === userId) {
+      if (playlist && playlist.userId === userId) {
         playlistWithSong = playlist;
       }
     }
@@ -162,12 +162,10 @@ app.get("/seed", async (c: Context) => {
         .where("playlistId")
         .equals(playlist.id)
         .toArray();
-      const activeSongs = playlistSongs
-        .filter(ps => !ps._isDeleted)
-        .sort((a, b) => a.order - b.order);
+      const sortedSongs = playlistSongs.sort((a, b) => a.order - b.order);
       
-      if (activeSongs.length > 0) {
-        const firstSongId = activeSongs[0].songId;
+      if (sortedSongs.length > 0) {
+        const firstSongId = sortedSongs[0].songId;
         const song = await db.songs.get(firstSongId);
 
         if (song) {

@@ -10,7 +10,7 @@
 
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { db, markDirty, markDeleted } from "../../db/schema";
+import { db } from "../../db/schema";
 import type { OfflineLibrary, OfflineSong } from "../../db/schema";
 import { createLibrarySchema, updateLibrarySchema, toLibraryResponse } from "@m3w/shared";
 import { getUserId, isGuestUser, sortSongsOffline } from "../utils";
@@ -26,24 +26,20 @@ const app = new Hono();
 app.get("/", async (c: Context) => {
   try {
     const userId = getUserId();
-    const allLibraries = await db.libraries
+    const libraries = await db.libraries
       .where("userId")
       .equals(userId)
       .reverse()
       .sortBy("createdAt");
-    // Filter out soft-deleted libraries
-    const libraries = allLibraries.filter(lib => !lib._isDeleted);
 
     // Add song counts and coverUrl from last added song
     const librariesWithCounts = await Promise.all(
       libraries.map(async (library) => {
-        // Filter out soft-deleted songs for count and cover
-        const allSongs = await db.songs.where("libraryId").equals(library.id).toArray();
-        const activeSongs = allSongs.filter(s => !s._isDeleted);
-        const songCount = activeSongs.length;
+        const songs = await db.songs.where("libraryId").equals(library.id).toArray();
+        const songCount = songs.length;
 
         // Get last added song for cover (orderBy createdAt desc, matches backend)
-        const sortedSongs = activeSongs.sort((a, b) => 
+        const sortedSongs = songs.sort((a, b) => 
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         const lastSong = sortedSongs[0];
@@ -79,8 +75,7 @@ app.get("/:id", async (c: Context) => {
 
     const library = await db.libraries.get(id);
 
-    // Treat soft-deleted as not found
-    if (!library || library._isDeleted) {
+    if (!library) {
       return c.json(
         {
           success: false,
@@ -141,7 +136,7 @@ app.post("/", async (c: Context) => {
     const data = createLibrarySchema.parse(body);
     const userId = getUserId();
 
-    const libraryData: OfflineLibrary = {
+    const library: OfflineLibrary = {
       id: generateUUID(),
       ...data,
       description: data.description ?? null,
@@ -154,8 +149,6 @@ app.post("/", async (c: Context) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    // isNew=true marks this as a local-only entity (needs ID mapping on sync)
-    const library = markDirty(libraryData, true);
 
     await db.libraries.add(library);
 
@@ -198,11 +191,11 @@ app.patch("/:id", async (c: Context) => {
       );
     }
 
-    const updated: OfflineLibrary = markDirty({
+    const updated: OfflineLibrary = {
       ...library,
       ...data,
       updatedAt: new Date().toISOString(),
-    });
+    };
 
     await db.libraries.put(updated);
 
@@ -239,18 +232,13 @@ app.delete("/:id", async (c: Context) => {
       );
     }
 
-    if (isGuestUser()) {
-      // Guest user: hard delete with cascade (no sync needed)
-      // Delete all songs in this library
-      await db.songs.where("libraryId").equals(id).delete();
-      // Clear linkedLibraryId from playlists (don't delete playlists, just unlink)
-      await db.playlists.where("linkedLibraryId").equals(id).modify({ linkedLibraryId: undefined });
-      // Delete the library itself
-      await db.libraries.delete(id);
-    } else {
-      // Auth user: soft delete for sync (server will cascade delete)
-      await db.libraries.put(markDeleted(library));
-    }
+    // Hard delete with cascade
+    // Delete all songs in this library
+    await db.songs.where("libraryId").equals(id).delete();
+    // Clear linkedLibraryId from playlists (don't delete playlists, just unlink)
+    await db.playlists.where("linkedLibraryId").equals(id).modify({ linkedLibraryId: undefined });
+    // Delete the library itself
+    await db.libraries.delete(id);
 
     return c.json({
       success: true,
@@ -276,7 +264,7 @@ app.post("/:id/songs", async (c: Context) => {
     // Validate library ownership BEFORE processing file
     const library = await db.libraries.get(libraryId);
 
-    if (!library || library._isDeleted) {
+    if (!library) {
       return c.json(
         {
           success: false,
@@ -331,7 +319,7 @@ app.post("/:id/songs", async (c: Context) => {
     const existingSong = await db.songs
       .where("libraryId")
       .equals(libraryId)
-      .filter((s) => s.fileId === fileEntity!.id && !s._isDeleted)
+      .filter((s) => s.fileId === fileEntity!.id)
       .first();
 
     if (existingSong) {
@@ -364,10 +352,10 @@ app.post("/:id/songs", async (c: Context) => {
     // 7. Cache audio file in Cache Storage using unified /api/ URL
     const streamUrl = await cacheAudioForOffline(songId, file);
 
-    // 8. Create Song object with sync tracking
+    // 8. Create Song object
     const now = new Date().toISOString();
 
-    const songData: OfflineSong = {
+    const song: OfflineSong = {
       id: songId,
       libraryId, // ✅ Required field (one-to-many relationship)
       title: common.title || file.name.replace(/\.[^/.]+$/, ""),
@@ -392,14 +380,7 @@ app.post("/:id/songs", async (c: Context) => {
       cacheSize: file.size, // Set cache size to file size
       lastCacheCheck: Date.now(),
       fileHash: hash, // Keep for quick lookup
-      // Sync tracking: markDirty handles Guest vs Auth users
-      // - Guest: _isDirty=false, _isLocalOnly=false (no sync needed)
-      // - Auth offline: _isDirty=true, _isLocalOnly=true (sync when online)
-      _isDirty: false, // Will be set by markDirty
     };
-
-    // Apply sync tracking based on user type
-    const song = markDirty(songData, true);
 
     // 9. Save song to IndexedDB, increment File refCount, and update library songCount
     await db.transaction("rw", [db.songs, db.files, db.libraries], async () => {
@@ -454,9 +435,7 @@ app.get("/:id/songs", async (c: Context) => {
     }
 
     // Query songs by libraryId (one-to-many relationship)
-    // Filter out soft-deleted songs
-    const allSongs = await db.songs.where("libraryId").equals(id).toArray();
-    const songs = allSongs.filter(song => !song._isDeleted);
+    const songs = await db.songs.where("libraryId").equals(id).toArray();
 
     // Apply sorting (matches backend logic)
     const sortedSongs = sortSongsOffline(songs, sortParam);

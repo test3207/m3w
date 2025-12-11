@@ -14,7 +14,7 @@
 
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { db, markDirty, markDeleted } from "../../db/schema";
+import { db } from "../../db/schema";
 import type { OfflinePlaylist, OfflinePlaylistSong } from "../../db/schema";
 import {
   createPlaylistSchema,
@@ -22,7 +22,7 @@ import {
   toPlaylistResponse,
 } from "@m3w/shared";
 import type { ApiResponse, PlaylistReorderResult } from "@m3w/shared";
-import { getUserId, isGuestUser } from "../utils";
+import { getUserId } from "../utils";
 import { generateUUID } from "../../utils/uuid";
 import { logger } from "../../logger-client";
 
@@ -36,28 +36,24 @@ async function getPlaylistCoverUrl(playlistId: string): Promise<string | null> {
     .where("playlistId")
     .equals(playlistId)
     .toArray();
-  const activeSongs = playlistSongs
-    .filter(ps => !ps._isDeleted)
-    .sort((a, b) => a.order - b.order);
+  const sortedSongs = playlistSongs.sort((a, b) => a.order - b.order);
   
-  const firstPlaylistSong = activeSongs[0];
+  const firstPlaylistSong = sortedSongs[0];
   if (!firstPlaylistSong) return null;
   
   const song = await db.songs.get(firstPlaylistSong.songId);
-  return (song && !song._isDeleted) ? song.coverUrl || null : null;
+  return song?.coverUrl || null;
 }
 
 // GET /playlists - List all playlists
 app.get("/", async (c: Context) => {
   try {
     const userId = getUserId();
-    const allPlaylists = await db.playlists
+    const playlists = await db.playlists
       .where("userId")
       .equals(userId)
       .reverse()
       .sortBy("createdAt");
-    // Filter out soft-deleted playlists
-    const playlists = allPlaylists.filter(pl => !pl._isDeleted);
 
     // Add coverUrl (songCount already stored in playlist)
     const playlistsWithData = await Promise.all(
@@ -92,12 +88,11 @@ app.get("/by-library/:libraryId", async (c: Context) => {
     const libraryId = c.req.param("libraryId");
     const userId = getUserId();
 
-    // Find playlist with linkedLibraryId (exclude soft-deleted)
-    const allMatching = await db.playlists
+    // Find playlist with linkedLibraryId
+    const playlist = await db.playlists
       .where("linkedLibraryId")
       .equals(libraryId)
-      .toArray();
-    const playlist = allMatching.find(pl => !pl._isDeleted);
+      .first();
 
     if (!playlist) {
       return c.json({
@@ -136,7 +131,7 @@ app.post("/for-library", async (c: Context) => {
     const userId = getUserId();
 
     const songCount = songIds?.length || 0;
-    const playlistData: OfflinePlaylist = {
+    const playlist: OfflinePlaylist = {
       id: generateUUID(),
       name,
       description: null,
@@ -149,8 +144,6 @@ app.post("/for-library", async (c: Context) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    // isNew=true marks this as a local-only entity (needs ID mapping on sync)
-    const playlist = markDirty(playlistData, true);
 
     await db.playlists.add(playlist);
 
@@ -162,7 +155,7 @@ app.post("/for-library", async (c: Context) => {
         order: index,
         addedAt: new Date().toISOString(),
       }));
-      await db.playlistSongs.bulkAdd(playlistSongsData.map(ps => markDirty(ps)));
+      await db.playlistSongs.bulkAdd(playlistSongsData);
     }
 
     return c.json(
@@ -191,8 +184,7 @@ app.get("/:id", async (c: Context) => {
 
     const playlist = await db.playlists.get(id);
 
-    // Treat soft-deleted as not found
-    if (!playlist || playlist._isDeleted || playlist.userId !== userId) {
+    if (!playlist || playlist.userId !== userId) {
       return c.json(
         {
           success: false,
@@ -230,7 +222,7 @@ app.post("/", async (c: Context) => {
     const data = createPlaylistSchema.parse(body);
     const userId = getUserId();
 
-    const playlistData: OfflinePlaylist = {
+    const playlist: OfflinePlaylist = {
       id: generateUUID(),
       ...data,
       description: data.description ?? null,
@@ -243,8 +235,6 @@ app.post("/", async (c: Context) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    // isNew=true marks this as a local-only entity (needs ID mapping on sync)
-    const playlist = markDirty(playlistData, true);
 
     await db.playlists.add(playlist);
 
@@ -287,12 +277,11 @@ app.patch("/:id", async (c: Context) => {
       );
     }
 
-    const updatedData: OfflinePlaylist = {
+    const updated: OfflinePlaylist = {
       ...playlist,
       ...data,
       updatedAt: new Date().toISOString(),
     };
-    const updated = markDirty(updatedData);
 
     await db.playlists.put(updated);
 
@@ -329,18 +318,9 @@ app.delete("/:id", async (c: Context) => {
       );
     }
 
-    if (isGuestUser()) {
-      // Guest user: hard delete immediately (no sync needed)
-      await db.playlists.delete(id);
-      // Also delete all playlistSongs for this playlist
-      await db.playlistSongs.where("playlistId").equals(id).delete();
-    } else {
-      // Auth user: soft delete for sync
-      await db.playlists.put(markDeleted(playlist));
-      // Also soft-delete all playlistSongs
-      const playlistSongs = await db.playlistSongs.where("playlistId").equals(id).toArray();
-      await Promise.all(playlistSongs.map(ps => db.playlistSongs.put(markDeleted(ps))));
-    }
+    // Hard delete playlist and its song relationships
+    await db.playlists.delete(id);
+    await db.playlistSongs.where("playlistId").equals(id).delete();
 
     return c.json({
       success: true,
@@ -374,21 +354,19 @@ app.get("/:id/songs", async (c: Context) => {
       );
     }
 
-    // Get playlist songs from IndexedDB (filter soft-deleted, sort by order)
-    const allPlaylistSongs = await db.playlistSongs
+    // Get playlist songs from IndexedDB (sort by order)
+    const playlistSongs = await db.playlistSongs
       .where("playlistId")
       .equals(id)
       .toArray();
-    const playlistSongs = allPlaylistSongs
-      .filter(ps => !ps._isDeleted)
-      .sort((a, b) => a.order - b.order);
+    const sortedPlaylistSongs = playlistSongs.sort((a, b) => a.order - b.order);
 
     // Get full song details with library name
     const songs = await Promise.all(
-      playlistSongs.map(async (ps) => {
+      sortedPlaylistSongs.map(async (ps) => {
         const song = await db.songs.get(ps.songId);
-        // Skip if song not found or soft-deleted
-        if (!song || song._isDeleted) return undefined;
+        // Skip if song not found
+        if (!song) return undefined;
 
         // Get library name if not already present on song
         let libraryName = song.libraryName;
@@ -460,7 +438,7 @@ app.post("/:id/songs", async (c: Context) => {
       .equals([id, songId])
       .first();
 
-    if (existingEntry && !existingEntry._isDeleted) {
+    if (existingEntry) {
       return c.json(
         {
           success: false,
@@ -475,33 +453,22 @@ app.post("/:id/songs", async (c: Context) => {
       .where("playlistId")
       .equals(id)
       .toArray();
-    const activeSongs = existingSongs.filter(ps => !ps._isDeleted);
-    const maxOrder = activeSongs.length > 0
-      ? Math.max(...activeSongs.map((ps) => ps.order))
+    const maxOrder = existingSongs.length > 0
+      ? Math.max(...existingSongs.map((ps) => ps.order))
       : -1;
 
     // Add to playlist
-    const playlistSongData: OfflinePlaylistSong = {
+    const playlistSong: OfflinePlaylistSong = {
       playlistId: id,
       songId,
       order: maxOrder + 1,
       addedAt: new Date().toISOString(),
     };
-    const playlistSong = markDirty(playlistSongData);
 
-    if (existingEntry) {
-      // Re-activate soft-deleted entry
-      await db.playlistSongs.put({
-        ...existingEntry,
-        ...playlistSong,
-        _isDeleted: false,
-      });
-    } else {
-      await db.playlistSongs.add(playlistSong);
-    }
+    await db.playlistSongs.add(playlistSong);
 
     // Get new song count
-    const newSongCount = activeSongs.length + 1;
+    const newSongCount = existingSongs.length + 1;
 
     // Update playlist timestamp and songCount
     await db.playlists.update(id, {
@@ -574,15 +541,13 @@ app.put("/:id/songs/reorder", async (c: Context) => {
 
     // Create updated entries with new order
     const orderMap = new Map(songIds.map((songId, index) => [songId, index]));
-    const updatedEntries = allPlaylistSongs
-      .filter(ps => !ps._isDeleted)
-      .map(ps => {
-        const newOrder = orderMap.get(ps.songId);
-        if (newOrder !== undefined) {
-          return markDirty({ ...ps, order: newOrder });
-        }
-        return ps;
-      });
+    const updatedEntries = allPlaylistSongs.map(ps => {
+      const newOrder = orderMap.get(ps.songId);
+      if (newOrder !== undefined) {
+        return { ...ps, order: newOrder };
+      }
+      return ps;
+    });
 
     // Bulk update
     await db.playlistSongs.bulkPut(updatedEntries);
@@ -634,23 +599,8 @@ app.put("/:id/songs", async (c: Context) => {
 
     // Use transaction for atomicity
     await db.transaction("rw", db.playlistSongs, db.playlists, async () => {
-      // Delete existing playlist songs
-      const existingSongs = await db.playlistSongs
-        .where("playlistId")
-        .equals(id)
-        .toArray();
-      
-      if (isGuestUser()) {
-        // Hard delete for guest
-        await Promise.all(existingSongs.map((ps) => 
-          db.playlistSongs.delete([ps.playlistId, ps.songId])
-        ));
-      } else {
-        // Soft delete for auth users
-        await Promise.all(existingSongs.map((ps) => 
-          db.playlistSongs.put(markDeleted(ps))
-        ));
-      }
+      // Hard delete existing playlist songs
+      await db.playlistSongs.where("playlistId").equals(id).delete();
 
       // Add new songs
       if (songIds && songIds.length > 0) {
@@ -660,7 +610,7 @@ app.put("/:id/songs", async (c: Context) => {
           order: index,
           addedAt: new Date().toISOString(),
         }));
-        await db.playlistSongs.bulkPut(playlistSongsData.map(ps => markDirty(ps)));
+        await db.playlistSongs.bulkPut(playlistSongsData);
       }
 
       // Update playlist timestamp and songCount
@@ -709,7 +659,7 @@ app.delete("/:id/songs/:songId", async (c: Context) => {
       .equals([playlistId, songId])
       .first();
 
-    if (!playlistSong || playlistSong._isDeleted) {
+    if (!playlistSong) {
       return c.json(
         {
           success: false,
@@ -720,19 +670,13 @@ app.delete("/:id/songs/:songId", async (c: Context) => {
     }
 
     // Get current song count before deletion
-    const allPlaylistSongs = await db.playlistSongs
+    const currentCount = await db.playlistSongs
       .where("playlistId")
       .equals(playlistId)
-      .toArray();
-    const currentCount = allPlaylistSongs.filter(ps => !ps._isDeleted).length;
+      .count();
 
-    if (isGuestUser()) {
-      // Guest user: hard delete immediately
-      await db.playlistSongs.delete([playlistSong.playlistId, playlistSong.songId]);
-    } else {
-      // Auth user: soft delete for sync
-      await db.playlistSongs.put(markDeleted(playlistSong));
-    }
+    // Hard delete the playlist song entry
+    await db.playlistSongs.delete([playlistSong.playlistId, playlistSong.songId]);
 
     const newSongCount = currentCount - 1;
 
