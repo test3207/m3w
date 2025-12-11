@@ -1,251 +1,89 @@
 /**
- * Cache Policy Decision Logic
+ * Cache Policy - Simplified
  * 
- * 4-layer configuration hierarchy (highest to lowest priority):
- * 1. Local library override (localCacheOverride in OfflineLibrary)
- * 2. Local global override (LocalSetting: cacheAllOverride)
- * 3. Backend library setting (cacheOverride from Library API)
- * 4. Backend user global (cacheAllEnabled from UserPreferences API)
+ * Controls auto-download behavior for audio files:
+ * - Off: No automatic downloads
+ * - WiFi Only: Auto-download when on WiFi
+ * - Always: Auto-download on any network
+ * 
+ * Note: Cache-on-Play, Cache-on-Upload, and Manual Download
+ * always work regardless of this setting.
  */
 
-import { db, type LocalCacheOverride, type DownloadTiming } from "../db/schema";
-import type { Library, UserPreferences, CacheOverride } from "@m3w/shared";
+import { db, type AutoDownloadSetting } from "../db/schema";
 import { logger } from "../logger-client";
 
-// Local setting keys
-const CACHE_ALL_OVERRIDE_KEY = "cacheAllOverride";
-const DOWNLOAD_TIMING_KEY = "downloadTiming";
-
-// ============================================================
-// Local Settings Helpers
-// ============================================================
+// Local setting key
+const AUTO_DOWNLOAD_KEY = "autoDownload";
 
 /**
- * Get local global cache override setting
+ * Get auto-download setting
+ * @returns Current setting (defaults to "wifi-only")
  */
-export async function getLocalCacheAllOverride(): Promise<LocalCacheOverride | null> {
+export async function getAutoDownloadSetting(): Promise<AutoDownloadSetting> {
   try {
-    const setting = await db.localSettings.get(CACHE_ALL_OVERRIDE_KEY);
-    if (!setting) return null;
-    return setting.value as LocalCacheOverride;
-  } catch (error) {
-    logger.error("Failed to get local cache override", error);
-    return null;
-  }
-}
-
-/**
- * Set local global cache override setting
- */
-export async function setLocalCacheAllOverride(value: LocalCacheOverride | null): Promise<void> {
-  try {
-    if (value === null) {
-      await db.localSettings.delete(CACHE_ALL_OVERRIDE_KEY);
-    } else {
-      await db.localSettings.put({
-        key: CACHE_ALL_OVERRIDE_KEY,
-        value,
-        updatedAt: new Date(),
-      });
-    }
-  } catch (error) {
-    logger.error("Failed to set local cache override", error);
-  }
-}
-
-/**
- * Get download timing preference
- */
-export async function getDownloadTiming(): Promise<DownloadTiming> {
-  try {
-    const setting = await db.localSettings.get(DOWNLOAD_TIMING_KEY);
+    const setting = await db.localSettings.get(AUTO_DOWNLOAD_KEY);
     if (!setting) return "wifi-only"; // Default
-    return setting.value as DownloadTiming;
+    return setting.value as AutoDownloadSetting;
   } catch (error) {
-    logger.error("Failed to get download timing", error);
+    logger.error("Failed to get auto-download setting", error);
     return "wifi-only";
   }
 }
 
 /**
- * Set download timing preference
+ * Set auto-download setting
  */
-export async function setDownloadTiming(value: DownloadTiming): Promise<void> {
+export async function setAutoDownloadSetting(value: AutoDownloadSetting): Promise<void> {
   try {
     await db.localSettings.put({
-      key: DOWNLOAD_TIMING_KEY,
+      key: AUTO_DOWNLOAD_KEY,
       value,
       updatedAt: new Date(),
     });
   } catch (error) {
-    logger.error("Failed to set download timing", error);
-  }
-}
-
-// ============================================================
-// Library-level Local Override
-// ============================================================
-
-/**
- * Get local cache override for a specific library
- */
-export async function getLibraryLocalOverride(libraryId: string): Promise<LocalCacheOverride | undefined> {
-  try {
-    const library = await db.libraries.get(libraryId);
-    return library?.localCacheOverride;
-  } catch (error) {
-    logger.error("Failed to get library local override", error);
-    return undefined;
+    logger.error("Failed to set auto-download setting", error);
   }
 }
 
 /**
- * Set local cache override for a specific library
- */
-export async function setLibraryLocalOverride(
-  libraryId: string, 
-  value: LocalCacheOverride | undefined
-): Promise<void> {
-  try {
-    await db.libraries.update(libraryId, { localCacheOverride: value });
-  } catch (error) {
-    logger.error("Failed to set library local override", error);
-  }
-}
-
-// ============================================================
-// Cache Decision Logic
-// ============================================================
-
-export interface CachePolicyContext {
-  /** Backend user preferences (null if offline or guest) */
-  userPreferences: UserPreferences | null;
-  /** Backend library data (from API response) */
-  backendLibrary: Library | null;
-}
-
-/**
- * Determine if a library should be cached based on 4-layer hierarchy
+ * Check if auto-download is allowed based on setting and network status
+ * Used for background auto-download on app startup.
  * 
- * Priority (highest to lowest):
- * 1. Local library override (localCacheOverride)
- * 2. Local global override (LocalSetting: cacheAllOverride)
- * 3. Backend library setting (Library.cacheOverride)
- * 4. Backend user global (UserPreferences.cacheAllEnabled)
+ * @returns true if auto-download should proceed
  */
-export async function shouldCacheLibrary(
-  libraryId: string,
-  context: CachePolicyContext
-): Promise<boolean> {
-  // 1. Check local library override
-  const localLibraryOverride = await getLibraryLocalOverride(libraryId);
-  if (localLibraryOverride === "always") return true;
-  if (localLibraryOverride === "never") return false;
-  // 'inherit' or undefined → continue to next level
-
-  // 2. Check local global override
-  const localGlobalOverride = await getLocalCacheAllOverride();
-  if (localGlobalOverride === "always") return true;
-  if (localGlobalOverride === "never") return false;
-  // 'inherit' or null → continue to next level
-
-  // 3. Check backend library setting
-  const backendLibraryOverride = context.backendLibrary?.cacheOverride;
-  if (backendLibraryOverride === "always") return true;
-  if (backendLibraryOverride === "never") return false;
-  // 'inherit' or undefined → continue to next level
-
-  // 4. Check backend user global
-  return context.userPreferences?.cacheAllEnabled ?? false;
-}
-
-/**
- * Get the effective cache policy for a library (for display purposes)
- * Returns which level determined the policy
- */
-export async function getEffectiveCachePolicy(
-  libraryId: string,
-  context: CachePolicyContext
-): Promise<{
-  shouldCache: boolean;
-  source: "local-library" | "local-global" | "backend-library" | "backend-global";
-  value: CacheOverride | boolean;
-}> {
-  // 1. Local library override
-  const localLibraryOverride = await getLibraryLocalOverride(libraryId);
-  if (localLibraryOverride && localLibraryOverride !== "inherit") {
-    return {
-      shouldCache: localLibraryOverride === "always",
-      source: "local-library",
-      value: localLibraryOverride,
-    };
-  }
-
-  // 2. Local global override
-  const localGlobalOverride = await getLocalCacheAllOverride();
-  if (localGlobalOverride && localGlobalOverride !== "inherit") {
-    return {
-      shouldCache: localGlobalOverride === "always",
-      source: "local-global",
-      value: localGlobalOverride,
-    };
-  }
-
-  // 3. Backend library setting
-  const backendLibraryOverride = context.backendLibrary?.cacheOverride;
-  if (backendLibraryOverride && backendLibraryOverride !== "inherit") {
-    return {
-      shouldCache: backendLibraryOverride === "always",
-      source: "backend-library",
-      value: backendLibraryOverride,
-    };
-  }
-
-  // 4. Backend user global
-  const shouldCache = context.userPreferences?.cacheAllEnabled ?? false;
-  return {
-    shouldCache,
-    source: "backend-global",
-    value: shouldCache,
-  };
-}
-
-/**
- * Check if download is allowed based on timing preference and network status
- */
-export async function canDownloadNow(): Promise<boolean> {
-  const timing = await getDownloadTiming();
+export async function canAutoDownload(): Promise<boolean> {
+  const setting = await getAutoDownloadSetting();
   
-  logger.debug(`canDownloadNow: timing=${timing}, online=${navigator.onLine}`);
+  logger.debug(`canAutoDownload: setting=${setting}, online=${navigator.onLine}`);
   
-  if (timing === "manual") {
-    logger.debug("canDownloadNow: manual mode, returning false");
+  // Off: never auto-download
+  if (setting === "off") {
     return false;
   }
-  if (timing === "always") {
-    logger.debug("canDownloadNow: always mode, returning true");
-    return true;
+  
+  // Always: download on any network
+  if (setting === "always") {
+    return navigator.onLine;
   }
   
-  // wifi-only: check connection type
+  // WiFi-only: check connection type
   if ("connection" in navigator) {
     const connection = (navigator as Navigator & { connection?: { type?: string; effectiveType?: string } }).connection;
-    logger.debug(`canDownloadNow: connection type=${connection?.type}, effectiveType=${connection?.effectiveType}`);
+    logger.debug(`canAutoDownload: connection type=${connection?.type}, effectiveType=${connection?.effectiveType}`);
     
-    // Consider wifi, ethernet as allowed; cellular as not
+    // Allow wifi, ethernet
     if (connection?.type === "wifi" || connection?.type === "ethernet") {
       return true;
     }
-    // Explicitly block cellular
+    // Block cellular
     if (connection?.type === "cellular") {
       return false;
     }
-    // If type not available but effectiveType suggests good connection, allow it
-    // Desktop browsers often don't have connection.type
   }
   
-  // If we can't determine connection type (desktop browser), allow download
-  // User chose wifi-only but we're likely on a desktop with good connection
-  logger.debug("canDownloadNow: connection type unknown, defaulting to allow");
+  // Desktop browsers often don't have connection.type
+  // Default to allow if online (assuming desktop = good connection)
+  logger.debug("canAutoDownload: connection type unknown, defaulting to allow");
   return navigator.onLine;
 }

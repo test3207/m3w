@@ -16,22 +16,17 @@
  */
 
 import Dexie, { type EntityTable, type Table } from "dexie";
-import { RepeatMode, type Library, type Playlist, type Song, type PlaylistSong, type CacheOverride } from "@m3w/shared";
+import { RepeatMode, type Library, type Playlist, type Song, type PlaylistSong } from "@m3w/shared";
 
 // ============================================================
 // Core Entities (extended from @m3w/shared)
 // ============================================================
 
 /**
- * Local cache policy override for this device
- * 'inherit' = follow backend setting, 'always' = always cache, 'never' = never cache
+ * Offline Library entity - same as backend Library for now.
+ * Using type alias instead of empty interface to avoid lint errors.
  */
-export type LocalCacheOverride = CacheOverride;
-
-export interface OfflineLibrary extends Library {
-  /** Local device override for cache policy (not synced to server) */
-  localCacheOverride?: LocalCacheOverride;
-}
+export type OfflineLibrary = Library;
 
 export type OfflinePlaylist = Playlist;
 
@@ -125,8 +120,13 @@ export interface LocalSetting {
   updatedAt: Date;
 }
 
-/** Download timing policy */
-export type DownloadTiming = "always" | "wifi-only" | "manual";
+/**
+ * Auto-download setting for audio files
+ * - "off": No automatic downloads (manual only)
+ * - "wifi-only": Auto-download when on WiFi
+ * - "always": Auto-download on any network
+ */
+export type AutoDownloadSetting = "off" | "wifi-only" | "always";
 
 // ============================================================
 // Database Class

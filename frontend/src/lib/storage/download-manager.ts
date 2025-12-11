@@ -4,13 +4,12 @@
  * Background download queue for caching library songs.
  * - Silent downloads (no progress UI)
  * - 3 concurrent downloads
- * - Respects download timing policy
- * - Integrates with cache-policy for decision making
+ * - Respects auto-download setting
  */
 
 import { db } from "../db/schema";
 import { cacheSong, isSongCached, isAudioCacheAvailable } from "./audio-cache";
-import { canDownloadNow, shouldCacheLibrary, type CachePolicyContext } from "./cache-policy";
+import { canAutoDownload } from "./cache-policy";
 import { logger } from "../logger-client";
 import { useAuthStore } from "@/stores/authStore";
 import { GUEST_USER_ID } from "@/lib/constants/guest";
@@ -44,11 +43,10 @@ let isProcessing = false;
 
 /**
  * Queue all songs from a library for download
- * @param force - If true, bypass policy check (for manual user-initiated downloads)
+ * @param force - If true, bypass auto-download check (for manual user-initiated downloads)
  */
 export async function queueLibraryDownload(
   libraryId: string,
-  context: CachePolicyContext,
   force: boolean = false
 ): Promise<number> {
   // Check if caching is available (requires Cache API and sufficient quota)
@@ -58,11 +56,11 @@ export async function queueLibraryDownload(
     return 0;
   }
 
-  // Check policy (skip if force=true, i.e., user manually triggered download)
+  // Check auto-download setting (skip if force=true, i.e., user manually triggered download)
   if (!force) {
-    const shouldCache = await shouldCacheLibrary(libraryId, context);
-    if (!shouldCache) {
-      logger.debug(`Library ${libraryId} not configured for caching`);
+    const canDownload = await canAutoDownload();
+    if (!canDownload) {
+      logger.debug("Auto-download not allowed based on setting/network");
       return 0;
     }
   }
@@ -83,10 +81,10 @@ export async function queueLibraryDownload(
   }
 
   logger.info(`Queued ${queued} songs from library ${libraryId} for download`);
-  
+
   // Start processing
   processQueue();
-  
+
   return queued;
 }
 
@@ -133,22 +131,40 @@ export function getQueueStatus(): {
 }
 
 /**
- * Trigger download for all libraries that should be cached
- * Called after sync completes
+ * Trigger auto-download for all libraries
+ * Called on app startup to trigger auto-download based on user settings
  */
-export async function triggerAutoCacheAfterSync(
-  libraries: Array<{ id: string }>,
-  context: CachePolicyContext
-): Promise<void> {
-  // Check if we can download now
-  const canDownload = await canDownloadNow();
-  if (!canDownload) {
-    logger.debug("Download not allowed based on timing policy");
-    return;
-  }
+export async function triggerAutoDownload(): Promise<void> {
+  try {
+    // Check if we can auto-download
+    const canDownload = await canAutoDownload();
+    if (!canDownload) {
+      logger.debug("Auto-download not allowed based on setting/network");
+      return;
+    }
 
-  for (const library of libraries) {
-    await queueLibraryDownload(library.id, context);
+    // Get current user's libraries
+    const { user, isGuest } = useAuthStore.getState();
+    const userId = isGuest ? GUEST_USER_ID : user?.id;
+
+    if (!userId) {
+      logger.debug("No user ID, skipping auto-download");
+      return;
+    }
+
+    // Get user's libraries from IndexedDB
+    const userLibraries = await db.libraries
+      .filter(lib => lib.userId === userId)
+      .toArray();
+
+    logger.info(`Auto-download triggered for ${userLibraries.length} libraries`);
+
+    for (const library of userLibraries) {
+      // Use force=false since we already checked canAutoDownload
+      await queueLibraryDownload(library.id, false);
+    }
+  } catch (error) {
+    logger.error("Auto-download failed", error);
   }
 }
 
@@ -182,10 +198,10 @@ async function processQueue(): Promise<void> {
     }
 
     while (downloadQueue.length > 0 && activeDownloads < MAX_CONCURRENT_DOWNLOADS) {
-      // Check if we can still download
-      const canDownload = await canDownloadNow();
+      // Check if we can still download (auto-download may have been disabled or network changed)
+      const canDownload = await canAutoDownload();
       if (!canDownload) {
-        logger.debug("processQueue: pausing downloads, timing policy not met");
+        logger.debug("processQueue: pausing downloads, auto-download not allowed");
         break;
       }
 
@@ -213,7 +229,7 @@ let nextBatchScheduled = false;
 function scheduleNextBatch(): void {
   if (nextBatchScheduled) return;
   if (downloadQueue.length === 0) return;
-  
+
   nextBatchScheduled = true;
   // Use queueMicrotask to batch multiple completions into one processQueue call
   queueMicrotask(() => {
@@ -230,7 +246,7 @@ async function processTask(task: DownloadTask): Promise<void> {
       logger.debug(`Song ${task.songId} no longer exists in IndexedDB, skipping`);
       return;
     }
-    
+
     // Check if already cached
     const cached = await isSongCached(task.songId);
     if (cached) {
@@ -240,7 +256,7 @@ async function processTask(task: DownloadTask): Promise<void> {
 
     // Download silently (no progress callback)
     await cacheSong(task.songId);
-    
+
     // Update song record
     await db.songs.update(task.songId, {
       isCached: true,
@@ -248,21 +264,21 @@ async function processTask(task: DownloadTask): Promise<void> {
     });
 
     logger.debug(`Successfully cached song ${task.songId}`);
-    
+
     // Notify UI to refresh cache status (with libraryId for filtering)
     eventBus.emit<SongCachedPayload>(EVENTS.SONG_CACHED, { libraryId: task.libraryId });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.warn(`Failed to cache song ${task.songId}: ${errorMessage}`);
-    
+
     // Don't retry for permanent failures (404, not found, not available)
-    if (errorMessage.includes("not available") || 
-        errorMessage.includes("not found") || 
-        errorMessage.includes("404")) {
+    if (errorMessage.includes("not available") ||
+      errorMessage.includes("not found") ||
+      errorMessage.includes("404")) {
       logger.debug(`Permanent failure for song ${task.songId}, not retrying`);
       return;
     }
-    
+
     // Retry logic for transient failures
     if (task.retries < MAX_RETRIES) {
       task.retries++;
@@ -319,22 +335,22 @@ export async function getTotalCacheStats(): Promise<{
   // Get current user's libraries
   const { user, isGuest } = useAuthStore.getState();
   const userId = isGuest ? GUEST_USER_ID : user?.id;
-  
+
   if (!userId) {
     return { total: 0, cached: 0, percentage: 0 };
   }
-  
+
   // Get user's library IDs
   const userLibraries = await db.libraries
     .filter(lib => lib.userId === userId)
     .toArray();
   const userLibraryIds = new Set(userLibraries.map(lib => lib.id));
-  
+
   // Get songs only from user's libraries
   const songs = await db.songs
     .filter(song => userLibraryIds.has(song.libraryId))
     .toArray();
-  
+
   const total = songs.length;
   let cached = 0;
 
