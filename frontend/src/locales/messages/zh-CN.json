@@ -127,7 +127,9 @@
   "networkStatus": {
     "online": "在线",
     "offline": "离线",
-    "syncing": "同步中"
+    "syncing": "同步中",
+    "offlineTooltip": "当前处于离线状态",
+    "offlineWriteDisabled": "请连接网络后再进行此操作"
   },
   "sync": {
     "completed": "同步完成",
@@ -401,7 +403,10 @@
       "saveAsPlaylistButton": "保存为播放列表",
       "savingButton": "保存中...",
       "saveButton": "保存"
-    }
+    },
+    "skippedUncachedSongs": "已跳过 {0} 首歌曲（未下载）",
+    "noCachedSongs": "没有可用的已下载歌曲",
+    "songNotCached": "此歌曲尚未下载"
   },
   "upload": {
     "page": {

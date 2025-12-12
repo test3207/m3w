@@ -9,11 +9,19 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Library, Plus, Music, Trash2 } from "lucide-react";
+import { Library, Plus, Trash2 } from "lucide-react";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { useToast } from "@/components/ui/use-toast";
 import { getLibraryDisplayName, getLibraryBadge } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
 import { I18n } from "@/locales/i18n";
+import { useCanWrite } from "@/hooks/useCanWrite";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +45,7 @@ import { Label } from "@/components/ui/label";
 
 export default function LibrariesPage() {
   const { toast } = useToast();
+  const { canWrite, disabledReason } = useCanWrite();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newLibraryName, setNewLibraryName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -135,11 +144,24 @@ export default function LibrariesPage() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="icon" variant="outline">
-              <Plus className="h-5 w-5" />
-            </Button>
-          </DialogTrigger>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={!canWrite ? 0 : undefined}>
+                  <DialogTrigger asChild>
+                    <Button size="icon" variant="outline" disabled={!canWrite}>
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                </span>
+              </TooltipTrigger>
+              {disabledReason && (
+                <TooltipContent>
+                  <p>{disabledReason}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{I18n.libraries.create.dialogTitle}</DialogTitle>
@@ -195,26 +217,19 @@ export default function LibrariesPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {libraries.map((library) => {
-            const canDelete = !isDefaultLibrary(library) && library.canDelete !== false;
+            const canDeleteLibrary = !isDefaultLibrary(library) && library.canDelete !== false && canWrite;
             return (
               <Card key={library.id} className="overflow-hidden transition-colors hover:bg-accent">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     {/* Cover Image - 96px (clickable) */}
                     <Link to={`/libraries/${library.id}`} className="shrink-0">
-                      <div className="h-24 w-24 overflow-hidden rounded-md bg-muted">
-                        {library.coverUrl ? (
-                          <img
-                            src={library.coverUrl}
-                            alt={getLibraryDisplayName(library)}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Music className="h-10 w-10 text-muted-foreground/30" />
-                          </div>
-                        )}
-                      </div>
+                      <CoverImage
+                        src={library.coverUrl}
+                        alt={getLibraryDisplayName(library)}
+                        type={CoverType.Library}
+                        size={CoverSize.LG}
+                      />
                     </Link>
 
                     {/* Metadata (clickable) */}
@@ -236,7 +251,7 @@ export default function LibrariesPage() {
                     </Link>
 
                     {/* Delete button */}
-                    {canDelete && (
+                    {canDeleteLibrary && (
                       <Button
                         variant="ghost"
                         size="icon"

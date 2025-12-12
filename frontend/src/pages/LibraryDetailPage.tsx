@@ -28,6 +28,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { api } from "@/services";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { eventBus, EVENTS, type SongCachedPayload } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
@@ -37,6 +38,14 @@ import { logger } from "@/lib/logger-client";
 import { getLibraryCacheStats, queueLibraryDownload } from "@/lib/storage/download-manager";
 import { isSongCached, isAudioCacheAvailable } from "@/lib/storage/audio-cache";
 import { CacheStatusIcon } from "@/components/features/songs/CacheStatusIcon";
+import { useCanWrite } from "@/hooks/useCanWrite";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,6 +75,10 @@ export default function LibraryDetailPage() {
   
   // Check if guest user - cache UI hidden for guests
   const isGuest = useAuthStore((state) => state.isGuest);
+  
+  // Check if writes are allowed (for disabling upload/delete when offline)
+  const { canWrite, disabledReason } = useCanWrite();
+  const { isOnline } = useNetworkStatus();
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [sortOption, setSortOption] = useState<SongSortOption>("date-desc");
@@ -502,13 +515,26 @@ export default function LibraryDetailPage() {
           </Button>
         )}
 
-        <Button
-          variant="outline"
-          disabled={isSelectionMode}
-          onClick={() => openUploadDrawer(id)}
-        >
-          <Upload className="h-4 w-4" />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={!canWrite ? 0 : undefined}>
+                <Button
+                  variant="outline"
+                  disabled={isSelectionMode || !canWrite}
+                  onClick={() => openUploadDrawer(id)}
+                >
+                  <Upload className="h-4 w-4" />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {disabledReason && (
+              <TooltipContent>
+                <p>{disabledReason}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
 
         <Button
           variant="outline"
@@ -574,6 +600,9 @@ export default function LibraryDetailPage() {
         <div className="space-y-2 pb-32">
           {songs.map((song, index) => {
             const isSelected = isSongSelected(song.id);
+            const isCached = songCacheStatus[song.id] ?? false;
+            // Dim uncached songs when Auth user is offline
+            const shouldDim = !isGuest && !isOnline && !isCached;
             
             return (
               <div
@@ -581,7 +610,8 @@ export default function LibraryDetailPage() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
                   isSelectionMode && isSelected && "border-primary bg-primary/5",
-                  isSelectionMode && "cursor-pointer"
+                  isSelectionMode && "cursor-pointer",
+                  shouldDim && "opacity-50"
                 )}
                 onMouseDown={() => handlePressStart(song)}
                 onMouseUp={handlePressEnd}
@@ -606,19 +636,13 @@ export default function LibraryDetailPage() {
                 )}
 
                 {/* Album Cover */}
-                <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                  {song.coverUrl ? (
-                    <img
-                      src={song.coverUrl}
-                      alt={song.title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                      ♪
-                    </div>
-                  )}
-                </div>
+                <CoverImage
+                  src={song.coverUrl}
+                  alt={song.title}
+                  type={CoverType.Song}
+                  size={CoverSize.MD}
+                  className="shrink-0"
+                />
 
                 {/* Song Info */}
                 <div className="flex-1 overflow-hidden">
@@ -678,6 +702,7 @@ export default function LibraryDetailPage() {
                           setDeleteDialogOpen(true);
                         }}
                         className="text-destructive focus:text-destructive"
+                        disabled={!canWrite}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         {I18n.libraries.detail.deleteSong.button}

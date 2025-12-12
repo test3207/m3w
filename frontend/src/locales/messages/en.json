@@ -127,7 +127,9 @@
   "networkStatus": {
     "online": "Online",
     "offline": "Offline",
-    "syncing": "Syncing"
+    "syncing": "Syncing",
+    "offlineTooltip": "You're offline",
+    "offlineWriteDisabled": "Connect to internet to make changes"
   },
   "sync": {
     "completed": "Sync completed",
@@ -401,7 +403,10 @@
       "saveAsPlaylistButton": "Save as Playlist",
       "savingButton": "Saving...",
       "saveButton": "Save"
-    }
+    },
+    "skippedUncachedSongs": "Skipped {0} songs (not downloaded)",
+    "noCachedSongs": "No downloaded songs available",
+    "songNotCached": "This song is not downloaded"
   },
   "upload": {
     "page": {

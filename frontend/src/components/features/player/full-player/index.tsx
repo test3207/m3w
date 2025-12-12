@@ -54,7 +54,6 @@ import {
   ChevronDown,
   Heart,
   ListMusic,
-  Music,
   Play,
   Pause,
   SkipBack,
@@ -62,6 +61,7 @@ import {
   Repeat,
   Shuffle,
 } from "lucide-react";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { Text } from "@/components/ui/text";
@@ -463,17 +463,13 @@ export function FullPlayer() {
       {/* Album Cover */}
       <Stack align="center" className="px-8 py-4 shrink-0">
         <div className="aspect-square w-full max-w-[280px] overflow-hidden rounded-lg shadow-2xl">
-          {displaySong.coverUrl ? (
-            <img
-              src={displaySong.coverUrl}
-              alt={I18n.player.fullPlayer.albumCoverAlt}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <Stack align="center" justify="center" className="h-full w-full bg-muted">
-              <Music className="h-20 w-20 text-muted-foreground/30" aria-hidden="true" />
-            </Stack>
-          )}
+          <CoverImage
+            src={displaySong.coverUrl}
+            alt={I18n.player.fullPlayer.albumCoverAlt}
+            type={CoverType.Song}
+            size={CoverSize.XL}
+            className="h-full w-full max-w-none"
+          />
         </div>
       </Stack>
 

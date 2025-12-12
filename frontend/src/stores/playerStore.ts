@@ -13,6 +13,9 @@ import {
 import { type Song, RepeatMode } from "@m3w/shared";
 import { getStreamUrl } from "@/services/api/main/endpoints";
 import { I18n } from "@/locales/i18n";
+import { useAuthStore } from "@/stores/authStore";
+import { isSongCached } from "@/lib/storage/audio-cache";
+import { toast } from "@/components/ui/use-toast";
 
 export type QueueSource = "library" | "playlist" | "all" | null;
 
@@ -40,6 +43,83 @@ const getBackupState = (): PlayerState | null => {
 const setBackupState = (state: PlayerState) => {
   window.__PLAYER_STATE_BACKUP__ = state;
 };
+
+/**
+ * Check if user is an Auth user currently offline
+ * Auth users offline have limited functionality (read-only, cached songs only)
+ * Guest users are always "local" so this returns false for them
+ */
+function isOfflineAuthUser(): boolean {
+  const { isGuest } = useAuthStore.getState();
+  const isOffline = !navigator.onLine;
+  return isOffline && !isGuest;
+}
+
+// Helper: Find next playable song index when offline
+// Returns { nextIndex, skippedCount } or null if no playable song found
+async function findNextPlayableSong(
+  queue: Song[],
+  startIndex: number,
+  isOfflineAuthUser: boolean
+): Promise<{ nextIndex: number; skippedCount: number } | null> {
+  if (!isOfflineAuthUser) {
+    // Online or Guest: all songs playable
+    return { nextIndex: startIndex, skippedCount: 0 };
+  }
+
+  let skippedCount = 0;
+  let checkedCount = 0;
+  let index = startIndex;
+
+  // Search through the entire queue (max queue.length checks)
+  while (checkedCount < queue.length) {
+    const song = queue[index];
+    if (song && await isSongCached(song.id)) {
+      return { nextIndex: index, skippedCount };
+    }
+    
+    // Song not cached, skip it
+    skippedCount++;
+    index = (index + 1) % queue.length; // Wrap around
+    checkedCount++;
+  }
+
+  // No cached songs found in entire queue
+  return null;
+}
+
+// Helper: Find previous playable song index when offline (searches backwards)
+// Returns { prevIndex, skippedCount } or null if no playable song found
+async function findPreviousPlayableSong(
+  queue: Song[],
+  startIndex: number,
+  isOfflineAuthUser: boolean
+): Promise<{ prevIndex: number; skippedCount: number } | null> {
+  if (!isOfflineAuthUser) {
+    // Online or Guest: all songs playable
+    return { prevIndex: startIndex, skippedCount: 0 };
+  }
+
+  let skippedCount = 0;
+  let checkedCount = 0;
+  let index = startIndex;
+
+  // Search through the entire queue backwards (max queue.length checks)
+  while (checkedCount < queue.length) {
+    const song = queue[index];
+    if (song && await isSongCached(song.id)) {
+      return { prevIndex: index, skippedCount };
+    }
+    
+    // Song not cached, skip it
+    skippedCount++;
+    index = index > 0 ? index - 1 : queue.length - 1; // Wrap around backwards
+    checkedCount++;
+  }
+
+  // No cached songs found in entire queue
+  return null;
+}
 
 // Song → Track converter for AudioPlayer
 function songToTrack(song: Song): Track {
@@ -570,18 +650,45 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         return;
       }
 
-      let nextIndex: number;
+      // Check if we're an Auth user offline (need to skip uncached songs)
+      const shouldSkipUncached = isOfflineAuthUser();
+
+      let targetIndex: number;
 
       // Manual "next" button always loops (ignore repeat mode)
       // Repeat mode only affects automatic playback on track end
       if (currentIndex < queue.length - 1) {
-      // Play next song in queue
-        nextIndex = currentIndex + 1;
-        logger.info("Playing next song in queue", { nextIndex });
+        // Play next song in queue
+        targetIndex = currentIndex + 1;
+        logger.info("Playing next song in queue", { targetIndex });
       } else {
-      // Loop back to first song (manual next always loops)
-        nextIndex = 0;
+        // Loop back to first song (manual next always loops)
+        targetIndex = 0;
         logger.info("Manual next: looping back to first song");
+      }
+
+      // Find next playable song (may skip uncached songs when offline)
+      const result = await findNextPlayableSong(queue, targetIndex, shouldSkipUncached);
+
+      if (!result) {
+        // No cached songs available
+        logger.warn("No cached songs available for offline playback");
+        toast({
+          title: I18n.player.noCachedSongs,
+          variant: "destructive",
+        });
+        set({ isPlaying: false });
+        return;
+      }
+
+      const { nextIndex, skippedCount } = result;
+
+      // Show toast if songs were skipped
+      if (skippedCount > 0) {
+        logger.info("Skipped uncached songs", { skippedCount });
+        toast({
+          title: I18n.player.skippedUncachedSongs.replace("{0}", String(skippedCount)),
+        });
       }
 
       const nextSong = queue[nextIndex];
@@ -622,9 +729,36 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         return;
       }
 
-      const prevIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
+      // Check if we're an Auth user offline (need to skip uncached songs)
+      const shouldSkipUncached = isOfflineAuthUser();
+
+      const targetIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
+      
+      // Find previous playable song (may skip uncached songs when offline)
+      const result = await findPreviousPlayableSong(queue, targetIndex, shouldSkipUncached);
+
+      if (!result) {
+        // No cached songs available
+        logger.warn("No cached songs available for offline playback");
+        toast({
+          title: I18n.player.noCachedSongs,
+          variant: "destructive",
+        });
+        set({ isPlaying: false });
+        return;
+      }
+
+      const { prevIndex, skippedCount } = result;
+
+      // Show toast if songs were skipped
+      if (skippedCount > 0) {
+        logger.info("Skipped uncached songs", { skippedCount });
+        toast({
+          title: I18n.player.skippedUncachedSongs.replace("{0}", String(skippedCount)),
+        });
+      }
+
       const prevSong = queue[prevIndex];
-    
       if (prevSong) {
         const track = songToTrack(prevSong);
         const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
@@ -650,23 +784,36 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       if (index < 0 || index >= queue.length) return;
 
       const song = queue[index];
-      if (song) {
-        const track = songToTrack(song);
-        const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
-        const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
-      
-        audioPlayer.play(preparedTrack);
-        set({
-          currentIndex: index,
-          currentSong: song,
-          lastPlayedSong: song,
-          currentTime: 0,
-          isPlaying: true,
+      if (!song) return;
+
+      // Check if we're an Auth user offline
+      const shouldBlockUncached = isOfflineAuthUser();
+
+      // If offline and song not cached, show error
+      if (shouldBlockUncached && !(await isSongCached(song.id))) {
+        logger.warn("Cannot play uncached song while offline", { songId: song.id });
+        toast({
+          title: I18n.player.songNotCached,
+          variant: "destructive",
         });
-        // Update Media Session metadata for the new song
-        updateMediaSessionForSong(song);
-        logger.info("Seeking to song", { index, title: song.title });
+        return;
       }
+
+      const track = songToTrack(song);
+      const resolvedUrl = await prefetchAudioBlob(track.audioUrl);
+      const preparedTrack = resolvedUrl ? { ...track, resolvedUrl } : track;
+      
+      audioPlayer.play(preparedTrack);
+      set({
+        currentIndex: index,
+        currentSong: song,
+        lastPlayedSong: song,
+        currentTime: 0,
+        isPlaying: true,
+      });
+      // Update Media Session metadata for the new song
+      updateMediaSessionForSong(song);
+      logger.info("Seeking to song", { index, title: song.title });
     },
 
     seek: (time) => {

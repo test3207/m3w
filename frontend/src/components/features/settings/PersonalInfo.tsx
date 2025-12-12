@@ -32,7 +32,7 @@ export default function PersonalInfo({ user }: PersonalInfoProps) {
             {user.name ? getInitials(user.name) : <UserIcon className="h-5 w-5" />}
           </AvatarFallback>
         </Avatar>
-        <Stack gap="none">
+        <Stack gap="none" className="flex-1">
           <Text variant="body" className="font-semibold">
             {user.name || I18n.settings.profile.usernameNotSet}
           </Text>
