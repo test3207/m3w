@@ -10,25 +10,10 @@
 import { useState } from "react";
 import { Music, ListMusic, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CoverType, CoverSize } from "./cover-image.types";
 
-/** Cover type determines the fallback icon */
-export const CoverType = {
-  Song: "song",
-  Playlist: "playlist",
-  Library: "library",
-} as const;
-
-export type CoverTypeValue = typeof CoverType[keyof typeof CoverType];
-
-/** Size variants for the cover image */
-export const CoverSize = {
-  SM: "sm",
-  MD: "md",
-  LG: "lg",
-  XL: "xl",
-} as const;
-
-export type CoverSizeValue = typeof CoverSize[keyof typeof CoverSize];
+// Re-export for convenience
+export { CoverType, CoverSize } from "./cover-image.types";
 
 interface CoverImageProps {
   /** Cover image URL (e.g., /api/songs/:id/cover) */
@@ -36,28 +21,28 @@ interface CoverImageProps {
   /** Alt text for accessibility */
   alt: string;
   /** Type of content - determines fallback icon */
-  type?: CoverTypeValue;
+  type?: CoverType;
   /** Additional CSS classes */
   className?: string;
   /** Size variant */
-  size?: CoverSizeValue;
+  size?: CoverSize;
 }
 
-const sizeClasses: Record<CoverSizeValue, string> = {
+const sizeClasses: Record<CoverSize, string> = {
   [CoverSize.SM]: "h-10 w-10",
   [CoverSize.MD]: "h-12 w-12", 
   [CoverSize.LG]: "h-24 w-24",
   [CoverSize.XL]: "h-48 w-48",
 };
 
-const iconSizes: Record<CoverSizeValue, string> = {
+const iconSizes: Record<CoverSize, string> = {
   [CoverSize.SM]: "h-4 w-4",
   [CoverSize.MD]: "h-6 w-6",
   [CoverSize.LG]: "h-10 w-10",
   [CoverSize.XL]: "h-16 w-16",
 };
 
-function FallbackIcon({ type, size }: { type: CoverTypeValue; size: CoverSizeValue }) {
+function FallbackIcon({ type, size }: { type: CoverType; size: CoverSize }) {
   const iconClass = cn(iconSizes[size], "text-muted-foreground/30");
   
   switch (type) {
@@ -78,6 +63,28 @@ export function CoverImage({
   className,
   size = CoverSize.MD,
 }: CoverImageProps) {
+  // Use key on wrapper to reset state when src changes (React pattern)
+  // This avoids useEffect + setState which triggers cascading renders
+  return (
+    <CoverImageInner
+      key={src ?? "fallback"}
+      src={src}
+      alt={alt}
+      type={type}
+      className={className}
+      size={size}
+    />
+  );
+}
+
+/** Internal component - state resets automatically via key prop */
+function CoverImageInner({
+  src,
+  alt,
+  type = CoverType.Song,
+  className,
+  size = CoverSize.MD,
+}: CoverImageProps) {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -85,8 +92,6 @@ export function CoverImage({
 
   return (
     <div
-      role="img"
-      aria-label={alt}
       className={cn(
         "relative overflow-hidden rounded-md bg-muted",
         sizeClasses[size],
@@ -96,7 +101,6 @@ export function CoverImage({
       {!showFallback ? (
         <>
           <img
-            key={src}
             src={src}
             alt={alt}
             crossOrigin="anonymous"

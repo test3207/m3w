@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ListMusic, Plus, Trash2 } from "lucide-react";
-import { CoverImage } from "@/components/ui/cover-image";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { useToast } from "@/components/ui/use-toast";
 import { eventBus, EVENTS } from "@/lib/events";
 import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
@@ -247,8 +247,8 @@ export default function PlaylistsPage() {
                       <CoverImage
                         src={playlist.coverUrl}
                         alt={getPlaylistDisplayName(playlist)}
-                        type="playlist"
-                        size="lg"
+                        type={CoverType.Playlist}
+                        size={CoverSize.LG}
                       />
                     </Link>
 

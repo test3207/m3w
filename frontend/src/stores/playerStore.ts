@@ -44,6 +44,17 @@ const setBackupState = (state: PlayerState) => {
   window.__PLAYER_STATE_BACKUP__ = state;
 };
 
+/**
+ * Check if user is an Auth user currently offline
+ * Auth users offline have limited functionality (read-only, cached songs only)
+ * Guest users are always "local" so this returns false for them
+ */
+function isOfflineAuthUser(): boolean {
+  const { isGuest } = useAuthStore.getState();
+  const isOffline = !navigator.onLine;
+  return isOffline && !isGuest;
+}
+
 // Helper: Find next playable song index when offline
 // Returns { nextIndex, skippedCount } or null if no playable song found
 async function findNextPlayableSong(
@@ -640,9 +651,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       }
 
       // Check if we're an Auth user offline (need to skip uncached songs)
-      const { isGuest } = useAuthStore.getState();
-      const isOffline = !navigator.onLine;
-      const isOfflineAuthUser = isOffline && !isGuest;
+      const shouldSkipUncached = isOfflineAuthUser();
 
       let targetIndex: number;
 
@@ -659,7 +668,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       }
 
       // Find next playable song (may skip uncached songs when offline)
-      const result = await findNextPlayableSong(queue, targetIndex, isOfflineAuthUser);
+      const result = await findNextPlayableSong(queue, targetIndex, shouldSkipUncached);
 
       if (!result) {
         // No cached songs available
@@ -721,14 +730,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       }
 
       // Check if we're an Auth user offline (need to skip uncached songs)
-      const { isGuest } = useAuthStore.getState();
-      const isOffline = !navigator.onLine;
-      const isOfflineAuthUser = isOffline && !isGuest;
+      const shouldSkipUncached = isOfflineAuthUser();
 
       const targetIndex = currentIndex > 0 ? currentIndex - 1 : queue.length - 1;
       
       // Find previous playable song (may skip uncached songs when offline)
-      const result = await findPreviousPlayableSong(queue, targetIndex, isOfflineAuthUser);
+      const result = await findPreviousPlayableSong(queue, targetIndex, shouldSkipUncached);
 
       if (!result) {
         // No cached songs available
@@ -780,12 +787,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       if (!song) return;
 
       // Check if we're an Auth user offline
-      const { isGuest } = useAuthStore.getState();
-      const isOffline = !navigator.onLine;
-      const isOfflineAuthUser = isOffline && !isGuest;
+      const shouldBlockUncached = isOfflineAuthUser();
 
       // If offline and song not cached, show error
-      if (isOfflineAuthUser && !(await isSongCached(song.id))) {
+      if (shouldBlockUncached && !(await isSongCached(song.id))) {
         logger.warn("Cannot play uncached song while offline", { songId: song.id });
         toast({
           title: I18n.player.songNotCached,

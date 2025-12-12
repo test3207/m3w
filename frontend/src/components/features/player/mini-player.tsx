@@ -4,7 +4,7 @@
  */
 
 import { Play, Pause, SkipForward } from "lucide-react";
-import { CoverImage } from "@/components/ui/cover-image";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { cn } from "@/lib/utils";
@@ -28,8 +28,8 @@ export function MiniPlayer() {
         <CoverImage
           src={currentSong.coverUrl}
           alt={currentSong.title}
-          type="song"
-          size="md"
+          type={CoverType.Song}
+          size={CoverSize.MD}
           className="shrink-0"
         />
 

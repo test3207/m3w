@@ -28,7 +28,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { api } from "@/services";
-import { CoverImage } from "@/components/ui/cover-image";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { eventBus, EVENTS, type SongCachedPayload } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
@@ -639,8 +639,8 @@ export default function LibraryDetailPage() {
                 <CoverImage
                   src={song.coverUrl}
                   alt={song.title}
-                  type="song"
-                  size="md"
+                  type={CoverType.Song}
+                  size={CoverSize.MD}
                   className="shrink-0"
                 />
 

@@ -14,7 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { X, Trash2, GripVertical, Save } from "lucide-react";
-import { CoverImage } from "@/components/ui/cover-image";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { formatDuration } from "@/lib/utils/format";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -191,8 +191,8 @@ export function PlayQueueDrawer() {
                 <CoverImage
                   src={song.coverUrl}
                   alt={song.title}
-                  type="song"
-                  size="md"
+                  type={CoverType.Song}
+                  size={CoverSize.MD}
                   className="shrink-0"
                 />
 

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Library, Plus, Trash2 } from "lucide-react";
-import { CoverImage } from "@/components/ui/cover-image";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { useToast } from "@/components/ui/use-toast";
 import { getLibraryDisplayName, getLibraryBadge } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
@@ -227,8 +227,8 @@ export default function LibrariesPage() {
                       <CoverImage
                         src={library.coverUrl}
                         alt={getLibraryDisplayName(library)}
-                        type="library"
-                        size="lg"
+                        type={CoverType.Library}
+                        size={CoverSize.LG}
                       />
                     </Link>
 

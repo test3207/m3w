@@ -61,7 +61,7 @@ import {
   Repeat,
   Shuffle,
 } from "lucide-react";
-import { CoverImage } from "@/components/ui/cover-image";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { Text } from "@/components/ui/text";
@@ -466,8 +466,8 @@ export function FullPlayer() {
           <CoverImage
             src={displaySong.coverUrl}
             alt={I18n.player.fullPlayer.albumCoverAlt}
-            type="song"
-            size="xl"
+            type={CoverType.Song}
+            size={CoverSize.XL}
             className="h-full w-full max-w-none"
           />
         </div>
