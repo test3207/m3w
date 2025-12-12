@@ -1,76 +1,17 @@
 /**
  * Audio Player
- * 
+ *
  * Core audio playback functionality using Howler.js
  * Supports: play, pause, seek, volume control, queue management
  */
 
 import { Howl, Howler } from "howler";
 import { logger } from "@/lib/logger-client";
+import { resolveAudioFormat } from "./format-utils";
 
 // String emitted by Howler when browser policies block autoplay without user gesture.
 const HOWLER_AUTOPLAY_BLOCK_MESSAGE =
   "Playback was unable to start. This is most commonly an issue on mobile devices and Chrome where playback was not within a user interaction.";
-
-const MIME_TYPE_TO_FORMAT: Record<string, string> = {
-  "audio/mpeg": "mp3",
-  "audio/mp3": "mp3",
-  "audio/mpeg3": "mp3",
-  "audio/x-mp3": "mp3",
-  "audio/aac": "aac",
-  "audio/aacp": "aac",
-  "audio/mp4": "mp4",
-  "audio/x-m4a": "m4a",
-  "audio/flac": "flac",
-  "audio/x-flac": "flac",
-  "audio/wav": "wav",
-  "audio/x-wav": "wav",
-  "audio/wave": "wav",
-  "audio/ogg": "ogg",
-  "audio/opus": "opus",
-  "audio/webm": "webm",
-  "audio/3gpp": "3gp",
-  "audio/3gpp2": "3g2",
-};
-
-function extractExtensionFromUrl(url: string): string | null {
-  const sanitized = url.split("?")[0];
-  const lastSegment = sanitized.split("/").pop();
-  if (!lastSegment) {
-    return null;
-  }
-
-  const dotIndex = lastSegment.lastIndexOf(".");
-  if (dotIndex === -1 || dotIndex === lastSegment.length - 1) {
-    return null;
-  }
-
-  return lastSegment.slice(dotIndex + 1).toLowerCase();
-}
-
-function resolveAudioFormat(track: Track): string[] | undefined {
-  const mimeType = track.mimeType?.toLowerCase();
-  if (mimeType) {
-    const mapped = MIME_TYPE_TO_FORMAT[mimeType];
-    if (mapped) {
-      return [mapped];
-    }
-
-    if (mimeType.startsWith("audio/")) {
-      const subtype = mimeType.split("/")[1]?.split(";")[0]?.split("+")[0];
-      if (subtype) {
-        return [subtype];
-      }
-    }
-  }
-
-  const extension = extractExtensionFromUrl(track.audioUrl);
-  if (extension) {
-    return [extension];
-  }
-
-  return undefined;
-}
 
 export interface Track {
   id: string;
