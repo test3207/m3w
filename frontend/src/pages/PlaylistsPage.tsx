@@ -16,6 +16,13 @@ import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
 import { isFavoritesPlaylist } from "@m3w/shared";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
+import { useCanWrite } from "@/hooks/useCanWrite";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +46,7 @@ import { Label } from "@/components/ui/label";
 
 export default function PlaylistsPage() {
   const { toast } = useToast();
+  const { canWrite, disabledReason } = useCanWrite();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -157,11 +165,24 @@ export default function PlaylistsPage() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="icon" variant="outline">
-              <Plus className="h-5 w-5" />
-            </Button>
-          </DialogTrigger>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={!canWrite ? 0 : undefined}>
+                  <DialogTrigger asChild>
+                    <Button size="icon" variant="outline" disabled={!canWrite}>
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                </span>
+              </TooltipTrigger>
+              {disabledReason && (
+                <TooltipContent>
+                  <p>{disabledReason}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{I18n.playlists.create.dialogTitle}</DialogTitle>
@@ -215,7 +236,7 @@ export default function PlaylistsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {playlists.map((playlist) => {
-            const canDelete = !isFavoritesPlaylist(playlist) && playlist.canDelete !== false;
+            const canDeletePlaylist = !isFavoritesPlaylist(playlist) && playlist.canDelete !== false && canWrite;
             return (
               <Card key={playlist.id} className="overflow-hidden transition-colors hover:bg-accent">
                 <CardContent className="p-4">
@@ -259,7 +280,7 @@ export default function PlaylistsPage() {
                     </Link>
 
                     {/* Delete button */}
-                    {canDelete && (
+                    {canDeletePlaylist && (
                       <Button
                         variant="ghost"
                         size="icon"

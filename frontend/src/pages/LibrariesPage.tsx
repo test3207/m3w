@@ -14,6 +14,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { getLibraryDisplayName, getLibraryBadge } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
 import { I18n } from "@/locales/i18n";
+import { useCanWrite } from "@/hooks/useCanWrite";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +44,7 @@ import { Label } from "@/components/ui/label";
 
 export default function LibrariesPage() {
   const { toast } = useToast();
+  const { canWrite, disabledReason } = useCanWrite();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newLibraryName, setNewLibraryName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -135,11 +143,24 @@ export default function LibrariesPage() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="icon" variant="outline">
-              <Plus className="h-5 w-5" />
-            </Button>
-          </DialogTrigger>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={!canWrite ? 0 : undefined}>
+                  <DialogTrigger asChild>
+                    <Button size="icon" variant="outline" disabled={!canWrite}>
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                </span>
+              </TooltipTrigger>
+              {disabledReason && (
+                <TooltipContent>
+                  <p>{disabledReason}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{I18n.libraries.create.dialogTitle}</DialogTitle>
@@ -195,7 +216,7 @@ export default function LibrariesPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {libraries.map((library) => {
-            const canDelete = !isDefaultLibrary(library) && library.canDelete !== false;
+            const canDeleteLibrary = !isDefaultLibrary(library) && library.canDelete !== false && canWrite;
             return (
               <Card key={library.id} className="overflow-hidden transition-colors hover:bg-accent">
                 <CardContent className="p-4">
@@ -236,7 +257,7 @@ export default function LibrariesPage() {
                     </Link>
 
                     {/* Delete button */}
-                    {canDelete && (
+                    {canDeleteLibrary && (
                       <Button
                         variant="ghost"
                         size="icon"

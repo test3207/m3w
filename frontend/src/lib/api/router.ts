@@ -124,11 +124,28 @@ export async function routeRequest(
   }
 
   // Decision matrix:
-  // 1. If offline (network or backend) and route is offline-capable → use offline proxy
-  // 2. If offline and route is NOT offline-capable → return error
-  // 3. If online → try backend, fallback to offline proxy if offline-capable
+  // 1. Guest mode: use offline proxy for all capable routes
+  // 2. Auth + Offline + Write: block (read-only mode per User Stories)
+  // 3. Auth + Offline + Read: use offline proxy if capable
+  // 4. Auth + Online: try backend, fallback to offline proxy if capable
 
   const effectivelyOffline = !isOnline || !isBackendReachable;
+
+  // Auth users in offline mode are read-only (no writes allowed)
+  // This enforces the design decision from User Stories Part 3
+  if (effectivelyOffline && !isGuest && method !== "GET") {
+    logger.info("Blocking write operation for Auth user offline", { path, method });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "This operation requires an internet connection",
+      }),
+      {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
 
   if (effectivelyOffline) {
     if (offlineCapable) {

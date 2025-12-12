@@ -240,6 +240,10 @@ export interface Messages {
     offline: string;
     /** Syncing */
     syncing: string;
+    /** You're offline */
+    offlineTooltip: string;
+    /** Connect to internet to make changes */
+    offlineWriteDisabled: string;
   };
   sync: {
     /** Sync completed */
@@ -728,6 +732,12 @@ export interface Messages {
       /** Save */
       saveButton: string;
     };
+    /** Skipped {count} songs (not downloaded) */
+    skippedUncachedSongs: string;
+    /** No downloaded songs available */
+    noCachedSongs: string;
+    /** This song is not downloaded */
+    songNotCached: string;
   };
   upload: {
     page: {
