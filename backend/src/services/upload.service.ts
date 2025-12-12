@@ -13,8 +13,8 @@ import type { IncomingMessage } from 'node:http';
 import crypto from 'node:crypto';
 import formidable from 'formidable';
 import * as mm from 'music-metadata';
-import { getMinioClient } from '../minio-client';
-import { logger } from '../logger';
+import { getMinioClient } from '../lib/minio-client';
+import { logger } from '../lib/logger';
 
 // ============================================================================
 // Types

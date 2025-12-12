@@ -200,3 +200,13 @@ export const useAuth = () => {
     checkAuth: store.checkAuthStatus,
   };
 };
+
+/**
+ * Check if user is an Auth user currently offline.
+ * Auth users offline have limited functionality (read-only, cached songs only).
+ * Guest users are always "local" so this returns false for them.
+ */
+export function isOfflineAuthUser(): boolean {
+  const { isGuest } = useAuthStore.getState();
+  return !navigator.onLine && !isGuest;
+}

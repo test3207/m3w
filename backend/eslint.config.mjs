@@ -24,6 +24,7 @@ export default [
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off', // Backend can use console for debugging
+      'max-lines': ['error', { max: 500, skipBlankLines: true, skipComments: true }],
     },
   },
   {

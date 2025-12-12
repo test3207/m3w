@@ -26,55 +26,38 @@ import {
   toSongListResponse,
 } from '@m3w/shared';
 import type { Context } from 'hono';
-import type { ApiResponse, Playlist, Song, PlaylistInput, SongInput, PlaylistSongOperationResult, PlaylistReorderResult } from '@m3w/shared';
+import type { ApiResponse, Playlist, Song, PlaylistInput, PlaylistSongOperationResult, PlaylistReorderResult } from '@m3w/shared';
+import {
+  getPlaylistCoverUrl,
+  findUserPlaylists,
+  findPlaylistById,
+  findPlaylistByLibrary,
+  createPlaylist,
+  updatePlaylist,
+  deletePlaylist,
+  getPlaylistSongs,
+  findUserSong,
+  findPlaylistSong,
+  addSongToPlaylist,
+  removeSongFromPlaylist,
+  getPlaylistSongIds,
+  reorderPlaylistSongs,
+  replacePlaylistSongs,
+  validateLibrarySongs,
+  createPlaylistSongs,
+} from '../services/playlist.service';
 
 const app = new Hono();
 
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
 
-/**
- * Helper: Get cover URL from first song in playlist
- */
-async function getPlaylistCoverUrl(playlistId: string): Promise<string | null> {
-  const firstSong = await prisma.playlistSong.findFirst({
-    where: { playlistId },
-    orderBy: { order: 'asc' },
-    include: {
-      song: {
-        select: { id: true, coverUrl: true },
-      },
-    },
-  });
-  if (!firstSong?.song) return null;
-  return resolveCoverUrl({ id: firstSong.song.id, coverUrl: firstSong.song.coverUrl });
-}
-
 // GET /api/playlists - List all playlists for current user
 app.get('/', async (c: Context) => {
   try {
     const userId = getUserId(c);
+    const playlists = await findUserPlaylists(userId);
 
-    const playlists = await prisma.playlist.findMany({
-      where: { userId },
-      include: {
-        songs: {
-          take: 1,
-          include: {
-            song: {
-              select: {
-                id: true,
-                coverUrl: true,
-              },
-            },
-          },
-          orderBy: { order: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Transform to API response format using shared transformer
     const response = playlists.map((pl) => {
       const firstSong = pl.songs[0]?.song;
       const input: PlaylistInput = {
@@ -93,19 +76,10 @@ app.get('/', async (c: Context) => {
       return toPlaylistResponse(input);
     });
 
-    return c.json<ApiResponse<Playlist[]>>({
-      success: true,
-      data: response,
-    });
+    return c.json<ApiResponse<Playlist[]>>({ success: true, data: response });
   } catch (error) {
     logger.error({ error }, 'Failed to fetch playlists');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to fetch playlists',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch playlists' }, 500);
   }
 });
 
@@ -116,42 +90,21 @@ app.get('/by-library/:libraryId', async (c: Context) => {
     const userId = getUserId(c);
     const { libraryId } = c.req.param();
 
-    const playlist = await prisma.playlist.findFirst({
-      where: {
-        userId,
-        linkedLibraryId: libraryId,
-      },
-    });
+    const playlist = await findPlaylistByLibrary(userId, libraryId);
 
     if (!playlist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    // Transform to API response format using shared transformer
     const input: PlaylistInput = {
       ...playlist,
       coverUrl: await getPlaylistCoverUrl(playlist.id),
     };
 
-    return c.json<ApiResponse<Playlist>>({
-      success: true,
-      data: toPlaylistResponse(input),
-    });
+    return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
   } catch (error) {
     logger.error({ error }, 'Failed to fetch library playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to fetch library playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch library playlist' }, 500);
   }
 });
 
@@ -169,84 +122,47 @@ app.post('/for-library', async (c: Context) => {
     });
 
     if (!library) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Library not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Library not found' }, 404);
     }
 
     const songCount = songIds?.length || 0;
 
     // Validate that all songs exist and belong to the linked library
     if (songIds && songIds.length > 0) {
-      const validSongs = await prisma.song.findMany({
-        where: {
-          id: { in: songIds },
-          libraryId: linkedLibraryId,
-          library: { userId },
-        },
-        select: { id: true },
-      });
-
-      if (validSongs.length !== songIds.length) {
-        return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: 'Invalid song IDs or songs do not belong to linked library',
-          },
-          400
-        );
+      const isValid = await validateLibrarySongs(songIds, linkedLibraryId, userId);
+      if (!isValid) {
+        return c.json<ApiResponse<never>>({
+          success: false,
+          error: 'Invalid song IDs or songs do not belong to linked library',
+        }, 400);
       }
     }
 
-    // Create playlist with songCount
-    const playlist = await prisma.playlist.create({
-      data: {
-        name,
-        userId,
-        linkedLibraryId,
-        songCount,
-        canDelete: false, // Library playlists cannot be manually deleted
-      },
+    // Create playlist
+    const playlist = await createPlaylist({
+      name,
+      userId,
+      linkedLibraryId,
+      songCount,
+      canDelete: false, // Library playlists cannot be manually deleted
     });
 
     // Create PlaylistSong entries
     if (songIds && songIds.length > 0) {
-      const playlistSongData = songIds.map((songId: string, index: number) => ({
-        playlistId: playlist.id,
-        songId,
-        order: index,
-      }));
-
-      await prisma.playlistSong.createMany({
-        data: playlistSongData,
-      });
+      await createPlaylistSongs(playlist.id, songIds);
     }
 
     logger.info({ playlistId: playlist.id, linkedLibraryId, songCount }, 'Created library playlist');
 
-    // Transform to API response format
     const input: PlaylistInput = {
       ...playlist,
       coverUrl: await getPlaylistCoverUrl(playlist.id),
     };
 
-    return c.json<ApiResponse<Playlist>>({
-      success: true,
-      data: toPlaylistResponse(input),
-    });
+    return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
   } catch (error) {
     logger.error({ error }, 'Failed to create library playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to create library playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to create library playlist' }, 500);
   }
 });
 
@@ -256,65 +172,25 @@ app.get('/:id', async (c: Context) => {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
 
-    const playlist = await prisma.playlist.findFirst({
-      where: { id, userId },
-      include: {
-        songs: {
-          take: 1,
-          include: {
-            song: {
-              select: {
-                id: true,
-                coverUrl: true,
-              },
-            },
-          },
-          orderBy: { order: 'asc' },
-        },
-      },
-    });
+    const playlist = await findPlaylistById(id, userId);
 
     if (!playlist) {
-      return c.json(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    // Transform to API response format using shared transformer
     const firstSong = playlist.songs[0]?.song;
     const input: PlaylistInput = {
       ...playlist,
       coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
     };
 
-    return c.json<ApiResponse<Playlist>>({
-      success: true,
-      data: toPlaylistResponse(input),
-    });
+    return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Invalid playlist ID',
-          details: error.issues,
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Invalid playlist ID', details: error.issues }, 400);
     }
-
     logger.error({ error }, 'Failed to fetch playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to fetch playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch playlist' }, 500);
   }
 });
 
@@ -325,47 +201,22 @@ app.post('/', async (c: Context) => {
     const data = createPlaylistSchema.parse(body);
     const userId = getUserId(c);
 
-    const playlist = await prisma.playlist.create({
-      data: {
-        ...data,
-        userId,
-        songCount: 0,
-      },
+    const playlist = await createPlaylist({
+      name: data.name,
+      description: data.description ?? undefined,
+      userId,
+      songCount: 0,
     });
 
-    // Transform to API response format
-    const input: PlaylistInput = {
-      ...playlist,
-      coverUrl: null,  // New playlist has no songs yet
-    };
+    const input: PlaylistInput = { ...playlist, coverUrl: null };
 
-    return c.json<ApiResponse<Playlist>>(
-      {
-        success: true,
-        data: toPlaylistResponse(input),
-      },
-      201
-    );
+    return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Validation failed',
-          details: error.issues,
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-
     logger.error({ error }, 'Failed to create playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to create playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to create playlist' }, 500);
   }
 });
 
@@ -378,67 +229,29 @@ app.patch('/:id', async (c: Context) => {
     const userId = getUserId(c);
 
     // Check if playlist exists and belongs to user
-    const existingPlaylist = await prisma.playlist.findFirst({
-      where: { id, userId },
-    });
-
+    const existingPlaylist = await prisma.playlist.findFirst({ where: { id, userId } });
     if (!existingPlaylist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    const playlist = await prisma.playlist.update({
-      where: { id },
-      data,
-      include: {
-        songs: {
-          take: 1,
-          include: {
-            song: {
-              select: { id: true, coverUrl: true },
-            },
-          },
-          orderBy: { order: 'asc' },
-        },
-      },
+    const playlist = await updatePlaylist(id, {
+      name: data.name,
+      description: data.description ?? undefined,
     });
 
-    // Transform to API response format
     const firstSong = playlist.songs[0]?.song;
     const input: PlaylistInput = {
       ...playlist,
       coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
     };
 
-    return c.json<ApiResponse<Playlist>>({
-      success: true,
-      data: toPlaylistResponse(input),
-    });
+    return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Validation failed',
-          details: error.issues,
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-
     logger.error({ error }, 'Failed to update playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to update playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to update playlist' }, 500);
   }
 });
 
@@ -448,60 +261,24 @@ app.delete('/:id', async (c: Context) => {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
 
-    // Check if playlist exists and belongs to user
-    const existingPlaylist = await prisma.playlist.findFirst({
-      where: { id, userId },
-    });
-
+    const existingPlaylist = await prisma.playlist.findFirst({ where: { id, userId } });
     if (!existingPlaylist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    // Check if playlist can be deleted (protection for default playlist)
     if (!existingPlaylist.canDelete) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Cannot delete default playlist',
-        },
-        403
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Cannot delete default playlist' }, 403);
     }
 
-    // PlaylistSong entries will be cascade deleted
-    await prisma.playlist.delete({
-      where: { id },
-    });
+    await deletePlaylist(id);
 
-    return c.json<ApiResponse<undefined>>({
-      success: true,
-    });
+    return c.json<ApiResponse<undefined>>({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Invalid playlist ID',
-          details: error.issues,
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Invalid playlist ID', details: error.issues }, 400);
     }
-
     logger.error({ error }, 'Failed to delete playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to delete playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to delete playlist' }, 500);
   }
 });
 
@@ -511,92 +288,20 @@ app.get('/:id/songs', async (c: Context) => {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
 
-    // Check if playlist exists and belongs to user
-    const playlist = await prisma.playlist.findFirst({
-      where: { id, userId },
-    });
-
+    const playlist = await prisma.playlist.findFirst({ where: { id, userId } });
     if (!playlist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    // Fetch songs via PlaylistSong junction table (ordered by order field)
-    const playlistSongs = await prisma.playlistSong.findMany({
-      where: { playlistId: id },
-      orderBy: { order: 'asc' },
-      include: {
-        song: {
-          select: {
-            id: true,
-            title: true,
-            artist: true,
-            album: true,
-            albumArtist: true,
-            year: true,
-            genre: true,
-            trackNumber: true,
-            discNumber: true,
-            composer: true,
-            coverUrl: true,
-            fileId: true,
-            libraryId: true,
-            createdAt: true,
-            updatedAt: true,
-            file: {
-              select: {
-                duration: true,
-                mimeType: true,
-              },
-            },
-            library: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const songs = await getPlaylistSongs(id);
 
-    // Transform to Song response format (already in correct order)
-    const orderedSongInputs: SongInput[] = playlistSongs
-      .map(ps => ps.song)
-      .map((song) => ({
-        ...song,
-        coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
-      }));
-
-    // Transform to API response format using shared transformer
-    return c.json<ApiResponse<Song[]>>({
-      success: true,
-      data: toSongListResponse(orderedSongInputs),
-    });
+    return c.json<ApiResponse<Song[]>>({ success: true, data: toSongListResponse(songs) });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Invalid playlist ID',
-          details: error.issues,
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Invalid playlist ID', details: error.issues }, 400);
     }
-
     logger.error({ error }, 'Failed to fetch playlist songs');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to fetch playlist songs',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch playlist songs' }, 500);
   }
 });
 
@@ -608,115 +313,33 @@ app.post('/:id/songs', async (c: Context) => {
     const { songId } = addSongToPlaylistSchema.parse(body);
     const userId = getUserId(c);
 
-    // Check if playlist exists and belongs to user
-    const playlist = await prisma.playlist.findFirst({
-      where: { id, userId },
-    });
-
+    const playlist = await prisma.playlist.findFirst({ where: { id, userId } });
     if (!playlist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    // Check if song exists and belongs to user's library
-    const song = await prisma.song.findFirst({
-      where: {
-        id: songId,
-        library: {
-          userId,
-        },
-      },
-    });
-
+    const song = await findUserSong(songId, userId);
     if (!song) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Song not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Song not found' }, 404);
     }
 
-    // Check if song is already in playlist
-    const existingEntry = await prisma.playlistSong.findUnique({
-      where: {
-        playlistId_songId: { playlistId: id, songId },
-      },
-    });
-
+    const existingEntry = await findPlaylistSong(id, songId);
     if (existingEntry) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Song is already in playlist',
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Song is already in playlist' }, 400);
     }
 
-    // Use transaction to ensure atomicity and avoid race conditions
-    await prisma.$transaction(async (tx) => {
-      // Get current max order inside transaction for consistency
-      const maxOrderEntry = await tx.playlistSong.findFirst({
-        where: { playlistId: id },
-        orderBy: { order: 'desc' },
-        select: { order: true },
-      });
-      const newOrder = (maxOrderEntry?.order ?? -1) + 1;
+    await addSongToPlaylist(id, songId);
 
-      // Create PlaylistSong entry
-      await tx.playlistSong.create({
-        data: {
-          playlistId: id,
-          songId,
-          order: newOrder,
-        },
-      });
-
-      // Increment songCount
-      await tx.playlist.update({
-        where: { id },
-        data: { songCount: { increment: 1 } },
-      });
-    });
-
-    return c.json<ApiResponse<PlaylistSongOperationResult>>(
-      {
-        success: true,
-        data: {
-          playlistId: id,
-          songId,
-          newSongCount: playlist.songCount + 1,
-        },
-      },
-      201
-    );
+    return c.json<ApiResponse<PlaylistSongOperationResult>>({
+      success: true,
+      data: { playlistId: id, songId, newSongCount: playlist.songCount + 1 },
+    }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Validation failed',
-          details: error.issues,
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-
     logger.error({ error }, 'Failed to add song to playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to add song to playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to add song to playlist' }, 500);
   }
 });
 
@@ -724,86 +347,31 @@ app.post('/:id/songs', async (c: Context) => {
 app.delete('/:id/songs/:songId', async (c: Context) => {
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
-    const { songId } = removeSongFromPlaylistSchema.parse({
-      songId: c.req.param('songId'),
-    });
+    const { songId } = removeSongFromPlaylistSchema.parse({ songId: c.req.param('songId') });
     const userId = getUserId(c);
 
-    // Check if playlist exists and belongs to user
-    const playlist = await prisma.playlist.findFirst({
-      where: { id, userId },
-    });
-
+    const playlist = await prisma.playlist.findFirst({ where: { id, userId } });
     if (!playlist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    // Check if song is in playlist
-    const existingEntry = await prisma.playlistSong.findUnique({
-      where: {
-        playlistId_songId: { playlistId: id, songId },
-      },
-    });
-
+    const existingEntry = await findPlaylistSong(id, songId);
     if (!existingEntry) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Song not found in playlist',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Song not found in playlist' }, 404);
     }
 
-    // Use transaction to ensure atomicity
-    await prisma.$transaction([
-      // Delete the PlaylistSong entry
-      prisma.playlistSong.delete({
-        where: {
-          playlistId_songId: { playlistId: id, songId },
-        },
-      }),
-      // Decrement songCount
-      prisma.playlist.update({
-        where: { id },
-        data: { songCount: { decrement: 1 } },
-      }),
-    ]);
+    await removeSongFromPlaylist(id, songId);
 
     return c.json<ApiResponse<PlaylistSongOperationResult>>({
       success: true,
-      data: {
-        playlistId: id,
-        songId,
-        newSongCount: playlist.songCount - 1,
-      },
+      data: { playlistId: id, songId, newSongCount: playlist.songCount - 1 },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Validation failed',
-          details: error.issues,
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-
     logger.error({ error }, 'Failed to remove song from playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to remove song from playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to remove song from playlist' }, 500);
   }
 });
 
@@ -815,74 +383,32 @@ app.put('/:id/songs/reorder', async (c: Context) => {
     const { songIds } = z.object({ songIds: z.array(z.string()) }).parse(body);
     const userId = getUserId(c);
 
-    // Check if playlist exists and belongs to user
-    const playlist = await prisma.playlist.findFirst({
-      where: { id, userId },
-    });
-
+    const playlist = await prisma.playlist.findFirst({ where: { id, userId } });
     if (!playlist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    // Validate that all songIds exist in the playlist
-    const existingEntries = await prisma.playlistSong.findMany({
-      where: { playlistId: id },
-      select: { songId: true },
-    });
-    const existingSongIds = new Set(existingEntries.map(e => e.songId));
+    const existingSongIds = await getPlaylistSongIds(id);
 
-    // Validate song count matches
-    if (songIds.length !== existingEntries.length) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Song count mismatch - all songs must be included in reorder',
-        },
-        400
-      );
+    if (songIds.length !== existingSongIds.size) {
+      return c.json<ApiResponse<never>>({
+        success: false,
+        error: 'Song count mismatch - all songs must be included in reorder',
+      }, 400);
     }
 
     for (const songId of songIds) {
       if (!existingSongIds.has(songId)) {
-        return c.json<ApiResponse<never>>(
-          {
-            success: false,
-            error: 'Invalid song order - song not in playlist',
-          },
-          400
-        );
+        return c.json<ApiResponse<never>>({
+          success: false,
+          error: 'Invalid song order - song not in playlist',
+        }, 400);
       }
     }
 
-    // Batch update order using transaction
-    await prisma.$transaction(
-      songIds.map((songId, index) =>
-        prisma.playlistSong.update({
-          where: { playlistId_songId: { playlistId: id, songId } },
-          data: { order: index },
-        })
-      )
-    );
+    const updatedPlaylist = await reorderPlaylistSongs(id, songIds);
 
-    // Update playlist timestamp
-    const updatedPlaylist = await prisma.playlist.update({
-      where: { id },
-      data: { updatedAt: new Date() },
-    });
-
-    logger.debug(
-      {
-        playlistId: id,
-        songCount: songIds.length,
-      },
-      'Playlist songs reordered'
-    );
+    logger.debug({ playlistId: id, songCount: songIds.length }, 'Playlist songs reordered');
 
     return c.json<ApiResponse<PlaylistReorderResult>>({
       success: true,
@@ -894,24 +420,10 @@ app.put('/:id/songs/reorder', async (c: Context) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Validation failed',
-          details: error.issues,
-        },
-        400
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-
     logger.error({ error }, 'Failed to reorder songs in playlist');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to reorder songs in playlist',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to reorder songs in playlist' }, 500);
   }
 });
 
@@ -923,68 +435,19 @@ app.put('/:id/songs', async (c: Context) => {
     const body = await c.req.json();
     const { songIds } = body;
 
-    // Find playlist
-    const playlist = await prisma.playlist.findFirst({
-      where: { id, userId },
-    });
-
+    const playlist = await prisma.playlist.findFirst({ where: { id, userId } });
     if (!playlist) {
-      return c.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: 'Playlist not found',
-        },
-        404
-      );
+      return c.json<ApiResponse<never>>({ success: false, error: 'Playlist not found' }, 404);
     }
 
-    const newSongCount = songIds?.length || 0;
+    await replacePlaylistSongs(id, songIds || []);
 
-    // Use transaction to replace all PlaylistSong entries
-    await prisma.$transaction(async (tx) => {
-      // Delete existing PlaylistSong entries
-      await tx.playlistSong.deleteMany({
-        where: { playlistId: id },
-      });
+    logger.info({ playlistId: id, songCount: songIds?.length || 0 }, 'Updated playlist songs');
 
-      // Create new PlaylistSong entries
-      if (songIds && songIds.length > 0) {
-        const playlistSongData = songIds.map((songId: string, index: number) => ({
-          playlistId: id,
-          songId,
-          order: index,
-        }));
-
-        await tx.playlistSong.createMany({
-          data: playlistSongData,
-        });
-      }
-
-      // Update playlist timestamp and songCount
-      await tx.playlist.update({
-        where: { id },
-        data: { 
-          updatedAt: new Date(),
-          songCount: newSongCount,
-        },
-      });
-    });
-
-    logger.info({ playlistId: id, songCount: newSongCount }, 'Updated playlist songs');
-
-    return c.json<ApiResponse<null>>({
-      success: true,
-      data: null,
-    });
+    return c.json<ApiResponse<null>>({ success: true, data: null });
   } catch (error) {
     logger.error({ error }, 'Failed to update playlist songs');
-    return c.json<ApiResponse<never>>(
-      {
-        success: false,
-        error: 'Failed to update playlist songs',
-      },
-      500
-    );
+    return c.json<ApiResponse<never>>({ success: false, error: 'Failed to update playlist songs' }, 500);
   }
 });
 

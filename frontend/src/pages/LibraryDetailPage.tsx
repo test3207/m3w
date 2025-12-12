@@ -11,48 +11,19 @@ import { usePlayerStore } from "@/stores/playerStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
-import { Button } from "@/components/ui/button";
-import {
-  Play,
-  ListPlus,
-  ArrowUpDown,
-  MoreVertical,
-  Trash2,
-  ListMusic,
-  Check,
-  X,
-  CheckSquare,
-  Upload,
-  Download,
-} from "lucide-react";
+import { ListPlus } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { api } from "@/services";
-import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { eventBus, EVENTS, type SongCachedPayload } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
 import type { Song, SongSortOption } from "@m3w/shared";
-import { formatDuration } from "@/lib/utils/format-duration";
 import { logger } from "@/lib/logger-client";
 import { getLibraryCacheStats, queueLibraryDownload } from "@/lib/storage/download-manager";
 import { isSongCached, isAudioCacheAvailable } from "@/lib/storage/audio-cache";
-import { CacheStatusIcon } from "@/components/features/songs/CacheStatusIcon";
 import { useCanWrite } from "@/hooks/useCanWrite";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +35,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { SongListItem } from "@/components/features/libraries/SongListItem";
+import { SelectionModeHeader } from "@/components/features/libraries/SelectionModeHeader";
+import { LibraryActionBar } from "@/components/features/libraries/LibraryActionBar";
 
 // Long press duration in milliseconds
 const LONG_PRESS_DURATION = 500;
@@ -98,7 +72,7 @@ export default function LibraryDetailPage() {
   const longPressTimer = useRef<number | null>(null);
   const longPressTriggered = useRef(false);
 
-  // Cleanup long press timer on unmount to prevent memory leaks
+  // Cleanup long press timer on unmount
   useEffect(() => {
     return () => {
       if (longPressTimer.current) {
@@ -107,8 +81,7 @@ export default function LibraryDetailPage() {
     };
   }, []);
 
-  const { currentLibrary, isLoading, fetchLibraryById, fetchLibraries } =
-    useLibraryStore();
+  const { currentLibrary, isLoading, fetchLibraryById, fetchLibraries } = useLibraryStore();
   const playFromLibrary = usePlayerStore((state) => state.playFromLibrary);
   const fetchPlaylists = usePlaylistStore((state) => state.fetchPlaylists);
   
@@ -124,11 +97,9 @@ export default function LibraryDetailPage() {
   const openUploadDrawer = useUIStore((state) => state.openUploadDrawer);
 
   // Check if a song is selected
-  const isSongSelected = (songId: string) => {
-    return selectedSongs.some(s => s.id === songId);
-  };
+  const isSongSelected = (songId: string) => selectedSongs.some(s => s.id === songId);
 
-  // Effect 1: Fetch library when ID changes (NOT when sort changes)
+  // Effect 1: Fetch library when ID changes
   useEffect(() => {
     const fetchLibrary = async () => {
       if (!id) {
@@ -150,8 +121,7 @@ export default function LibraryDetailPage() {
         toast({
           variant: "destructive",
           title: I18n.common.errorLabel,
-          description:
-            error instanceof Error ? error.message : I18n.error.genericTryAgain,
+          description: error instanceof Error ? error.message : I18n.error.genericTryAgain,
         });
         navigate("/libraries");
       }
@@ -179,7 +149,7 @@ export default function LibraryDetailPage() {
     void fetchSongs();
   }, [id, sortOption]);
 
-  // Effect 3: Exit selection mode when navigating away (cleanup only on unmount)
+  // Effect 3: Exit selection mode when navigating away
   useEffect(() => {
     return () => {
       exitSelectionMode();
@@ -192,16 +162,14 @@ export default function LibraryDetailPage() {
     isAudioCacheAvailable().then(setCacheAvailable);
   }, []);
 
-  // Callback to load cache stats (reusable for initial load and event-based refresh)
+  // Callback to load cache stats
   const loadCacheStats = useCallback(async () => {
     if (!id || songs.length === 0) return;
     
     try {
-      // Pass songs array directly (works for Auth mode without IndexedDB)
       const stats = await getLibraryCacheStats(songs);
       setCacheStats(stats);
 
-      // Load individual song cache status in parallel
       const statusMap: Record<string, boolean> = {};
       await Promise.all(
         songs.map(async (song) => {
@@ -219,16 +187,13 @@ export default function LibraryDetailPage() {
     void loadCacheStats();
   }, [loadCacheStats]);
 
-  // Effect 6: Subscribe to SONG_CACHED events for real-time cache status updates
-  // Debounced to avoid excessive refreshes during batch operations
+  // Effect 6: Subscribe to SONG_CACHED events
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     
     const unsubscribe = eventBus.on<SongCachedPayload>(EVENTS.SONG_CACHED, (payload) => {
-      // Only refresh if the cached song belongs to the current library
       if (payload?.libraryId !== id) return;
       
-      // Debounce: wait 500ms after last event before refreshing
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         void loadCacheStats();
@@ -247,7 +212,6 @@ export default function LibraryDetailPage() {
     
     setIsDownloading(true);
     try {
-      // Force download - user manually clicked, bypass policy check
       const queued = await queueLibraryDownload(id, true);
       if (queued > 0) {
         toast({
@@ -255,9 +219,7 @@ export default function LibraryDetailPage() {
           description: I18n.libraries.detail.cache.downloadStartedDesc.replace("{0}", String(queued)),
         });
       } else {
-        toast({
-          title: I18n.libraries.detail.cache.allCached,
-        });
+        toast({ title: I18n.libraries.detail.cache.allCached });
       }
     } catch (error) {
       logger.error("[LibraryDetailPage] Failed to start download:", error);
@@ -271,7 +233,7 @@ export default function LibraryDetailPage() {
     }
   }, [id, isDownloading, toast]);
 
-  // Refresh songs when library songs count changes (after upload)
+  // Refresh songs when library songs count changes
   const [prevSongCount, setPrevSongCount] = useState<number | undefined>(undefined);
   const currentSongCount = currentLibrary?.songCount;
   
@@ -298,16 +260,12 @@ export default function LibraryDetailPage() {
 
   // Long press handlers
   const handlePressStart = (song: Song) => {
-    if (isSelectionMode) return; // Already in selection mode
+    if (isSelectionMode) return;
     
     longPressTriggered.current = false;
     longPressTimer.current = window.setTimeout(() => {
       longPressTriggered.current = true;
-      enterSelectionMode({
-        id: song.id,
-        title: song.title,
-        coverUrl: song.coverUrl,
-      });
+      enterSelectionMode({ id: song.id, title: song.title, coverUrl: song.coverUrl });
     }, LONG_PRESS_DURATION);
   };
 
@@ -325,29 +283,19 @@ export default function LibraryDetailPage() {
     openFullPlayer();
     toast({
       title: I18n.playback.startPlayingTitle,
-      description: I18n.playback.startPlayingDescription.replace(
-        "{0}",
-        displayName
-      ),
+      description: I18n.playback.startPlayingDescription.replace("{0}", displayName),
     });
   };
 
   const handleSongClick = (song: Song, index: number) => {
-    // If long press was triggered, don't handle click
     if (longPressTriggered.current) {
       longPressTriggered.current = false;
       return;
     }
 
     if (isSelectionMode) {
-      // Toggle selection
-      toggleSongSelection({
-        id: song.id,
-        title: song.title,
-        coverUrl: song.coverUrl,
-      });
+      toggleSongSelection({ id: song.id, title: song.title, coverUrl: song.coverUrl });
     } else {
-      // Play song and open full player
       if (!currentLibrary) return;
       const displayName = getLibraryDisplayName(currentLibrary);
       void playFromLibrary(currentLibrary.id, displayName, songs, index);
@@ -356,13 +304,7 @@ export default function LibraryDetailPage() {
   };
 
   const handleSelectAll = () => {
-    selectAllSongs(
-      songs.map(song => ({
-        id: song.id,
-        title: song.title,
-        coverUrl: song.coverUrl,
-      }))
-    );
+    selectAllSongs(songs.map(song => ({ id: song.id, title: song.title, coverUrl: song.coverUrl })));
   };
 
   const handleBatchAddToPlaylist = () => {
@@ -375,16 +317,10 @@ export default function LibraryDetailPage() {
 
     try {
       await api.main.songs.delete(songId, id);
-
-      // Remove from local state
       setSongs(songs.filter((s) => s.id !== songId));
-
-      // Refresh data
       await fetchLibraryById(id);
       await fetchLibraries();
       await fetchPlaylists();
-
-      // Emit event to notify other components
       eventBus.emit(EVENTS.SONG_DELETED);
 
       toast({
@@ -423,52 +359,23 @@ export default function LibraryDetailPage() {
   if (isLoading || !currentLibrary) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">
-          {I18n.library.detail.loadingLabel}
-        </p>
+        <p className="text-muted-foreground">{I18n.library.detail.loadingLabel}</p>
       </div>
     );
   }
+
+  const showCacheUI = !isGuest && cacheAvailable;
 
   return (
     <div className="h-full overflow-y-auto p-4">
       {/* Selection Mode Header */}
       {isSelectionMode && (
-        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-primary p-4 text-primary-foreground shadow-md border-b border-primary-foreground/20">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-primary-foreground hover:bg-primary-foreground/20"
-              onClick={exitSelectionMode}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-            <span className="font-medium">
-              {I18n.libraries.detail.selection.selectedCount.replace("{0}", String(selectedSongs.length))}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-primary-foreground hover:bg-primary-foreground/20"
-              onClick={handleSelectAll}
-            >
-              <CheckSquare className="mr-1 h-4 w-4" />
-              {I18n.libraries.detail.selection.selectAll}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={selectedSongs.length === 0}
-              onClick={handleBatchAddToPlaylist}
-            >
-              <ListMusic className="mr-1 h-4 w-4" />
-              {I18n.libraries.detail.selection.addToPlaylist}
-            </Button>
-          </div>
-        </div>
+        <SelectionModeHeader
+          selectedSongs={selectedSongs}
+          onExit={exitSelectionMode}
+          onSelectAll={handleSelectAll}
+          onAddToPlaylist={handleBatchAddToPlaylist}
+        />
       )}
 
       {/* Header */}
@@ -483,7 +390,7 @@ export default function LibraryDetailPage() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {I18n.libraries.detail.songsCount.replace("{0}", String(songs.length))}
-          {!isGuest && cacheAvailable && cacheStats.total > 0 && (
+          {showCacheUI && cacheStats.total > 0 && (
             <span className="ml-2">
               · {I18n.libraries.detail.cache.cachedCount
                 .replace("{0}", String(cacheStats.cached))
@@ -494,90 +401,20 @@ export default function LibraryDetailPage() {
       </div>
 
       {/* Actions */}
-      <div className="mb-4 flex gap-2">
-        <Button
-          onClick={handlePlayAll}
-          disabled={songs.length === 0 || isSelectionMode}
-          className="flex-1"
-        >
-          <Play className="mr-2 h-4 w-4" />
-          {I18n.libraries.detail.playAll}
-        </Button>
-
-        {!isGuest && cacheAvailable && (
-          <Button
-            variant="outline"
-            disabled={songs.length === 0 || isSelectionMode || isDownloading}
-            onClick={handleDownloadAll}
-            title={I18n.libraries.detail.cache.downloadAll}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
-        )}
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span tabIndex={!canWrite ? 0 : undefined}>
-                <Button
-                  variant="outline"
-                  disabled={isSelectionMode || !canWrite}
-                  onClick={() => openUploadDrawer(id)}
-                >
-                  <Upload className="h-4 w-4" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {disabledReason && (
-              <TooltipContent>
-                <p>{disabledReason}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-
-        <Button
-          variant="outline"
-          disabled={songs.length === 0 || isSelectionMode}
-          onClick={() => enterSelectionMode()}
-        >
-          <ListMusic className="h-4 w-4" />
-        </Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" disabled={isSelectionMode}>
-              <ArrowUpDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setSortOption("date-desc")}>
-              {sortOption === "date-desc" && "✓ "}
-              {I18n.libraries.detail.sort.dateDesc}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("date-asc")}>
-              {sortOption === "date-asc" && "✓ "}
-              {I18n.libraries.detail.sort.dateAsc}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("title-asc")}>
-              {sortOption === "title-asc" && "✓ "}
-              {I18n.libraries.detail.sort.titleAsc}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("title-desc")}>
-              {sortOption === "title-desc" && "✓ "}
-              {I18n.libraries.detail.sort.titleDesc}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("artist-asc")}>
-              {sortOption === "artist-asc" && "✓ "}
-              {I18n.libraries.detail.sort.artistAsc}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("album-asc")}>
-              {sortOption === "album-asc" && "✓ "}
-              {I18n.libraries.detail.sort.albumAsc}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <LibraryActionBar
+        songsCount={songs.length}
+        isSelectionMode={isSelectionMode}
+        isDownloading={isDownloading}
+        showDownloadButton={showCacheUI}
+        canWrite={canWrite}
+        disabledReason={disabledReason}
+        sortOption={sortOption}
+        onPlayAll={handlePlayAll}
+        onDownloadAll={handleDownloadAll}
+        onUpload={() => openUploadDrawer(id)}
+        onEnterSelectionMode={() => enterSelectionMode()}
+        onSortChange={setSortOption}
+      />
 
       {/* Current Sort */}
       <p className="mb-4 text-xs text-muted-foreground">
@@ -591,128 +428,32 @@ export default function LibraryDetailPage() {
           <div className="text-center">
             <ListPlus className="mx-auto h-16 w-16 text-muted-foreground/50" />
             <h2 className="mt-4 text-xl font-semibold">{I18n.libraries.detail.empty.title}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {I18n.libraries.detail.empty.description}
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{I18n.libraries.detail.empty.description}</p>
           </div>
         </div>
       ) : (
         <div className="space-y-2 pb-32">
-          {songs.map((song, index) => {
-            const isSelected = isSongSelected(song.id);
-            const isCached = songCacheStatus[song.id] ?? false;
-            // Dim uncached songs when Auth user is offline
-            const shouldDim = !isGuest && !isOnline && !isCached;
-            
-            return (
-              <div
-                key={song.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
-                  isSelectionMode && isSelected && "border-primary bg-primary/5",
-                  isSelectionMode && "cursor-pointer",
-                  shouldDim && "opacity-50"
-                )}
-                onMouseDown={() => handlePressStart(song)}
-                onMouseUp={handlePressEnd}
-                onMouseLeave={handlePressEnd}
-                onTouchStart={() => handlePressStart(song)}
-                onTouchEnd={handlePressEnd}
-                onTouchCancel={handlePressEnd}
-                onClick={() => handleSongClick(song, index)}
-              >
-                {/* Selection checkbox */}
-                {isSelectionMode && (
-                  <div
-                    className={cn(
-                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
-                      isSelected
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-muted-foreground"
-                    )}
-                  >
-                    {isSelected && <Check className="h-4 w-4" />}
-                  </div>
-                )}
-
-                {/* Album Cover */}
-                <CoverImage
-                  src={song.coverUrl}
-                  alt={song.title}
-                  type={CoverType.Song}
-                  size={CoverSize.MD}
-                  className="shrink-0"
-                />
-
-                {/* Song Info */}
-                <div className="flex-1 overflow-hidden">
-                  <p className="truncate font-medium">{song.title}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {song.artist}
-                    {song.album && ` • ${song.album}`}
-                  </p>
-                </div>
-
-                {/* Duration and Cache Status */}
-                {!isSelectionMode && (
-                  <div className="flex items-center gap-2 shrink-0">
-                    {!isGuest && cacheAvailable && (
-                      <CacheStatusIcon isCached={songCacheStatus[song.id] ?? false} />
-                    )}
-                    {song.duration && (
-                      <span className="text-sm text-muted-foreground">
-                        {formatDuration(song.duration)}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* More Menu (hidden in selection mode) */}
-                {!isSelectionMode && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openAddToPlaylistSheet({
-                            id: song.id,
-                            title: song.title,
-                            coverUrl: song.coverUrl,
-                          });
-                        }}
-                      >
-                        <ListMusic className="mr-2 h-4 w-4" />
-                        {I18n.library.addToPlaylist.label}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSongToDelete({ id: song.id, title: song.title });
-                          setDeleteDialogOpen(true);
-                        }}
-                        className="text-destructive focus:text-destructive"
-                        disabled={!canWrite}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {I18n.libraries.detail.deleteSong.button}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            );
-          })}
+          {songs.map((song, index) => (
+            <SongListItem
+              key={song.id}
+              song={song}
+              index={index}
+              isSelectionMode={isSelectionMode}
+              isSelected={isSongSelected(song.id)}
+              isCached={songCacheStatus[song.id] ?? false}
+              showCacheStatus={showCacheUI}
+              shouldDim={!isGuest && !isOnline && !(songCacheStatus[song.id] ?? false)}
+              canWrite={canWrite}
+              onPressStart={handlePressStart}
+              onPressEnd={handlePressEnd}
+              onClick={handleSongClick}
+              onAddToPlaylist={(s) => openAddToPlaylistSheet({ id: s.id, title: s.title, coverUrl: s.coverUrl })}
+              onDelete={(s) => {
+                setSongToDelete({ id: s.id, title: s.title });
+                setDeleteDialogOpen(true);
+              }}
+            />
+          ))}
         </div>
       )}
 
@@ -720,14 +461,11 @@ export default function LibraryDetailPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {I18n.libraries.detail.deleteSong.confirmTitle}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{I18n.libraries.detail.deleteSong.confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {songToDelete
                 ? I18n.libraries.detail.deleteSong.confirmDescription.replace("{0}", songToDelete.title)
-                : ""
-              }
+                : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
