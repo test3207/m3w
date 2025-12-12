@@ -133,7 +133,9 @@ export async function routeRequest(
 
   // Auth users in offline mode are read-only (no writes allowed)
   // This enforces the design decision from User Stories Part 3
-  if (effectivelyOffline && !isGuest && method !== "GET") {
+  // Only block actual write methods, allow safe methods like HEAD/OPTIONS
+  const isWriteMethod = ["POST", "PUT", "DELETE", "PATCH"].includes(method);
+  if (effectivelyOffline && !isGuest && isWriteMethod) {
     logger.info("Blocking write operation for Auth user offline", { path, method });
     return new Response(
       JSON.stringify({
