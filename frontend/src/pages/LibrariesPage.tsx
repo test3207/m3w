@@ -9,7 +9,8 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Library, Plus, Music, Trash2 } from "lucide-react";
+import { Library, Plus, Trash2 } from "lucide-react";
+import { CoverImage } from "@/components/ui/cover-image";
 import { useToast } from "@/components/ui/use-toast";
 import { getLibraryDisplayName, getLibraryBadge } from "@/lib/utils/defaults";
 import { isDefaultLibrary } from "@m3w/shared";
@@ -223,19 +224,12 @@ export default function LibrariesPage() {
                   <div className="flex items-start gap-4">
                     {/* Cover Image - 96px (clickable) */}
                     <Link to={`/libraries/${library.id}`} className="shrink-0">
-                      <div className="h-24 w-24 overflow-hidden rounded-md bg-muted">
-                        {library.coverUrl ? (
-                          <img
-                            src={library.coverUrl}
-                            alt={getLibraryDisplayName(library)}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Music className="h-10 w-10 text-muted-foreground/30" />
-                          </div>
-                        )}
-                      </div>
+                      <CoverImage
+                        src={library.coverUrl}
+                        alt={getLibraryDisplayName(library)}
+                        type="library"
+                        size="lg"
+                      />
                     </Link>
 
                     {/* Metadata (clickable) */}

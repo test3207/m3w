@@ -55,6 +55,39 @@ async function getAudioCache(): Promise<Cache> {
 }
 
 /**
+ * Cache cover image for a song (best effort, non-blocking)
+ * Called after audio is cached to ensure covers are available offline
+ * 
+ * Note: Uses relative path as cache key to match Service Worker's url.pathname strategy
+ */
+async function cacheCoverImage(songId: string, cache: Cache): Promise<void> {
+  // Use relative path as cache key (matches Service Worker's url.pathname)
+  const coverPath = MAIN_API_ENDPOINTS.songs.cover(songId);  // "/api/songs/{id}/cover"
+  
+  // Check if already cached
+  const existing = await cache.match(coverPath);
+  if (existing) {
+    logger.debug("Cover already cached", { songId });
+    return;
+  }
+  
+  // Fetch cover image (streamApiClient will build full URL)
+  const response = await streamApiClient.get(coverPath);
+  if (!response.ok) {
+    // Cover might not exist (song has no cover art), this is fine
+    if (response.status === 404) {
+      logger.debug("Song has no cover art", { songId });
+      return;
+    }
+    throw new Error(`Failed to fetch cover: ${response.status}`);
+  }
+  
+  // Cache the cover using relative path as key
+  await cache.put(coverPath, response.clone());
+  logger.debug("Cover cached successfully", { songId });
+}
+
+/**
  * Cache a single song by ID
  */
 export async function cacheSong(
@@ -116,6 +149,11 @@ export async function cacheSong(
     // Cache the response
     const cache = await getAudioCache();
     await cache.put(MAIN_API_ENDPOINTS.songs.stream(songId), responseClone);
+
+    // Also cache the cover image (non-blocking, best effort)
+    cacheCoverImage(songId, cache).catch((err) => {
+      logger.warn("Failed to cache cover image (non-fatal)", { songId, error: err });
+    });
 
     onProgress?.({
       songId,
@@ -220,28 +258,31 @@ export async function getCachedSongs(): Promise<string[]> {
 
 /**
  * Get cache statistics
+ * 
+ * Note: Only counts audio streams (/stream), not cover images (/cover)
  */
 export async function getCacheStats(): Promise<CacheStats> {
   try {
     const cache = await getAudioCache();
     const requests = await cache.keys();
 
-    const songs = await Promise.all(
+    const songs = (await Promise.all(
       requests.map(async (request) => {
+        // Only count audio streams, not covers
+        const match = request.url.match(/\/songs\/([^/]+)\/stream/);
+        if (!match) return null;  // Skip non-stream entries (e.g., covers)
+
         const response = await cache.match(request);
         const size = response ? parseInt(response.headers.get("content-length") || "0", 10) : 0;
 
-        const match = request.url.match(/\/songs\/([^/]+)\/stream/);
-        const songId = match ? match[1] : "unknown";
-
         return {
-          songId,
+          songId: match[1],
           url: request.url,
           size,
           cachedAt: Date.now(), // Note: Cache API doesn't track timestamps, using current time
         };
       })
-    );
+    )).filter((item): item is NonNullable<typeof item> => item !== null);
 
     const totalSize = songs.reduce((sum, song) => sum + song.size, 0);
 

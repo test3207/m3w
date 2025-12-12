@@ -3,7 +3,8 @@
  * Compact player displayed above bottom navigation
  */
 
-import { Play, Pause, SkipForward, Music } from "lucide-react";
+import { Play, Pause, SkipForward } from "lucide-react";
+import { CoverImage } from "@/components/ui/cover-image";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useUIStore } from "@/stores/uiStore";
 import { cn } from "@/lib/utils";
@@ -24,19 +25,13 @@ export function MiniPlayer() {
     >
       <div className="flex h-18 items-center gap-3 px-4 py-2">
         {/* Album Cover */}
-        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
-          {currentSong.coverUrl ? (
-            <img
-              src={currentSong.coverUrl}
-              alt={currentSong.title}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted">
-              <Music className="h-6 w-6 text-muted-foreground/30" />
-            </div>
-          )}
-        </div>
+        <CoverImage
+          src={currentSong.coverUrl}
+          alt={currentSong.title}
+          type="song"
+          size="md"
+          className="shrink-0"
+        />
 
         {/* Song Info */}
         <div className="flex-1 overflow-hidden">

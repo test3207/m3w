@@ -274,7 +274,11 @@ class AudioPlayer {
       currentTrack: this.currentTrack,
       isPlaying: howl?.playing() ?? false,
       currentTime,
-      duration: howl?.duration() ?? this.currentTrack?.duration ?? 0,
+      // Use howl.duration() only if it's a positive number (audio loaded)
+      // Otherwise fallback to track metadata duration
+      duration: (howl?.duration() || 0) > 0 
+        ? howl!.duration() 
+        : (this.currentTrack?.duration ?? 0),
       volume: Howler.volume(),
       isMuted: this.isMuted,
       isLoading: howl?.state() === "loading",

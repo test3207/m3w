@@ -67,6 +67,7 @@ export const MAIN_API_ENDPOINTS = {
     detail: (id: string) => `/api/songs/${id}`,
     update: (id: string) => `/api/songs/${id}`,
     stream: (id: string) => `/api/songs/${id}/stream`,
+    cover: (id: string) => `/api/songs/${id}/cover`,
     playlistCount: (id: string) => `/api/songs/${id}/playlist-count`,
     delete: (id: string, libraryId: string) => `/api/songs/${id}?libraryId=${libraryId}`,
   },

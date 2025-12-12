@@ -9,7 +9,8 @@ import { usePlaylistStore } from "@/stores/playlistStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ListMusic, Plus, Music, Trash2 } from "lucide-react";
+import { ListMusic, Plus, Trash2 } from "lucide-react";
+import { CoverImage } from "@/components/ui/cover-image";
 import { useToast } from "@/components/ui/use-toast";
 import { eventBus, EVENTS } from "@/lib/events";
 import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
@@ -243,19 +244,12 @@ export default function PlaylistsPage() {
                   <div className="flex items-start gap-4">
                     {/* Cover Image - 96px (clickable) */}
                     <Link to={`/playlists/${playlist.id}`} className="shrink-0">
-                      <div className="h-24 w-24 overflow-hidden rounded-md bg-muted">
-                        {playlist.coverUrl ? (
-                          <img
-                            src={playlist.coverUrl}
-                            alt={getPlaylistDisplayName(playlist)}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Music className="h-10 w-10 text-muted-foreground/30" />
-                          </div>
-                        )}
-                      </div>
+                      <CoverImage
+                        src={playlist.coverUrl}
+                        alt={getPlaylistDisplayName(playlist)}
+                        type="playlist"
+                        size="lg"
+                      />
                     </Link>
 
                     {/* Metadata (clickable) */}
