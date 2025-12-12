@@ -678,7 +678,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       if (skippedCount > 0) {
         logger.info("Skipped uncached songs", { skippedCount });
         toast({
-          title: I18n.player.skippedUncachedSongs.replace("{count}", String(skippedCount)),
+          title: I18n.player.skippedUncachedSongs.replace("{0}", String(skippedCount)),
         });
       }
 
@@ -747,7 +747,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       if (skippedCount > 0) {
         logger.info("Skipped uncached songs", { skippedCount });
         toast({
-          title: I18n.player.skippedUncachedSongs.replace("{count}", String(skippedCount)),
+          title: I18n.player.skippedUncachedSongs.replace("{0}", String(skippedCount)),
         });
       }
 

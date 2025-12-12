@@ -404,7 +404,7 @@
       "savingButton": "保存中...",
       "saveButton": "保存"
     },
-    "skippedUncachedSongs": "已跳过 {count} 首歌曲（未下载）",
+    "skippedUncachedSongs": "已跳过 {0} 首歌曲（未下载）",
     "noCachedSongs": "没有可用的已下载歌曲",
     "songNotCached": "此歌曲尚未下载"
   },

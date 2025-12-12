@@ -732,7 +732,7 @@ export interface Messages {
       /** Save */
       saveButton: string;
     };
-    /** Skipped {count} songs (not downloaded) */
+    /** Skipped {0} songs (not downloaded) */
     skippedUncachedSongs: string;
     /** No downloaded songs available */
     noCachedSongs: string;

@@ -404,7 +404,7 @@
       "savingButton": "Saving...",
       "saveButton": "Save"
     },
-    "skippedUncachedSongs": "Skipped {count} songs (not downloaded)",
+    "skippedUncachedSongs": "Skipped {0} songs (not downloaded)",
     "noCachedSongs": "No downloaded songs available",
     "songNotCached": "This song is not downloaded"
   },
