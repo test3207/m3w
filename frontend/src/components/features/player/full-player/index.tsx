@@ -222,6 +222,8 @@ export function FullPlayer() {
   };
 
   const displaySong = currentSong || lastPlayedSong;
+  // Fallback to song metadata duration when AudioPlayer hasn't loaded the track yet
+  const displayDuration = duration > 0 ? duration : (displaySong?.duration ?? 0);
   if (animationPhase === AnimationPhase.Hidden || !displaySong) return null;
 
   // Transform calculations
@@ -306,7 +308,7 @@ export function FullPlayer() {
 
       {/* Controls Section */}
       <Stack gap="lg" className="px-8 pb-8 pt-4 shrink-0">
-        <ProgressBar currentTime={currentTime} duration={duration} onSeek={seek} />
+        <ProgressBar currentTime={currentTime} duration={displayDuration} onSeek={seek} />
         <PlaybackControls
           isPlaying={isPlaying}
           isShuffled={isShuffled}
