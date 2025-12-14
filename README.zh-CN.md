@@ -47,20 +47,36 @@
 
 ### 方式二：Docker 部署
 
-需要持久化存储和多设备同步：
-
 ```bash
-# 下载 compose 文件
-curl -sL https://raw.githubusercontent.com/test3207/m3w/main/docker/examples/simple/docker-compose.yml \
-  -o docker-compose.yml
-
-# 启动服务
-docker compose up -d
+# 最简单：仅离线模式（无需数据库）
+docker run -d --name m3w -p 4000:4000 ghcr.io/test3207/m3w:latest
 
 # 访问 http://localhost:4000
 ```
 
-> **提示**：默认配置适用于本地使用。如需 GitHub 登录（多设备同步），请在 compose 文件中配置 `GITHUB_CLIENT_ID` 和 `GITHUB_CLIENT_SECRET`。详见 [部署指南](./docker/README.md)。
+这将以纯离线模式运行 M3W，所有数据存储在浏览器中。
+
+<details>
+<summary><b>🔧 完整配置（GitHub 登录 + 多设备同步）</b></summary>
+
+如需持久化存储和多设备同步，需要 PostgreSQL 和 MinIO：
+
+```bash
+# 下载包含所有服务的 compose 文件
+curl -sL https://raw.githubusercontent.com/test3207/m3w/main/docker/examples/simple/docker-compose.yml \
+  -o docker-compose.yml
+
+# 配置 GitHub OAuth（编辑 docker-compose.yml）
+# GITHUB_CLIENT_ID=your-client-id
+# GITHUB_CLIENT_SECRET=your-client-secret
+
+# 启动所有服务
+docker compose up -d
+```
+
+详细配置选项请参考 [部署指南](./docker/README.md)。
+
+</details>
 
 ### 方式三：开发环境
 
