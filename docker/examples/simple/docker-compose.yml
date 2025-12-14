@@ -27,16 +27,16 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_BUCKET_NAME=m3w-music
       
-      # JWT (works with default, change for production)
-      - JWT_SECRET=m3w-simple-deployment-secret-change-in-production
+      # JWT (auto-generated if not set, change for production persistence)
+      # - JWT_SECRET=your-secret-key
       - JWT_ACCESS_EXPIRY=6h
       - JWT_REFRESH_EXPIRY=90d
       
       # GitHub OAuth (OPTIONAL - only needed for GitHub login)
       # Offline mode works without these!
       # To enable: Create OAuth app at https://github.com/settings/developers
-      - GITHUB_CLIENT_ID=
-      - GITHUB_CLIENT_SECRET=
+      # - GITHUB_CLIENT_ID=your-client-id
+      # - GITHUB_CLIENT_SECRET=your-client-secret
       - GITHUB_CALLBACK_URL=http://localhost:4000/api/auth/callback
       
       # Server config
@@ -50,10 +50,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    # Optional: Run migrations on startup
-    # command: sh -c "npx prisma migrate deploy && node dist/index.js"
 
-  # PostgreSQL database
+  # PostgreSQL database (internal only)
   postgres:
     image: postgres:16-alpine
     container_name: m3w-postgres
@@ -62,8 +60,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: m3w
-    ports:
-      - "5432:5432"
+    # No external ports - only accessible within Docker network
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -72,7 +69,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # MinIO (S3-compatible object storage)
+  # MinIO (S3-compatible object storage, internal only)
   minio:
     image: minio/minio:latest
     container_name: m3w-minio
@@ -81,9 +78,10 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - "9000:9000"  # API
-      - "9001:9001"  # Console UI
+    # No external ports - only accessible within Docker network
+    # To access MinIO console for debugging, uncomment:
+    # ports:
+    #   - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
