@@ -131,4 +131,182 @@ describe("PlayQueue", () => {
     expect(state.currentIndex).toBe(-1);
     expect(queue.getCurrentTrack()).toBeNull();
   });
+
+  describe("previous()", () => {
+    it("moves to previous track", () => {
+      queue.setQueue(tracks, 2);
+
+      expect(queue.previous()).toEqual(tracks[1]);
+      expect(queue.getState().currentIndex).toBe(1);
+
+      expect(queue.previous()).toEqual(tracks[0]);
+      expect(queue.getState().currentIndex).toBe(0);
+    });
+
+    it("returns current track at start without repeat", () => {
+      queue.setQueue(tracks, 0);
+      queue.setRepeatMode(RepeatMode.Off);
+
+      // At start, should stay at current track
+      const current = queue.getCurrentTrack();
+      expect(queue.previous()).toEqual(current);
+      expect(queue.getState().currentIndex).toBe(0);
+    });
+
+    it("wraps to end when repeat all is enabled", () => {
+      queue.setQueue(tracks, 0);
+      queue.setRepeatMode(RepeatMode.All);
+
+      expect(queue.previous()).toEqual(tracks[2]);
+      expect(queue.getState().currentIndex).toBe(2);
+    });
+
+    it("returns null for empty queue", () => {
+      expect(queue.previous()).toBeNull();
+    });
+  });
+
+  describe("addTrack()", () => {
+    it("adds track to end of queue", () => {
+      queue.setQueue(tracks, 0);
+      const newTrack = createTrack("track-4");
+
+      queue.addTrack(newTrack);
+
+      const state = queue.getState();
+      expect(state.tracks.length).toBe(4);
+      expect(state.tracks[3]).toEqual(newTrack);
+    });
+
+    it("adds track at specific position", () => {
+      queue.setQueue(tracks, 0);
+      const newTrack = createTrack("track-new");
+
+      queue.addTrack(newTrack, 1);
+
+      const state = queue.getState();
+      expect(state.tracks.length).toBe(4);
+      expect(state.tracks[1]).toEqual(newTrack);
+      expect(state.tracks[2]).toEqual(tracks[1]);
+    });
+  });
+
+  describe("getNextTrack() and getPreviousTrack()", () => {
+    it("getNextTrack returns next without changing index", () => {
+      queue.setQueue(tracks, 0);
+
+      const next = queue.getNextTrack();
+      expect(next).toEqual(tracks[1]);
+      expect(queue.getState().currentIndex).toBe(0); // Index unchanged
+    });
+
+    it("getPreviousTrack returns previous without changing index", () => {
+      queue.setQueue(tracks, 2);
+
+      const prev = queue.getPreviousTrack();
+      expect(prev).toEqual(tracks[1]);
+      expect(queue.getState().currentIndex).toBe(2); // Index unchanged
+    });
+
+    it("getNextTrack returns null at end without repeat", () => {
+      queue.setQueue(tracks, 2);
+      queue.setRepeatMode(RepeatMode.Off);
+
+      expect(queue.getNextTrack()).toBeNull();
+    });
+
+    it("getNextTrack returns first track at end with repeat all", () => {
+      queue.setQueue(tracks, 2);
+      queue.setRepeatMode(RepeatMode.All);
+
+      expect(queue.getNextTrack()).toEqual(tracks[0]);
+    });
+
+    it("getNextTrack returns current track with repeat one", () => {
+      queue.setQueue(tracks, 1);
+      queue.setRepeatMode(RepeatMode.One);
+
+      expect(queue.getNextTrack()).toEqual(tracks[1]);
+    });
+
+    it("getPreviousTrack wraps to end with repeat all at start", () => {
+      queue.setQueue(tracks, 0);
+      queue.setRepeatMode(RepeatMode.All);
+
+      expect(queue.getPreviousTrack()).toEqual(tracks[2]);
+    });
+
+    it("getPreviousTrack returns current at start without repeat", () => {
+      queue.setQueue(tracks, 0);
+      queue.setRepeatMode(RepeatMode.Off);
+
+      expect(queue.getPreviousTrack()).toEqual(tracks[0]);
+    });
+  });
+
+  describe("jumpTo()", () => {
+    it("jumps to track by id", () => {
+      queue.setQueue(tracks, 0);
+
+      const result = queue.jumpTo("track-2");
+
+      expect(result).toEqual(tracks[1]);
+      expect(queue.getState().currentIndex).toBe(1);
+    });
+
+    it("returns null for non-existent track", () => {
+      queue.setQueue(tracks, 0);
+
+      const result = queue.jumpTo("non-existent");
+
+      expect(result).toBeNull();
+      expect(queue.getState().currentIndex).toBe(0); // Index unchanged
+    });
+  });
+
+  describe("removeTrack() edge cases", () => {
+    it("does nothing when removing non-existent track", () => {
+      queue.setQueue(tracks, 1);
+
+      queue.removeTrack("non-existent");
+
+      expect(queue.getState().tracks.length).toBe(3);
+      expect(queue.getState().currentIndex).toBe(1);
+    });
+
+    it("adjusts index when removing track before current", () => {
+      queue.setQueue(tracks, 2);
+
+      queue.removeTrack("track-1");
+
+      expect(queue.getState().currentIndex).toBe(1); // Was 2, now 1
+    });
+
+    it("handles removing last track when at end", () => {
+      queue.setQueue(tracks, 2);
+
+      queue.removeTrack("track-3");
+
+      // Index should adjust to stay within bounds
+      expect(queue.getState().currentIndex).toBe(1);
+    });
+  });
+
+  describe("empty queue handling", () => {
+    it("getCurrentTrack returns null for empty queue", () => {
+      expect(queue.getCurrentTrack()).toBeNull();
+    });
+
+    it("getNextTrack returns null for empty queue", () => {
+      expect(queue.getNextTrack()).toBeNull();
+    });
+
+    it("getPreviousTrack returns null for empty queue", () => {
+      expect(queue.getPreviousTrack()).toBeNull();
+    });
+
+    it("next returns null for empty queue", () => {
+      expect(queue.next()).toBeNull();
+    });
+  });
 });

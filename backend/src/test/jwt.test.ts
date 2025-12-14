@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateAccessToken, generateRefreshToken, verifyToken } from '../lib/jwt';
+import { generateAccessToken, generateRefreshToken, verifyToken, generateTokens } from '../lib/jwt';
 import type { User } from '@m3w/shared';
 
 describe('JWT Utilities', () => {
@@ -92,6 +92,56 @@ describe('JWT Utilities', () => {
       // Both should be valid
       expect(verifyToken(accessToken)).toBeTruthy();
       expect(verifyToken(refreshToken)).toBeTruthy();
+    });
+  });
+
+  describe('generateTokens', () => {
+    it('should return accessToken, refreshToken, and expiresAt', () => {
+      const tokens = generateTokens(mockUser);
+
+      expect(tokens).toHaveProperty('accessToken');
+      expect(tokens).toHaveProperty('refreshToken');
+      expect(tokens).toHaveProperty('expiresAt');
+    });
+
+    it('should return valid access token', () => {
+      const tokens = generateTokens(mockUser);
+      const payload = verifyToken(tokens.accessToken);
+
+      expect(payload).toBeTruthy();
+      expect(payload?.userId).toBe(mockUser.id);
+      expect(payload?.type).toBe('access');
+    });
+
+    it('should return valid refresh token', () => {
+      const tokens = generateTokens(mockUser);
+      const payload = verifyToken(tokens.refreshToken);
+
+      expect(payload).toBeTruthy();
+      expect(payload?.userId).toBe(mockUser.id);
+      expect(payload?.type).toBe('refresh');
+    });
+
+    it('should return expiresAt as future timestamp in milliseconds', () => {
+      const tokens = generateTokens(mockUser);
+      const now = Date.now();
+
+      // expiresAt should be in the future
+      expect(tokens.expiresAt).toBeGreaterThan(now);
+
+      // expiresAt should be in milliseconds (not seconds)
+      // Access token default expiry is 6h = 21600000ms
+      expect(tokens.expiresAt).toBeGreaterThan(now);
+      expect(tokens.expiresAt).toBeLessThan(now + 24 * 60 * 60 * 1000); // Within 24 hours
+    });
+
+    it('should return different tokens for different users', () => {
+      const user2: User = { ...mockUser, id: 'user-789', email: 'another@example.com' };
+      const tokens1 = generateTokens(mockUser);
+      const tokens2 = generateTokens(user2);
+
+      expect(tokens1.accessToken).not.toBe(tokens2.accessToken);
+      expect(tokens1.refreshToken).not.toBe(tokens2.refreshToken);
     });
   });
 });

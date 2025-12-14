@@ -5,9 +5,9 @@
  * Database operations for player-related entities.
  */
 
-import { prisma } from '../prisma';
-import { logger } from '../logger';
-import { resolveCoverUrl } from '../cover-url-helper';
+import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { resolveCoverUrl } from '../lib/cover-url-helper';
 import { RepeatMode } from '@m3w/shared';
 
 // ============================================================================
