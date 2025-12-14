@@ -232,15 +232,29 @@ jobs:
       
       - name: Cherry-pick version bump to main
         if: ${{ !inputs.dry_run }}
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
           git config user.name "github-actions[bot]"
           # 41898282 is the official GitHub user ID for github-actions[bot]
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
+          # Configure SSH for Deploy Key (bypasses branch protection ruleset)
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "Host github.com" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+          
+          # Switch remote to SSH for ruleset bypass
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          
           BUMP_COMMIT="${{ steps.prod_branch.outputs.bump_commit }}"
           
+          git fetch origin main
           git checkout main
-          git pull origin main
+          git reset --hard origin/main
           
           # Cherry-pick the version bump commit
           if git cherry-pick "$BUMP_COMMIT" --no-edit; then
