@@ -245,16 +245,26 @@ function buildImage(container, registry, name, dockerfile, outputDir, allTags, p
   log.success(`  ✅ ${name} built`);
 }
 
-// Check if running in CI/container environment
+// Check if running inside a Docker container (not just CI environment)
+// IMPORTANT: GitHub Actions runs on Ubuntu (glibc), but we need to build
+// inside Alpine container to get correct Prisma binaries (musl).
+// So we should NOT treat CI as "in container" - we need to spawn a container.
 function isInContainer() {
-  // Check for Docker container
+  // Check for Docker container (/.dockerenv file exists inside containers)
   if (fs.existsSync('/.dockerenv')) {
     return true;
   }
-  // Check for CI environment variables
-  if (process.env.CI || process.env.GITHUB_ACTIONS || process.env.GITLAB_CI) {
-    return true;
+  // Check for container environment via cgroup
+  try {
+    const cgroup = fs.readFileSync('/proc/1/cgroup', 'utf8');
+    if (cgroup.includes('docker') || cgroup.includes('containerd')) {
+      return true;
+    }
+  } catch {
+    // Not in container or /proc not accessible
   }
+  // CI environments (GitHub Actions, GitLab CI) should NOT be treated as containers
+  // They run on glibc-based VMs but we need musl binaries for Alpine images
   return false;
 }
 
