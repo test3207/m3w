@@ -47,20 +47,36 @@ All data stays in your browser. No account needed.
 
 ### Option 2: Docker Deployment
 
-For persistent storage and multi-device sync:
+```bash
+# Simplest: Offline mode only (no database required)
+docker run -d --name m3w -p 4000:4000 ghcr.io/test3207/m3w:latest
+
+# Visit http://localhost:4000 → Click "Offline Mode"
+```
+
+This runs M3W in offline-only mode. All data is stored in your browser.
+
+<details>
+<summary><b>🔧 Full Setup (Multi-device sync with GitHub login)</b></summary>
+
+For persistent storage and multi-device sync, you need PostgreSQL and MinIO:
 
 ```bash
-# Download compose file
+# Download compose file with all services
 curl -sL https://raw.githubusercontent.com/test3207/m3w/main/docker/examples/simple/docker-compose.yml \
   -o docker-compose.yml
 
-# Start services
-docker compose up -d
+# Configure GitHub OAuth (edit docker-compose.yml)
+# GITHUB_CLIENT_ID=your-client-id
+# GITHUB_CLIENT_SECRET=your-client-secret
 
-# Visit http://localhost:4000
+# Start all services
+docker compose up -d
 ```
 
-> **Note**: The default setup works for local use. For GitHub login (multi-device sync), configure `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in the compose file. See [Deployment Guide](./docker/README.md) for details.
+See [Deployment Guide](./docker/README.md) for detailed configuration options.
+
+</details>
 
 ### Option 3: Development Setup
 
