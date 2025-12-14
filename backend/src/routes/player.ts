@@ -19,7 +19,7 @@ import {
   updatePlaybackPreferences,
   getPlaybackProgress,
   updatePlaybackProgress,
-} from '../lib/services/player.service';
+} from '../services/player.service';
 import type { Context } from 'hono';
 
 const app = new Hono();

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { format, registerMessages, setLocale } from "./i18n";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { format, registerMessages, setLocale, getLocale, getAvailableLocales, onLocaleChange, I18n } from "./i18n";
 
 describe("i18n format function", () => {
   beforeEach(() => {
@@ -129,6 +129,120 @@ describe("i18n format function", () => {
       template = "共 {0} 项";
       result = format(template, "10");
       expect(result).toBe("共 10 项");
+    });
+  });
+});
+
+describe("i18n core functions", () => {
+  beforeEach(() => {
+    registerMessages("en", {
+      dashboard: { title: "Dashboard", welcome: "Welcome" },
+      error: { unauthorized: "Unauthorized" },
+    });
+    registerMessages("zh-CN", {
+      dashboard: { title: "仪表盘", welcome: "欢迎" },
+      error: { unauthorized: "未授权" },
+    });
+    setLocale("en");
+  });
+
+  describe("getLocale", () => {
+    it("should return current locale", () => {
+      expect(getLocale()).toBe("en");
+    });
+
+    it("should return updated locale after setLocale", () => {
+      setLocale("zh-CN");
+      expect(getLocale()).toBe("zh-CN");
+    });
+  });
+
+  describe("getAvailableLocales", () => {
+    it("should return array of registered locales", () => {
+      const locales = getAvailableLocales();
+      expect(locales).toContain("en");
+      expect(locales).toContain("zh-CN");
+    });
+
+    it("should include newly registered locale", () => {
+      registerMessages("fr", { dashboard: { title: "Tableau de bord" } });
+      const locales = getAvailableLocales();
+      expect(locales).toContain("fr");
+    });
+  });
+
+  describe("onLocaleChange", () => {
+    it("should call listener when locale changes", () => {
+      const listener = vi.fn();
+      onLocaleChange(listener);
+
+      setLocale("zh-CN");
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("should call multiple listeners", () => {
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
+      onLocaleChange(listener1);
+      onLocaleChange(listener2);
+
+      setLocale("zh-CN");
+      expect(listener1).toHaveBeenCalledTimes(1);
+      expect(listener2).toHaveBeenCalledTimes(1);
+    });
+
+    it("should return unsubscribe function", () => {
+      const listener = vi.fn();
+      const unsubscribe = onLocaleChange(listener);
+
+      setLocale("zh-CN");
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsubscribe();
+      setLocale("en");
+      expect(listener).toHaveBeenCalledTimes(1); // Still 1, not called again
+    });
+
+    it("should not call listener when setting same locale fails", () => {
+      const listener = vi.fn();
+      onLocaleChange(listener);
+
+      // Try to set unregistered locale (should fail silently)
+      setLocale("de");
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("I18n proxy", () => {
+    it("should access nested message via dot notation", () => {
+      setLocale("en");
+      expect(I18n.dashboard.title).toBe("Dashboard");
+    });
+
+    it("should return correct message for current locale", () => {
+      setLocale("en");
+      expect(I18n.dashboard.title).toBe("Dashboard");
+
+      setLocale("zh-CN");
+      expect(I18n.dashboard.title).toBe("仪表盘");
+    });
+
+    it("should access deeply nested messages", () => {
+      setLocale("en");
+      // error.unauthorized is registered in beforeEach and exists in the type
+      const result = I18n.error.unauthorized;
+      expect(typeof result).toBe("string");
+      expect(result).toBe("Unauthorized");
+    });
+  });
+
+  describe("setLocale edge cases", () => {
+    it("should not change locale for unregistered locale", () => {
+      setLocale("en");
+      const originalLocale = getLocale();
+
+      setLocale("unregistered-locale");
+      expect(getLocale()).toBe(originalLocale);
     });
   });
 });

@@ -8,8 +8,8 @@ import { pinyin } from 'pinyin-pro';
 /**
  * Convert text to Pinyin for sorting
  * Uses pinyin-pro for accurate Chinese character conversion
- * Non-Chinese characters pass through unchanged
+ * Non-Chinese characters pass through unchanged (consecutive, not spaced)
  */
 export function getPinyinSort(text: string): string {
-  return pinyin(text || '', { toneType: 'none' }).toLowerCase();
+  return pinyin(text || '', { toneType: 'none', nonZh: 'consecutive' }).toLowerCase();
 }
