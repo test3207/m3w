@@ -1,11 +1,23 @@
 name: Build Release
 
-# Build production Docker images with version bump
+# Build production Docker images from a validated RC branch
 # This workflow is MANUAL ONLY - triggered via workflow_dispatch
+#
+# Flow:
+# 1. Validate RC branch (release/vX.Y.Z-rc.N)
+# 2. Create prod branch (release/vX.Y.Z) from RC
+# 3. Bump version on prod branch
+# 4. Build and push images
+# 5. Create tag (optional) and GitHub Release
+# 6. Cherry-pick version bump to main
 
 on:
   workflow_dispatch:
     inputs:
+      release_branch:
+        description: 'RC branch to release (e.g., release/v0.1.0-rc.7)'
+        required: true
+        type: string
       bump_type:
         description: 'Version bump type'
         required: true
@@ -14,7 +26,12 @@ on:
           - patch
           - minor
           - major
-        default: patch
+        default: major
+      create_tag:
+        description: 'Create git tag for this release'
+        required: false
+        type: boolean
+        default: true
       dry_run:
         description: 'Dry run (build but do not push or release)'
         required: false
@@ -31,15 +48,60 @@ permissions:
   packages: write
 
 jobs:
+  validate-branch:
+    name: Validate RC Branch
+    runs-on: ubuntu-latest
+    outputs:
+      base_version: ${{ steps.validate.outputs.base_version }}
+      rc_number: ${{ steps.validate.outputs.rc_number }}
+    
+    steps:
+      - name: Validate branch format
+        id: validate
+        run: |
+          BRANCH="${{ inputs.release_branch }}"
+          echo "Validating branch: $BRANCH"
+          
+          # Must be release/vX.Y.Z-rc.N format
+          if ! [[ "$BRANCH" =~ ^release/v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]]; then
+            echo "❌ Error: Branch must be in format 'release/vX.Y.Z-rc.N'"
+            echo "   Got: $BRANCH"
+            echo "   Example: release/v0.1.0-rc.7"
+            exit 1
+          fi
+          
+          # Extract base version (e.g., 0.1.0 from release/v0.1.0-rc.7)
+          BASE_VERSION=$(echo "$BRANCH" | sed 's|release/v\([0-9.]*\)-rc.*|\1|')
+          RC_NUMBER=$(echo "$BRANCH" | sed 's|.*-rc\.\([0-9]*\)|\1|')
+          echo "✅ Valid RC branch format"
+          echo "   Base version: $BASE_VERSION"
+          echo "   RC number: $RC_NUMBER"
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "rc_number=$RC_NUMBER" >> $GITHUB_OUTPUT
+      
+      - name: Verify branch exists
+        run: |
+          BRANCH="${{ inputs.release_branch }}"
+          if ! git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "❌ Error: Branch '$BRANCH' does not exist"
+            echo "   Available release branches:"
+            git ls-remote --heads origin 'refs/heads/release/*' | sed 's|.*refs/heads/||'
+            exit 1
+          fi
+          echo "✅ Branch exists: $BRANCH"
+
   release:
     name: Build and Release
     runs-on: ubuntu-latest
+    needs: validate-branch
     
     steps:
-      - name: Checkout code
+      - name: Checkout RC branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.release_branch }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
       
       - name: Get Node.js version from config
         id: node
@@ -59,7 +121,7 @@ jobs:
       - name: Calculate new version
         id: version
         run: |
-          # Get current version
+          # Get current version from RC branch
           CURRENT=$(node -p "require('./package.json').version")
           echo "Current version: $CURRENT"
           
@@ -89,9 +151,40 @@ jobs:
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "prod_branch=release/v${NEW_VERSION}" >> $GITHUB_OUTPUT
       
-      - name: Bump version in package.json files
-        run: node scripts/bump-version.cjs ${{ inputs.bump_type }} --yes
+      - name: Create prod branch and bump version
+        id: prod_branch
+        run: |
+          git config user.name "github-actions[bot]"
+          # 41898282 is the official GitHub user ID for github-actions[bot]
+          # See: https://api.github.com/users/github-actions%5Bbot%5D
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          PROD_BRANCH="${{ steps.version.outputs.prod_branch }}"
+          
+          # Check if prod branch already exists
+          if git ls-remote --exit-code --heads origin "$PROD_BRANCH" >/dev/null 2>&1; then
+            echo "❌ Error: Prod branch '$PROD_BRANCH' already exists"
+            echo "   This version may have already been released"
+            exit 1
+          fi
+          
+          # Create prod branch from current RC
+          git checkout -b "$PROD_BRANCH"
+          echo "✅ Created prod branch: $PROD_BRANCH"
+          
+          # Bump version
+          node scripts/bump-version.cjs ${{ inputs.bump_type }} --yes
+          
+          # Commit version bump
+          git add package.json package-lock.json frontend/package.json backend/package.json shared/package.json
+          git commit -m "chore: release ${{ steps.version.outputs.tag }}"
+          
+          # Save commit SHA for cherry-pick
+          BUMP_COMMIT=$(git rev-parse HEAD)
+          echo "bump_commit=$BUMP_COMMIT" >> $GITHUB_OUTPUT
+          echo "✅ Version bump commit: $BUMP_COMMIT"
       
       - name: Login to GitHub Container Registry
         if: ${{ !inputs.dry_run }}
@@ -114,28 +207,60 @@ jobs:
       - name: Create release archives
         run: node scripts/create-archives.cjs ${{ steps.version.outputs.tag }}
       
-      - name: Commit version bump and create tag
+      - name: Push prod branch and create tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          PROD_BRANCH="${{ steps.version.outputs.prod_branch }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          
+          # Push prod branch
+          git push origin "$PROD_BRANCH"
+          echo "✅ Pushed prod branch: $PROD_BRANCH"
+          
+          # Create and push tag if requested
+          if [ "${{ inputs.create_tag }}" = "true" ]; then
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+              echo "⚠️ Tag $TAG already exists, skipping"
+            else
+              git tag "$TAG"
+              git push origin "$TAG"
+              echo "✅ Created and pushed tag: $TAG"
+            fi
+          else
+            echo "⏭️ Skipping tag creation (create_tag=false)"
+          fi
+      
+      - name: Cherry-pick version bump to main
         if: ${{ !inputs.dry_run }}
         run: |
           git config user.name "github-actions[bot]"
+          # 41898282 is the official GitHub user ID for github-actions[bot]
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          git add package.json package-lock.json frontend/package.json backend/package.json shared/package.json
-          git commit -m "chore: release ${{ steps.version.outputs.tag }}"
+          BUMP_COMMIT="${{ steps.prod_branch.outputs.bump_commit }}"
           
-          # Check if tag already exists
-          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
-            echo "⚠️ Tag ${{ steps.version.outputs.tag }} already exists, skipping tag creation"
+          git checkout main
+          git pull origin main
+          
+          # Cherry-pick the version bump commit
+          if git cherry-pick "$BUMP_COMMIT" --no-edit; then
+            git push origin main
+            echo "✅ Cherry-picked version bump to main"
           else
-            git tag ${{ steps.version.outputs.tag }}
+            echo "⚠️ Cherry-pick conflict detected"
+            echo "   Attempting to resolve by keeping main's changes for conflicts..."
+            
+            # For package.json conflicts, just bump version on main directly
+            git cherry-pick --abort || true
+            node scripts/bump-version.cjs ${{ inputs.bump_type }} --yes
+            git add package.json package-lock.json frontend/package.json backend/package.json shared/package.json
+            git commit -m "chore: bump version to ${{ steps.version.outputs.new }} after release"
+            git push origin main
+            echo "✅ Applied version bump directly to main"
           fi
-          
-          # Note: Using default GITHUB_TOKEN, so this push will NOT trigger other workflows
-          # This is intentional to prevent recursive workflow triggers
-          git push origin main --tags
       
       - name: Create GitHub Release
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && inputs.create_tag }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -144,6 +269,9 @@ jobs:
           generate_release_notes: true
           body: |
             ## 🚀 Production Release
+            
+            **Source**: `${{ inputs.release_branch }}`
+            **Prod Branch**: `${{ steps.version.outputs.prod_branch }}`
             
             ### Docker Images
             
@@ -187,8 +315,11 @@ jobs:
           
           | Property | Value |
           |----------|-------|
-          | Previous | \`${{ steps.version.outputs.current }}\` |
-          | New | \`${{ steps.version.outputs.new }}\` |
+          | RC Branch | \`${{ inputs.release_branch }}\` |
+          | Prod Branch | \`${{ steps.version.outputs.prod_branch }}\` |
+          | Previous Version | \`${{ steps.version.outputs.current }}\` |
+          | New Version | \`${{ steps.version.outputs.new }}\` |
+          | Tag Created | \`${{ inputs.create_tag }}\` |
           | Dry Run | \`${{ inputs.dry_run }}\` |
           
           ### Docker Images
@@ -201,10 +332,11 @@ jobs:
           ### Release Archives
           | File | Size |
           |------|------|
-          | m3w-${VERSION}.tar.gz | $(du -h m3w-${VERSION}.tar.gz | cut -f1) |
-          | m3w-backend-${VERSION}.tar.gz | $(du -h m3w-backend-${VERSION}.tar.gz | cut -f1) |
-          | m3w-frontend-${VERSION}.tar.gz | $(du -h m3w-frontend-${VERSION}.tar.gz | cut -f1) |
+          | m3w-${VERSION}.tar.gz | $(du -h m3w-${VERSION}.tar.gz 2>/dev/null | cut -f1 || echo "N/A") |
+          | m3w-backend-${VERSION}.tar.gz | $(du -h m3w-backend-${VERSION}.tar.gz 2>/dev/null | cut -f1 || echo "N/A") |
+          | m3w-frontend-${VERSION}.tar.gz | $(du -h m3w-frontend-${VERSION}.tar.gz 2>/dev/null | cut -f1 || echo "N/A") |
           
-          ### GitHub Release
-          $(if [ "${{ inputs.dry_run }}" = "true" ]; then echo "Dry run - no release created"; else echo "[View Release](https://github.com/${{ github.repository }}/releases/tag/$VERSION)"; fi)
+          ### Links
+          $(if [ "${{ inputs.dry_run }}" = "true" ]; then echo "Dry run - no release created"; else echo "- [Prod Branch](https://github.com/${{ github.repository }}/tree/${{ steps.version.outputs.prod_branch }})"; fi)
+          $(if [ "${{ inputs.dry_run }}" = "false" ] && [ "${{ inputs.create_tag }}" = "true" ]; then echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/$VERSION)"; fi)
           EOF
