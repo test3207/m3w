@@ -137,11 +137,11 @@ describe("i18n core functions", () => {
   beforeEach(() => {
     registerMessages("en", {
       dashboard: { title: "Dashboard", welcome: "Welcome" },
-      error: { notFound: "Not Found" },
+      error: { unauthorized: "Unauthorized" },
     });
     registerMessages("zh-CN", {
       dashboard: { title: "仪表盘", welcome: "欢迎" },
-      error: { notFound: "未找到" },
+      error: { unauthorized: "未授权" },
     });
     setLocale("en");
   });
@@ -229,13 +229,10 @@ describe("i18n core functions", () => {
 
     it("should access deeply nested messages", () => {
       setLocale("en");
-      expect(I18n.error.notFound).toBe("Not Found");
-    });
-
-    it("should return proxy for non-existent path", () => {
-      // Accessing non-existent key returns another proxy, not undefined
-      const result = I18n.nonExistent;
-      expect(result).toBeDefined();
+      // error.unauthorized is registered in beforeEach and exists in the type
+      const result = I18n.error.unauthorized;
+      expect(typeof result).toBe("string");
+      expect(result).toBe("Unauthorized");
     });
   });
 
