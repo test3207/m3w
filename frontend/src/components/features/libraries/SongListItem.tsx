@@ -52,6 +52,8 @@ export function SongListItem({
 }: SongListItemProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={cn(
         "flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
         isSelectionMode && isSelected && "border-primary bg-primary/5",
@@ -65,6 +67,12 @@ export function SongListItem({
       onTouchEnd={onPressEnd}
       onTouchCancel={onPressEnd}
       onClick={() => onClick(song, index)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick(song, index);
+        }
+      }}
     >
       {/* Selection checkbox */}
       {isSelectionMode && (

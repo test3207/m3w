@@ -20,8 +20,17 @@ export function MiniPlayer() {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Open full player"
       className="fixed bottom-16 left-0 right-0 z-30 border-t bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80"
       onClick={openFullPlayer}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openFullPlayer();
+        }
+      }}
     >
       <div className="flex h-18 items-center gap-3 px-4 py-2">
         {/* Album Cover */}

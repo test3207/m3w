@@ -3,7 +3,7 @@
  * Sheet for adding songs to existing playlists (supports batch add)
  */
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -42,6 +42,14 @@ export function AddToPlaylistSheet() {
   const [showNewPlaylist, setShowNewPlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const newPlaylistInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus new playlist input when it appears
+  useEffect(() => {
+    if (showNewPlaylist) {
+      newPlaylistInputRef.current?.focus();
+    }
+  }, [showNewPlaylist]);
 
   // Fetch playlists when sheet opens to ensure data is fresh
   useEffect(() => {
@@ -260,6 +268,7 @@ export function AddToPlaylistSheet() {
           ) : (
             <div className="flex gap-2">
               <Input
+                ref={newPlaylistInputRef}
                 placeholder={I18n.library.addToPlaylist.newPlaylistPlaceholder}
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
@@ -271,7 +280,6 @@ export function AddToPlaylistSheet() {
                     setNewPlaylistName("");
                   }
                 }}
-                autoFocus
               />
               <Button
                 size="sm"
