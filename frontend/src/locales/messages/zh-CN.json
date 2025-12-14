@@ -340,6 +340,9 @@
     "mute": "静音",
     "unmute": "取消静音",
     "volume": "音量",
+    "miniPlayer": {
+      "openFullPlayer": "打开完整播放器"
+    },
     "fullPlayer": {
       "ariaLabel": "全屏播放器",
       "close": "关闭全屏播放器",
@@ -384,6 +387,7 @@
     "playQueue": {
       "title": "播放队列",
       "open": "打开播放队列",
+      "playSong": "播放",
       "songsCount": "{0} 首",
       "playingFrom": "当前播放自：{0}",
       "nowPlaying": "正在播放",

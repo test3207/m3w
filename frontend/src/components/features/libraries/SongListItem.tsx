@@ -68,7 +68,11 @@ export function SongListItem({
       onTouchCancel={onPressEnd}
       onClick={() => onClick(song, index)}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        // Shift+Enter/Space triggers selection mode (long-press equivalent)
+        if ((e.key === "Enter" || e.key === " ") && e.shiftKey) {
+          e.preventDefault();
+          onPressStart(song);
+        } else if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onClick(song, index);
         }

@@ -620,6 +620,10 @@ export interface Messages {
     unmute: string;
     /** Volume */
     volume: string;
+    miniPlayer: {
+      /** Open full player */
+      openFullPlayer: string;
+    };
     fullPlayer: {
       /** Full screen player */
       ariaLabel: string;
@@ -693,6 +697,8 @@ export interface Messages {
       title: string;
       /** Open play queue */
       open: string;
+      /** Play */
+      playSong: string;
       /** {0} songs */
       songsCount: string;
       /** Playing from: {0} */

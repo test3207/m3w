@@ -179,7 +179,7 @@ export function PlayQueueDrawer() {
                 key={`${song.id}-${index}`}
                 role="button"
                 tabIndex={0}
-                aria-label={`Play ${song.title}`}
+                aria-label={`${I18n.player.playQueue.playSong} ${song.title}`}
                 onClick={() => handleSongClick(index)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
