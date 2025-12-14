@@ -233,6 +233,10 @@ jobs:
       - name: Cherry-pick version bump to main
         if: ${{ !inputs.dry_run }}
         run: |
+          git config user.name "github-actions[bot]"
+          # 41898282 is the official GitHub user ID for github-actions[bot]
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
           BUMP_COMMIT="${{ steps.prod_branch.outputs.bump_commit }}"
           
           git checkout main
@@ -256,7 +260,7 @@ jobs:
           fi
       
       - name: Create GitHub Release
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && inputs.create_tag }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -333,6 +337,6 @@ jobs:
           | m3w-frontend-${VERSION}.tar.gz | $(du -h m3w-frontend-${VERSION}.tar.gz 2>/dev/null | cut -f1 || echo "N/A") |
           
           ### Links
-          $(if [ "${{ inputs.dry_run }}" = "true" ]; then echo "Dry run - no release created"; else echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/$VERSION)"; fi)
-          $(if [ "${{ inputs.dry_run }}" = "false" ]; then echo "- [Prod Branch](https://github.com/${{ github.repository }}/tree/${{ steps.version.outputs.prod_branch }})"; fi)
+          $(if [ "${{ inputs.dry_run }}" = "true" ]; then echo "Dry run - no release created"; else echo "- [Prod Branch](https://github.com/${{ github.repository }}/tree/${{ steps.version.outputs.prod_branch }})"; fi)
+          $(if [ "${{ inputs.dry_run }}" = "false" ] && [ "${{ inputs.create_tag }}" = "true" ]; then echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/$VERSION)"; fi)
           EOF
