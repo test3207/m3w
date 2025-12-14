@@ -24,70 +24,65 @@
 
 ---
 
+## Why Self-Host?
+
+> *"Due to licensing restrictions, this song is no longer available in your region."*
+>
+> — Every streaming service, eventually
+
+With M3W, **your music stays yours**. No songs mysteriously disappearing. No "this content is unavailable." No algorithms deciding what you can listen to.
+
 ## Features
 
 - 🎵 **Multiple Libraries** — Organize music into separate collections
 - 📝 **Cross-Library Playlists** — Mix songs from different libraries
 - 📱 **Mobile-First** — Designed for phones, works on desktop
 - 🔌 **Offline Mode** — Full functionality without an account or internet
-- 🏠 **Self-Hosted** — Your data stays on your server
+- 🏠 **Self-Hosted** — Your data stays on your server, forever
 - ⚡ **PWA Ready** — Install as an app, play cached music offline
 
 ## Quick Start
 
-### Option 1: Offline Mode (No Setup Required)
+### Online Demo
 
-Try M3W instantly without any server setup:
+Try M3W at [m3w.test3207.top](https://m3w.test3207.top)
 
-1. Visit [m3w.test3207.top](https://m3w.test3207.top) or deploy your own instance
-2. Click **"Offline Mode"** on the sign-in page
-3. Import your local music files and start playing
+- **Online Mode**: Sign in with GitHub for multi-device sync
+- **Offline Mode**: Click "Offline Mode" to use locally in your browser
 
-All data stays in your browser. No account needed.
+> ⚠️ Demo data is reset periodically. For permanent storage, deploy your own instance.
 
-### Option 2: Docker Deployment
+### Self-Hosted Deployment
+
+Deploy M3W with Docker Compose (PostgreSQL + MinIO included):
 
 ```bash
-# Simplest: Offline mode only (no database required)
-docker run -d --name m3w -p 4000:4000 ghcr.io/test3207/m3w:latest
+# Download compose file
+curl -sL https://raw.githubusercontent.com/test3207/m3w/main/docker/examples/simple/docker-compose.yml \
+  -o docker-compose.yml
+
+# Configure environment (edit docker-compose.yml)
+# - Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET for login
+# - Or leave empty for offline-only mode
+
+# Start all services
+docker compose up -d
 
 # Visit http://localhost:4000
 ```
 
-This runs M3W in offline-only mode. All data is stored in your browser.
-
-<details>
-<summary><b>🔧 Full Setup (Multi-device sync with GitHub login)</b></summary>
-
-For persistent storage and multi-device sync, you need PostgreSQL and MinIO:
-
-```bash
-# Download compose file with all services
-curl -sL https://raw.githubusercontent.com/test3207/m3w/main/docker/examples/simple/docker-compose.yml \
-  -o docker-compose.yml
-
-# Configure GitHub OAuth (edit docker-compose.yml)
-# GITHUB_CLIENT_ID=your-client-id
-# GITHUB_CLIENT_SECRET=your-client-secret
-
-# Start all services
-docker compose up -d
-```
-
 See [Deployment Guide](./docker/README.md) for detailed configuration options.
 
-</details>
-
-### Option 3: Development Setup
+### Build from Source
 
 ```bash
 git clone https://github.com/test3207/m3w.git
 cd m3w
-node scripts/setup.cjs   # Installs deps, starts containers, runs migrations
+node scripts/setup.cjs   # Install deps, start containers, run migrations
 npm run dev              # http://localhost:3000
 ```
 
-Requires Node.js 25+ and Docker/Podman. See [Development Guide](./docs/DEVELOPMENT.md) for details.
+Requires Node.js 25+ and Docker/Podman. See [Development Guide](./docs/DEVELOPMENT.md).
 
 ## Screenshots
 
@@ -138,19 +133,29 @@ Requires Node.js 25+ and Docker/Podman. See [Development Guide](./docs/DEVELOPME
 
 | Document | Description |
 |----------|-------------|
-| [Deployment Guide](./docker/README.md) | Docker/Podman deployment options |
+| [Deployment Guide](./docker/README.md) | Docker Compose deployment options |
 | [Development Guide](./docs/DEVELOPMENT.md) | Local development setup |
 | [PWA & Offline](./docs/PWA_OFFLINE_GUIDE.md) | Offline functionality details |
 | [LAN Access](./docs/LAN_ACCESS.md) | Access from other devices |
 
 ## Roadmap
 
-- [x] Core playback with offline support
-- [x] Multi-library & playlist management
-- [x] PWA with full offline capability
-- [ ] Multi-device sync
-- [ ] Lyrics display
-- [ ] Desktop app (Tauri)
+### ✅ Completed
+
+- Core playback with offline PWA support
+- Multi-library & playlist management
+- Mobile-first responsive UI
+- GitHub OAuth authentication
+- Demo mode with periodic data reset
+- Offline browsing for logged-in users
+
+### 📋 Planned
+
+- Guest data migration to account
+- Lyrics display
+- Desktop app
+
+See [GitHub Issues](https://github.com/test3207/m3w/issues) for detailed progress.
 
 ## Contributing
 
