@@ -51,7 +51,7 @@
 # 最简单：仅离线模式（无需数据库）
 docker run -d --name m3w -p 4000:4000 ghcr.io/test3207/m3w:latest
 
-# 访问 http://localhost:4000 → 点击「离线模式」
+# 访问 http://localhost:4000
 ```
 
 这将以纯离线模式运行 M3W，所有数据存储在浏览器中。

@@ -51,7 +51,7 @@ All data stays in your browser. No account needed.
 # Simplest: Offline mode only (no database required)
 docker run -d --name m3w -p 4000:4000 ghcr.io/test3207/m3w:latest
 
-# Visit http://localhost:4000 → Click "Offline Mode"
+# Visit http://localhost:4000
 ```
 
 This runs M3W in offline-only mode. All data is stored in your browser.
