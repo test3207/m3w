@@ -340,6 +340,9 @@
     "mute": "Mute",
     "unmute": "Unmute",
     "volume": "Volume",
+    "miniPlayer": {
+      "openFullPlayer": "Open full player"
+    },
     "fullPlayer": {
       "ariaLabel": "Full screen player",
       "close": "Close full player",
@@ -384,6 +387,7 @@
     "playQueue": {
       "title": "Play Queue",
       "open": "Open play queue",
+      "playSong": "Play",
       "songsCount": "{0} songs",
       "playingFrom": "Playing from: {0}",
       "nowPlaying": "Now Playing",

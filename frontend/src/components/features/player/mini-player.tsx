@@ -6,6 +6,7 @@
 import { Play, Pause, SkipForward } from "lucide-react";
 import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { usePlayerStore } from "@/stores/playerStore";
+import { I18n } from "@/locales/i18n";
 import { useUIStore } from "@/stores/uiStore";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +21,17 @@ export function MiniPlayer() {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={I18n.player.miniPlayer.openFullPlayer}
       className="fixed bottom-16 left-0 right-0 z-30 border-t bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/80"
       onClick={openFullPlayer}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openFullPlayer();
+        }
+      }}
     >
       <div className="flex h-18 items-center gap-3 px-4 py-2">
         {/* Album Cover */}

@@ -177,7 +177,16 @@ export function PlayQueueDrawer() {
             {queue.map((song, index) => (
               <div
                 key={`${song.id}-${index}`}
+                role="button"
+                tabIndex={0}
+                aria-label={`${I18n.player.playQueue.playSong} ${song.title}`}
                 onClick={() => handleSongClick(index)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleSongClick(index);
+                  }
+                }}
                 className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-accent ${
                   index === currentIndex ? "bg-accent border-primary" : ""
                 }`}

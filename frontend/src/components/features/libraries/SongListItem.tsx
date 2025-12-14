@@ -52,6 +52,9 @@ export function SongListItem({
 }: SongListItemProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={song.title}
       className={cn(
         "flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
         isSelectionMode && isSelected && "border-primary bg-primary/5",
@@ -65,6 +68,17 @@ export function SongListItem({
       onTouchEnd={onPressEnd}
       onTouchCancel={onPressEnd}
       onClick={() => onClick(song, index)}
+      onKeyDown={(e) => {
+        // Shift+Enter/Space triggers selection mode (long-press equivalent)
+        if ((e.key === "Enter" || e.key === " ") && e.shiftKey) {
+          e.preventDefault();
+          onPressStart(song);
+          onPressEnd(); // Clear timer immediately for keyboard activation
+        } else if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick(song, index);
+        }
+      }}
     >
       {/* Selection checkbox */}
       {isSelectionMode && (
