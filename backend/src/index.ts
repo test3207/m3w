@@ -211,7 +211,10 @@ if (demoModules && isDemoEnabled) {
 }
 
 // Health check endpoints (liveness + readiness probes)
-// Also used by frontend for network detection
+// Standard paths: /health, /ready (for K8s and orchestrators)
+// Legacy paths: /api/health, /api/ready (for existing docker-compose configs)
+// TODO: Remove /api/* paths after migration period
+app.route('/', healthRoutes);
 app.route('/api', healthRoutes);
 
 // Routes

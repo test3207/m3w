@@ -37,6 +37,7 @@ app.get('/health', (c) => {
  */
 app.get('/ready', async (c) => {
   const checks: Record<string, { status: 'ok' | 'error'; latency?: number; error?: string }> = {};
+  const isProduction = process.env.NODE_ENV === 'production';
 
   // Check PostgreSQL
   const pgStart = Date.now();
@@ -45,7 +46,8 @@ app.get('/ready', async (c) => {
     checks.database = { status: 'ok', latency: Date.now() - pgStart };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    checks.database = { status: 'error', error: message };
+    // Sanitize error in production to avoid leaking sensitive info
+    checks.database = { status: 'error', error: isProduction ? 'Database connection failed' : message };
     logger.warn({ error: message }, 'PostgreSQL health check failed');
   }
 
@@ -57,7 +59,8 @@ app.get('/ready', async (c) => {
     checks.storage = { status: 'ok', latency: Date.now() - minioStart };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    checks.storage = { status: 'error', error: message };
+    // Sanitize error in production to avoid leaking sensitive info
+    checks.storage = { status: 'error', error: isProduction ? 'Storage service unavailable' : message };
     logger.warn({ error: message }, 'MinIO health check failed');
   }
 
