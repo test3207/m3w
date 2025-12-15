@@ -4,7 +4,7 @@
  * Supports multi-select mode for batch operations
  */
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -39,9 +39,6 @@ import { SongListItem } from "@/components/features/libraries/SongListItem";
 import { SelectionModeHeader } from "@/components/features/libraries/SelectionModeHeader";
 import { LibraryActionBar } from "@/components/features/libraries/LibraryActionBar";
 
-// Long press duration in milliseconds
-const LONG_PRESS_DURATION = 500;
-
 export default function LibraryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -68,18 +65,7 @@ export default function LibraryDetailPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [cacheAvailable, setCacheAvailable] = useState(false);
 
-  // Long press state
-  const longPressTimer = useRef<number | null>(null);
-  const longPressTriggered = useRef(false);
 
-  // Cleanup long press timer on unmount
-  useEffect(() => {
-    return () => {
-      if (longPressTimer.current) {
-        clearTimeout(longPressTimer.current);
-      }
-    };
-  }, []);
 
   const { currentLibrary, isLoading, fetchLibraryById, fetchLibraries } = useLibraryStore();
   const playFromLibrary = usePlayerStore((state) => state.playFromLibrary);
@@ -258,22 +244,10 @@ export default function LibraryDetailPage() {
     setPrevSongCount(currentSongCount);
   }, [currentSongCount, id, sortOption, prevSongCount]);
 
-  // Long press handlers
-  const handlePressStart = (song: Song) => {
+  // Long press handler - enters selection mode
+  const handleLongPress = (song: Song) => {
     if (isSelectionMode) return;
-    
-    longPressTriggered.current = false;
-    longPressTimer.current = window.setTimeout(() => {
-      longPressTriggered.current = true;
-      enterSelectionMode({ id: song.id, title: song.title, coverUrl: song.coverUrl });
-    }, LONG_PRESS_DURATION);
-  };
-
-  const handlePressEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
+    enterSelectionMode({ id: song.id, title: song.title, coverUrl: song.coverUrl });
   };
 
   const handlePlayAll = () => {
@@ -288,11 +262,6 @@ export default function LibraryDetailPage() {
   };
 
   const handleSongClick = (song: Song, index: number) => {
-    if (longPressTriggered.current) {
-      longPressTriggered.current = false;
-      return;
-    }
-
     if (isSelectionMode) {
       toggleSongSelection({ id: song.id, title: song.title, coverUrl: song.coverUrl });
     } else {
@@ -444,8 +413,7 @@ export default function LibraryDetailPage() {
               showCacheStatus={showCacheUI}
               shouldDim={!isGuest && !isOnline && !(songCacheStatus[song.id] ?? false)}
               canWrite={canWrite}
-              onPressStart={handlePressStart}
-              onPressEnd={handlePressEnd}
+              onLongPress={handleLongPress}
               onClick={handleSongClick}
               onAddToPlaylist={(s) => openAddToPlaylistSheet({ id: s.id, title: s.title, coverUrl: s.coverUrl })}
               onDelete={(s) => {

@@ -17,7 +17,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useLongPress } from "@/hooks/use-long-press";
+import { useRef, useCallback } from "react";
 import type { Song } from "@m3w/shared";
+
+// Long press configuration (matches iOS/Android native behavior)
+const LONG_PRESS_DELAY = 500; // ms
 
 interface SongListItemProps {
   song: Song;
@@ -28,8 +33,7 @@ interface SongListItemProps {
   showCacheStatus: boolean;
   shouldDim: boolean;
   canWrite: boolean;
-  onPressStart: (song: Song) => void;
-  onPressEnd: () => void;
+  onLongPress: (song: Song) => void;
   onClick: (song: Song, index: number) => void;
   onAddToPlaylist: (song: Song) => void;
   onDelete: (song: Song) => void;
@@ -44,41 +48,57 @@ export function SongListItem({
   showCacheStatus,
   shouldDim,
   canWrite,
-  onPressStart,
-  onPressEnd,
+  onLongPress,
   onClick,
   onAddToPlaylist,
   onDelete,
 }: SongListItemProps) {
+  // Track if long press was triggered to prevent click
+  const longPressTriggeredRef = useRef(false);
+
+  // Use @use-gesture/react for reliable long press detection
+
+  const { bind, handleClick } = useLongPress({
+    onLongPress: () => {
+      if (isSelectionMode) return;
+      longPressTriggeredRef.current = true;
+      onLongPress(song);
+    },
+    onClick: () => onClick(song, index),
+    delay: LONG_PRESS_DELAY,
+    // threshold: 10, // default 10px
+    disabled: false,
+  });
+
+
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Shift+Enter/Space triggers selection mode (long-press equivalent)
+    if ((e.key === "Enter" || e.key === " ") && e.shiftKey) {
+      e.preventDefault();
+      if (!isSelectionMode) {
+        onLongPress(song);
+      }
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick(song, index);
+    }
+  }, [isSelectionMode, onLongPress, onClick, song, index]);
+
   return (
     <div
+      {...bind()}
       role="button"
       tabIndex={0}
       aria-label={song.title}
       className={cn(
-        "flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
+        "flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors touch-manipulation",
         isSelectionMode && isSelected && "border-primary bg-primary/5",
         isSelectionMode && "cursor-pointer",
         shouldDim && "opacity-50"
       )}
-      onMouseDown={() => onPressStart(song)}
-      onMouseUp={onPressEnd}
-      onMouseLeave={onPressEnd}
-      onTouchStart={() => onPressStart(song)}
-      onTouchEnd={onPressEnd}
-      onTouchCancel={onPressEnd}
-      onClick={() => onClick(song, index)}
-      onKeyDown={(e) => {
-        // Shift+Enter/Space triggers selection mode (long-press equivalent)
-        if ((e.key === "Enter" || e.key === " ") && e.shiftKey) {
-          e.preventDefault();
-          onPressStart(song);
-          onPressEnd(); // Clear timer immediately for keyboard activation
-        } else if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick(song, index);
-        }
-      }}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
     >
       {/* Selection checkbox */}
       {isSelectionMode && (
