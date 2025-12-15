@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLongPress } from "@/hooks/use-long-press";
-import { useRef, useCallback } from "react";
+import { useCallback } from "react";
 import type { Song } from "@m3w/shared";
 
 // Long press configuration (matches iOS/Android native behavior)
@@ -53,24 +53,13 @@ export function SongListItem({
   onAddToPlaylist,
   onDelete,
 }: SongListItemProps) {
-  // Track if long press was triggered to prevent click
-  const longPressTriggeredRef = useRef(false);
-
   // Use @use-gesture/react for reliable long press detection
-
   const { bind, handleClick } = useLongPress({
-    onLongPress: () => {
-      if (isSelectionMode) return;
-      longPressTriggeredRef.current = true;
-      onLongPress(song);
-    },
+    onLongPress: () => onLongPress(song),
     onClick: () => onClick(song, index),
     delay: LONG_PRESS_DELAY,
-    // threshold: 10, // default 10px
-    disabled: false,
+    disabled: isSelectionMode,
   });
-
-
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Shift+Enter/Space triggers selection mode (long-press equivalent)

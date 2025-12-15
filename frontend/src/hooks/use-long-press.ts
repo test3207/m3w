@@ -10,7 +10,7 @@
  */
 
 import { useGesture } from "@use-gesture/react";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 
 interface UseLongPressOptions {
   /** Callback when long press is triggered */
@@ -108,6 +108,16 @@ export function useLongPress({
       pointer: { touch: true },
     }
   );
+
+  // Cleanup timer on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleClick = useCallback(() => {
     if (longPressTriggeredRef.current) {
