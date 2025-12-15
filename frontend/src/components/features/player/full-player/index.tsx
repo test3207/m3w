@@ -163,14 +163,24 @@ export function FullPlayer() {
         return;
       }
 
-      // Calculate drag offset with resistance (only vertical for visual feedback)
-      const offsetY = Math.max(0, my * GESTURE_CONFIG.DRAG_RESISTANCE);
+      const absX = Math.abs(mx);
+      const absY = Math.abs(my);
+      // Determine primary gesture direction early to avoid mixed feedback
+      const isHorizontalGesture = absX > absY * 1.5; // 1.5x bias toward horizontal
+      const isDownwardGesture = my > 0 && absY > absX * 1.5; // Only downward, not upward
 
       if (!last) {
-        // During drag: update visual feedback
-        setIsDragging(true);
-        // Only show vertical drag offset (horizontal swipes are instant)
-        setDragOffset({ x: 0, y: offsetY });
+        // During drag: only show visual feedback for clear downward gestures
+        // Horizontal swipes and upward swipes don't need drag visual
+        if (isDownwardGesture) {
+          setIsDragging(true);
+          const offsetY = Math.max(0, my * GESTURE_CONFIG.DRAG_RESISTANCE);
+          setDragOffset({ x: 0, y: offsetY });
+        } else {
+          // No visual feedback for horizontal or upward gestures
+          setIsDragging(false);
+          setDragOffset({ x: 0, y: 0 });
+        }
         return;
       }
 
@@ -178,14 +188,10 @@ export function FullPlayer() {
       setIsDragging(false);
       setDragOffset({ x: 0, y: 0 });
 
-      const absX = Math.abs(mx);
-      const absY = Math.abs(my);
-      const isHorizontal = absX > absY;
-      const isVertical = absY > absX;
       const velocityThreshold = 0.3;
 
-      // Horizontal swipe: track navigation
-      if (isHorizontal && (absX > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vx) > velocityThreshold)) {
+      // Horizontal swipe: track navigation (requires clear horizontal intent)
+      if (isHorizontalGesture && (absX > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vx) > velocityThreshold)) {
         if (dx < 0) {
           // Swipe left → next track
           logger.debug("[FullPlayer] Swipe left: next track");
@@ -198,8 +204,9 @@ export function FullPlayer() {
         return;
       }
 
-      // Vertical swipe: close or open queue
-      if (isVertical && (absY > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vy) > velocityThreshold)) {
+      // Vertical swipe: close or open queue (requires clear vertical intent)
+      const isVerticalGesture = absY > absX * 1.5;
+      if (isVerticalGesture && (absY > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vy) > velocityThreshold)) {
         if (dy > 0) {
           // Swipe down → close
           logger.debug("[FullPlayer] Swipe down: close");
