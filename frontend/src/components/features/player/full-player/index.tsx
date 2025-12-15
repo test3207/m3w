@@ -31,6 +31,7 @@
  */
 
 import { useMemo, useEffect, useRef, useCallback, useState, useReducer } from "react";
+import { useDrag } from "@use-gesture/react";
 import { usePlayerStore } from "@/stores/playerStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -77,7 +78,6 @@ export function FullPlayer() {
   const getFavoritesPlaylist = usePlaylistStore((state) => state.getFavoritesPlaylist);
 
   // Refs
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rafIdsRef = useRef<number[]>([]);
   const historyStateIdRef = useRef<number>(0);
@@ -151,50 +151,83 @@ export function FullPlayer() {
     };
   }, [isOpen, handleClose]);
 
-  // Touch gesture handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('[role="slider"]') || target.closest("button")) return;
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-    setIsDragging(true);
-  }, []);
+  // Gesture handling with @use-gesture/react
+  // Swipe left: next track, Swipe right: prev track
+  // Swipe down: close, Swipe up: open queue
+  // Note: All store actions (next, previous, closeFullPlayer, etc.) are stable references
+  // from Zustand and useReducer dispatch, so no useCallback wrapper needed.
+  const bind = useDrag(
+    ({ movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], last, cancel, event }) => {
+      // Skip if interacting with slider or button
+      const target = event?.target as HTMLElement;
+      if (target?.closest("[role=\"slider\"]") || target?.closest("button")) {
+        cancel();
+        return;
+      }
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = touch.clientY - touchStartRef.current.y;
-    const offsetX = Math.max(0, deltaX * GESTURE_CONFIG.DRAG_RESISTANCE);
-    const offsetY = Math.max(0, deltaY * GESTURE_CONFIG.DRAG_RESISTANCE);
-    setDragOffset({ x: offsetX, y: offsetY });
-  }, []);
+      const absX = Math.abs(mx);
+      const absY = Math.abs(my);
+      // Determine primary gesture direction early to avoid mixed feedback
+      const isHorizontalGesture = absX > absY * 1.5; // 1.5x bias toward horizontal
+      const isDownwardGesture = my > 0 && absY > absX * 1.5; // Only downward, not upward
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = touch.clientY - touchStartRef.current.y;
-    const isSwipeDown = deltaY > GESTURE_CONFIG.SWIPE_THRESHOLD && Math.abs(deltaX) < deltaY;
-    const isSwipeRight = deltaX > GESTURE_CONFIG.SWIPE_THRESHOLD && Math.abs(deltaY) < deltaX;
+      if (!last) {
+        // During drag: show appropriate visual feedback based on gesture direction
+        setIsDragging(true);
+        if (isDownwardGesture) {
+          // Vertical drag: show downward movement
+          const offsetY = Math.max(0, my * GESTURE_CONFIG.DRAG_RESISTANCE);
+          setDragOffset({ x: 0, y: offsetY });
+        } else if (isHorizontalGesture) {
+          // Horizontal drag: subtle horizontal feedback for track navigation
+          const offsetX = mx * GESTURE_CONFIG.HORIZONTAL_DRAG_RESISTANCE;
+          setDragOffset({ x: offsetX, y: 0 });
+        } else {
+          // Ambiguous gesture: no feedback until clear direction
+          setIsDragging(false);
+          setDragOffset({ x: 0, y: 0 });
+        }
+        return;
+      }
 
-    if (isSwipeDown || isSwipeRight) {
-      const direction = isSwipeRight ? ExitDirection.Right : ExitDirection.Down;
-      logger.debug("[FullPlayer] Swipe gesture detected:", direction);
-      dispatch({ type: AnimationActionType.Close, direction });
-      setTimeout(() => closeFullPlayer(), 0);
-    } else {
+      // On release: determine action
+      setIsDragging(false);
       setDragOffset({ x: 0, y: 0 });
-    }
-    touchStartRef.current = null;
-    setIsDragging(false);
-  }, [closeFullPlayer]);
 
-  const handleTouchCancel = useCallback(() => {
-    touchStartRef.current = null;
-    setIsDragging(false);
-    setDragOffset({ x: 0, y: 0 });
-  }, []);
+      // Horizontal swipe: track navigation (requires clear horizontal intent)
+      if (isHorizontalGesture && (absX > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vx) > GESTURE_CONFIG.VELOCITY_THRESHOLD)) {
+        if (dx < 0) {
+          // Swipe left → next track
+          logger.debug("[FullPlayer] Swipe left: next track");
+          next();
+        } else {
+          // Swipe right → previous track
+          logger.debug("[FullPlayer] Swipe right: previous track");
+          previous();
+        }
+        return;
+      }
+
+      // Vertical swipe: close or open queue (requires clear vertical intent)
+      const isVerticalGesture = absY > absX * 1.5;
+      if (isVerticalGesture && (absY > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vy) > GESTURE_CONFIG.VELOCITY_THRESHOLD)) {
+        if (dy > 0) {
+          // Swipe down → close
+          logger.debug("[FullPlayer] Swipe down: close");
+          dispatch({ type: AnimationActionType.Close, direction: ExitDirection.Down });
+          setTimeout(() => closeFullPlayer(), 0);
+        } else {
+          // Swipe up → open queue
+          logger.debug("[FullPlayer] Swipe up: open queue");
+          openPlayQueueDrawer();
+        }
+      }
+    },
+    {
+      filterTaps: true,
+      pointer: { touch: true },
+    }
+  );
 
   // Load playlists when opened
   useEffect(() => {
@@ -247,6 +280,7 @@ export function FullPlayer() {
 
   return (
     <div
+      {...bind()}
       ref={containerRef}
       role="dialog"
       aria-modal="true"
@@ -262,10 +296,6 @@ export function FullPlayer() {
           ? "transform, opacity"
           : "auto",
       }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
       onTransitionEnd={handleTransitionEnd}
     >
       {/* Header */}
