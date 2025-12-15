@@ -31,6 +31,7 @@
  */
 
 import { useMemo, useEffect, useRef, useCallback, useState, useReducer } from "react";
+import { useDrag } from "@use-gesture/react";
 import { usePlayerStore } from "@/stores/playerStore";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -77,7 +78,6 @@ export function FullPlayer() {
   const getFavoritesPlaylist = usePlaylistStore((state) => state.getFavoritesPlaylist);
 
   // Refs
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rafIdsRef = useRef<number[]>([]);
   const historyStateIdRef = useRef<number>(0);
@@ -151,50 +151,72 @@ export function FullPlayer() {
     };
   }, [isOpen, handleClose]);
 
-  // Touch gesture handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('[role="slider"]') || target.closest("button")) return;
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-    setIsDragging(true);
-  }, []);
+  // Gesture handling with @use-gesture/react
+  // Swipe left: next track, Swipe right: prev track
+  // Swipe down: close, Swipe up: open queue
+  const bind = useDrag(
+    ({ movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], last, cancel, event }) => {
+      // Skip if interacting with slider or button
+      const target = event?.target as HTMLElement;
+      if (target?.closest("[role=\"slider\"]") || target?.closest("button")) {
+        cancel();
+        return;
+      }
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = touch.clientY - touchStartRef.current.y;
-    const offsetX = Math.max(0, deltaX * GESTURE_CONFIG.DRAG_RESISTANCE);
-    const offsetY = Math.max(0, deltaY * GESTURE_CONFIG.DRAG_RESISTANCE);
-    setDragOffset({ x: offsetX, y: offsetY });
-  }, []);
+      // Calculate drag offset with resistance (only vertical for visual feedback)
+      const offsetY = Math.max(0, my * GESTURE_CONFIG.DRAG_RESISTANCE);
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStartRef.current.x;
-    const deltaY = touch.clientY - touchStartRef.current.y;
-    const isSwipeDown = deltaY > GESTURE_CONFIG.SWIPE_THRESHOLD && Math.abs(deltaX) < deltaY;
-    const isSwipeRight = deltaX > GESTURE_CONFIG.SWIPE_THRESHOLD && Math.abs(deltaY) < deltaX;
+      if (!last) {
+        // During drag: update visual feedback
+        setIsDragging(true);
+        // Only show vertical drag offset (horizontal swipes are instant)
+        setDragOffset({ x: 0, y: offsetY });
+        return;
+      }
 
-    if (isSwipeDown || isSwipeRight) {
-      const direction = isSwipeRight ? ExitDirection.Right : ExitDirection.Down;
-      logger.debug("[FullPlayer] Swipe gesture detected:", direction);
-      dispatch({ type: AnimationActionType.Close, direction });
-      setTimeout(() => closeFullPlayer(), 0);
-    } else {
+      // On release: determine action
+      setIsDragging(false);
       setDragOffset({ x: 0, y: 0 });
-    }
-    touchStartRef.current = null;
-    setIsDragging(false);
-  }, [closeFullPlayer]);
 
-  const handleTouchCancel = useCallback(() => {
-    touchStartRef.current = null;
-    setIsDragging(false);
-    setDragOffset({ x: 0, y: 0 });
-  }, []);
+      const absX = Math.abs(mx);
+      const absY = Math.abs(my);
+      const isHorizontal = absX > absY;
+      const isVertical = absY > absX;
+      const velocityThreshold = 0.3;
+
+      // Horizontal swipe: track navigation
+      if (isHorizontal && (absX > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vx) > velocityThreshold)) {
+        if (dx < 0) {
+          // Swipe left → next track
+          logger.debug("[FullPlayer] Swipe left: next track");
+          next();
+        } else {
+          // Swipe right → previous track
+          logger.debug("[FullPlayer] Swipe right: previous track");
+          previous();
+        }
+        return;
+      }
+
+      // Vertical swipe: close or open queue
+      if (isVertical && (absY > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vy) > velocityThreshold)) {
+        if (dy > 0) {
+          // Swipe down → close
+          logger.debug("[FullPlayer] Swipe down: close");
+          dispatch({ type: AnimationActionType.Close, direction: ExitDirection.Down });
+          setTimeout(() => closeFullPlayer(), 0);
+        } else {
+          // Swipe up → open queue
+          logger.debug("[FullPlayer] Swipe up: open queue");
+          openPlayQueueDrawer();
+        }
+      }
+    },
+    {
+      filterTaps: true,
+      pointer: { touch: true },
+    }
+  );
 
   // Load playlists when opened
   useEffect(() => {
@@ -247,6 +269,7 @@ export function FullPlayer() {
 
   return (
     <div
+      {...bind()}
       ref={containerRef}
       role="dialog"
       aria-modal="true"
@@ -262,10 +285,6 @@ export function FullPlayer() {
           ? "transform, opacity"
           : "auto",
       }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
       onTransitionEnd={handleTransitionEnd}
     >
       {/* Header */}
