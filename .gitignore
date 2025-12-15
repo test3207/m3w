@@ -12,6 +12,11 @@ node_modules
 # Vitest browser mode screenshots (generated next to test files)
 **/__screenshots__/
 
+# k6 load test outputs
+tests/load/results/
+tests/load/*.json
+tests/load/*.html
+
 # vite
 dev-dist/
 dist/

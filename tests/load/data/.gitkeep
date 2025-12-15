@@ -1,0 +1,11 @@
+# Test data directory
+# 
+# Place test audio files here for upload tests.
+# These files are git-ignored to avoid committing large binaries.
+#
+# Recommended test files:
+# - small.mp3  (~3MB)
+# - medium.mp3 (~7MB)
+# - large.mp3  (~15MB)
+#
+# You can use any MP3 files you have rights to use for testing.
