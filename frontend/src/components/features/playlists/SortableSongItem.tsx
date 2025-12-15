@@ -51,7 +51,7 @@ export function SortableSongItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        // touch-pan-y: allow vertical scrolling, only intercept horizontal for drag
+        // touch-pan-y: allow vertical scrolling while drag handle uses touch-none
         "group overflow-hidden transition-colors touch-pan-y",
         isDragging && "opacity-90 shadow-lg scale-[1.02] z-50 ring-2 ring-primary",
         isCurrentlyPlaying
