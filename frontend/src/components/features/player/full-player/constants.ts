@@ -9,10 +9,14 @@
 
 /** Gesture configuration for swipe and drag interactions */
 export const GESTURE_CONFIG = {
-  /** Minimum swipe distance to trigger close (pixels) */
+  /** Minimum swipe distance to trigger action (pixels) */
   SWIPE_THRESHOLD: 100,
+  /** Minimum velocity to trigger action (ratio) */
+  VELOCITY_THRESHOLD: 0.3,
   /** Drag resistance factor (0-1, lower = more resistance) */
   DRAG_RESISTANCE: 0.6,
+  /** Horizontal drag resistance (more resistance for subtle feedback) */
+  HORIZONTAL_DRAG_RESISTANCE: 0.3,
   /** Maximum drag distance for opacity calculation (pixels) */
   MAX_DRAG_FOR_OPACITY: 200,
   /** Minimum opacity during drag */
