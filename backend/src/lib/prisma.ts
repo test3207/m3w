@@ -25,13 +25,13 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.prismaGlobal = prisma;
 }
 
-// Log connection on startup
+// Attempt connection on startup (non-blocking)
+// If connection fails, log warning but don't exit - /ready endpoint will report status
 prisma
   .$connect()
   .then(() => {
     logger.info('Connected to PostgreSQL database');
   })
   .catch((error) => {
-    logger.error(error, 'Failed to connect to database');
-    process.exit(1);
+    logger.warn(error, 'Failed to connect to database on startup (will retry on first query)');
   });

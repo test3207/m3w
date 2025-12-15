@@ -57,10 +57,13 @@ describe("api-contracts", () => {
         expect(authRoutes.length).toBeGreaterThan(0);
       });
 
-      it("should have health check route", () => {
-        const healthRoute = adminRoutes.find((r) => r.path === "/api/health");
+      it("should have health check routes", () => {
+        const healthRoute = adminRoutes.find((r) => r.path === "/health");
+        const readyRoute = adminRoutes.find((r) => r.path === "/ready");
         expect(healthRoute).toBeDefined();
         expect(healthRoute?.offlineCapable).toBe(false);
+        expect(readyRoute).toBeDefined();
+        expect(readyRoute?.offlineCapable).toBe(false);
       });
 
       it("should have user management routes", () => {
@@ -90,9 +93,10 @@ describe("api-contracts", () => {
         });
       });
 
-      it("should have paths starting with /api", () => {
+      it("should have paths starting with /api or / for health checks", () => {
         allRoutes.forEach((route) => {
-          expect(route.path.startsWith("/api")).toBe(true);
+          const isHealthCheck = route.path === "/health" || route.path === "/ready";
+          expect(route.path.startsWith("/api") || isHealthCheck).toBe(true);
         });
       });
     });
@@ -106,7 +110,8 @@ describe("api-contracts", () => {
     });
 
     it("should return false for online-only routes", () => {
-      expect(isOfflineCapable("/api/health", "GET")).toBe(false);
+      expect(isOfflineCapable("/health", "GET")).toBe(false);
+      expect(isOfflineCapable("/ready", "GET")).toBe(false);
       expect(isOfflineCapable("/api/auth/login", "POST")).toBe(false);
       expect(isOfflineCapable("/api/auth/me", "GET")).toBe(false);
     });
@@ -145,7 +150,7 @@ describe("api-contracts", () => {
     });
 
     it("should return undefined for routes without cache config", () => {
-      expect(getCacheConfig("/api/health", "GET")).toBeUndefined();
+      expect(getCacheConfig("/health", "GET")).toBeUndefined();
       expect(getCacheConfig("/api/auth/me", "GET")).toBeUndefined();
     });
 

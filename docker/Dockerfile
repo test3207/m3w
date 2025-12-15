@@ -56,7 +56,7 @@ ENV HOST="0.0.0.0"
 ENV SERVE_FRONTEND=true
 
 # Health check should be configured by orchestrator (docker-compose, Kubernetes)
-# Example: GET /api/health returns 200 when healthy
+# Example: GET /health returns 200 (liveness), GET /ready returns 200 when all deps connected
 
 WORKDIR /app/backend
 

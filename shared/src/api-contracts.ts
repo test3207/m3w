@@ -227,12 +227,18 @@ export const userDataRoutes: RouteDefinition[] = [
  * These routes require network connection and never work offline
  */
 export const adminRoutes: RouteDefinition[] = [
-  // Health check
+  // Health check (also available at /api/health for backward compatibility)
   {
-    path: '/api/health',
+    path: '/health',
     method: 'GET',
     offlineCapable: false,
-    description: 'Backend health check endpoint',
+    description: 'Backend liveness check endpoint',
+  },
+  {
+    path: '/ready',
+    method: 'GET',
+    offlineCapable: false,
+    description: 'Backend readiness check endpoint (checks PostgreSQL and MinIO)',
   },
 
   // Authentication
