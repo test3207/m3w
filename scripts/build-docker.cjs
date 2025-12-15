@@ -510,7 +510,7 @@ async function main() {
 
     while (retryCount < maxRetries && !healthy) {
       try {
-        execSync('curl -s -f "http://localhost:4000/api/health"', { stdio: 'ignore' });
+        execSync('curl -s -f "http://localhost:4000/health"', { stdio: 'ignore' });
         healthy = true;
       } catch {
         retryCount++;
