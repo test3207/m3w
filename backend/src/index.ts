@@ -84,6 +84,7 @@ import librariesRoutes from './routes/libraries';
 import playlistsRoutes from './routes/playlists';
 import songsRoutes from './routes/songs';
 import playerRoutes from './routes/player';
+import healthRoutes from './routes/health';
 
 // ============================================================================
 // Demo Mode - Two-Layer Control
@@ -209,14 +210,9 @@ if (demoModules && isDemoEnabled) {
   logger.info('Demo mode available but disabled (set DEMO_MODE=true to enable)');
 }
 
-// Health check endpoint for frontend network detection
-app.get('/api/health', (c) => {
-  return c.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
-});
+// Health check endpoints (liveness + readiness probes)
+// Also used by frontend for network detection
+app.route('/api', healthRoutes);
 
 // Routes
 app.route('/api/auth', authRoutes);
