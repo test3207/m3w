@@ -97,8 +97,8 @@ export function PlayQueueDrawer() {
 
   return (
     <Sheet open={isOpen} onOpenChange={closePlayQueueDrawer}>
-      <SheetContent side="bottom" className="h-[80vh]">
-        <SheetHeader>
+      <SheetContent side="bottom" className="h-[80vh] flex flex-col">
+        <SheetHeader className="shrink-0">
           <SheetTitle>
             {I18n.player.playQueue.title} ({I18n.player.playQueue.songsCount.replace("{0}", String(queue.length))})
           </SheetTitle>
@@ -109,7 +109,7 @@ export function PlayQueueDrawer() {
           )}
         </SheetHeader>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex gap-2 shrink-0">
           {!showSaveInput ? (
             <>
               <Button
@@ -168,12 +168,12 @@ export function PlayQueueDrawer() {
         </div>
 
         {queue.length === 0 ? (
-          <div className="mt-8 text-center text-muted-foreground">
+          <div className="mt-8 text-center text-muted-foreground flex-1">
             <p>{I18n.player.playQueue.emptyTitle}</p>
             <p className="mt-2 text-sm">{I18n.player.playQueue.emptyDescription}</p>
           </div>
         ) : (
-          <div className="mt-4 space-y-2 overflow-y-auto pb-20">
+          <div className="mt-4 space-y-2 overflow-y-auto flex-1 min-h-0 pb-4">
             {queue.map((song, index) => (
               <div
                 key={`${song.id}-${index}`}
