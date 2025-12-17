@@ -3,9 +3,20 @@
  */
 
 import pino from 'pino';
+import { trace, context } from '@opentelemetry/api';
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
+  mixin() {
+    const currentSpan = trace.getSpan(context.active());
+    if (currentSpan) {
+      return {
+        trace_id: currentSpan.spanContext().traceId,
+        span_id: currentSpan.spanContext().spanId,
+      };
+    }
+    return {};
+  },
   transport:
     process.env.NODE_ENV === 'development'
       ? {

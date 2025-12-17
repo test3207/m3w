@@ -3,6 +3,7 @@
  * Main entry point for the backend API
  */
 
+import './instrumentation';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -85,6 +86,7 @@ import playlistsRoutes from './routes/playlists';
 import songsRoutes from './routes/songs';
 import playerRoutes from './routes/player';
 import healthRoutes from './routes/health';
+import logsRoutes from './routes/logs';
 
 // ============================================================================
 // Demo Mode - Two-Layer Control
@@ -224,6 +226,7 @@ app.route('/api/libraries', librariesRoutes);
 app.route('/api/playlists', playlistsRoutes);
 app.route('/api/songs', songsRoutes);
 app.route('/api/player', playerRoutes);
+app.route('/api/logs', logsRoutes);
 
 // ============================================================================
 // Static Frontend Serving (All-in-One Deployment)
