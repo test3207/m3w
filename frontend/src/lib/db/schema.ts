@@ -129,6 +129,33 @@ export interface LocalSetting {
 export type AutoDownloadSetting = "off" | "wifi-only" | "always";
 
 // ============================================================
+// Pending Logs (for retry mechanism)
+// ============================================================
+
+/**
+ * Pending log entry waiting to be sent to backend
+ * Used for retry mechanism with exponential backoff
+ */
+export interface PendingLog {
+  /** Unique ID for the log entry */
+  id: string;
+  /** Log level (info, warn, error, debug) */
+  level: 'info' | 'warn' | 'error' | 'debug';
+  /** Log message */
+  message: string;
+  /** Optional data payload */
+  data?: unknown;
+  /** Timestamp when log was created */
+  timestamp: string;
+  /** Number of retry attempts */
+  retryCount: number;
+  /** Next retry timestamp (Unix timestamp in ms) */
+  nextRetry: number;
+  /** When this log was created (for cleanup) */
+  createdAt: Date;
+}
+
+// ============================================================
 // Database Class
 // ============================================================
 
@@ -144,6 +171,7 @@ export class M3WDatabase extends Dexie {
   playerPreferences!: EntityTable<PlayerPreferences, "userId">;
   playerProgress!: EntityTable<PlayerProgress, "userId">;
   localSettings!: EntityTable<LocalSetting, "key">;
+  pendingLogs!: EntityTable<PendingLog, "id">;
 
   constructor() {
     super("m3w-offline");
@@ -161,6 +189,19 @@ export class M3WDatabase extends Dexie {
       playerPreferences: "userId, updatedAt",
       playerProgress: "userId, songId, contextType, contextId, updatedAt",
       localSettings: "key, updatedAt",
+    });
+
+    // Schema v2: Add pending logs table for retry mechanism
+    this.version(2).stores({
+      libraries: "id, userId, name, createdAt",
+      playlists: "id, userId, linkedLibraryId, name, createdAt",
+      files: "id, hash, size, refCount",
+      songs: "id, libraryId, fileId, title, artist, album, fileHash, isCached, lastCacheCheck",
+      playlistSongs: "[playlistId+songId], playlistId, songId, order",
+      playerPreferences: "userId, updatedAt",
+      playerProgress: "userId, songId, contextType, contextId, updatedAt",
+      localSettings: "key, updatedAt",
+      pendingLogs: "id, nextRetry, retryCount, createdAt",
     });
   }
 }
