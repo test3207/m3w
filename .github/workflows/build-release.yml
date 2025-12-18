@@ -80,12 +80,15 @@ jobs:
           echo "rc_number=$RC_NUMBER" >> $GITHUB_OUTPUT
       
       - name: Verify branch exists
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           BRANCH="${{ inputs.release_branch }}"
-          if ! git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+          # Use GitHub API to check branch existence (no checkout needed)
+          if ! gh api repos/${{ github.repository }}/branches/"${BRANCH}" --silent 2>/dev/null; then
             echo "❌ Error: Branch '$BRANCH' does not exist"
             echo "   Available release branches:"
-            git ls-remote --heads origin 'refs/heads/release/*' | sed 's|.*refs/heads/||'
+            gh api repos/${{ github.repository }}/branches --jq '.[].name | select(startswith("release/"))'
             exit 1
           fi
           echo "✅ Branch exists: $BRANCH"
