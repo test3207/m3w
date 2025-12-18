@@ -55,7 +55,7 @@ export interface User {
   name: string | null;
   email: string | null;
   image: string | null;
-  homeRegion: string; // User's home region (e.g., 'jp', 'sea', 'usw', 'default')
+  homeRegion: string; // User's home region from JWT (not stored in DB)
   createdAt: string; // ISO 8601 string
   updatedAt: string; // ISO 8601 string
 }

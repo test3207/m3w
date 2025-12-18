@@ -394,10 +394,11 @@ app.get('/callback', async (c: Context) => {
     }
 
     // Step 6: Generate JWT and set cookies
-    // Use HOME_REGION env var (not stored in DB - homeRegion only in Redis + JWT)
+    // homeRegion comes from env var (not stored in DB - only in Redis + JWT)
     const tokens = generateTokens(
       {
         ...user,
+        homeRegion: HOME_REGION,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),
       },
@@ -461,16 +462,18 @@ app.post('/refresh', async (c: Context) => {
       );
     }
 
-    // Generate new tokens (dynamically determine isRemote based on current region)
-    const isRemote = user.homeRegion !== HOME_REGION;
+    // Generate new tokens - homeRegion from original token, not DB
+    const homeRegion = payload.homeRegion || HOME_REGION;
+    const isRemote = homeRegion !== HOME_REGION;
     const tokens = generateTokens(
       {
         ...user,
+        homeRegion,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),
       },
-      user.homeRegion,
-      isRemote  // Dynamically calculated
+      homeRegion,
+      isRemote
     );
 
     return c.json({
@@ -556,11 +559,17 @@ app.get('/session', authMiddleware, async (c: Context) => {
     }
 
     // Generate fresh tokens for frontend storage
-    const tokens = generateTokens({
-      ...user,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    });
+    // homeRegion from env var (this backend's region)
+    const tokens = generateTokens(
+      {
+        ...user,
+        homeRegion: HOME_REGION,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      HOME_REGION,
+      false
+    );
 
     return c.json({
       success: true,
