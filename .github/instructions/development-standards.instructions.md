@@ -35,6 +35,23 @@
 - PWA with offline-first architecture using IndexedDB via Dexie and Service Worker with Workbox.
 - User feedback flows through the toast store defined in `frontend/src/components/ui/use-toast.ts` with a single `<Toaster />` in `frontend/src/main.tsx`.
 - **Demo Mode**: Compile-time controlled via `BUILD_TARGET=rc` (includes code) or `BUILD_TARGET=prod` (tree-shaken), runtime enabled via `DEMO_MODE=true` in backend `.env`; provides storage limits, hourly reset (optional), and user-facing banner with free music links.
+- **Multi-Region Architecture**: Backend supports optional Redis integration for cross-region user routing; `homeRegion` field in User model tracks user's registration region; JWT includes `homeRegion` for intelligent routing via K8s Gateway; graceful degradation for local development (Redis optional).
+
+## API Response Pattern
+
+- Return `{ success: boolean, data?: T, error?: string, details?: unknown }`
+- Keep routes thin, logic in `backend/src/lib/services`
+- Log errors with `backend/src/lib/logger.ts`
+- Export types from `@m3w/shared`
+- Trigger toasts only from client; never in API handlers
+
+## i18n System
+
+- Use `I18n.category.key` (Proxy-based, auto-generated types)
+- Files: `src/locales/messages/{en,zh-CN}.json`, `scripts/build-i18n.cjs`
+- React: Import `I18n` only (no `useLocale()` needed, handled by `LocaleProvider`)
+- Add text: edit `en.json` → auto-generate types → add to `zh-CN.json`
+- Language switch: `setLocale('zh-CN')`
 
 ## UI Component Standards & Accessibility (a11y)
 
@@ -42,74 +59,8 @@
 - **NEVER use raw HTML elements** (`<div>`, `<span>`, `<button>`) for UI construction.
 - **ALWAYS use component library** components from `frontend/src/components/ui/` or create reusable components when needed.
 - **Rationale**: Ensures consistent styling, built-in a11y support, and maintainable codebase.
-
-### Available UI Components
-- **Layout**: `Stack` (flex layouts with gap/align/justify), `Separator` (semantic dividers)
-- **Typography**: `Text` (semantic headings/body with auto-mapping to h1-h6/p/span)
-- **Interactive**: `Button`, `Dialog`, `Sheet`, `DropdownMenu`, `Select`
-- **Display**: `Badge`, `Card`, `Avatar`, `EmptyState`
-- **Forms**: `Input`, `Textarea`, `Label`, `FormDescription`
-- **Feedback**: `toast` (via `useToast` hook), `PageLoader`
-- **Lists**: `ListItem` for consistent list styling
-
-### Accessibility Requirements
-1. **Semantic HTML**:
-   - Use `<nav>`, `<aside>`, `<main>`, `<article>`, `<section>` for structural elements
-   - Use `<ul>`/`<li>` for lists (not div stacks)
-   - Use `<button>` for clickable actions (not `<div onClick>`)
-   - Use `<a>` for navigation links with proper `href`
-
-2. **ARIA Attributes**:
-   - Add `role` when semantic HTML is insufficient (e.g., `role="banner"`)
-   - Use `aria-label` for elements without visible text
-   - Use `aria-hidden="true"` for decorative elements (icons, separators)
-   - Provide `aria-describedby` for complex interactions
-
-3. **Keyboard Navigation**:
-   - All interactive elements must be keyboard accessible
-   - Add visible focus states: `focus:ring-2 focus:ring-primary focus:ring-offset-2`
-   - Maintain logical tab order
-   - Support Escape key for closing modals/drawers
-
-4. **Screen Reader Support**:
-   - Provide text alternatives for non-text content
-   - Use `visually-hidden` class for screen-reader-only text when needed
-   - Announce dynamic content changes with `aria-live` when appropriate
-
-5. **Color & Contrast**:
-   - Ensure WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text)
-   - Don't rely solely on color to convey information
-   - Use Tailwind's semantic color tokens (`text-foreground`, `bg-muted`, etc.)
-
-### Example: Good vs Bad
-
-❌ **Bad** (raw elements, no a11y):
-```tsx
-<div className="flex gap-2">
-  <div onClick={handleClick}>Click me</div>
-  <div>|</div>
-  <div className="flex gap-1">
-    <a href="#">Link 1</a>
-    <span>·</span>
-    <a href="#">Link 2</a>
-  </div>
-</div>
-```
-
-✅ **Good** (components, semantic HTML, a11y):
-```tsx
-<Stack direction="horizontal" gap="sm" align="center">
-  <Button onClick={handleClick}>Click me</Button>
-  <Separator orientation="vertical" className="h-4" aria-hidden="true" />
-  <nav aria-label="Quick links">
-    <ul className="flex gap-1 list-none">
-      <li><a href="#link1" className="focus:ring-2 focus:ring-primary">Link 1</a></li>
-      <li aria-hidden="true">·</li>
-      <li><a href="#link2" className="focus:ring-2 focus:ring-primary">Link 2</a></li>
-    </ul>
-  </nav>
-</Stack>
-```
+- Use components from `frontend/src/components/ui/`: Stack, Button, Dialog, Badge, Card, Input, etc.
+- Follow WCAG AA standards: semantic HTML, ARIA labels, keyboard nav, focus states
 
 ## TypeScript Standards
 - `strict: true` must remain enabled.
@@ -136,83 +87,13 @@
 - Constants use UPPER_SNAKE_CASE.
 - Files use kebab-case for routes and PascalCase for components.
 
-## Pre-Commit Local Testing
+## Pre-Commit Testing
 
-Before committing code, run the following checks to catch issues early:
-
-### Required Checks (Always Run)
-```powershell
-# 1. Lint check (from project root)
-npm run lint --workspaces
-
-# 2. Type check (run in each workspace - no unified command)
-cd frontend; npx tsc --noEmit; cd ..
-cd backend; npx tsc --noEmit; cd ..
-cd shared; npx tsc --noEmit; cd ..
-
-# 3. Run tests
-npm test --workspaces
-
-# 4. Build verification
-npm run build
-```
-
-**Quick One-Liner (PowerShell):**
-```powershell
-npm run lint --workspaces; cd frontend; npx tsc --noEmit; cd ..; cd backend; npx tsc --noEmit; cd ..; npm test --workspaces; npm run build
-```
-
-### When to Run Docker Image Testing
-
-Run local Docker image verification when changes affect:
-- Backend API routes or services
-- Dockerfile or build configuration
-- Environment variables or configuration files
-- Database schema (Prisma migrations)
-- Build scripts or dependencies
-
-**Docker Build Test Workflow:**
 ```bash
-# 1. Build production image
-docker build -t m3w:test -f docker/Dockerfile --build-arg BUILD_TARGET=prod .
-
-# 2. Ensure services are running
-docker-compose up -d
-
-# 3. Create backend/.env.docker (if not exists)
-# Key differences from .env:
-#   DATABASE_URL=postgresql://postgres:postgres@m3w-postgres:5432/m3w
-#   MINIO_ENDPOINT=m3w-minio
-
-# 4. Run container in docker-compose network
-docker run -d \
-  --name m3w-test \
-  --network m3w_default \
-  -p 4000:4000 \
-  --env-file backend/.env.docker \
-  m3w:test
-
-# 5. Run migrations
-docker exec m3w-test npx prisma migrate deploy
-
-# 6. Smoke tests
-curl http://localhost:4000/api/auth/me  # Should return 401
-docker logs m3w-test | grep -i error     # Check for errors
-
-# 7. Functional test (optional)
-# - Start frontend: cd frontend && npm run dev
-# - Test sign-in, upload, playback flows
-
-# 8. Cleanup
-docker stop m3w-test && docker rm m3w-test && docker rmi m3w:test
+npm run lint --workspaces && npm test --workspaces && npm run build
 ```
 
-**For RC builds** (with demo mode):
-```bash
-docker build -t m3w:rc -f docker/Dockerfile --build-arg BUILD_TARGET=rc .
-docker run -d --name m3w-rc --network m3w_default -p 4000:4000 \
-  --env-file backend/.env.docker -e DEMO_MODE=true m3w:rc
-```
+Docker testing: see `scripts/build-docker.cjs --help`
 
 ## Git Workflow
 
@@ -278,19 +159,16 @@ Milestone (deadline-driven)
 
 ### Resources
 
-| Resource | URL | Purpose |
-|----------|-----|----------|
-| **Milestone 1** | https://github.com/test3207/m3w/milestone/1 | Core Product Release (Closed: 2025-11-30) |
-| **Milestone 2** | https://github.com/test3207/m3w/milestone/2 | Enhanced Offline & Quality (Due: 2025-12-30) |
-| **Project Board** | https://github.com/users/test3207/projects/3 | Kanban view for task tracking |
+| Resource | URL |
+|----------|-----|
+| **GitHub Milestone** | https://github.com/test3207/m3w/milestone/1 |
+| **GitHub Project Board** | https://github.com/users/test3207/projects/3 |
 
-### Active Epics (Milestone 2)
+### Active Epics
 
-| Epic | Issue # | Description |
-|------|---------|-------------|
-| Epic 5: Auth User Offline | #87 | Offline capabilities for authenticated users |
-| Epic 6: UX Polish | #88 | User experience improvements |
-| Epic 7: Infrastructure & Quality | #89 | Code quality, testing, infrastructure |
+| Epic | Issue # | Milestone | Focus Area |
+|------|---------|-----------|------------|
+| Epic 3.6: Production Deployment | #194 | M3 | Multi-region k3s deployment |
 
 ### Issue Management Rules
 

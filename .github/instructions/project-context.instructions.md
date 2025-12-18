@@ -110,20 +110,16 @@ The project has been **migrated from Next.js to a separated frontend/backend arc
   - Offline-proxy feature parity (playlist reorder, library sorting with pinyin)
 
 ### Active Initiatives (In Progress)
-- **User Testing & Evaluation**
-  - Ongoing user testing
-  - Stakeholder feedback collection
-- **Deployment Pathfinding**
-  - Lightweight deployment path (GitHub Actions → Aliyun/Azure) mirroring the local setup
+- **Multi-Region Architecture (Epic 3.6)** ✅ **Backend Complete** (#206)
+  - Backend Redis integration for cross-region user routing
+  - User model with `homeRegion` field for regional data sovereignty
+  - JWT with `homeRegion` for intelligent routing via K8s Gateway
+  - Redis-based duplicate prevention across regions (90-day TTL)
+  - Graceful degradation for local development (Redis optional)
+  - Next: K8s Gateway implementation (#204, #207), Cloudflare Pages (#208)
 - **Delivery & Infrastructure**
-  - CI/CD pipeline
-    - Build & release automation (lint/test/build/versioning/artifact)
-    - Deployment automation (staging/prod rollouts & promotion gates)
-  - Deployment strategy
-    - Example/demo deployment flow (read-only environment)
-    - Production deployment with observability & platform integrations
-      - Kubernetes deployment configurations
-      - Alignment of infrastructure tooling (Kubernetes, PostgreSQL, ELK, etc.) with the observability stack for production readiness
+  - CI/CD pipeline setup
+  - Production deployment strategy
 
 - **Mobile-First UI Refactor** ✅ **COMPLETED** (2025-11-13)
   - Zustand state management (libraryStore, playlistStore, enhanced playerStore)
@@ -156,155 +152,16 @@ M3W is a multi-platform music player with a native-like experience, focusing on 
 
 ```
 m3w/
-├── .github/                      # Automation, shared instructions, workflow configs
-├── assets/                       # Source design assets (not served directly)
-│   ├── fonts/                    # Custom typefaces and licensing docs
-│   ├── image/                    # High-res logos, favicons, marketing art
-│   └── raw/                      # Working files (PSD, SVG, AI) grouped by feature
-├── backend/                      # Hono backend server (Node.js)
-│   ├── src/
-│   │   ├── index.ts              # Main entry point
-│   │   ├── lib/                  # Shared utilities (JWT, Prisma, Logger)
-│   │   └── routes/               # API route handlers
-│   │       ├── auth.ts           # Authentication (GitHub OAuth, JWT)
-│   │       ├── libraries.ts      # Library CRUD operations
-│   │       ├── playlists.ts      # Playlist management
-│   │       ├── songs.ts          # Song metadata and streaming
-│   │       ├── upload.ts         # File upload handling
-│   │       └── player.ts         # Playback state and preferences
-│   ├── prisma/                   # Database schema and migrations
-│   │   ├── schema.prisma
-│   │   └── migrations/
-│   ├── .env                      # Backend environment variables (git-ignored)
-│   ├── .env.example              # Backend environment template
-│   ├── package.json              # Backend dependencies
-│   └── tsconfig.json             # Backend TypeScript config
-├── frontend/                     # Vite frontend (React SPA)
-│   ├── src/
-│   │   ├── components/           # UI primitives, features, and layouts
-│   │   │   ├── features/         # Feature-specific components
-│   │   │   │   ├── dashboard/    # Dashboard cards and initializers
-│   │   │   │   ├── libraries/    # Library management components
-│   │   │   │   ├── navigation/   # Bottom navigation and FAB
-│   │   │   │   ├── network/      # Network status indicator
-│   │   │   │   ├── player/       # MiniPlayer, FullPlayer, PlayQueueDrawer
-│   │   │   │   ├── playlists/    # Playlist management components
-│   │   │   │   ├── pwa/          # PWA prompts and utilities
-│   │   │   │   └── upload/       # Upload drawer and form handling
-│   │   │   ├── layouts/          # Layout components (MobileLayout, MobileHeader)
-│   │   │   ├── providers/        # Context providers (auth, etc.)
-│   │   │   └── ui/               # shadcn/ui base components
-│   │   ├── hooks/                # React hooks (useAuthRefresh, etc.)
-│   │   ├── lib/                  # Client utilities and services
-│   │   │   ├── api/              # Low-level HTTP client and routing
-│   │   │   │   ├── client.ts     # Base HTTP client (internal use)
-│   │   │   │   └── router.ts     # Request routing (online/offline)
-│   │   │   ├── audio/            # Audio player and queue management
-│   │   │   │   ├── player.ts     # Howler.js wrapper
-│   │   │   │   └── prefetch.ts   # Audio preloading (skips Guest URLs)
-│   │   │   ├── auth/             # Authentication utilities
-│   │   │   │   └── token-storage.ts  # Dual-layer token sync (localStorage + IndexedDB)
-│   │   │   ├── db/               # IndexedDB schema and utilities
-│   │   │   │   └── schema.ts     # Dexie schema with metadata tables
-│   │   │   ├── offline-proxy/    # Guest mode API simulation
-│   │   │   │   ├── index.ts      # Main router composition
-│   │   │   │   ├── routes/       # Domain-specific route handlers
-│   │   │   │   │   ├── libraries.ts
-│   │   │   │   │   ├── playlists.ts
-│   │   │   │   │   ├── songs.ts
-│   │   │   │   │   ├── upload.ts
-│   │   │   │   │   └── player.ts
-│   │   │   │   └── utils/        # Shared utilities (auth, sorting)
-│   │   │   ├── pwa/              # PWA and caching utilities
-│   │   │   │   └── cache-manager.ts  # Cache Storage API helpers
-│   │   │   ├── sync/             # Offline sync service (planned)
-│   │   │   └── logger-client.ts  # Client-side logging
-│   │   ├── locales/              # i18n message catalogs
-│   │   │   ├── messages/         # en.json, zh-CN.json
-│   │   │   ├── generated/        # Auto-generated types
-│   │   │   ├── i18n.ts           # Proxy-based i18n runtime
-│   │   │   └── use-locale.ts     # React hook for reactivity
-│   │   ├── pages/                # React Router page components
-│   │   │   ├── HomePage.tsx      # Landing page
-│   │   │   ├── SignInPage.tsx    # OAuth sign-in
-│   │   │   ├── DashboardPage.tsx # Main dashboard
-│   │   │   ├── LibrariesPage.tsx # Library list/create
-│   │   │   ├── LibraryDetailPage.tsx # Library songs view
-│   │   │   ├── PlaylistsPage.tsx # Playlist list/create
-│   │   │   ├── PlaylistDetailPage.tsx # Playlist songs management
-│   │   │   └── UploadPage.tsx    # File upload
-│   │   ├── services/             # Service layer
-│   │   │   └── api/              # API clients and resources
-│   │   │       ├── index.ts      # Main export (api.main.*)
-│   │   │       ├── README.md     # API architecture documentation
-│   │   │       └── main/         # Main API service
-│   │   │           ├── client.ts         # JSON API client
-│   │   │           ├── stream-client.ts  # Binary data client
-│   │   │           ├── endpoints.ts      # URL builders
-│   │   │           ├── types/            # Shared types (modular)
-│   │   │           └── resources/        # API resource services
-│   │   │               ├── auth.ts       # Authentication
-│   │   │               ├── libraries.ts  # Library management
-│   │   │               ├── playlists.ts  # Playlist management
-│   │   │               ├── songs.ts      # Song operations
-│   │   │               ├── upload.ts     # File upload
-│   │   │               └── player.ts     # Playback state
-│   │   ├── stores/               # Zustand state stores
-│   │   │   ├── authStore.ts      # Auth state with auto-refresh
-│   │   │   ├── libraryStore.ts   # Library management state
-│   │   │   ├── playlistStore.ts  # Playlist management state
-│   │   │   ├── playerStore.ts    # Audio player and queue state
-│   │   │   └── uiStore.ts        # UI state (drawers, modals)
-│   │   ├── test/                 # Unit and integration test helpers
-│   │   ├── types/                # Shared TypeScript declarations
-│   │   └── main.tsx              # Vite entry point with routing
-│   ├── public/                   # Static assets (PWA icons, etc.)
-│   ├── .env                      # Frontend environment variables (git-ignored)
-│   ├── .env.example              # Frontend environment template
-│   ├── index.html                # HTML entry point
-│   ├── package.json              # Frontend dependencies and scripts
-│   ├── vite.config.ts            # Vite configuration
-│   ├── postcss.config.cjs        # PostCSS configuration
-│   ├── tailwind.config.ts        # Tailwind CSS configuration
-│   ├── tsconfig.json             # TypeScript compiler options
-│   └── vitest.config.ts          # Vitest test runner configuration
-├── shared/                       # Shared code between frontend and backend
-│   ├── src/
-│   │   ├── schemas/              # Zod validation schemas
-│   │   └── types/                # Shared TypeScript types
-│   ├── package.json              # Shared dependencies
-│   └── tsconfig.json             # Shared TypeScript config
-├── scripts/                      # Build and development scripts (Node.js, cross-platform)
-│   ├── setup.cjs                 # Project setup (npm install, env, containers, migrations)
-│   ├── setup-lan.cjs             # LAN access configuration
-│   ├── bump-version.cjs          # Version bumping (patch/minor/major)
-│   ├── build-docker.cjs          # Docker image building
-│   ├── create-archives.cjs       # Release archive creation
-│   ├── build-i18n.cjs            # i18n type generation
-│   ├── watch-i18n.cjs            # i18n watch mode
-│   ├── generate-icons.cjs        # PWA icon generation
-│   ├── reset-local-data.cjs      # Local data reset
-│   └── docker-build.sh           # In-container build (runs inside Docker)
-├── docker/                       # Container definitions and supporting scripts
-│   ├── Dockerfile                # All-in-one production image
-│   ├── Dockerfile.backend        # Backend-only image
-│   ├── Dockerfile.frontend       # Frontend-only image (Nginx)
-│   └── examples/                 # Deployment examples
-├── docs/                         # Developer documentation and regional guides
-├── package.json                  # Root workspace configuration
-├── docker-compose.yml            # Local development services
-├── .dockerignore                 # Docker build exclusions
-└── README.md                     # Project documentation
+├── backend/        # Hono API + Prisma + PostgreSQL + MinIO
+│   ├── src/        # routes/, lib/services/, lib/jwt.ts, lib/redis.ts
+│   └── prisma/     # schema.prisma, migrations/
+├── frontend/       # Vite SPA + React Router + TanStack Query
+│   ├── src/        # components/, pages/, stores/, services/api/, lib/
+│   └── public/     # PWA icons, static assets
+├── shared/         # @m3w/shared types and schemas
+├── scripts/        # .cjs build scripts (setup, i18n, docker, version)
+└── docker/         # Dockerfiles and examples
 ```
-
-### Asset Management
-
-- Treat `assets/` as the source-of-truth for original design files; never import from this directory at runtime.
-- Store optimized, production-ready files in `frontend/public/` for Vite to serve statically.
-- Mirror directory names between `assets/` and `frontend/public/` when practical (for example `assets/image/library/hero.png` → `frontend/public/images/library/hero.png`) to keep provenance obvious.
-- Keep derivative exports automated where possible (for example ImageMagick or Squoosh CLI); document the command used in `assets/README.md` when adding new asset families.
-- PWA icon workflow: update the master artwork in `assets/image/fav.png`, then run `npm run icons:generate` from frontend directory to generate all required icon sizes.
-- Avoid committing oversized or unused binaries—prune intermediates under `assets/raw/` once handed off to `image/` or `frontend/public/`.
 
 ### Core Features
 - Self-hosted music library with full ownership
@@ -629,78 +486,7 @@ IndexedDB
 - Issue #50: Storage quota monitoring UI
 - Issue #51: Cache management utilities
 
-## Pending Decisions
-- JWT tokens enable stateless authentication across multiple instances.
-- Future microservice extraction possible with clear backend separation.
-- Integration points reserved for message queues, search, object storage, email, and upload pipelines.
 
-## Pending Decisions
-- Detailed testing strategy (Vitest, Playwright, coverage targets)
-- CI/CD automation specifics (test pipeline, deployment approvals, environment management)
-- User language preference persistence strategy (database-backed recommended)
-
-## i18n System Architecture
-
-The project uses a custom Proxy-based internationalization system that provides full type safety and reactive language switching without page refresh.
-
-### Key Features
-- **Property Access Syntax**: `I18n.dashboard.title` (not function calls)
-- **Type Safety**: Auto-generated TypeScript definitions with JSDoc hover hints
-- **Reactive Updates**: Event-driven language switching triggers component re-renders
-- **Build Integration**: Automatic type generation on `npm run dev` and `npm run build`
-- **Hot Reload**: Watch mode during development auto-rebuilds on changes
-
-### File Structure
-- `src/locales/messages/en.json` - Source of truth (218+ keys, nested structure)
-- `src/locales/messages/zh-CN.json` - Chinese translations
-- `src/locales/generated/types.d.ts` - Auto-generated TypeScript definitions
-- `src/locales/i18n.ts` - Proxy runtime with event system
-- `src/locales/use-locale.ts` - React hook for component reactivity
-- `scripts/build-i18n.js` - Type generation and translation merging
-- `scripts/watch-i18n.js` - Development hot reload
-
-### Usage Patterns
-
-**Client Components:**
-```typescript
-import { I18n } from '@/locales/i18n';
-import { useLocale } from '@/locales/use-locale';
-
-export default function MyComponent() {
-  useLocale(); // Subscribe to language changes
-  return <h1>{I18n.dashboard.title}</h1>;
-}
-```
-
-**API Routes:**
-```typescript
-import { I18n } from '@/locales/i18n';
-
-export async function POST() {
-  return NextResponse.json({
-    message: I18n.error.unauthorized
-  });
-}
-```
-
-**Language Switching:**
-```typescript
-import { setLocale } from '@/locales/i18n';
-
-<button onClick={() => setLocale('zh-CN')}>中文</button>
-```
-
-### Adding New Text
-1. Add key to `src/locales/messages/en.json`
-2. Build script auto-generates TypeScript types
-3. Add translation to `zh-CN.json` (optional, defaults to English)
-4. Use in code: `I18n.category.newKey`
-
-### Architecture Decisions
-- Full CSR (root layout marked `'use client'`) to avoid SSR hydration mismatches
-- No localStorage persistence (reserved for future database-backed preferences)
-- Module-level initialization ensures consistent server/client state
-- `suppressHydrationWarning` on i18n text elements prevents React warnings
 
 ## References
 - Next.js Documentation: https://nextjs.org/docs

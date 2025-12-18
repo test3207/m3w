@@ -323,21 +323,23 @@ async function main() {
     // Check if we're in container/CI or need to spawn one
     if (isInContainer()) {
       // Running in container or CI - build directly
-      log.gray(`   Running build directly (CI/container environment, BUILD_TARGET=${buildTarget})...`);
+      log.gray(`   Running build directly (CI/container environment, BUILD_TARGET=${buildTarget}, APP_VERSION=${version})...`);
 
       process.env.BUILD_TARGET = buildTarget;
+      process.env.APP_VERSION = version;
       if (!exec(`sh "${path.join(projectRoot, 'scripts', 'docker-build.sh')}"`)) {
         log.error('❌ Artifact build failed!');
         process.exit(1);
       }
     } else {
       // Running on host - use container for consistency
-      log.gray(`   Running container build (BUILD_TARGET=${buildTarget})...`);
+      log.gray(`   Running container build (BUILD_TARGET=${buildTarget}, APP_VERSION=${version})...`);
 
       const cmd = `${container.runtime} run --rm ` +
         `-v "${projectRoot}:/app:ro" ` +
         `-v "${outputDir}:/output" ` +
         `-e "BUILD_TARGET=${buildTarget}" ` +
+        `-e "APP_VERSION=${version}" ` +
         `${nodeImage} ` +
         `sh -c "mkdir -p /build && sh /app/scripts/docker-build.sh"`;
 

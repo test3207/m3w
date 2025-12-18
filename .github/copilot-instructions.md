@@ -3,8 +3,8 @@
 ## Metadata
 
 **Created**: 2025-11-06  
-**Last Updated**: 2025-12-05  
-**Current Phase**: User Testing & Deployment Preparation
+**Last Updated**: 2025-12-18  
+**Current Phase**: Multi-Region Architecture & Production Deployment
 
 ## Mission Snapshot
 
@@ -29,20 +29,15 @@
 
 | File | Applies To | Purpose |
 | --- | --- | --- |
-| `.github/instructions/project-context.instructions.md` | `**/*` | Full project status, architecture, and domain context |
-| `.github/instructions/development-standards.instructions.md` | `**/*` | Coding conventions, testing strategy, workflow agreements, and **project management** |
-| `.github/instructions/api-patterns.instructions.md` | `**/*` | API response pattern and toast feedback workflow |
-| `.github/instructions/i18n-system.instructions.md` | `**/*` | Internationalization architecture and usage patterns |
-| `.github/instructions/user-stories.instructions.md` | `**/*` | Complete product requirements (online + offline experience) |
+| `.github/instructions/project-context.instructions.md` | `**/*` | Project status, architecture, completed features |
+| `.github/instructions/development-standards.instructions.md` | `**/*` | Code style, API patterns, i18n, testing, Git workflow, project management |
+| `.github/instructions/user-stories.instructions.md` | `**/*` | Product requirements and user flows |
 
 ## How to Use These Instructions
 
-- Need business context, core flows, or roadmap? Open `project-context.instructions.md`.
-- Touching code style, typing, Git flow, or testing? Review `development-standards.instructions.md`.
-- **Managing issues, epics, or milestones?** See the Project Management section in `development-standards.instructions.md`.
-- Writing or adjusting an API route or toast feedback? Follow `api-patterns.instructions.md` for consistent response structure and user notifications.
-- Adding or modifying user-facing text? Follow `i18n-system.instructions.md` for proper i18n integration.
-- Understanding product requirements (online or offline)? Check `user-stories.instructions.md` for complete user flows and acceptance criteria.
+- Architecture, status, completed features → `project-context.instructions.md`
+- Code style, API patterns, i18n, Git workflow, project management → `development-standards.instructions.md`
+- Product requirements, user flows → `user-stories.instructions.md`
 
 ## Core Context Highlights
 
@@ -52,23 +47,18 @@
 
 ## Working Agreements
 
-- Keep business logic inside `backend/src/lib/services`; API routes stay thin wrappers.
-- API routes return `{ success, data?, error?, details? }` for consistent error handling; client components handle errors via toast.
-- Frontend API calls use `api.main.*` service layer (JSON) or `streamApiClient` (binary data); never use `apiClient` directly in business logic.
-- Trigger toasts only from the client layer; never emit them directly inside API handlers.
-- All user-facing text must use the i18n system (`I18n.category.key`); never hardcode strings.
-- Client components using i18n must call `useLocale()` to respond to language changes; API routes only need `I18n` import.
-- After editing any instruction, update the metadata block in this document.
+- Business logic in `backend/src/lib/services`; API routes stay thin
+- API returns `{ success, data?, error? }`; toasts triggered from client only
+- Frontend uses `api.main.*` (JSON) or `streamApiClient` (binary); never `apiClient` directly
+- User-facing text uses `I18n.category.key`; no hardcoded strings
+- After editing instructions, update metadata in this document
 
 ## References
 
-- Project context instructions: [project-context.instructions.md](./instructions/project-context.instructions.md)
-- Development standards instructions: [development-standards.instructions.md](./instructions/development-standards.instructions.md)
-- API patterns (response + toast): [api-patterns.instructions.md](./instructions/api-patterns.instructions.md)
-- i18n system: [i18n-system.instructions.md](./instructions/i18n-system.instructions.md)
-- User stories (online + offline): [user-stories.instructions.md](./instructions/user-stories.instructions.md)
-- Frontend API client architecture: [frontend/src/services/api/README.md](../frontend/src/services/api/README.md)
-- **GitHub Milestone**: <https://github.com/test3207/m3w/milestone/1>
+- [project-context.instructions.md](./instructions/project-context.instructions.md)
+- [development-standards.instructions.md](./instructions/development-standards.instructions.md)
+- [user-stories.instructions.md](./instructions/user-stories.instructions.md)
+- **GitHub Milestone 3** (Production Readiness): <https://github.com/test3207/m3w/milestone/3>
 - **GitHub Project Board**: <https://github.com/users/test3207/projects/3>
 - Vite Documentation: <https://vitejs.dev/>
 - React Router Documentation: <https://reactrouter.com/>

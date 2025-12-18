@@ -6,6 +6,9 @@ import { useLocale } from "@/locales/use-locale";
 import { LanguageSwitcher } from "@/components/layouts/language-switcher";
 import { useAuthStore } from "@/stores/authStore";
 
+// Injected at build time by Vite
+declare const __APP_VERSION__: string;
+
 export default function HomePage() {
   useLocale(); // Subscribe to locale changes
   const { isAuthenticated } = useAuthStore();
@@ -79,6 +82,7 @@ export default function HomePage() {
           >
             github.com/test3207/m3w
           </a>
+          <p className="mt-1 text-xs">{__APP_VERSION__}</p>
         </div>
       </footer>
     </div>

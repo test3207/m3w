@@ -35,11 +35,11 @@ Transition:
 
 | Part | Title | User Type | Focus |
 |------|-------|-----------|-------|
-| **Part 1** | Online Experience | Auth + Online | Core features (✅ Complete) |
-| **Part 2** | Guest Mode (Local-Only) | Guest | Pure local player (✅ Complete) |
-| **Part 2.5** | Guest to Auth Migration | Guest → Auth | Account binding & data merge |
-| **Part 3** | Auth Offline Experience | Auth + Offline | **Read-only** cached data |
-| **Part 4** | Cross-Device Sync | Auth | Simple: backend is source of truth |
+| **Part 1** | Online Experience | Auth + Online | Core features (✅ **Complete**) |
+| **Part 2** | Guest Mode (Local-Only) | Guest | Pure local player (✅ **Complete**) |
+| **Part 2.5** | Guest to Auth Migration | Guest → Auth | Account binding (❌ **Not Started**) |
+| **Part 3** | Auth Offline Experience | Auth + Offline | Read-only cache (🟡 **Partial**: cache-on-play works, no UI) |
+| **Part 4** | Cross-Device Sync | Auth | Backend is source (✅ **Complete**: no sync needed) |
 
 ---
 
@@ -104,31 +104,9 @@ Song
 
 **Goal**: New user signs in and uploads their first song
 
-**Flow**:
-```
-1. Open app → Welcome page (not logged in)
-2. Click "Get Started" → GitHub OAuth sign-in
-3. Sign-in success → Redirect to main interface
-   └─ Backend auto-creates:
-      - "Default Library" (isDefault: true, canDelete: false)
-      - "Favorites" Playlist (isDefault: true, canDelete: false)
+**Key Flow**: GitHub OAuth → Backend auto-creates Default Library + Favorites Playlist → Mobile UI with 3-tab nav → Upload with metadata extraction → Play
 
-4. User sees mobile-first UI with 3-tab bottom navigation
-5. Navigate to "Libraries" Tab → See "Default Library" card
-6. Click Library card → Empty state + "Upload Songs" button
-7. Click upload → Upload drawer appears (Library pre-selected)
-8. Select files → Auto-extract Metadata → Upload
-9. Upload complete → Song appears in Library
-10. Click song → Start playing
-```
-
-**Acceptance Criteria**:
-- [x] Default Library auto-created on first sign-in
-- [x] Default Library cannot be deleted (UI shows disabled state)
-- [x] Favorites Playlist auto-created
-- [x] Upload flow pre-selects current Library
-- [x] Metadata auto-extracted and displayed for editing
-- [x] Mobile-first UI with bottom navigation
+**Acceptance Criteria**: Default Library/Favorites created, upload pre-selects Library, metadata auto-extracted, mobile-first UI
 
 ---
 
@@ -136,51 +114,9 @@ Song
 
 **Goal**: User creates and manages multiple music collections
 
-**Flow**:
+**Key Features**: Create Library → Progressive loading (100/batch, 3 concurrent) → Play from Library → Mini/Full Player
 
-**Creating New Library**:
-```
-1. In "Libraries" Tab → Click floating "+" button
-2. Enter Library name (e.g., "Work Music")
-3. Create success → New Library appears in list
-4. Click to enter → Upload songs
-```
-
-**Switching Between Libraries**:
-```
-1. In "Libraries" Tab → See all Library cards:
-   - Default Library (234 songs) [cover]
-   - Work Music (56 songs) [cover]
-   - Workout Music (89 songs) [cover]
-2. Click any Library → View songs in that Library
-```
-
-**Viewing Library Songs** (Progressive Loading):
-```
-1. Enter a Library → Songs start loading automatically
-2. First batch (100 songs) appears immediately
-3. Remaining songs load in background (3 concurrent requests)
-4. Progress shown at bottom: "Loading 300/850..."
-5. User can scroll and interact with loaded songs immediately
-6. No manual "Load More" button needed
-```
-
-**Playing from Library**:
-```
-1. Enter a Library → See song list
-2. Click "Play All" → Start playing (creates linked playlist)
-3. Or click single song → Play from that song
-4. Mini Player shows at bottom
-5. Tap Mini Player → Expand to Full Player
-```
-
-**Acceptance Criteria**:
-- [x] Create new Library with custom name
-- [x] Library list shows song count and cover
-- [x] Library cover = last added song's album cover
-- [x] Play from Library creates/updates linked playlist
-- [x] Mini Player and Full Player working
-- [ ] Progressive loading for large libraries (auto-paginate)
+**Acceptance Criteria**: Custom Library names, song count/cover display, play creates linked playlist, progressive loading
 
 ---
 
@@ -188,46 +124,9 @@ Song
 
 **Goal**: User creates and manages playlists with songs from different Libraries
 
-**Flow**:
+**Key Features**: Create Playlist → Add songs from any Library → Show song source → Drag & drop reorder → Sort (date/title/artist/album, Pinyin for Chinese)
 
-**Creating Playlist**:
-```
-1. In "Playlists" Tab → Click floating "+"
-2. Enter name (e.g., "Late Night Drive")
-3. Create success → Empty Playlist appears
-```
-
-**Adding Songs to Playlist**:
-```
-1. Enter any Library → Long press on song
-2. Popup menu → "Add to Playlist"
-3. Select target Playlist (or create new)
-4. Add success
-```
-
-**Playing Playlist**:
-```
-1. In "Playlists" Tab → Click Playlist
-2. Enter detail → Click "Play All" or single song
-3. Playback queue = songs in Playlist (may come from different Libraries)
-4. In Playlist detail, show song source: "From: Work Music"
-```
-
-**Reordering Playlist Songs**:
-```
-1. In Playlist detail → Long press drag handle [≡]
-2. Drag to reorder
-3. Order saved automatically (frontend manages order)
-```
-
-**Acceptance Criteria**:
-- [x] Create custom Playlists
-- [x] Add songs from any Library to any Playlist
-- [x] Playlist shows song source Library
-- [x] Drag & drop reordering in Playlist
-- [x] Sort by multiple criteria (date, title, artist, album)
-- [x] Chinese song titles sorted by Pinyin
-- [x] "Favorites" Playlist cannot be deleted
+**Acceptance Criteria**: Cross-Library playlists, source display, reordering, sorting with Pinyin, Favorites cannot be deleted
 
 ---
 
@@ -235,64 +134,9 @@ Song
 
 **Goal**: User opens app and plays music seamlessly
 
-**Flow**:
-```
-1. Open app → Auto-enter last viewed page
-   - If previous playback exists → Mini Player shows last played song (paused)
-   - If no history → Mini Player hidden
+**Key Components**: Bottom Nav (Libraries/Playlists/Settings) → Mini Player (floating, always visible) → Full Player (cover, controls, actions) → Play Queue Drawer (source, reorder, save as playlist)
 
-2. Mobile UI Components:
-
-   Bottom Navigation (fixed 3 tabs):
-     - Libraries
-     - Playlists
-     - Settings
-
-   Mini Player (floating above bottom nav, always visible when song loaded):
-     ┌─────────────────────────────────────┐
-     │ [Cover] Song - Artist    [▶] [→]  │
-     │ ▬▬▬▬▬●▬▬▬▬▬▬▬ 2:15 / 4:30         │
-     └─────────────────────────────────────┘
-     - Click to expand → Full Player
-     - Visible on all authenticated pages
-
-   Full Player (tap Mini Player to expand):
-     - Large album cover (with blurred background)
-     - Song info: Title, Artist, Album
-     - Progress bar + timestamps
-     - Playback controls: Previous, Play/Pause, Next
-     - Action buttons:
-       ├─ Add to Favorites
-       ├─ Add to Playlist
-       ├─ Shuffle
-       └─ Repeat (off / one / all)
-     - Swipe down → View Play Queue
-     - Tap outside → Close to Mini Player
-
-3. Play Queue Drawer (swipe up from Full Player):
-   ┌─────────────────────────────────────┐
-   │ Play Queue (12 songs)  [Clear][Save]│
-   ├─────────────────────────────────────┤
-   │ Now playing from: Work Music Library │
-   ├─────────────────────────────────────┤
-   │ [Cover] Song 1 - Artist 1  [⋮] ← Now│
-   │ [Cover] Song 2 - Artist 2  [⋮]     │
-   │ [Cover] Song 3 - Artist 3  [⋮]     │
-   └─────────────────────────────────────┘
-   - Shows queue source (Library or Playlist)
-   - Tap to switch songs
-   - Delete from queue
-   - Bottom buttons: "Clear Queue" "Save as Playlist"
-```
-
-**Acceptance Criteria**:
-- [x] Mini Player always visible when song loaded
-- [x] Tap to expand Full Player
-- [x] Full Player shows detailed song info
-- [x] Swipe/tap gestures work smoothly
-- [x] Play Queue shows source (Library/Playlist)
-- [x] Save current queue as new Playlist
-- [x] Resume last playback on app reopen (with progress)
+**Acceptance Criteria**: Mini Player persistence, expand to Full Player, swipe gestures, queue management, resume playback with progress
 
 ---
 
@@ -807,295 +651,13 @@ Settings → Storage:
 
 ---
 
-## Technical Architecture
+## Technical Summary
 
-### Core Design: Read-Through Cache with Offline Fallback
-
-M3W uses a simple architecture where **backend is always the source of truth** for Auth users. IndexedDB serves as a read-only cache for offline access.
-
-**Key Principles**:
-1. **Backend is Source of Truth** - All writes go directly to backend (Auth users)
-2. **IndexedDB is Read Cache** - Stores backend responses for offline access
-3. **Guest Mode is Local-Only** - Full IndexedDB CRUD, no backend involvement
-4. **No Sync Protocol** - Auth offline is read-only, no dirty tracking needed
-
-### Data Flow Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    M3W Simplified Architecture                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │                        Frontend                                 │ │
-│  ├────────────────────────────────────────────────────────────────┤ │
-│  │                                                                 │ │
-│  │   User Action ──► Router ──┬──► Backend API (Auth + Online)   │ │
-│  │                            │     │                              │ │
-│  │                            │     ▼                              │ │
-│  │                            │   Cache to IndexedDB               │ │
-│  │                            │                                    │ │
-│  │                            ├──► IndexedDB Read (Auth + Offline)│ │
-│  │                            │     (Read-only, cached data)       │ │
-│  │                            │                                    │ │
-│  │                            └──► OfflineProxy (Guest, any state)│ │
-│  │                                  (Full CRUD, local storage)     │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Router Layer Design
-
-The frontend Router handles three scenarios:
-
-```typescript
-async function routeRequest(endpoint: string, method: string, data?: any) {
-  // Scenario 1: Guest user → Always use OfflineProxy (full CRUD)
-  if (isGuest()) {
-    return offlineProxy.handle(endpoint, method, data);
-  }
-  
-  // Scenario 2: Auth + Online → Use Backend API
-  if (isOnline()) {
-    const result = await backendApi.call(endpoint, method, data);
-    
-    // Cache GET responses to IndexedDB for offline access
-    if (method === 'GET') {
-      await cacheToIndexedDB(endpoint, result.data);
-    }
-    
-    return result;
-  }
-  
-  // Scenario 3: Auth + Offline → Read-only from cache
-  if (method !== 'GET') {
-    // Block write operations when offline
-    throw new OfflineWriteError('You are offline. Connect to make changes.');
-  }
-  
-  return readFromCache(endpoint);
-}
-```
-
-#### Behavior Matrix
-
-| User Type | Network | Read | Write |
-|-----------|---------|------|-------|
-| Guest | Any | OfflineProxy (IndexedDB) | OfflineProxy (IndexedDB) |
-| Auth | Online | Backend → Cache | Backend |
-| Auth | Offline | Cache (IndexedDB) | ❌ Blocked |
-
----
-
-### OfflineProxy: Shared Read, Guest-Only Write
-
-OfflineProxy is split into read and write operations:
-
-```typescript
-// Read operations: Used by both Guest and Auth Offline
-const readOperations = {
-  getLibraries: () => db.libraries.toArray(),
-  getLibrary: (id) => db.libraries.get(id),
-  getLibrarySongs: (libraryId) => db.songs.where('libraryId').equals(libraryId).toArray(),
-  getPlaylists: () => db.playlists.toArray(),
-  getPlaylist: (id) => db.playlists.get(id),
-  getPlaylistSongs: (playlistId) => /* ... */,
-};
-
-// Write operations: Guest only (Auth users blocked when offline)
-const writeOperations = {
-  createLibrary: (name) => db.libraries.add({ id: `local_${uuid()}`, name, ... }),
-  deleteLibrary: (id) => db.libraries.delete(id),
-  createPlaylist: (name) => db.playlists.add({ id: `local_${uuid()}`, name, ... }),
-  addSongToPlaylist: (playlistId, songId) => /* ... */,
-  // ... other mutations
-};
-
-// Combined for Guest mode
-export const offlineProxy = {
-  ...readOperations,
-  ...writeOperations,
-};
-
-// Auth Offline only uses read operations
-export const offlineReadProxy = readOperations;
-```
-
----
-
-### Caching Strategy
-
-#### When to Cache (Auth Users)
-
-```
-Online Navigation:
-┌─────────────────────────────────────────────────────────┐
-│  User visits page → GET from backend → Cache response   │
-│                                                         │
-│  Libraries page:   GET /api/libraries → cache           │
-│  Library detail:   GET /api/libraries/:id/songs → cache │
-│  Playlists page:   GET /api/playlists → cache           │
-│  Playlist detail:  GET /api/playlists/:id/songs → cache │
-└─────────────────────────────────────────────────────────┘
-
-The cache is always the "last seen online state".
-```
-
-#### IndexedDB Schema
-
-```typescript
-// Simple cache structure (no sync flags needed for Auth)
-interface LibraryCache {
-  id: string;
-  name: string;
-  songCount: number;
-  coverUrl?: string;
-  // No _isDirty, _isLocalOnly - Auth is read-only offline
-}
-
-interface PlaylistCache {
-  id: string;
-  name: string;
-  songIds: string[];
-  // No sync tracking
-}
-
-interface SongCache {
-  id: string;
-  libraryId: string;
-  title: string;
-  artist?: string;
-  album?: string;
-  duration?: number;
-  coverUrl?: string;
-}
-```
-
-#### Audio File Caching
-
-Audio files use Cache Storage API (separate from metadata):
-
-| Trigger | Behavior |
-|---------|----------|
-| **Cache-on-play** | Stream → Cache after complete |
-| **Manual download** | User clicks "Download Library" → Batch cache |
-| **Cache-on-upload** | Upload complete → Immediately cache locally |
-
----
-
-### UI Handling for Offline State
-
-#### Disabling Write Operations
-
-```typescript
-function CreatePlaylistButton() {
-  const { isGuest, isOnline } = useAuth();
-  const canWrite = isGuest || isOnline;
-  
-  return (
-    <Button 
-      onClick={canWrite ? handleCreate : undefined}
-      disabled={!canWrite}
-      title={!canWrite ? 'Connect to internet to create' : undefined}
-    >
-      <Plus className="h-4 w-4" />
-      Create Playlist
-    </Button>
-  );
-}
-```
-
-#### Offline Banner
-
-```typescript
-function OfflineBanner() {
-  const { isOnline, isGuest } = useAuth();
-  
-  if (isGuest || isOnline) return null;
-  
-  return (
-    <div className="bg-yellow-100 text-yellow-800 px-4 py-2 text-sm">
-      You're offline. Viewing cached data (read-only).
-    </div>
-  );
-}
-```
-
----
-
-### Songs Progressive Loading
-
-Songs are loaded progressively using automatic pagination:
-
-```typescript
-async function loadAllSongs(libraryId: string) {
-  const PAGE_SIZE = 100;
-  const CONCURRENCY = 3;
-  let allSongs: Song[] = [];
-  
-  // First request to get total
-  const first = await api.libraries.getSongs(libraryId, { page: 1, pageSize: PAGE_SIZE });
-  allSongs = first.data;
-  
-  const totalPages = Math.ceil(first.pagination.total / PAGE_SIZE);
-  
-  // Concurrent loading for remaining pages
-  for (let i = 2; i <= totalPages; i += CONCURRENCY) {
-    const batch = Array.from(
-      { length: Math.min(CONCURRENCY, totalPages - i + 1) },
-      (_, j) => api.libraries.getSongs(libraryId, { page: i + j, pageSize: PAGE_SIZE })
-    );
-    
-    const results = await Promise.all(batch);
-    results.forEach(r => allSongs.push(...r.data));
-  }
-  
-  return allSongs;
-}
-```
-
----
-
-### Data Limits
-
-| Entity | Limit | Rationale |
-|--------|-------|-----------|
-| Libraries per user | 50 | Sufficient for most use cases |
-| Playlists per user | 50 | Sufficient for most use cases |
-| Songs per Library | 1000 | Performance and UX balance |
-| Songs per Playlist | 1000 | Performance and UX balance |
-
----
-
-### Backend API (Unchanged)
-
-The existing RESTful API remains unchanged:
-
-```
-GET    /api/libraries              - List all libraries
-POST   /api/libraries              - Create library
-GET    /api/libraries/:id          - Get library
-PUT    /api/libraries/:id          - Update library
-DELETE /api/libraries/:id          - Delete library
-GET    /api/libraries/:id/songs    - List songs in library
-
-GET    /api/playlists              - List all playlists
-POST   /api/playlists              - Create playlist
-GET    /api/playlists/:id          - Get playlist
-PUT    /api/playlists/:id          - Update playlist
-DELETE /api/playlists/:id          - Delete playlist
-
-GET    /api/songs/:id/stream       - Stream audio file
-GET    /api/songs/:id/cover        - Get cover image
-
-GET    /api/user/preferences       - Get user preferences
-PUT    /api/user/preferences       - Update preferences
-```
-
-No changes needed for the simplified offline architecture.
+- **Auth Online**: Backend is source of truth, IndexedDB caches GET responses
+- **Auth Offline**: Read-only from IndexedDB cache, all writes blocked
+- **Guest Mode**: Full CRUD in IndexedDB, no backend involved
+- **Audio Cache**: Cache Storage API with Range request support
+- **Limits**: 50 libraries, 50 playlists, 1000 songs per container
 
 ---
 
@@ -1128,21 +690,22 @@ No changes needed for the simplified offline architecture.
 | Part | Stories | Status |
 |------|---------|--------|
 | Part 1 | 1.1 - 1.5 | ✅ All complete |
-| Part 2 | 2.1 - 2.2 | ✅ Core complete |
+| Part 2 | 2.1 - 2.2 | ✅ Complete |
+| Part 4 | 4.1 - 4.2 | ✅ Complete (no sync needed - backend is source) |
 
 ### In Progress (🟡)
 
-| Part | Stories | Blockers |
-|------|---------|----------|
-| Part 2 | 2.3 | #50, #51 |
+| Part | Stories | Status |
+|------|---------|--------|
+| Part 2 | 2.3 | Storage quota UI needed (#50, #51) |
+| Part 3 | 3.2 | Cache-on-play works; need offline UI indicators |
 
 ### Not Started (❌)
 
 | Part | Stories | Dependencies |
 |------|---------|--------------|
-| Part 2.5 | 2.5.1, 2.5.2 | #33, #129 |
-| Part 3 | 3.1 - 3.4 | Read-only offline design |
-| Part 4 | 4.1 - 4.2 | #106 (Preferences Sync) |
+| Part 2.5 | 2.5.1, 2.5.2 | #33, #129 (Epic 8) |
+| Part 3 | 3.1, 3.3, 3.4 | Offline UI and proactive caching |
 
 ---
 
