@@ -5,7 +5,7 @@ import path from "path";
 import { readFileSync } from "fs";
 
 // Read version from package.json as fallback
-const rootPkg = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf-8'));
+const rootPkg = JSON.parse(readFileSync(path.resolve(__dirname, "../package.json"), "utf-8"));
 // APP_VERSION env var is set by build-docker.cjs (e.g., "v1.0.0-rc.1" or "v1.0.0")
 // Falls back to package.json version for local dev
 const appVersion = process.env.APP_VERSION || `v${rootPkg.version}-dev`;
