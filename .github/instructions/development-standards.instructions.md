@@ -35,6 +35,23 @@
 - PWA with offline-first architecture using IndexedDB via Dexie and Service Worker with Workbox.
 - User feedback flows through the toast store defined in `frontend/src/components/ui/use-toast.ts` with a single `<Toaster />` in `frontend/src/main.tsx`.
 - **Demo Mode**: Compile-time controlled via `BUILD_TARGET=rc` (includes code) or `BUILD_TARGET=prod` (tree-shaken), runtime enabled via `DEMO_MODE=true` in backend `.env`; provides storage limits, hourly reset (optional), and user-facing banner with free music links.
+- **Multi-Region Architecture**: Backend supports optional Redis integration for cross-region user routing; `homeRegion` field in User model tracks user's registration region; JWT includes `homeRegion` for intelligent routing via K8s Gateway; graceful degradation for local development (Redis optional).
+
+## API Response Pattern
+
+- Return `{ success: boolean, data?: T, error?: string, details?: unknown }`
+- Keep routes thin, logic in `backend/src/lib/services`
+- Log errors with `backend/src/lib/logger.ts`
+- Export types from `@m3w/shared`
+- Trigger toasts only from client; never in API handlers
+
+## i18n System
+
+- Use `I18n.category.key` (Proxy-based, auto-generated types)
+- Files: `src/locales/messages/{en,zh-CN}.json`, `scripts/build-i18n.cjs`
+- React: Import `I18n` only (no `useLocale()` needed, handled by `LocaleProvider`)
+- Add text: edit `en.json` → auto-generate types → add to `zh-CN.json`
+- Language switch: `setLocale('zh-CN')`
 
 ## UI Component Standards & Accessibility (a11y)
 
@@ -278,19 +295,16 @@ Milestone (deadline-driven)
 
 ### Resources
 
-| Resource | URL | Purpose |
-|----------|-----|----------|
-| **Milestone 1** | https://github.com/test3207/m3w/milestone/1 | Core Product Release (Closed: 2025-11-30) |
-| **Milestone 2** | https://github.com/test3207/m3w/milestone/2 | Enhanced Offline & Quality (Due: 2025-12-30) |
-| **Project Board** | https://github.com/users/test3207/projects/3 | Kanban view for task tracking |
+| Resource | URL |
+|----------|-----|
+| **GitHub Milestone** | https://github.com/test3207/m3w/milestone/1 |
+| **GitHub Project Board** | https://github.com/users/test3207/projects/3 |
 
-### Active Epics (Milestone 2)
+### Active Epics
 
-| Epic | Issue # | Description |
-|------|---------|-------------|
-| Epic 5: Auth User Offline | #87 | Offline capabilities for authenticated users |
-| Epic 6: UX Polish | #88 | User experience improvements |
-| Epic 7: Infrastructure & Quality | #89 | Code quality, testing, infrastructure |
+| Epic | Issue # | Milestone | Focus Area |
+|------|---------|-----------|------------|
+| Epic 3.6: Production Deployment | #194 | M3 | Multi-region k3s deployment |
 
 ### Issue Management Rules
 

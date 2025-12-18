@@ -35,11 +35,11 @@ Transition:
 
 | Part | Title | User Type | Focus |
 |------|-------|-----------|-------|
-| **Part 1** | Online Experience | Auth + Online | Core features (✅ Complete) |
-| **Part 2** | Guest Mode (Local-Only) | Guest | Pure local player (✅ Complete) |
-| **Part 2.5** | Guest to Auth Migration | Guest → Auth | Account binding & data merge |
-| **Part 3** | Auth Offline Experience | Auth + Offline | **Read-only** cached data |
-| **Part 4** | Cross-Device Sync | Auth | Simple: backend is source of truth |
+| **Part 1** | Online Experience | Auth + Online | Core features (✅ **Complete**) |
+| **Part 2** | Guest Mode (Local-Only) | Guest | Pure local player (✅ **Complete**) |
+| **Part 2.5** | Guest to Auth Migration | Guest → Auth | Account binding (❌ **Not Started**) |
+| **Part 3** | Auth Offline Experience | Auth + Offline | Read-only cache (🟡 **Partial**: cache-on-play works, no UI) |
+| **Part 4** | Cross-Device Sync | Auth | Backend is source (✅ **Complete**: no sync needed) |
 
 ---
 
@@ -1128,21 +1128,22 @@ No changes needed for the simplified offline architecture.
 | Part | Stories | Status |
 |------|---------|--------|
 | Part 1 | 1.1 - 1.5 | ✅ All complete |
-| Part 2 | 2.1 - 2.2 | ✅ Core complete |
+| Part 2 | 2.1 - 2.2 | ✅ Complete |
+| Part 4 | 4.1 - 4.2 | ✅ Complete (no sync needed - backend is source) |
 
 ### In Progress (🟡)
 
-| Part | Stories | Blockers |
-|------|---------|----------|
-| Part 2 | 2.3 | #50, #51 |
+| Part | Stories | Status |
+|------|---------|--------|
+| Part 2 | 2.3 | Storage quota UI needed (#50, #51) |
+| Part 3 | 3.2 | Cache-on-play works; need offline UI indicators |
 
 ### Not Started (❌)
 
 | Part | Stories | Dependencies |
 |------|---------|--------------|
-| Part 2.5 | 2.5.1, 2.5.2 | #33, #129 |
-| Part 3 | 3.1 - 3.4 | Read-only offline design |
-| Part 4 | 4.1 - 4.2 | #106 (Preferences Sync) |
+| Part 2.5 | 2.5.1, 2.5.2 | #33, #129 (Epic 8) |
+| Part 3 | 3.1, 3.3, 3.4 | Offline UI and proactive caching |
 
 ---
 

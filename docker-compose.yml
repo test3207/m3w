@@ -40,6 +40,22 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    # Redis for multi-region user routing (optional)
+    image: redis:7-alpine
+    container_name: m3w-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   minio_data:
+  redis_data:

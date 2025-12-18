@@ -25,31 +25,37 @@ function getJwtSecret(): string {
 const JWT_SECRET = getJwtSecret();
 const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '6h'; // 6 hours for music listening sessions
 const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '90d';
+const HOME_REGION = process.env.HOME_REGION || 'default';
 
 export interface TokenPayload {
   userId: string;
   email: string;
   type: 'access' | 'refresh';
+  homeRegion: string;  // "jp", "sea", "usw", or "default" for AIO
+  isRemote?: boolean;  // true if user accessing from non-home region
 }
 
-export function generateAccessToken(user: User): string {
+export function generateAccessToken(user: User, homeRegion = HOME_REGION, isRemote = false): string {
   return jwt.sign(
     {
       userId: user.id,
       email: user.email,
       type: 'access',
+      homeRegion,
+      isRemote,
     } as TokenPayload,
     JWT_SECRET,
     { expiresIn: JWT_ACCESS_EXPIRY } as jwt.SignOptions
   );
 }
 
-export function generateRefreshToken(user: User): string {
+export function generateRefreshToken(user: User, homeRegion = HOME_REGION): string {
   return jwt.sign(
     {
       userId: user.id,
       email: user.email,
       type: 'refresh',
+      homeRegion,
     } as TokenPayload,
     JWT_SECRET,
     { expiresIn: JWT_REFRESH_EXPIRY } as jwt.SignOptions
@@ -65,9 +71,9 @@ export function verifyToken(token: string): TokenPayload | null {
   }
 }
 
-export function generateTokens(user: User) {
-  const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken(user);
+export function generateTokens(user: User, homeRegion = HOME_REGION, isRemote = false) {
+  const accessToken = generateAccessToken(user, homeRegion, isRemote);
+  const refreshToken = generateRefreshToken(user, homeRegion);
   
   // Calculate expiry time (in milliseconds)
   const decoded = jwt.decode(accessToken) as { exp: number };

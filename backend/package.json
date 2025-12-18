@@ -24,6 +24,7 @@
     "dotenv": "^17.2.3",
     "formidable": "^3.5.4",
     "hono": "^4.11.0",
+    "ioredis": "^5.3.2",
     "jsonwebtoken": "^9.0.3",
     "minio": "^8.0.6",
     "music-metadata": "^11.10.3",

@@ -22,6 +22,9 @@ model User {
   // User preferences
   cacheAllEnabled Boolean @default(false)  // Global cache-all setting (cross-device)
   
+  // Multi-region support
+  homeRegion    String    @default("default")  // "jp", "sea", "usw", or "default" for AIO
+  
   accounts      Account[]
   sessions      Session[]
   libraries     Library[]

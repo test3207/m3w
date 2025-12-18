@@ -9,6 +9,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { generateTokens, verifyToken } from '../lib/jwt';
 import { authMiddleware } from '../lib/auth-middleware';
+import { redis, isRedisAvailable } from '../lib/redis';
 import type { Context } from 'hono';
 
 const app = new Hono();
@@ -18,6 +19,9 @@ const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
 const GITHUB_REDIRECT_URI =
   process.env.GITHUB_CALLBACK_URL || 'http://localhost:4000/api/auth/callback';
+
+// Multi-region configuration
+const HOME_REGION = process.env.HOME_REGION || 'default';  // "jp", "sea", "usw", or "default" for AIO
 
 interface GitHubUser {
   id: number;
@@ -203,6 +207,37 @@ app.get('/callback', async (c: Context) => {
       );
     }
 
+    // Check Redis to prevent duplicate registration across regions
+    let existingRegion: string | null = null;
+    if (isRedisAvailable()) {
+      try {
+        existingRegion = await redis!.get(`github:${githubUser.id}`);
+        
+        if (existingRegion && existingRegion !== HOME_REGION) {
+          logger.warn(
+            {
+              githubId: githubUser.id,
+              existingRegion,
+              currentRegion: HOME_REGION,
+            },
+            'User exists in another region, not creating duplicate'
+          );
+          
+          // User exists in another region - don't create duplicate account
+          // Return tokens pointing to home region for gateway routing
+          return c.json({
+            success: false,
+            error: 'account_exists_in_another_region',
+            homeRegion: existingRegion,
+            message: `Account registered in ${existingRegion} region`,
+          }, 409);
+        }
+      } catch (redisError) {
+        logger.error({ redisError }, 'Redis check failed, continuing with normal flow');
+        // Continue with normal flow if Redis fails (graceful degradation)
+      }
+    }
+
     // Find or create user
     let user = await prisma.user.findUnique({
       where: { email },
@@ -215,11 +250,31 @@ app.get('/callback', async (c: Context) => {
           email,
           name: githubUser.name || githubUser.login,
           image: githubUser.avatar_url,
+          homeRegion: HOME_REGION,  // Set home region on creation
         },
       });
 
       isNewUser = true;
-      logger.info({ userId: user.id, email }, 'New user registered via GitHub');
+      logger.info({ userId: user.id, email, homeRegion: HOME_REGION }, 'New user registered via GitHub');
+    }
+
+    // Write to Redis with 90-day TTL (same as refresh token)
+    if (isRedisAvailable()) {
+      try {
+        await redis!.set(
+          `github:${githubUser.id}`,
+          HOME_REGION,
+          'EX',
+          60 * 60 * 24 * 90  // 90 days
+        );
+        logger.info(
+          { githubId: githubUser.id, region: HOME_REGION },
+          'Stored region mapping in Redis'
+        );
+      } catch (redisError) {
+        logger.error({ redisError }, 'Failed to store region mapping in Redis');
+        // Non-critical error, continue with auth flow
+      }
     }
 
     // Create default resources for first-time users
@@ -247,7 +302,7 @@ app.get('/callback', async (c: Context) => {
       },
     });
 
-    // Generate JWT tokens
+    // Generate JWT tokens (homeRegion from env, isRemote = false)
     const tokens = generateTokens({
       ...user,
       createdAt: user.createdAt.toISOString(),
@@ -338,12 +393,16 @@ app.post('/refresh', async (c: Context) => {
       );
     }
 
-    // Generate new tokens
-    const tokens = generateTokens({
-      ...user,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    });
+    // Generate new tokens (preserve isRemote from refresh token)
+    const tokens = generateTokens(
+      {
+        ...user,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      user.homeRegion,
+      payload.isRemote
+    );
 
     return c.json({
       success: true,
