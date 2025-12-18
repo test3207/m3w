@@ -8,6 +8,7 @@ describe('JWT Utilities', () => {
     email: 'test@example.com',
     name: 'Test User',
     image: 'https://example.com/avatar.jpg',
+    homeRegion: 'default',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
