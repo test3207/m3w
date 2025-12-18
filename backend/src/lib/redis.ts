@@ -12,7 +12,8 @@ import { logger } from './logger.js';
 export const redis = process.env.REDIS_URL
   ? new Redis(process.env.REDIS_URL, {
       retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000);
+        // Exponential backoff: 100ms, 200ms, 400ms, ... up to 5s
+        const delay = Math.min(times * 100, 5000);
         return delay;
       },
       maxRetriesPerRequest: 3,

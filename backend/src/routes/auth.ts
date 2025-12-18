@@ -7,7 +7,7 @@ import { Hono } from 'hono';
 import { setCookie } from 'hono/cookie';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
-import { generateTokens, verifyToken, getRedisUserTTL } from '../lib/jwt';
+import { generateTokens, verifyToken, getRedisUserTTL, getAccessTokenExpirySeconds, getRefreshTokenExpirySeconds } from '../lib/jwt';
 import { authMiddleware } from '../lib/auth-middleware';
 import { redis, isRedisAvailable } from '../lib/redis';
 import type { Context } from 'hono';
@@ -50,60 +50,96 @@ const SERVE_FRONTEND = process.env.SERVE_FRONTEND === 'true';
  * Step 1: Exchange GitHub OAuth code for access token
  */
 async function exchangeCodeForToken(code: string): Promise<string | null> {
-  const response = await fetch('https://github.com/login/oauth/access_token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      client_id: GITHUB_CLIENT_ID,
-      client_secret: GITHUB_CLIENT_SECRET,
-      code,
-      redirect_uri: GITHUB_REDIRECT_URI,
-    }),
-  });
+  try {
+    const response = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: GITHUB_CLIENT_ID,
+        client_secret: GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: GITHUB_REDIRECT_URI,
+      }),
+    });
 
-  const data = (await response.json()) as { access_token?: string; error?: string };
-  return data.access_token || null;
+    if (!response.ok) {
+      logger.error({ status: response.status, statusText: response.statusText }, 'GitHub token exchange HTTP error');
+      return null;
+    }
+
+    const data = (await response.json()) as { access_token?: string; error?: string };
+    if (data.error) {
+      logger.error({ error: data.error }, 'GitHub token exchange API error');
+      return null;
+    }
+    return data.access_token || null;
+  } catch (error) {
+    logger.error({ error }, 'GitHub token exchange failed');
+    return null;
+  }
 }
 
 /**
  * Step 2: Fetch GitHub user profile and email
  */
 async function fetchGitHubUser(token: string): Promise<{ user: GitHubUser; email: string } | null> {
-  // Fetch user profile
-  const userResponse = await fetch('https://api.github.com/user', {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-  });
-  const user = (await userResponse.json()) as GitHubUser;
-
-  // Get email (from profile or emails API)
-  let email = user.email;
-  if (!email) {
-    const emailsResponse = await fetch('https://api.github.com/user/emails', {
+  try {
+    // Fetch user profile
+    const userResponse = await fetch('https://api.github.com/user', {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     });
-    const emails = (await emailsResponse.json()) as GitHubEmail[];
-    const primary = emails.find((e) => e.primary && e.verified);
-    email = primary?.email || emails[0]?.email || null;
-  }
+    if (!userResponse.ok) {
+      logger.error({ status: userResponse.status, statusText: userResponse.statusText }, 'GitHub user API HTTP error');
+      return null;
+    }
+    const user = (await userResponse.json()) as GitHubUser;
 
-  return email ? { user, email } : null;
+    // Get email (from profile or emails API)
+    let email = user.email;
+    if (!email) {
+      const emailsResponse = await fetch('https://api.github.com/user/emails', {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      if (!emailsResponse.ok) {
+        logger.error({ status: emailsResponse.status, statusText: emailsResponse.statusText }, 'GitHub emails API HTTP error');
+        return null;
+      }
+      const emails = (await emailsResponse.json()) as GitHubEmail[];
+      const primary = emails.find((e) => e.primary && e.verified);
+      email = primary?.email || emails[0]?.email || null;
+    }
+
+    return email ? { user, email } : null;
+  } catch (error) {
+    logger.error({ error }, 'GitHub user fetch failed');
+    return null;
+  }
 }
 
 /**
  * Step 3: Check Redis for cross-region user
  * Returns the home region if user exists in another region, null otherwise
  * Also atomically claims the user for this region if new
+ * 
+ * Race condition handling:
+ * - SETNX is atomic, so only one region can successfully claim a user
+ * - If Redis fails mid-operation, we log and return null (graceful degradation)
+ * - Database unique constraint on Account.providerAccountId provides fallback safety
  */
 async function checkCrossRegion(githubId: number): Promise<string | null> {
-  if (!isRedisAvailable()) return null;
+  if (!isRedisAvailable()) {
+    logger.debug({ githubId }, 'Redis not available, skipping cross-region check');
+    return null;
+  }
 
+  const redisKey = `m3w:github:${githubId}`;
   try {
     // SETNX: atomically claim this GitHub user for this region
     const claimed = await redis!.set(
-      `github:${githubId}`,
+      redisKey,
       HOME_REGION,
       'EX',
       getRedisUserTTL(),
@@ -112,18 +148,31 @@ async function checkCrossRegion(githubId: number): Promise<string | null> {
 
     if (!claimed) {
       // User already claimed by another region
-      return await redis!.get(`github:${githubId}`);
+      const existingRegion = await redis!.get(redisKey);
+      if (!existingRegion) {
+        // Key expired between SETNX failure and GET - race condition, treat as new user
+        logger.warn({ githubId, redisKey }, 'Redis key disappeared between SETNX and GET');
+        return null;
+      }
+      return existingRegion;
     }
     return null;
   } catch (error) {
-    logger.error({ error }, 'Redis cross-region check failed');
+    // Redis operation failed - log and allow local operation (graceful degradation)
+    // Database constraint on Account.providerAccountId prevents true duplicates
+    logger.error({ error, githubId }, 'Redis cross-region check failed, allowing local operation');
     return null;
   }
 }
 
 /**
  * Step 4a: Handle cross-region user (user registered in another region)
- * Returns JWT with isRemote=true so Gateway routes to home region
+ * Returns JSON response with JWT (isRemote=true) so Gateway routes to home region.
+ * 
+ * Note: Cross-region users receive JSON response (not cookie redirect) because:
+ * - Gateway needs JWT.homeRegion to route subsequent requests to the correct region
+ * - Frontend handles the response and stores tokens appropriately
+ * - Cookie-based auth only applies to same-region users who get redirected
  */
 function handleCrossRegionUser(githubUser: GitHubUser, email: string, homeRegion: string) {
   logger.info(
@@ -131,32 +180,24 @@ function handleCrossRegionUser(githubUser: GitHubUser, email: string, homeRegion
     'Cross-region access: returning JWT with isRemote=true'
   );
 
-  const tokens = generateTokens(
-    {
-      id: githubUser.id.toString(),
-      email,
-      name: githubUser.name || githubUser.login,
-      image: githubUser.avatar_url,
-      homeRegion,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
+  const now = new Date().toISOString();
+  // Create user object once for reuse in tokens and response
+  const crossRegionUser = {
+    id: githubUser.id.toString(),
+    email,
+    name: githubUser.name || githubUser.login,
+    image: githubUser.avatar_url,
     homeRegion,
-    true // isRemote
-  );
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const tokens = generateTokens(crossRegionUser, homeRegion, true /* isRemote */);
 
   return {
     success: true,
     data: {
-      user: {
-        id: githubUser.id.toString(),
-        email,
-        name: githubUser.name || githubUser.login,
-        image: githubUser.avatar_url,
-        homeRegion,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
+      user: crossRegionUser,
       tokens,
       message: 'account_exists_in_another_region',
     },
@@ -198,6 +239,9 @@ async function findOrCreateLocalUser(
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     // Link GitHub account to existing user
+    // Note: homeRegion is not stored in DB - it's determined by HOME_REGION env var
+    // If this user exists locally, they registered in this region, so homeRegion is correct
+    // Cross-region case is handled by checkCrossRegion() before this function is called
     await prisma.account.create({
       data: {
         userId: existingUser.id,
@@ -241,7 +285,7 @@ function setAuthCookiesAndRedirect(c: Context, tokens: ReturnType<typeof generat
     httpOnly: true,
     path: '/',
     sameSite: 'Lax',
-    maxAge: 6 * 60 * 60, // 6 hours
+    maxAge: getAccessTokenExpirySeconds(),
     secure: isProduction,
   });
 
@@ -249,7 +293,7 @@ function setAuthCookiesAndRedirect(c: Context, tokens: ReturnType<typeof generat
     httpOnly: true,
     path: '/',
     sameSite: 'Lax',
-    maxAge: 90 * 24 * 60 * 60, // 90 days
+    maxAge: getRefreshTokenExpirySeconds(),
     secure: isProduction,
   });
 

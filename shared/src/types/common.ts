@@ -55,7 +55,7 @@ export interface User {
   name: string | null;
   email: string | null;
   image: string | null;
-  homeRegion: string; // User's home region from JWT (not stored in DB)
+  homeRegion: string; // User's home region from JWT payload; populated from Redis/HOME_REGION env, not stored in DB
   createdAt: string; // ISO 8601 string
   updatedAt: string; // ISO 8601 string
 }

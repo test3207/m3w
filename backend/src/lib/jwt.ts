@@ -4,6 +4,7 @@
 
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { logger } from './logger.js';
 import type { User } from '@m3w/shared';
 
 /**
@@ -28,16 +29,14 @@ const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '90d';
 const HOME_REGION = process.env.HOME_REGION || 'default';
 
 /**
- * Calculate Redis TTL in seconds from JWT_REFRESH_EXPIRY configuration
- * Ensures Redis TTL stays in sync with refresh token expiry
+ * Parse duration string (e.g., '6h', '90d') to seconds
  */
-export function getRedisUserTTL(): number {
-  const rawExpiry = JWT_REFRESH_EXPIRY;
-  const expiry = rawExpiry.trim();
-  const match = expiry.match(/^(\d+)([dhms])$/i);
+function parseDurationToSeconds(duration: string, defaultSeconds: number): number {
+  const raw = duration.trim();
+  const match = raw.match(/^(\d+)([dhms])$/i);
   if (!match) {
-    console.warn(`[JWT] Invalid JWT_REFRESH_EXPIRY value "${rawExpiry}", falling back to default 90d`);
-    return 60 * 60 * 24 * 90; // Default 90 days
+    logger.warn({ value: raw }, '[JWT] Invalid duration format, using default');
+    return defaultSeconds;
   }
   
   const value = parseInt(match[1], 10);
@@ -48,10 +47,30 @@ export function getRedisUserTTL(): number {
     case 'h': return value * 60 * 60;
     case 'm': return value * 60;
     case 's': return value;
-    default:
-      console.warn(`[JWT] Unsupported unit "${unit}" in JWT_REFRESH_EXPIRY value "${rawExpiry}", falling back to default 90d`);
-      return 60 * 60 * 24 * 90;
+    default: return defaultSeconds;
   }
+}
+
+/**
+ * Get access token expiry in seconds (for cookie maxAge)
+ */
+export function getAccessTokenExpirySeconds(): number {
+  return parseDurationToSeconds(JWT_ACCESS_EXPIRY, 6 * 60 * 60); // Default 6h
+}
+
+/**
+ * Get refresh token expiry in seconds (for cookie maxAge)
+ */
+export function getRefreshTokenExpirySeconds(): number {
+  return parseDurationToSeconds(JWT_REFRESH_EXPIRY, 90 * 24 * 60 * 60); // Default 90d
+}
+
+/**
+ * Calculate Redis TTL in seconds from JWT_REFRESH_EXPIRY configuration
+ * Ensures Redis TTL stays in sync with refresh token expiry
+ */
+export function getRedisUserTTL(): number {
+  return getRefreshTokenExpirySeconds();
 }
 
 export interface TokenPayload {

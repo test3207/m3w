@@ -42,6 +42,10 @@ services:
 
   redis:
     # Redis for multi-region user routing (optional for AIO, required for multi-region)
+    # 
+    # WARNING: Production deployments should configure authentication:
+    #   command: redis-server --appendonly yes --requirepass YOUR_REDIS_PASSWORD
+    # And update REDIS_URL to: redis://:YOUR_REDIS_PASSWORD@m3w-redis:6379
     image: redis:7-alpine
     container_name: m3w-redis
     restart: unless-stopped
