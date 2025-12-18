@@ -54,6 +54,8 @@ model Account {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Unique constraint prevents duplicate GitHub accounts across regions
+  // Works with Redis SETNX to ensure data consistency at DB level
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
