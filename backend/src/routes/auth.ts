@@ -216,7 +216,6 @@ async function findOrCreateLocalUser(
       email,
       name: githubUser.name || githubUser.login,
       image: githubUser.avatar_url,
-      homeRegion: HOME_REGION,
       accounts: {
         create: {
           type: 'oauth',
@@ -228,7 +227,7 @@ async function findOrCreateLocalUser(
     },
   });
 
-  logger.info({ userId: newUser.id, email, homeRegion: HOME_REGION }, 'New user registered');
+  logger.info({ userId: newUser.id, email }, 'New user registered');
   return { user: newUser, isNewUser: true };
 }
 
@@ -395,13 +394,14 @@ app.get('/callback', async (c: Context) => {
     }
 
     // Step 6: Generate JWT and set cookies
+    // Use HOME_REGION env var (not stored in DB - homeRegion only in Redis + JWT)
     const tokens = generateTokens(
       {
         ...user,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),
       },
-      user.homeRegion,
+      HOME_REGION,
       false // isRemote = false (local user)
     );
 
