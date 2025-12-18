@@ -207,30 +207,31 @@ app.get('/callback', async (c: Context) => {
       );
     }
 
-    // Check Redis to prevent duplicate registration across regions
+    // Atomic check and claim via Redis SETNX to prevent duplicate registration across regions
     let existingRegion: string | null = null;
     if (isRedisAvailable()) {
       try {
-        existingRegion = await redis!.get(`github:${githubUser.id}`);
+        // Try to atomically claim this GitHub user for this region
+        const claimed = await redis!.set(
+          `github:${githubUser.id}`,
+          HOME_REGION,
+          'EX',
+          60 * 60 * 24 * 90,  // 90 days TTL (same as refresh token)
+          'NX'  // Only set if key doesn't exist (atomic)
+        );
         
-        if (existingRegion && existingRegion !== HOME_REGION) {
-          logger.warn(
+        if (!claimed) {
+          // Key already exists - user registered in another region
+          existingRegion = await redis!.get(`github:${githubUser.id}`);
+          
+          logger.info(
             {
               githubId: githubUser.id,
               existingRegion,
               currentRegion: HOME_REGION,
             },
-            'User exists in another region, not creating duplicate'
+            'User exists in another region, returning JWT with isRemote=true'
           );
-          
-          // User exists in another region - don't create duplicate account
-          // Return tokens pointing to home region for gateway routing
-          return c.json({
-            success: false,
-            error: 'account_exists_in_another_region',
-            homeRegion: existingRegion,
-            message: `Account registered in ${existingRegion} region`,
-          }, 409);
         }
       } catch (redisError) {
         logger.error({ redisError }, 'Redis check failed, continuing with normal flow');
@@ -244,7 +245,27 @@ app.get('/callback', async (c: Context) => {
     });
 
     let isNewUser = false;
+    let isRemote = false;
+    
+    // If user exists in another region, return JWT with isRemote=true for Gateway routing
+    if (existingRegion && existingRegion !== HOME_REGION) {
+      if (!user) {
+        // User not in local DB but exists in another region - fetch from DB anyway
+        // This handles edge case where Redis exists but local DB doesn't
+        user = await prisma.user.findUnique({ where: { email } });
+      }
+      
+      if (user) {
+        isRemote = true;
+        logger.info(
+          { userId: user.id, homeRegion: user.homeRegion, currentRegion: HOME_REGION },
+          'Cross-region access: returning JWT with isRemote=true'
+        );
+      }
+    }
+    
     if (!user) {
+      // New user - create in current region
       user = await prisma.user.create({
         data: {
           email,
@@ -258,27 +279,8 @@ app.get('/callback', async (c: Context) => {
       logger.info({ userId: user.id, email, homeRegion: HOME_REGION }, 'New user registered via GitHub');
     }
 
-    // Write to Redis with 90-day TTL (same as refresh token)
-    if (isRedisAvailable()) {
-      try {
-        await redis!.set(
-          `github:${githubUser.id}`,
-          HOME_REGION,
-          'EX',
-          60 * 60 * 24 * 90  // 90 days
-        );
-        logger.info(
-          { githubId: githubUser.id, region: HOME_REGION },
-          'Stored region mapping in Redis'
-        );
-      } catch (redisError) {
-        logger.error({ redisError }, 'Failed to store region mapping in Redis');
-        // Non-critical error, continue with auth flow
-      }
-    }
-
-    // Create default resources for first-time users
-    if (isNewUser) {
+    // Create default resources for first-time users (only for local users)
+    if (isNewUser && !isRemote) {
       await createDefaultResources(user.id);
     }
 
@@ -302,12 +304,16 @@ app.get('/callback', async (c: Context) => {
       },
     });
 
-    // Generate JWT tokens (homeRegion from env, isRemote = false)
-    const tokens = generateTokens({
-      ...user,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    });
+    // Generate JWT tokens with isRemote flag for Gateway routing
+    const tokens = generateTokens(
+      {
+        ...user,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      user.homeRegion,
+      isRemote  // Pass isRemote flag to JWT
+    );
 
     // Set HTTP-only cookies for tokens (more secure than URL params)
     const isProduction = process.env.NODE_ENV === 'production';
@@ -393,7 +399,8 @@ app.post('/refresh', async (c: Context) => {
       );
     }
 
-    // Generate new tokens (preserve isRemote from refresh token)
+    // Generate new tokens (dynamically determine isRemote based on current region)
+    const isRemote = user.homeRegion !== HOME_REGION;
     const tokens = generateTokens(
       {
         ...user,
@@ -401,7 +408,7 @@ app.post('/refresh', async (c: Context) => {
         updatedAt: user.updatedAt.toISOString(),
       },
       user.homeRegion,
-      payload.isRemote
+      isRemote  // Dynamically calculated
     );
 
     return c.json({

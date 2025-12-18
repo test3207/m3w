@@ -55,6 +55,7 @@ export interface User {
   name: string | null;
   email: string | null;
   image: string | null;
+  homeRegion: string; // User's home region (e.g., 'jp', 'sea', 'usw', 'default')
   createdAt: string; // ISO 8601 string
   updatedAt: string; // ISO 8601 string
 }

@@ -1,7 +1,14 @@
 import Redis from 'ioredis';
 import { logger } from './logger.js';
 
-// Optional dependency - graceful degradation for local dev
+/**
+ * Redis client for cross-region user routing
+ * 
+ * Required for multi-region deployment: Stores github:{id} -> region mapping
+ * Optional for All-in-One mode: Graceful degradation to local-only operation
+ * 
+ * Without Redis, multi-region duplicate prevention is disabled.
+ */
 export const redis = process.env.REDIS_URL
   ? new Redis(process.env.REDIS_URL, {
       retryStrategy: (times) => {
