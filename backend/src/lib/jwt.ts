@@ -27,6 +27,27 @@ const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '6h'; // 6 hours for 
 const JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '90d';
 const HOME_REGION = process.env.HOME_REGION || 'default';
 
+/**
+ * Calculate Redis TTL in seconds from JWT_REFRESH_EXPIRY configuration
+ * Ensures Redis TTL stays in sync with refresh token expiry
+ */
+export function getRedisUserTTL(): number {
+  const expiry = JWT_REFRESH_EXPIRY;
+  const match = expiry.match(/^(\d+)([dhms])$/);
+  if (!match) return 60 * 60 * 24 * 90; // Default 90 days
+  
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  
+  switch (unit) {
+    case 'd': return value * 24 * 60 * 60;
+    case 'h': return value * 60 * 60;
+    case 'm': return value * 60;
+    case 's': return value;
+    default: return 60 * 60 * 24 * 90;
+  }
+}
+
 export interface TokenPayload {
   userId: string;
   email: string;
