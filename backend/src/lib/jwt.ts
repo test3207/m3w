@@ -32,19 +32,25 @@ const HOME_REGION = process.env.HOME_REGION || 'default';
  * Ensures Redis TTL stays in sync with refresh token expiry
  */
 export function getRedisUserTTL(): number {
-  const expiry = JWT_REFRESH_EXPIRY;
-  const match = expiry.match(/^(\d+)([dhms])$/);
-  if (!match) return 60 * 60 * 24 * 90; // Default 90 days
+  const rawExpiry = JWT_REFRESH_EXPIRY;
+  const expiry = rawExpiry.trim();
+  const match = expiry.match(/^(\d+)([dhms])$/i);
+  if (!match) {
+    console.warn(`[JWT] Invalid JWT_REFRESH_EXPIRY value "${rawExpiry}", falling back to default 90d`);
+    return 60 * 60 * 24 * 90; // Default 90 days
+  }
   
   const value = parseInt(match[1], 10);
-  const unit = match[2];
+  const unit = match[2].toLowerCase();
   
   switch (unit) {
     case 'd': return value * 24 * 60 * 60;
     case 'h': return value * 60 * 60;
     case 'm': return value * 60;
     case 's': return value;
-    default: return 60 * 60 * 24 * 90;
+    default:
+      console.warn(`[JWT] Unsupported unit "${unit}" in JWT_REFRESH_EXPIRY value "${rawExpiry}", falling back to default 90d`);
+      return 60 * 60 * 24 * 90;
   }
 }
 

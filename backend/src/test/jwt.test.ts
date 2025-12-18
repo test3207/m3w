@@ -145,4 +145,55 @@ describe('JWT Utilities', () => {
       expect(tokens1.refreshToken).not.toBe(tokens2.refreshToken);
     });
   });
+
+  describe('homeRegion and isRemote fields', () => {
+    it('access token should include homeRegion field', () => {
+      const token = generateAccessToken(mockUser);
+      const payload = verifyToken(token);
+
+      expect(payload?.homeRegion).toBe('default');
+    });
+
+    it('access token should include isRemote field when provided', () => {
+      const token = generateAccessToken(mockUser, 'jp', true);
+      const payload = verifyToken(token);
+
+      expect(payload?.homeRegion).toBe('jp');
+      expect(payload?.isRemote).toBe(true);
+    });
+
+    it('access token should have isRemote=false by default', () => {
+      const token = generateAccessToken(mockUser);
+      const payload = verifyToken(token);
+
+      expect(payload?.isRemote).toBe(false);
+    });
+
+    it('refresh token should include homeRegion field', () => {
+      const token = generateRefreshToken(mockUser);
+      const payload = verifyToken(token);
+
+      expect(payload?.homeRegion).toBe('default');
+    });
+
+    it('refresh token should omit isRemote field', () => {
+      const token = generateRefreshToken(mockUser, 'sea');
+      const payload = verifyToken(token);
+
+      expect(payload?.homeRegion).toBe('sea');
+      expect(payload?.isRemote).toBeUndefined();
+    });
+
+    it('generateTokens should use custom homeRegion', () => {
+      const tokens = generateTokens(mockUser, 'usw', true);
+      
+      const accessPayload = verifyToken(tokens.accessToken);
+      const refreshPayload = verifyToken(tokens.refreshToken);
+
+      expect(accessPayload?.homeRegion).toBe('usw');
+      expect(accessPayload?.isRemote).toBe(true);
+      expect(refreshPayload?.homeRegion).toBe('usw');
+      expect(refreshPayload?.isRemote).toBeUndefined();
+    });
+  });
 });

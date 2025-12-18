@@ -240,7 +240,19 @@ app.get('/callback', async (c: Context) => {
     }
 
     // Find or create user
-    let user = await prisma.user.findUnique({
+    // Use Account table to look up by GitHub ID first (matches Redis key)
+    // This avoids race conditions when GitHub email changes
+    const account = await prisma.account.findUnique({
+      where: {
+        provider_providerAccountId: {
+          provider: 'github',
+          providerAccountId: githubUser.id.toString(),
+        },
+      },
+      include: { user: true },
+    });
+
+    let user = account?.user ?? await prisma.user.findUnique({
       where: { email },
     });
 
@@ -274,15 +286,50 @@ app.get('/callback', async (c: Context) => {
         );
       }
       
-      // User exists locally - verify homeRegion matches
-      if (user.homeRegion !== HOME_REGION) {
-        // Cross-region access - return JWT with isRemote=true
-        isRemote = true;
-        logger.info(
-          { userId: user.id, homeRegion: user.homeRegion, currentRegion: HOME_REGION },
-          'Cross-region access: returning JWT with isRemote=true'
+      // User exists locally but Redis claims another region
+      // Trust Redis for cross-region routing consistency
+      if (user.homeRegion !== existingRegion) {
+        logger.warn(
+          {
+            userId: user.id,
+            email,
+            dbHomeRegion: user.homeRegion,
+            redisHomeRegion: existingRegion,
+            currentRegion: HOME_REGION,
+          },
+          'Inconsistent homeRegion between DB and Redis for user'
         );
       }
+
+      isRemote = true;
+      logger.info(
+        {
+          userId: user.id,
+          homeRegion: user.homeRegion,
+          redisHomeRegion: existingRegion,
+          currentRegion: HOME_REGION,
+        },
+        'Cross-region access: returning JWT with isRemote=true'
+      );
+      
+      // Generate cross-region tokens
+      const tokens = generateTokens(user, existingRegion, true);
+
+      return c.json({
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            homeRegion: existingRegion,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+          },
+          tokens,
+        },
+      });
     }
     
     if (!user) {
@@ -300,25 +347,7 @@ app.get('/callback', async (c: Context) => {
       logger.info({ userId: user.id, email, homeRegion: HOME_REGION }, 'New user registered via GitHub');
     }
 
-    // Write to Redis for new users only (avoid unnecessary TTL resets on every login)
-    if (isNewUser && isRedisAvailable()) {
-      try {
-        const redisTTL = getRedisUserTTL();
-        await redis!.set(
-          `github:${githubUser.id}`,
-          HOME_REGION,
-          'EX',
-          redisTTL
-        );
-        logger.info(
-          { githubId: githubUser.id, region: HOME_REGION, ttl: redisTTL },
-          'Stored new user region mapping in Redis'
-        );
-      } catch (redisError) {
-        logger.error({ redisError }, 'Failed to store region mapping in Redis');
-        // Non-critical error, continue with auth flow
-      }
-    }
+    // Redis already written by SETNX above (no need to write again)
 
     // Create default resources for first-time users (only for local users)
     if (isNewUser && !isRemote) {
