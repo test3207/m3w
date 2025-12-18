@@ -2,6 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
+import { readFileSync } from "fs";
+
+// Read version from package.json as fallback
+const rootPkg = JSON.parse(readFileSync(path.resolve(__dirname, '../package.json'), 'utf-8'));
+// APP_VERSION env var is set by build-docker.cjs (e.g., "v1.0.0-rc.1" or "v1.0.0")
+// Falls back to package.json version for local dev
+const appVersion = process.env.APP_VERSION || `v${rootPkg.version}-dev`;
 
 export default defineConfig({
   define: {
@@ -9,6 +16,8 @@ export default defineConfig({
     // When BUILD_TARGET=prod, this becomes literal `false` and dead code is eliminated
     // Default to 'rc' in development so demo features can be tested locally
     "__VITE_IS_DEMO_BUILD__": JSON.stringify((process.env.BUILD_TARGET || "rc") === "rc"),
+    // Inject version info for display (set by CI or defaults to dev)
+    "__APP_VERSION__": JSON.stringify(appVersion),
   },
   plugins: [
     react(),
