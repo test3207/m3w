@@ -7,7 +7,7 @@ This guide covers Docker image builds and deployment. For automated CI/CD builds
 M3W provides three Docker image variants:
 
 | Image | Purpose | Use Case |
-|-------|---------|----------|
+| ----- | ------- | -------- |
 | `m3w` | All-in-One (Frontend + Backend) | Simple deployment, demos, development |
 | `m3w-backend` | Backend API only | Microservices, separated frontend hosting |
 | `m3w-frontend` | Frontend static files + Nginx | CDN deployment, edge hosting |
@@ -215,7 +215,7 @@ docker-compose up -d
 ## Quick Comparison
 
 | Feature | Simple | Standard | Production |
-|---------|--------|----------|------------|
+| ------- | ------ | -------- | ---------- |
 | Containers | 1 (All-in-One) | 2 (Frontend + Backend) | 2 (Frontend + Backend) |
 | Reverse Proxy | Backend serves frontend | Internal Nginx | Your Nginx/Caddy |
 | Port | 4000 | 80 | 80/443 (your config) |
@@ -273,6 +273,9 @@ See `.env.example` files in each example directory. Key variables:
 - `GITHUB_CALLBACK_URL`: OAuth callback URL
 - `API_BASE_URL`: Public URL for backend
 - `CORS_ORIGIN`: Allowed frontend origin
+- `HOME_REGION`: Region identifier for multi-region (default: `default`)
+- `COOKIE_DOMAIN`: Wildcard domain for auth cookies (e.g., `.m3w.example.com`)
+- `REDIS_URL`: Redis connection for multi-region routing (optional)
 
 **Frontend** (runtime):
 
@@ -299,7 +302,7 @@ M3W uses GitHub OAuth for user authentication. Follow these steps to set up:
 The callback URL depends on your deployment:
 
 | Deployment | Callback URL Example |
-|------------|---------------------|
+| ---------- | ------------------- |
 | Local dev | `http://localhost:4000/api/auth/callback` |
 | AIO Docker | `http://your-server:4000/api/auth/callback` |
 | Multi-region | `https://m3w.example.com/api/auth/callback` |
@@ -365,7 +368,7 @@ For automated builds with proper tagging:
 Image sizes after optimization ([Issue #60](https://github.com/test3207/m3w/issues/60)):
 
 | Image | Before | After | Savings |
-|-------|--------|-------|---------|
+| ----- | ------ | ----- | ------- |
 | `m3w` (All-in-One) | ~626 MB | ~382 MB | ~39% |
 | `m3w-backend` | ~580 MB | ~379 MB | ~35% |
 | `m3w-frontend` | N/A | ~57 MB | N/A |
