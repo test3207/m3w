@@ -300,7 +300,7 @@ M3W uses GitHub OAuth for user authentication. Follow these steps to set up:
 ### Authorization Callback URL Examples
 
 | Deployment Scenario | Authorization Callback URL |
-|---------------------|----------------------------|
+| ------------------- | -------------------------- |
 | Local development | `http://localhost:4000/api/auth/callback` |
 | All-in-One (single domain) | `https://m3w.example.com/api/auth/callback` |
 | Backend at API subdomain | `https://api.m3w.example.com/api/auth/callback` |
