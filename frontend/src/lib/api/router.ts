@@ -13,6 +13,12 @@ import { logger } from "../logger-client";
 import { API_BASE_URL } from "./config";
 import { isGuestUser } from "../offline-proxy/utils";
 import { cacheResponseToIndexedDB } from "../cache/response-cache";
+import {
+  getUserHomeRegion,
+  getActiveEndpoint,
+  ensureEndpointInitialized,
+  getAuthToken,
+} from "./multi-region";
 
 // Track backend reachability
 let isBackendReachable = true;
@@ -78,20 +84,6 @@ function emitNetworkStatus(isReachable: boolean) {
     
     window.dispatchEvent(new CustomEvent(isReachable ? "api-success" : "api-error"));
     logger.info("Backend reachability changed", { isReachable });
-  }
-}
-
-// Helper to get auth token from store
-function getAuthToken(): string | null {
-  try {
-    // Zustand persist uses 'auth-storage' as the key name
-    const authStore = localStorage.getItem("auth-storage");
-    if (!authStore) return null;
-
-    const parsed = JSON.parse(authStore);
-    return parsed.state?.tokens?.accessToken || null;
-  } catch {
-    return null;
   }
 }
 
@@ -171,20 +163,36 @@ export async function routeRequest(
 
   // Online: try backend first
   try {
+    // Ensure multi-region endpoint is initialized before making requests
+    // This is a no-op if multi-region is not enabled or already initialized
+    await ensureEndpointInitialized();
+
     // Build full backend URL from path
-    // path may contain query params, so use it directly if it starts with /
+    // Use active endpoint (fallback) if Gateway is down, otherwise use default API_BASE_URL
+    const baseUrl = getActiveEndpoint() || API_BASE_URL;
     const fullUrl = path.startsWith("http")
       ? path
-      : `${API_BASE_URL}${path}`;
+      : `${baseUrl}${path}`;
+
+    // Build headers with auth token and region preference using Headers API for type safety
+    const headers = new Headers(init?.headers);
+    
+    // Add authorization header if token exists
+    const authToken = getAuthToken();
+    if (authToken) {
+      headers.set("Authorization", `Bearer ${authToken}`);
+    }
+    
+    // Add X-Region header for multi-region routing (Gateway uses this for routing hints)
+    const homeRegion = getUserHomeRegion();
+    if (homeRegion) {
+      headers.set("X-Region", homeRegion);
+    }
 
     const response = await fetch(fullUrl, {
       ...init,
       credentials: "include",
-      headers: {
-        ...init?.headers,
-        // Add authorization header if token exists
-        ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
-      },
+      headers,
     });
 
     // Mark backend as reachable on successful connection

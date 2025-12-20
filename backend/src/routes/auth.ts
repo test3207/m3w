@@ -23,6 +23,19 @@ const GITHUB_REDIRECT_URI =
 
 // Multi-region configuration
 const HOME_REGION = process.env.HOME_REGION || 'default';  // "jp", "sea", "usw", or "default" for AIO
+// Cookie domain for multi-region (e.g., ".m3w.test3207.fun" for wildcard)
+// Leave empty for local dev (cookie bound to request domain)
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '';
+
+// Runtime validation: warn if COOKIE_DOMAIN looks misconfigured for wildcard
+// Only warn for domains with at least one dot, avoids false positives for "localhost"
+const dotCount = (COOKIE_DOMAIN.match(/\./g) || []).length;
+if (COOKIE_DOMAIN && !COOKIE_DOMAIN.startsWith('.') && dotCount >= 1) {
+  logger.warn(
+    `COOKIE_DOMAIN "${COOKIE_DOMAIN}" does not start with a leading dot (.) which is required for wildcard subdomain cookies. ` +
+    `Consider using ".${COOKIE_DOMAIN}" for multi-region deployments.`
+  );
+}
 
 interface GitHubUser {
   id: number;
@@ -280,21 +293,26 @@ async function findOrCreateLocalUser(
  */
 function setAuthCookiesAndRedirect(c: Context, tokens: ReturnType<typeof generateTokens>) {
   const isProduction = process.env.NODE_ENV === 'production';
-
-  setCookie(c, 'auth-token', tokens.accessToken, {
+  
+  // Cookie options - domain is optional for multi-region wildcard support
+  const cookieOptions = {
     httpOnly: true,
     path: '/',
-    sameSite: 'Lax',
-    maxAge: getAccessTokenExpirySeconds(),
+    sameSite: 'Lax' as const,
     secure: isProduction,
+    // Wildcard domain for multi-region (e.g., ".m3w.test3207.fun")
+    // Empty = bound to request domain (local dev)
+    ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN }),
+  };
+
+  setCookie(c, 'auth-token', tokens.accessToken, {
+    ...cookieOptions,
+    maxAge: getAccessTokenExpirySeconds(),
   });
 
   setCookie(c, 'refresh-token', tokens.refreshToken, {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'Lax',
+    ...cookieOptions,
     maxAge: getRefreshTokenExpirySeconds(),
-    secure: isProduction,
   });
 
   const frontendUrl = new URL(getFrontendUrl(c));

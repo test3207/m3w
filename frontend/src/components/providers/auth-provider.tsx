@@ -8,6 +8,7 @@ import { useAuthRefresh } from "@/hooks/useAuthRefresh";
 import { startAutoSync, stopAutoSync } from "@/lib/sync/metadata-sync";
 import { triggerAutoDownload } from "@/lib/storage/download-manager";
 import { useAuthStore } from "@/stores/authStore";
+import { initializeEndpoint, isMultiRegionEnabled } from "@/lib/api/multi-region";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -19,6 +20,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   // Get auth state
   const { isAuthenticated, isGuest } = useAuthStore();
+
+  // Initialize multi-region endpoint detection on app startup
+  // Checks Gateway first, falls back to fastest region if Gateway is down
+  // Note: initializeEndpoint() is designed to never throw, handles all errors internally
+  useEffect(() => {
+    if (isMultiRegionEnabled()) {
+      initializeEndpoint();
+    }
+  }, []);
 
   // Start metadata sync service for authenticated (non-guest) users
   // This is a PULL-only service - backend is source of truth

@@ -28,6 +28,6 @@ export default [
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'prisma/migrations/'],
+    ignores: ['dist/', 'node_modules/', 'prisma/migrations/', 'coverage/'],
   },
 ];

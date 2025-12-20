@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,12 +17,40 @@ import { initGuestResources } from "@/lib/db/init-guest";
 import { logger } from "@/lib/logger-client";
 import { getApiBaseUrl } from "@/lib/api/config";
 
+// Map error codes to i18n keys
+function getErrorMessage(errorCode: string): string {
+  switch (errorCode) {
+    case "no_servers":
+      return I18n.signin.errors.noServers;
+    case "auth_failed":
+      return I18n.signin.errors.authFailed;
+    case "session_failed":
+      return I18n.signin.errors.sessionFailed;
+    default:
+      return `${I18n.signin.errors.unknown}: ${errorCode}`;
+  }
+}
+
 export default function SignInPage() {
   useLocale(); // Subscribe to locale changes
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { loginAsGuest } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Handle error query parameter from auth callback
+  useEffect(() => {
+    const errorCode = searchParams.get("error");
+    if (errorCode) {
+      toast({
+        title: I18n.signin.errorTitle,
+        description: getErrorMessage(errorCode),
+        variant: "destructive",
+      });
+      logger.error("[SignInPage] Auth callback error:", errorCode);
+    }
+  }, [searchParams, toast]);
 
   const handleGitHubSignIn = async () => {
     setIsLoading(true);
@@ -32,11 +60,11 @@ export default function SignInPage() {
       window.location.href = `${getApiBaseUrl()}/api/auth/github`;
     } catch (error) {
       toast({
-        title: "Sign-in failed",
+        title: I18n.signin.errorTitle,
         description:
           error instanceof Error
             ? error.message
-            : "Failed to initiate GitHub sign-in",
+            : I18n.signin.errors.authFailed,
         variant: "destructive",
       });
       setIsLoading(false);

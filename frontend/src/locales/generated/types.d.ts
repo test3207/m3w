@@ -40,6 +40,30 @@ export interface Messages {
     processing: string;
     /** By signing in, you agree to our Terms of Service and Privacy Policy. */
     terms: string;
+    /** Sign-in failed */
+    errorTitle: string;
+    errors: {
+      /** All backend servers are currently unavailable. Please try again later. */
+      noServers: string;
+      /** Authentication failed. Please try again. */
+      authFailed: string;
+      /** Failed to create session. Please try again. */
+      sessionFailed: string;
+      /** Authentication error */
+      unknown: string;
+    };
+    status: {
+      /** Authenticating... */
+      authenticating: string;
+      /** Redirecting to server... */
+      redirecting: string;
+      /** Finding available server... */
+      findingServer: string;
+      /** Connecting to server... */
+      connecting: string;
+      /** No available servers. Please try again later. */
+      noServers: string;
+    };
   };
   navigation: {
     /** Libraries */

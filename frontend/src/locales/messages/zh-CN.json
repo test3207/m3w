@@ -15,10 +15,24 @@
     "title": "欢迎来到 M3W",
     "description": "使用 GitHub 账号登录以继续",
     "button": "使用 GitHub 登录",
-    "guest": "Offline Mode",
-    "guestDescription": "Use locally without an account",
+    "guest": "离线模式",
+    "guestDescription": "无需账号，本地使用",
     "processing": "处理中...",
-    "terms": "登录即表示您同意我们的服务条款和隐私政策。"
+    "terms": "登录即表示您同意我们的服务条款和隐私政策。",
+    "errorTitle": "登录失败",
+    "errors": {
+      "noServers": "所有后端服务器当前不可用，请稍后重试。",
+      "authFailed": "认证失败，请重试。",
+      "sessionFailed": "创建会话失败，请重试。",
+      "unknown": "认证错误"
+    },
+    "status": {
+      "authenticating": "认证中...",
+      "redirecting": "正在跳转到服务器...",
+      "findingServer": "正在查找可用服务器...",
+      "connecting": "正在连接服务器...",
+      "noServers": "没有可用的服务器，请稍后重试。"
+    }
   },
   "navigation": {
     "libraries": "音乐库",

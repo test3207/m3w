@@ -13,9 +13,48 @@
     
     <title>M3W - Music Player</title>
     
-    <!-- Runtime configuration injection point (replaced by docker-entrypoint.sh) -->
+    <!-- Runtime configuration injection point (replaced by docker-entrypoint.sh or CF Worker) -->
     <script>
+      // API Base URL for backend requests
+      // - AIO mode: empty string (relative URLs)
+      // - Separated mode: full URL to backend (e.g., 'http://localhost:4000')
+      // - Placeholder '__API_BASE_URL__' is replaced at container startup
       window.__API_BASE_URL__ = '__API_BASE_URL__';
+      
+      // Multi-region configuration (optional, for global deployment)
+      // - Local dev / AIO: not set (multi-region disabled)
+      // - Multi-region: '__M3W_CONFIG__' placeholder replaced by CF Worker
+      // Example config structure:
+      // {
+      //   multiRegion: true,
+      //   mainDomain: 'https://m3w.example.com',
+      //   regions: [
+      //     { name: 'jp', endpoint: 'https://jp.m3w.example.com' },
+      //     { name: 'sea', endpoint: 'https://sea.m3w.example.com' },
+      //   ]
+      // }
+      //
+      // CF Worker injection example:
+      // ```js
+      // async function handleRequest(request) {
+      //   const response = await fetch(request);
+      //   const html = await response.text();
+      //   const config = JSON.stringify({
+      //     multiRegion: true,
+      //     mainDomain: 'https://m3w.example.com',
+      //     regions: [
+      //       { name: 'jp', endpoint: 'https://jp.m3w.example.com' },
+      //       { name: 'sea', endpoint: 'https://sea.m3w.example.com' },
+      //     ]
+      //   });
+      //   // Note: Replace the entire quoted placeholder string
+      //   return new Response(
+      //     html.replace("'__M3W_CONFIG__'", config),
+      //     { headers: response.headers }
+      //   );
+      // }
+      // ```
+      window.__M3W_CONFIG__ = '__M3W_CONFIG__';
     </script>
   </head>
   <body>

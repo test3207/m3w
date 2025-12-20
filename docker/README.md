@@ -7,7 +7,7 @@ This guide covers Docker image builds and deployment. For automated CI/CD builds
 M3W provides three Docker image variants:
 
 | Image | Purpose | Use Case |
-|-------|---------|----------|
+| ----- | ------- | -------- |
 | `m3w` | All-in-One (Frontend + Backend) | Simple deployment, demos, development |
 | `m3w-backend` | Backend API only | Microservices, separated frontend hosting |
 | `m3w-frontend` | Frontend static files + Nginx | CDN deployment, edge hosting |
@@ -215,7 +215,7 @@ docker-compose up -d
 ## Quick Comparison
 
 | Feature | Simple | Standard | Production |
-|---------|--------|----------|------------|
+| ------- | ------ | -------- | ---------- |
 | Containers | 1 (All-in-One) | 2 (Frontend + Backend) | 2 (Frontend + Backend) |
 | Reverse Proxy | Backend serves frontend | Internal Nginx | Your Nginx/Caddy |
 | Port | 4000 | 80 | 80/443 (your config) |
@@ -269,13 +269,58 @@ See `.env.example` files in each example directory. Key variables:
 - `DATABASE_URL`: PostgreSQL connection
 - `MINIO_ENDPOINT`: Object storage endpoint
 - `JWT_SECRET`: **MUST CHANGE** in production
-- `GITHUB_CLIENT_ID/SECRET`: OAuth credentials
+- `GITHUB_CLIENT_ID/SECRET`: OAuth credentials (see below)
+- `GITHUB_CALLBACK_URL`: OAuth callback URL
 - `API_BASE_URL`: Public URL for backend
 - `CORS_ORIGIN`: Allowed frontend origin
+- `HOME_REGION`: Region identifier for multi-region (default: `default`)
+- `COOKIE_DOMAIN`: Wildcard domain for auth cookies (e.g., `.m3w.example.com`)
+- `REDIS_URL`: Redis connection for multi-region routing (optional)
 
 **Frontend** (runtime):
 
 - `API_BASE_URL`: Where to call backend API (default: `/api`)
+
+## GitHub OAuth Configuration
+
+M3W uses GitHub OAuth for user authentication. Follow these steps to set up:
+
+### 1. Create GitHub OAuth App
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click **"New OAuth App"**
+3. Fill in the form:
+   - **Application name**: `M3W` (or any name)
+   - **Homepage URL**: Your M3W URL (e.g., `https://m3w.example.com`)
+   - **Authorization callback URL**: See table below
+4. Click **"Register application"**
+5. Copy the **Client ID**
+6. Click **"Generate a new client secret"** and copy the secret
+
+### Authorization Callback URL Examples
+
+| Deployment Scenario | Authorization Callback URL |
+| ------------------- | -------------------------- |
+| Local development | `http://localhost:4000/api/auth/callback` |
+| All-in-One (single domain) | `https://m3w.example.com/api/auth/callback` |
+| Backend at API subdomain | `https://api.m3w.example.com/api/auth/callback` |
+| Multi-region (Gateway) | `https://m3w.example.com/api/auth/callback` |
+
+**Multi-region deployments**:
+
+- If using a global Gateway domain, register that callback URL and set `GITHUB_CALLBACK_URL` to match in all regions
+- If regional endpoints are exposed directly, register each regional callback URL in the OAuth App
+
+### 2. Configure Environment
+
+```bash
+# backend/.env or docker-compose.yml
+GITHUB_CLIENT_ID=your_client_id_here
+GITHUB_CLIENT_SECRET=your_client_secret_here
+GITHUB_CALLBACK_URL=http://localhost:4000/api/auth/callback
+```
+
+**Note**: The callback URL must exactly match what's registered in GitHub OAuth App.
 
 ## Demo Mode (RC Builds Only)
 
@@ -317,7 +362,7 @@ For automated builds with proper tagging:
 Image sizes after optimization ([Issue #60](https://github.com/test3207/m3w/issues/60)):
 
 | Image | Before | After | Savings |
-|-------|--------|-------|---------|
+| ----- | ------ | ----- | ------- |
 | `m3w` (All-in-One) | ~626 MB | ~382 MB | ~39% |
 | `m3w-backend` | ~580 MB | ~379 MB | ~35% |
 | `m3w-frontend` | N/A | ~57 MB | N/A |
