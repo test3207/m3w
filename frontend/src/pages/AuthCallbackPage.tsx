@@ -56,11 +56,9 @@ export default function AuthCallbackPage() {
    * Flow 1: Cookie-based authentication
    * Backend has already processed OAuth and set HTTP-only cookies
    */
-  async function handleCookieFlow() {
-    // Add a small delay to ensure cookies are set by the browser
-    setTimeout(() => {
-      fetchUserInfoFromCookies();
-    }, 100);
+  function handleCookieFlow() {
+    // Cookies are already set by the redirect response, fetch user info immediately
+    fetchUserInfoFromCookies();
   }
 
   async function fetchUserInfoFromCookies() {

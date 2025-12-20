@@ -9,7 +9,6 @@ import { startAutoSync, stopAutoSync } from "@/lib/sync/metadata-sync";
 import { triggerAutoDownload } from "@/lib/storage/download-manager";
 import { useAuthStore } from "@/stores/authStore";
 import { initializeEndpoint, isMultiRegionEnabled } from "@/lib/api/multi-region";
-import { logger } from "@/lib/logger-client";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -24,9 +23,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Initialize multi-region endpoint detection on app startup
   // Checks Gateway first, falls back to fastest region if Gateway is down
+  // Note: initializeEndpoint() is designed to never throw, handles all errors internally
   useEffect(() => {
     if (isMultiRegionEnabled()) {
-      initializeEndpoint().catch((err) => logger.error("Failed to initialize endpoint", { err }));
+      initializeEndpoint();
     }
   }, []);
 

@@ -79,7 +79,8 @@ export function getUserHomeRegion(): string | null {
     
     const parsed = JSON.parse(authStore);
     return parsed.state?.user?.homeRegion || null;
-  } catch {
+  } catch (err) {
+    logger.debug("[Multi-Region] Failed to read homeRegion from auth store", { err });
     return null;
   }
 }
@@ -105,7 +106,8 @@ export async function checkEndpointLatency(
     
     clearTimeout(timeoutId);
     return response.ok ? latency : null;
-  } catch {
+  } catch (err) {
+    logger.warn("[Multi-Region] Endpoint health check failed", { endpoint, err });
     return null;
   }
 }
@@ -144,6 +146,8 @@ export async function initializeEndpoint(): Promise<void> {
     
     // Gateway down - find fastest region endpoint (4th-level domain)
     // Filter out mainDomain to avoid duplicate checks
+    // Note: Parallel requests are safe here - typically only 2-4 regions configured,
+    // and health endpoints are lightweight, so no risk of rate limiting
     if (config.regions && config.regions.length > 0) {
       const regionEndpoints = config.regions.filter(
         (region) => region.endpoint !== config.mainDomain

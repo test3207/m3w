@@ -179,19 +179,19 @@ export async function routeRequest(
       ? path
       : `${baseUrl}${path}`;
 
-    // Build headers with auth token and region preference
-    const headers: HeadersInit = { ...init?.headers };
+    // Build headers with auth token and region preference using Headers API for type safety
+    const headers = new Headers(init?.headers);
     
     // Add authorization header if token exists
     const authToken = getAuthToken();
     if (authToken) {
-      (headers as Record<string, string>)["Authorization"] = `Bearer ${authToken}`;
+      headers.set("Authorization", `Bearer ${authToken}`);
     }
     
     // Add X-Region header for multi-region routing (Gateway uses this for routing hints)
     const homeRegion = getUserHomeRegion();
     if (homeRegion) {
-      (headers as Record<string, string>)["X-Region"] = homeRegion;
+      headers.set("X-Region", homeRegion);
     }
 
     const response = await fetch(fullUrl, {
