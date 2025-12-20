@@ -24,8 +24,15 @@
       // Multi-region configuration (optional, for global deployment)
       // - Local dev / AIO: not set (multi-region disabled)
       // - Multi-region: '__M3W_CONFIG__' placeholder replaced by CF Worker
-      // Example config injected by CF Worker:
-      // { multiRegion: true, mainDomain: 'https://...', regions: [...] }
+      // Example config structure injected by CF Worker:
+      // {
+      //   multiRegion: true,
+      //   mainDomain: 'https://m3w.example.com',
+      //   regions: [
+      //     { name: 'jp', endpoint: 'https://jp.m3w.example.com' },
+      //     { name: 'sea', endpoint: 'https://sea.m3w.example.com' },
+      //   ]
+      // }
       window.__M3W_CONFIG__ = '__M3W_CONFIG__';
     </script>
   </head>
