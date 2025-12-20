@@ -151,7 +151,9 @@ export async function initializeEndpoint(): Promise<void> {
   // No multi-region configured - use default API_BASE_URL
   if (!config) {
     activeEndpoint = null;
-    return;
+    // Set promise to prevent race conditions even in non-multi-region path
+    endpointCheckPromise = Promise.resolve();
+    return endpointCheckPromise;
   }
   
   // Start initialization and cache the promise

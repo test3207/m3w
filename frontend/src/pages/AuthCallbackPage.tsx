@@ -44,7 +44,7 @@ export default function AuthCallbackPage() {
       // Flow 1: Backend already processed auth, cookies are set
       handleCookieFlow();
     } else if (code) {
-      // Flow 2: GitHub redirected here with code (CF/Gateway fallback)
+      // Flow 2: GitHub redirected here with code (Gateway backend down, frontend still reachable)
       handleCodeRedirectFlow(code).catch((error) => {
         logger.error("Auth code redirect flow failed", { error });
         navigate("/signin?error=auth_failed");
