@@ -45,7 +45,10 @@ export default function AuthCallbackPage() {
       handleCookieFlow();
     } else if (code) {
       // Flow 2: GitHub redirected here with code (CF/Gateway fallback)
-      handleCodeRedirectFlow(code);
+      handleCodeRedirectFlow(code).catch((error) => {
+        logger.error("Auth code redirect flow failed", { error });
+        navigate("/signin?error=auth_failed");
+      });
     } else {
       // No valid auth parameters
       navigate("/signin?error=auth_failed");

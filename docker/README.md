@@ -297,6 +297,19 @@ M3W uses GitHub OAuth for user authentication. Follow these steps to set up:
 5. Copy the **Client ID**
 6. Click **"Generate a new client secret"** and copy the secret
 
+### Authorization Callback URL Examples
+
+| Deployment Scenario | Authorization Callback URL |
+|---------------------|----------------------------|
+| Local development | `http://localhost:4000/api/auth/callback` |
+| All-in-One (single domain) | `https://m3w.example.com/api/auth/callback` |
+| Backend at API subdomain | `https://api.m3w.example.com/api/auth/callback` |
+| Multi-region (Gateway) | `https://m3w.example.com/api/auth/callback` |
+
+**Multi-region deployments**:
+- If using a global Gateway domain, register that callback URL and set `GITHUB_CALLBACK_URL` to match in all regions
+- If regional endpoints are exposed directly, register each regional callback URL in the OAuth App
+
 ### 2. Configure Environment
 
 ```bash

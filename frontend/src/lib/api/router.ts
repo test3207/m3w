@@ -13,7 +13,11 @@ import { logger } from "../logger-client";
 import { API_BASE_URL } from "./config";
 import { isGuestUser } from "../offline-proxy/utils";
 import { cacheResponseToIndexedDB } from "../cache/response-cache";
-import { getUserHomeRegion, getActiveEndpoint } from "./multi-region";
+import {
+  getUserHomeRegion,
+  getActiveEndpoint,
+  ensureEndpointInitialized,
+} from "./multi-region";
 
 // Track backend reachability
 let isBackendReachable = true;
@@ -172,6 +176,10 @@ export async function routeRequest(
 
   // Online: try backend first
   try {
+    // Ensure multi-region endpoint is initialized before making requests
+    // This is a no-op if multi-region is not enabled or already initialized
+    await ensureEndpointInitialized();
+
     // Build full backend URL from path
     // Use active endpoint (fallback) if Gateway is down, otherwise use default API_BASE_URL
     const baseUrl = getActiveEndpoint() || API_BASE_URL;

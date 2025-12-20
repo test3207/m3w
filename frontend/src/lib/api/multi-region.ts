@@ -115,10 +115,10 @@ export async function checkEndpointLatency(
   endpoint: string,
   timeoutMs = 5000
 ): Promise<number | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    
     const start = performance.now();
     const response = await fetch(`${endpoint}/health`, {
       method: "GET",
@@ -126,11 +126,12 @@ export async function checkEndpointLatency(
     });
     const latency = performance.now() - start;
     
-    clearTimeout(timeoutId);
     return response.ok ? latency : null;
   } catch (err) {
     logger.warn("[Multi-Region] Endpoint health check failed", { endpoint, err });
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -209,9 +210,8 @@ export async function initializeEndpoint(): Promise<void> {
 export async function ensureEndpointInitialized(): Promise<void> {
   if (!isMultiRegionEnabled()) return;
   
-  if (!endpointCheckPromise) {
-    endpointCheckPromise = initializeEndpoint();
-  }
+  // Use nullish coalescing assignment for atomic check-and-set
+  endpointCheckPromise ??= initializeEndpoint();
   await endpointCheckPromise;
 }
 
@@ -223,14 +223,36 @@ export function getActiveEndpoint(): string | null {
   return activeEndpoint;
 }
 
+// Promise used to deduplicate concurrent recheckEndpoints calls
+let endpointRecheckPromise: Promise<void> | null = null;
+
 /**
  * Force re-check endpoints (e.g., when network status changes)
+ * Safe to call multiple times - only one recheck runs at a time
  */
 export async function recheckEndpoints(): Promise<void> {
+  if (!isMultiRegionEnabled()) return;
+
+  // Dedup: reuse existing recheck promise if one is in progress
+  if (endpointRecheckPromise) {
+    await endpointRecheckPromise;
+    return;
+  }
+
   // Clear active endpoint to avoid exposing stale value during recheck
   activeEndpoint = null;
-  endpointCheckPromise = null;
-  await ensureEndpointInitialized();
+
+  endpointRecheckPromise = (async () => {
+    // Reset initialization promise so ensureEndpointInitialized performs fresh check
+    endpointCheckPromise = null;
+    try {
+      await ensureEndpointInitialized();
+    } finally {
+      endpointRecheckPromise = null;
+    }
+  })();
+
+  await endpointRecheckPromise;
 }
 
 /**
