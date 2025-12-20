@@ -110,7 +110,7 @@ export function getUserHomeRegion(): string | null {
     if (parts.length !== 3) return null;
     
     // Decode base64url payload (wrap atob in try-catch for malformed tokens)
-    let payload;
+    let payload: unknown;
     try {
       // Convert base64url to base64 and add padding for atob()
       const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -121,7 +121,13 @@ export function getUserHomeRegion(): string | null {
       logger.debug("[Multi-Region] Failed to decode JWT payload", { decodeErr });
       return null;
     }
-    return payload.homeRegion || null;
+    
+    // Validate payload is an object with homeRegion string
+    if (typeof payload !== "object" || payload === null) {
+      return null;
+    }
+    const homeRegion = (payload as Record<string, unknown>).homeRegion;
+    return typeof homeRegion === "string" ? homeRegion : null;
   } catch (err) {
     logger.debug("[Multi-Region] Failed to read homeRegion from JWT", { err });
     return null;
@@ -265,9 +271,8 @@ export async function recheckEndpoints(): Promise<void> {
     return;
   }
 
-  // Preserve previous values for defensive restoration on failure
+  // Preserve previous endpoint for defensive restoration on failure
   const previousEndpoint = activeEndpoint;
-  const previousCheckPromise = endpointCheckPromise;
 
   endpointRecheckPromise = (async () => {
     // Reset initialization promise so ensureEndpointInitialized performs fresh check
@@ -280,10 +285,9 @@ export async function recheckEndpoints(): Promise<void> {
         activeEndpoint = previousEndpoint;
       }
     } catch (error) {
-      // Restore previous state on failure
-      logger.error("[Multi-Region] Recheck failed, restoring previous state", error);
+      // Restore previous endpoint on failure (keep endpointCheckPromise null so next request can re-init)
+      logger.error("[Multi-Region] Recheck failed, restoring previous endpoint", error);
       activeEndpoint = previousEndpoint;
-      endpointCheckPromise = previousCheckPromise;
     } finally {
       endpointRecheckPromise = null;
     }

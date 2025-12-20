@@ -24,6 +24,8 @@ function getErrorMessage(errorCode: string): string {
       return I18n.signin.errors.noServers;
     case "auth_failed":
       return I18n.signin.errors.authFailed;
+    case "session_failed":
+      return I18n.signin.errors.sessionFailed;
     default:
       return `${I18n.signin.errors.unknown}: ${errorCode}`;
   }

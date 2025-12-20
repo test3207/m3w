@@ -23,6 +23,7 @@
     "errors": {
       "noServers": "All backend servers are currently unavailable. Please try again later.",
       "authFailed": "Authentication failed. Please try again.",
+      "sessionFailed": "Failed to create session. Please try again.",
       "unknown": "Authentication error"
     },
     "status": {

@@ -28,7 +28,9 @@ const HOME_REGION = process.env.HOME_REGION || 'default';  // "jp", "sea", "usw"
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '';
 
 // Runtime validation: warn if COOKIE_DOMAIN looks misconfigured for wildcard
-if (COOKIE_DOMAIN && !COOKIE_DOMAIN.startsWith('.') && COOKIE_DOMAIN.includes('.')) {
+// Only warn for multi-level domains (has 2+ dots when prefixed), avoids false positives for "localhost"
+const dotCount = (COOKIE_DOMAIN.match(/\./g) || []).length;
+if (COOKIE_DOMAIN && !COOKIE_DOMAIN.startsWith('.') && dotCount >= 2) {
   logger.warn(
     `COOKIE_DOMAIN "${COOKIE_DOMAIN}" does not start with a leading dot (.) which is required for wildcard subdomain cookies. ` +
     `Consider using ".${COOKIE_DOMAIN}" for multi-region deployments.`

@@ -23,6 +23,7 @@
     "errors": {
       "noServers": "所有后端服务器当前不可用，请稍后重试。",
       "authFailed": "认证失败，请重试。",
+      "sessionFailed": "创建会话失败，请重试。",
       "unknown": "认证错误"
     },
     "status": {

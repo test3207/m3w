@@ -47,6 +47,8 @@ export interface Messages {
       noServers: string;
       /** Authentication failed. Please try again. */
       authFailed: string;
+      /** Failed to create session. Please try again. */
+      sessionFailed: string;
       /** Authentication error */
       unknown: string;
     };
