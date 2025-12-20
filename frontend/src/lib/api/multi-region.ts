@@ -241,14 +241,25 @@ export async function recheckEndpoints(): Promise<void> {
     return;
   }
 
-  // Clear active endpoint to avoid exposing stale value during recheck
-  activeEndpoint = null;
+  // Preserve previous values for defensive restoration on failure
+  const previousEndpoint = activeEndpoint;
+  const previousCheckPromise = endpointCheckPromise;
 
   endpointRecheckPromise = (async () => {
     // Reset initialization promise so ensureEndpointInitialized performs fresh check
     endpointCheckPromise = null;
     try {
       await ensureEndpointInitialized();
+      // If recheck found no endpoint, restore previous (stale data is better than none)
+      if (!activeEndpoint && previousEndpoint) {
+        logger.warn("[Multi-Region] Recheck found no endpoint, restoring previous");
+        activeEndpoint = previousEndpoint;
+      }
+    } catch (error) {
+      // Restore previous state on failure
+      logger.error("[Multi-Region] Recheck failed, restoring previous state", error);
+      activeEndpoint = previousEndpoint;
+      endpointCheckPromise = previousCheckPromise;
     } finally {
       endpointRecheckPromise = null;
     }
