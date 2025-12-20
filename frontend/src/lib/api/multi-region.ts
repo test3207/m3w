@@ -227,6 +227,8 @@ export function getActiveEndpoint(): string | null {
  * Force re-check endpoints (e.g., when network status changes)
  */
 export async function recheckEndpoints(): Promise<void> {
+  // Clear active endpoint to avoid exposing stale value during recheck
+  activeEndpoint = null;
   endpointCheckPromise = null;
   await ensureEndpointInitialized();
 }

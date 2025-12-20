@@ -18,9 +18,10 @@ import {
  *    - HTTP-only cookies already set by backend
  *    - Page fetches user info via /api/auth/me and /api/auth/session
  * 
- * 2. Fallback flow (CF/Gateway down, frontend receives code):
- *    - GitHub redirects here with `?code=xxx` (CF Pages still serves frontend)
- *    - Page finds available backend (4th-level domain)
+ * 2. Fallback flow (Gateway backend down, frontend still reachable):
+ *    - Requires: CF Pages frontend is deployed separately from Gateway backend
+ *    - GitHub redirects here with `?code=xxx`
+ *    - Page finds available regional backend (4th-level domain)
  *    - Redirects to backend's /api/auth/callback with code
  *    - Backend handles everything, redirects back with ?success=true
  */
@@ -121,11 +122,12 @@ export default function AuthCallbackPage() {
     const endpoint = await findAvailableEndpoint();
 
     if (!endpoint) {
-      // No fallback configured or all endpoints unavailable
-      // Try local backend as last resort
-      setStatus("Trying local server...");
-      const backendUrl = `${getApiBaseUrl()}/api/auth/callback?code=${encodeURIComponent(code)}`;
-      window.location.href = backendUrl;
+      // All regional endpoints unavailable
+      // Show error instead of redirecting to potentially unavailable Gateway
+      setStatus("No available servers. Please try again later.");
+      setTimeout(() => {
+        navigate("/signin?error=no_servers");
+      }, 2000);
       return;
     }
 
