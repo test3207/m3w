@@ -269,13 +269,61 @@ See `.env.example` files in each example directory. Key variables:
 - `DATABASE_URL`: PostgreSQL connection
 - `MINIO_ENDPOINT`: Object storage endpoint
 - `JWT_SECRET`: **MUST CHANGE** in production
-- `GITHUB_CLIENT_ID/SECRET`: OAuth credentials
+- `GITHUB_CLIENT_ID/SECRET`: OAuth credentials (see below)
+- `GITHUB_CALLBACK_URL`: OAuth callback URL
 - `API_BASE_URL`: Public URL for backend
 - `CORS_ORIGIN`: Allowed frontend origin
 
 **Frontend** (runtime):
 
 - `API_BASE_URL`: Where to call backend API (default: `/api`)
+
+## GitHub OAuth Configuration
+
+M3W uses GitHub OAuth for user authentication. Follow these steps to set up:
+
+### 1. Create GitHub OAuth App
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click **"New OAuth App"**
+3. Fill in the form:
+   - **Application name**: `M3W` (or any name)
+   - **Homepage URL**: Your M3W URL (e.g., `https://m3w.example.com`)
+   - **Authorization callback URL**: See table below
+4. Click **"Register application"**
+5. Copy the **Client ID**
+6. Click **"Generate a new client secret"** and copy the secret
+
+### 2. Set Callback URL
+
+The callback URL depends on your deployment:
+
+| Deployment | Callback URL Example |
+|------------|---------------------|
+| Local dev | `http://localhost:4000/api/auth/callback` |
+| AIO Docker | `http://your-server:4000/api/auth/callback` |
+| Multi-region | `https://m3w.example.com/api/auth/callback` |
+| CF Pages frontend | `https://your-frontend.pages.dev/auth/callback` |
+
+**Important**: The callback URL must exactly match what's registered in GitHub OAuth App.
+
+### 3. Configure Environment
+
+```bash
+# backend/.env or docker-compose.yml
+GITHUB_CLIENT_ID=your_client_id_here
+GITHUB_CLIENT_SECRET=your_client_secret_here
+GITHUB_CALLBACK_URL=http://localhost:4000/api/auth/callback
+```
+
+### 4. Multiple OAuth Apps (Multi-Region)
+
+For multi-region deployment, you may need separate OAuth Apps:
+
+- **Production**: Callback to main domain (Gateway)
+- **Development**: Callback to localhost
+
+Each region can share the same OAuth App if the callback always goes through the Gateway.
 
 ## Demo Mode (RC Builds Only)
 

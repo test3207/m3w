@@ -13,6 +13,7 @@ import { logger } from "../logger-client";
 import { API_BASE_URL } from "./config";
 import { isGuestUser } from "../offline-proxy/utils";
 import { cacheResponseToIndexedDB } from "../cache/response-cache";
+import { getUserHomeRegion, getActiveEndpoint } from "./multi-region";
 
 // Track backend reachability
 let isBackendReachable = true;
@@ -172,19 +173,31 @@ export async function routeRequest(
   // Online: try backend first
   try {
     // Build full backend URL from path
-    // path may contain query params, so use it directly if it starts with /
+    // Use active endpoint (fallback) if Gateway is down, otherwise use default API_BASE_URL
+    const baseUrl = getActiveEndpoint() || API_BASE_URL;
     const fullUrl = path.startsWith("http")
       ? path
-      : `${API_BASE_URL}${path}`;
+      : `${baseUrl}${path}`;
+
+    // Build headers with auth token and region preference
+    const headers: HeadersInit = { ...init?.headers };
+    
+    // Add authorization header if token exists
+    const authToken = getAuthToken();
+    if (authToken) {
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${authToken}`;
+    }
+    
+    // Add X-Region header for multi-region routing (Gateway uses this for routing hints)
+    const homeRegion = getUserHomeRegion();
+    if (homeRegion) {
+      (headers as Record<string, string>)["X-Region"] = homeRegion;
+    }
 
     const response = await fetch(fullUrl, {
       ...init,
       credentials: "include",
-      headers: {
-        ...init?.headers,
-        // Add authorization header if token exists
-        ...(getAuthToken() ? { "Authorization": `Bearer ${getAuthToken()}` } : {}),
-      },
+      headers,
     });
 
     // Mark backend as reachable on successful connection

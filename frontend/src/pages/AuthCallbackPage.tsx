@@ -1,13 +1,34 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import { logger } from "@/lib/logger-client";
 import { getApiBaseUrl } from "@/lib/api/config";
+import {
+  isMultiRegionEnabled,
+  findAvailableEndpoint,
+} from "@/lib/api/multi-region";
 
+/**
+ * Authentication Callback Page
+ * 
+ * Handles two authentication flows:
+ * 
+ * 1. Cookie-based flow (local dev / AIO / normal multi-region):
+ *    - Backend redirects here with `?success=true`
+ *    - HTTP-only cookies already set by backend
+ *    - Page fetches user info via /api/auth/me and /api/auth/session
+ * 
+ * 2. Fallback flow (CF/Gateway down, frontend receives code):
+ *    - GitHub redirects here with `?code=xxx` (CF Pages still serves frontend)
+ *    - Page finds available backend (4th-level domain)
+ *    - Redirects to backend's /api/auth/callback with code
+ *    - Backend handles everything, redirects back with ?success=true
+ */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
   const hasRun = useRef(false);
+  const [status, setStatus] = useState("Authenticating...");
 
   useEffect(() => {
     // Prevent double execution in React StrictMode
@@ -16,71 +37,111 @@ export default function AuthCallbackPage() {
 
     const params = new URLSearchParams(window.location.search);
     const success = params.get("success");
+    const code = params.get("code");
 
     if (success === "true") {
-      // Backend has set HTTP-only cookies with tokens
-      // Add a small delay to ensure cookies are set by the browser
-      // (Redirect from backend may not have completed cookie storage yet)
-      setTimeout(() => {
-        fetchUserInfo();
-      }, 100); // 100ms delay to ensure cookies are ready
+      // Flow 1: Backend already processed auth, cookies are set
+      handleCookieFlow();
+    } else if (code) {
+      // Flow 2: GitHub redirected here with code (CF/Gateway fallback)
+      handleCodeRedirectFlow(code);
     } else {
-      // Error in auth callback
+      // No valid auth parameters
       navigate("/signin?error=auth_failed");
-    }
-
-    async function fetchUserInfo() {
-      try {
-        const response = await fetch(
-          `${getApiBaseUrl()}/api/auth/me`,
-          {
-            credentials: "include", // Send cookies
-          }
-        );
-
-        const data = await response.json();
-
-        if (response.ok && data.success && data.data) {
-          // Extract tokens from response headers or use a separate endpoint
-          // For now, we need to get tokens to store in frontend
-          // Let's call a new endpoint that returns tokens (non-HttpOnly)
-          const tokenResponse = await fetch(
-            `${getApiBaseUrl()}/api/auth/session`,
-            {
-              credentials: "include",
-            }
-          );
-
-          const tokenData = await tokenResponse.json();
-
-          if (tokenResponse.ok && tokenData.success && tokenData.data) {
-            setAuth(data.data, {
-              accessToken: tokenData.data.accessToken,
-              refreshToken: tokenData.data.refreshToken,
-              expiresAt: tokenData.data.expiresAt,
-            });
-            navigate("/libraries");
-          } else {
-            logger.error("Failed to get session", { tokenData });
-            navigate("/signin?error=session_failed");
-          }
-        } else {
-          logger.error("Auth failed", { data });
-          navigate("/signin?error=auth_failed");
-        }
-      } catch (error) {
-        logger.error("Fetch user error", { error });
-        navigate("/signin?error=auth_failed");
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps array - only run once on mount
+
+  /**
+   * Flow 1: Cookie-based authentication
+   * Backend has already processed OAuth and set HTTP-only cookies
+   */
+  async function handleCookieFlow() {
+    // Add a small delay to ensure cookies are set by the browser
+    setTimeout(() => {
+      fetchUserInfoFromCookies();
+    }, 100);
+  }
+
+  async function fetchUserInfoFromCookies() {
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/auth/me`, {
+        credentials: "include", // Send cookies
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success && data.data) {
+        // Get tokens to store in frontend
+        const tokenResponse = await fetch(
+          `${getApiBaseUrl()}/api/auth/session`,
+          {
+            credentials: "include",
+          }
+        );
+
+        const tokenData = await tokenResponse.json();
+
+        if (tokenResponse.ok && tokenData.success && tokenData.data) {
+          setAuth(data.data, {
+            accessToken: tokenData.data.accessToken,
+            refreshToken: tokenData.data.refreshToken,
+            expiresAt: tokenData.data.expiresAt,
+          });
+          navigate("/libraries");
+        } else {
+          logger.error("Failed to get session", { tokenData });
+          navigate("/signin?error=session_failed");
+        }
+      } else {
+        logger.error("Auth failed", { data });
+        navigate("/signin?error=auth_failed");
+      }
+    } catch (error) {
+      logger.error("Fetch user error", { error });
+      navigate("/signin?error=auth_failed");
+    }
+  }
+
+  /**
+   * Flow 2: Fallback - GitHub redirected here with code
+   * This happens when CF/Gateway is down but CF Pages still serves frontend.
+   * We find an available backend and redirect to its /api/auth/callback
+   */
+  async function handleCodeRedirectFlow(code: string) {
+    // Check if multi-region is configured
+    if (!isMultiRegionEnabled()) {
+      // Not multi-region mode, redirect to local backend's callback
+      const backendUrl = `${getApiBaseUrl()}/api/auth/callback?code=${encodeURIComponent(code)}`;
+      setStatus("Redirecting to server...");
+      window.location.href = backendUrl;
+      return;
+    }
+
+    // Find available backend endpoint (4th-level domain)
+    setStatus("Finding available server...");
+    const endpoint = await findAvailableEndpoint();
+
+    if (!endpoint) {
+      // No fallback configured or all endpoints unavailable
+      // Try local backend as last resort
+      setStatus("Trying local server...");
+      const backendUrl = `${getApiBaseUrl()}/api/auth/callback?code=${encodeURIComponent(code)}`;
+      window.location.href = backendUrl;
+      return;
+    }
+
+    // Redirect to available backend's callback endpoint
+    setStatus(`Connecting to ${endpoint}...`);
+    const backendUrl = `${endpoint}/api/auth/callback?code=${encodeURIComponent(code)}`;
+    window.location.href = backendUrl;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
         <div className="mb-4 animate-spin">⏳</div>
-        <p>Authenticating...</p>
+        <p>{status}</p>
       </div>
     </div>
   );
