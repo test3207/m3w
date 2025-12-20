@@ -50,6 +50,18 @@ export interface Messages {
       /** Authentication error */
       unknown: string;
     };
+    status: {
+      /** Authenticating... */
+      authenticating: string;
+      /** Redirecting to server... */
+      redirecting: string;
+      /** Finding available server... */
+      findingServer: string;
+      /** Connecting to server... */
+      connecting: string;
+      /** No available servers. Please try again later. */
+      noServers: string;
+    };
   };
   navigation: {
     /** Libraries */

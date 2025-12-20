@@ -112,7 +112,11 @@ export function getUserHomeRegion(): string | null {
     // Decode base64url payload (wrap atob in try-catch for malformed tokens)
     let payload;
     try {
-      payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      // Convert base64url to base64 and add padding for atob()
+      const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const paddingNeeded = (4 - (base64.length % 4)) % 4;
+      const paddedBase64 = base64 + "=".repeat(paddingNeeded);
+      payload = JSON.parse(atob(paddedBase64));
     } catch (decodeErr) {
       logger.debug("[Multi-Region] Failed to decode JWT payload", { decodeErr });
       return null;

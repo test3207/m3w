@@ -7,6 +7,7 @@ import {
   isMultiRegionEnabled,
   findAvailableEndpoint,
 } from "@/lib/api/multi-region";
+import { I18n } from "@/locales/i18n";
 
 /**
  * Authentication Callback Page
@@ -29,7 +30,7 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
   const hasRun = useRef(false);
-  const [status, setStatus] = useState("Authenticating...");
+  const [status, setStatus] = useState(I18n.signin.status.authenticating);
 
   useEffect(() => {
     // Prevent double execution in React StrictMode
@@ -116,19 +117,19 @@ export default function AuthCallbackPage() {
     if (!isMultiRegionEnabled()) {
       // Not multi-region mode, redirect to local backend's callback
       const backendUrl = `${getApiBaseUrl()}/api/auth/callback?code=${encodeURIComponent(code)}`;
-      setStatus("Redirecting to server...");
+      setStatus(I18n.signin.status.redirecting);
       window.location.href = backendUrl;
       return;
     }
 
     // Find available backend endpoint (4th-level domain)
-    setStatus("Finding available server...");
+    setStatus(I18n.signin.status.findingServer);
     const endpoint = await findAvailableEndpoint();
 
     if (!endpoint) {
       // All regional endpoints unavailable
       // Show error instead of redirecting to potentially unavailable Gateway
-      setStatus("No available servers. Please try again later.");
+      setStatus(I18n.signin.status.noServers);
       setTimeout(() => {
         navigate("/signin?error=no_servers");
       }, 2000);
@@ -136,7 +137,7 @@ export default function AuthCallbackPage() {
     }
 
     // Redirect to available backend's callback endpoint
-    setStatus(`Connecting to ${endpoint}...`);
+    setStatus(I18n.signin.status.connecting);
     const backendUrl = `${endpoint}/api/auth/callback?code=${encodeURIComponent(code)}`;
     window.location.href = backendUrl;
   }
