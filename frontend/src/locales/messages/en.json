@@ -18,7 +18,13 @@
     "guest": "Offline Mode",
     "guestDescription": "Use locally without an account",
     "processing": "Processing...",
-    "terms": "By signing in, you agree to our Terms of Service and Privacy Policy."
+    "terms": "By signing in, you agree to our Terms of Service and Privacy Policy.",
+    "errorTitle": "Sign-in failed",
+    "errors": {
+      "noServers": "All backend servers are currently unavailable. Please try again later.",
+      "authFailed": "Authentication failed. Please try again.",
+      "unknown": "Authentication error"
+    }
   },
   "navigation": {
     "libraries": "Libraries",

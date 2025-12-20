@@ -17,11 +17,17 @@ import { initGuestResources } from "@/lib/db/init-guest";
 import { logger } from "@/lib/logger-client";
 import { getApiBaseUrl } from "@/lib/api/config";
 
-// Error codes from AuthCallbackPage
-const ERROR_MESSAGES: Record<string, string> = {
-  no_servers: "All backend servers are currently unavailable. Please try again later.",
-  auth_failed: "Authentication failed. Please try again.",
-};
+// Map error codes to i18n keys
+function getErrorMessage(errorCode: string): string {
+  switch (errorCode) {
+    case "no_servers":
+      return I18n.signin.errors.noServers;
+    case "auth_failed":
+      return I18n.signin.errors.authFailed;
+    default:
+      return `${I18n.signin.errors.unknown}: ${errorCode}`;
+  }
+}
 
 export default function SignInPage() {
   useLocale(); // Subscribe to locale changes
@@ -33,15 +39,14 @@ export default function SignInPage() {
 
   // Handle error query parameter from auth callback
   useEffect(() => {
-    const error = searchParams.get("error");
-    if (error) {
-      const message = ERROR_MESSAGES[error] ?? `Authentication error: ${error}`;
+    const errorCode = searchParams.get("error");
+    if (errorCode) {
       toast({
-        title: "Sign-in failed",
-        description: message,
+        title: I18n.signin.errorTitle,
+        description: getErrorMessage(errorCode),
         variant: "destructive",
       });
-      logger.error("[SignInPage] Auth callback error:", error);
+      logger.error("[SignInPage] Auth callback error:", errorCode);
     }
   }, [searchParams, toast]);
 
@@ -53,11 +58,11 @@ export default function SignInPage() {
       window.location.href = `${getApiBaseUrl()}/api/auth/github`;
     } catch (error) {
       toast({
-        title: "Sign-in failed",
+        title: I18n.signin.errorTitle,
         description:
           error instanceof Error
             ? error.message
-            : "Failed to initiate GitHub sign-in",
+            : I18n.signin.errors.authFailed,
         variant: "destructive",
       });
       setIsLoading(false);

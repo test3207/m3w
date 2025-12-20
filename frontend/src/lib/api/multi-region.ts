@@ -78,28 +78,45 @@ export function isMultiRegionEnabled(): boolean {
 }
 
 /**
- * Get user's home region from JWT access token
- * The homeRegion is encoded in the JWT payload by the backend
+ * Get auth token from Zustand auth store
+ * Shared utility used by both router.ts and getUserHomeRegion()
  */
-export function getUserHomeRegion(): string | null {
+export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   
   try {
-    // Read from Zustand auth store (persisted in localStorage)
     const authStore = localStorage.getItem("auth-storage");
     if (!authStore) return null;
     
     const parsed = JSON.parse(authStore);
-    const accessToken = parsed.state?.tokens?.accessToken;
-    if (!accessToken || typeof accessToken !== "string") return null;
-    
+    return parsed.state?.tokens?.accessToken || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get user's home region from JWT access token
+ * The homeRegion is encoded in the JWT payload by the backend
+ */
+export function getUserHomeRegion(): string | null {
+  const accessToken = getAuthToken();
+  if (!accessToken) return null;
+  
+  try {
     // Decode JWT payload (base64url encoded, no verification needed for reading)
     // JWT format: header.payload.signature
     const parts = accessToken.split(".");
     if (parts.length !== 3) return null;
     
-    // Decode base64url payload
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    // Decode base64url payload (wrap atob in try-catch for malformed tokens)
+    let payload;
+    try {
+      payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    } catch (decodeErr) {
+      logger.debug("[Multi-Region] Failed to decode JWT payload", { decodeErr });
+      return null;
+    }
     return payload.homeRegion || null;
   } catch (err) {
     logger.debug("[Multi-Region] Failed to read homeRegion from JWT", { err });
@@ -212,8 +229,11 @@ export async function initializeEndpoint(): Promise<void> {
 export async function ensureEndpointInitialized(): Promise<void> {
   if (!isMultiRegionEnabled()) return;
   
-  // Use nullish coalescing assignment for atomic check-and-set
-  endpointCheckPromise ??= initializeEndpoint();
+  // Explicit conditional check-and-set for clarity
+  // JavaScript is single-threaded, so this is safe from true race conditions
+  if (!endpointCheckPromise) {
+    endpointCheckPromise = initializeEndpoint();
+  }
   await endpointCheckPromise;
 }
 

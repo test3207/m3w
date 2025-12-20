@@ -40,6 +40,16 @@ export interface Messages {
     processing: string;
     /** By signing in, you agree to our Terms of Service and Privacy Policy. */
     terms: string;
+    /** Sign-in failed */
+    errorTitle: string;
+    errors: {
+      /** All backend servers are currently unavailable. Please try again later. */
+      noServers: string;
+      /** Authentication failed. Please try again. */
+      authFailed: string;
+      /** Authentication error */
+      unknown: string;
+    };
   };
   navigation: {
     /** Libraries */

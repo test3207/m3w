@@ -17,6 +17,7 @@ import {
   getUserHomeRegion,
   getActiveEndpoint,
   ensureEndpointInitialized,
+  getAuthToken,
 } from "./multi-region";
 
 // Track backend reachability
@@ -83,20 +84,6 @@ function emitNetworkStatus(isReachable: boolean) {
     
     window.dispatchEvent(new CustomEvent(isReachable ? "api-success" : "api-error"));
     logger.info("Backend reachability changed", { isReachable });
-  }
-}
-
-// Helper to get auth token from store
-function getAuthToken(): string | null {
-  try {
-    // Zustand persist uses 'auth-storage' as the key name
-    const authStore = localStorage.getItem("auth-storage");
-    if (!authStore) return null;
-
-    const parsed = JSON.parse(authStore);
-    return parsed.state?.tokens?.accessToken || null;
-  } catch {
-    return null;
   }
 }
 

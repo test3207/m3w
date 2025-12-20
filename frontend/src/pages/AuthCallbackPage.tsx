@@ -45,12 +45,13 @@ export default function AuthCallbackPage() {
       handleCookieFlow();
     } else if (code) {
       // Flow 2: GitHub redirected here with code (Gateway backend down, frontend still reachable)
+      // Use consistent error code pattern: auth_failed for authentication errors
       handleCodeRedirectFlow(code).catch((error) => {
         logger.error("Auth code redirect flow failed", { error });
         navigate("/signin?error=auth_failed");
       });
     } else {
-      // No valid auth parameters
+      // No valid auth parameters - use auth_failed for consistency
       navigate("/signin?error=auth_failed");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -27,6 +27,14 @@ const HOME_REGION = process.env.HOME_REGION || 'default';  // "jp", "sea", "usw"
 // Leave empty for local dev (cookie bound to request domain)
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '';
 
+// Runtime validation: warn if COOKIE_DOMAIN looks misconfigured for wildcard
+if (COOKIE_DOMAIN && !COOKIE_DOMAIN.startsWith('.') && COOKIE_DOMAIN.includes('.')) {
+  logger.warn(
+    `COOKIE_DOMAIN "${COOKIE_DOMAIN}" does not start with a leading dot (.) which is required for wildcard subdomain cookies. ` +
+    `Consider using ".${COOKIE_DOMAIN}" for multi-region deployments.`
+  );
+}
+
 interface GitHubUser {
   id: number;
   login: string;
