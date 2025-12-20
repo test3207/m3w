@@ -39,6 +39,9 @@ declare global {
 let activeEndpoint: string | null = null;
 let endpointCheckPromise: Promise<void> | null = null;
 
+// Flag to log placeholder warning only once per page load
+let hasLoggedPlaceholderWarning = false;
+
 /**
  * Get multi-region configuration from runtime
  * Returns null if multi-region is not configured (local dev / AIO mode)
@@ -48,9 +51,18 @@ export function getMultiRegionConfig(): M3WConfig | null {
   
   const config = window.__M3W_CONFIG__;
   
-  // No config or placeholder string (not replaced by CF Worker)
-  // Same pattern as config.ts checks __API_BASE_URL__
-  if (config === undefined || config === "__M3W_CONFIG__") return null;
+  // Placeholder string was not replaced by CF Worker or docker-entrypoint
+  // This indicates a deployment/configuration issue when multi-region is expected
+  if (config === "__M3W_CONFIG__") {
+    if (!hasLoggedPlaceholderWarning) {
+      hasLoggedPlaceholderWarning = true;
+      logger.debug("[Multi-Region] __M3W_CONFIG__ placeholder not replaced, using non-multi-region mode");
+    }
+    return null;
+  }
+  
+  // No config provided (local dev / AIO)
+  if (config === undefined) return null;
   
   // Config exists but multi-region not enabled
   if (typeof config === "string" || !config.multiRegion) return null;
@@ -66,8 +78,8 @@ export function isMultiRegionEnabled(): boolean {
 }
 
 /**
- * Get user's home region from auth store
- * This is the authoritative source - comes from JWT token
+ * Get user's home region from JWT access token
+ * The homeRegion is encoded in the JWT payload by the backend
  */
 export function getUserHomeRegion(): string | null {
   if (typeof window === "undefined") return null;
@@ -78,9 +90,19 @@ export function getUserHomeRegion(): string | null {
     if (!authStore) return null;
     
     const parsed = JSON.parse(authStore);
-    return parsed.state?.user?.homeRegion || null;
+    const accessToken = parsed.state?.tokens?.accessToken;
+    if (!accessToken || typeof accessToken !== "string") return null;
+    
+    // Decode JWT payload (base64url encoded, no verification needed for reading)
+    // JWT format: header.payload.signature
+    const parts = accessToken.split(".");
+    if (parts.length !== 3) return null;
+    
+    // Decode base64url payload
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.homeRegion || null;
   } catch (err) {
-    logger.debug("[Multi-Region] Failed to read homeRegion from auth store", { err });
+    logger.debug("[Multi-Region] Failed to read homeRegion from JWT", { err });
     return null;
   }
 }
