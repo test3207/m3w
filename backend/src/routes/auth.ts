@@ -180,21 +180,26 @@ async function checkCrossRegion(githubId: number): Promise<string | null> {
 
 /**
  * Step 4a: Handle cross-region user (user registered in another region)
- * Returns JSON response with JWT (isRemote=true) so Gateway routes to home region.
+ * Sets cookies and redirects to frontend (same as local users).
  * 
- * Note: Cross-region users receive JSON response (not cookie redirect) because:
- * - Gateway needs JWT.homeRegion to route subsequent requests to the correct region
- * - Frontend handles the response and stores tokens appropriately
- * - Cookie-based auth only applies to same-region users who get redirected
+ * Cross-region routing is handled by:
+ * - JWT contains homeRegion claim for Gateway routing
+ * - Cookie is set with wildcard domain for all regions
+ * - Frontend receives same redirect flow regardless of region
  */
-function handleCrossRegionUser(githubUser: GitHubUser, email: string, homeRegion: string) {
+function handleCrossRegionUser(
+  c: Context,
+  githubUser: GitHubUser,
+  email: string,
+  homeRegion: string
+) {
   logger.info(
     { githubId: githubUser.id, email, homeRegion, currentRegion: HOME_REGION },
-    'Cross-region access: returning JWT with isRemote=true'
+    'Cross-region user login: setting cookies and redirecting'
   );
 
   const now = new Date().toISOString();
-  // Create user object once for reuse in tokens and response
+  // Create user object for token generation
   const crossRegionUser = {
     id: githubUser.id.toString(),
     email,
@@ -207,14 +212,9 @@ function handleCrossRegionUser(githubUser: GitHubUser, email: string, homeRegion
 
   const tokens = generateTokens(crossRegionUser, homeRegion, true /* isRemote */);
 
-  return {
-    success: true,
-    data: {
-      user: crossRegionUser,
-      tokens,
-      message: 'account_exists_in_another_region',
-    },
-  };
+  // Use same cookie+redirect flow as local users
+  // JWT.homeRegion tells Gateway where to route future API requests
+  return setAuthCookiesAndRedirect(c, tokens);
 }
 
 /**
@@ -410,10 +410,14 @@ app.get('/github', (c: Context) => {
  * 1. exchangeCodeForToken()   - Exchange OAuth code for GitHub access token
  * 2. fetchGitHubUser()        - Fetch GitHub profile and verified email
  * 3. checkCrossRegion()       - Redis SETNX to check/claim user region atomically
- * 4a. handleCrossRegionUser() - If user in another region → return JWT(isRemote=true)
+ * 4a. handleCrossRegionUser() - If user in another region → set cookies + redirect
  * 4b. findOrCreateLocalUser() - Otherwise → find/create local User + Account
  * 5. createDefaultResources() - For new local users: create Library + Playlist
  * 6. setAuthCookiesAndRedirect() - Set HTTP-only cookies, redirect to frontend
+ *
+ * Note: Both 4a and 4b/5/6 end with cookie+redirect. The difference is:
+ * - Cross-region (4a): JWT has isRemote=true, Gateway routes to home region
+ * - Local (4b-6): JWT has isRemote=false, requests handled locally
  */
 app.get('/callback', async (c: Context) => {
   try {
@@ -441,10 +445,10 @@ app.get('/callback', async (c: Context) => {
     // Returns existing region if user registered elsewhere, null if new/local
     const existingRegion = await checkCrossRegion(githubUser.id);
 
-    // Step 4a: Cross-region user → return JWT with isRemote=true
-    // Gateway will use JWT.homeRegion to route future requests to home backend
+    // Step 4a: Cross-region user → set cookies and redirect (same as local users)
+    // JWT.homeRegion tells Gateway where to route future API requests
     if (existingRegion && existingRegion !== HOME_REGION) {
-      return c.json(handleCrossRegionUser(githubUser, email, existingRegion));
+      return handleCrossRegionUser(c, githubUser, email, existingRegion);
     }
 
     // Step 4b: Local user → find or create in database
