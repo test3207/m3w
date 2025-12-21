@@ -32,12 +32,14 @@
 | `.github/instructions/project-context.instructions.md` | `**/*` | Project status, architecture, completed features |
 | `.github/instructions/development-standards.instructions.md` | `**/*` | Code style, API patterns, i18n, testing, Git workflow, project management |
 | `.github/instructions/user-stories.instructions.md` | `**/*` | Product requirements and user flows |
+| `.github/instructions/release-workflow.instructions.md` | `**/*` | RC and production release procedures |
 
 ## How to Use These Instructions
 
 - Architecture, status, completed features → `project-context.instructions.md`
 - Code style, API patterns, i18n, Git workflow, project management → `development-standards.instructions.md`
 - Product requirements, user flows → `user-stories.instructions.md`
+- Release procedures (RC, production) → `release-workflow.instructions.md`
 
 ## Core Context Highlights
 
