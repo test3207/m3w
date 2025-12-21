@@ -313,7 +313,7 @@ export function FullPlayer() {
 
       {/* Album Cover */}
       <Stack align="center" className="px-8 py-4 shrink-0">
-        <div className="aspect-square w-full max-w-70 overflow-hidden rounded-lg shadow-2xl">
+        <div className="aspect-square w-full max-w-[280px] overflow-hidden rounded-lg shadow-2xl">
           <CoverImage
             songId={displaySong.id}
             alt={I18n.player.fullPlayer.albumCoverAlt}
