@@ -97,7 +97,7 @@ export function songToTrack(song: Song): Track {
     title: song.title,
     artist: song.artist || undefined,
     album: song.album || undefined,
-    coverUrl: buildCoverUrl(song.id) ?? undefined,
+    coverUrl: buildCoverUrl(song.id),
     duration: song.duration || undefined,
     mimeType: song.mimeType || undefined,
     audioUrl: getStreamUrl(song.id),
@@ -117,7 +117,7 @@ export function updateMediaSessionForSong(song: Song | null): void {
     title: song.title,
     artist: song.artist ?? undefined,
     album: song.album ?? undefined,
-    coverUrl: buildCoverUrl(song.id) ?? undefined,
+    coverUrl: buildCoverUrl(song.id),
     duration: song.duration ?? undefined,
   });
 

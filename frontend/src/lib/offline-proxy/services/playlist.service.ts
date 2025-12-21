@@ -9,7 +9,8 @@ import type { OfflinePlaylist, OfflinePlaylistSong } from "../../db/schema";
 import { generateUUID } from "../../utils/uuid";
 
 /**
- * Get first song's ID for a playlist (used as coverSongId)
+ * Get first song's ID for a playlist cover
+ * Frontend uses buildCoverUrl(coverSongId) to construct the cover URL
  */
 export async function getPlaylistCoverSongId(playlistId: string): Promise<string | null> {
   const playlistSongs = await db.playlistSongs
@@ -25,7 +26,8 @@ export async function getPlaylistCoverSongId(playlistId: string): Promise<string
 }
 
 /**
- * Get all playlists for a user with cover song IDs
+ * Get all playlists for a user
+ * Includes coverSongId (first song's ID) for frontend to build cover URL
  */
 export async function getUserPlaylistsWithCovers(userId: string) {
   const playlists = await db.playlists

@@ -124,10 +124,11 @@ app.delete("/:id", async (c: Context) => {
     }
 
     // Delete cached cover from Cache Storage
+    // Always attempts /api/songs/${id}/cover; silently ignores if not cached
     try {
       await deleteFromCache(`/api/songs/${id}/cover`);
     } catch {
-      // Cover may not be in cache
+      // Cover may not be in cache - ignore
     }
 
     return c.json({

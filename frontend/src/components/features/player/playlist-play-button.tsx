@@ -37,7 +37,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
           title: track.title,
           artist: track.artist ?? undefined,
           album: track.album ?? undefined,
-          coverUrl: buildCoverUrl(track.id) ?? undefined,
+          coverUrl: buildCoverUrl(track.id),
           duration: track.duration ?? undefined,
           audioUrl: MAIN_API_ENDPOINTS.songs.stream(track.id),
           mimeType: track.mimeType ?? "audio/mpeg",

@@ -21,7 +21,7 @@ export function songToTrack(song: Song): Track {
     title: song.title,
     artist: song.artist ?? undefined,
     album: song.album ?? undefined,
-    coverUrl: buildCoverUrl(song.id) ?? undefined,
+    coverUrl: buildCoverUrl(song.id),
     duration: song.duration ?? undefined,
     audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
     mimeType: song.mimeType ?? "audio/mpeg",

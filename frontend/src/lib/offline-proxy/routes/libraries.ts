@@ -32,7 +32,8 @@ app.get("/", async (c: Context) => {
       .reverse()
       .sortBy("createdAt");
 
-    // Add song counts and coverSongId from last added song
+    // Add song counts and coverSongId
+    // Libraries use LAST added song for cover (vs Playlists which use FIRST song)
     const librariesWithCounts = await Promise.all(
       libraries.map(async (library) => {
         const songs = await db.songs.where("libraryId").equals(library.id).toArray();
