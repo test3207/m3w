@@ -39,7 +39,7 @@ export function ReloadPrompt() {
     if (!needRefresh) {
       hasShownToast.current = false;
     }
-  }, [needRefresh, updateServiceWorker, close]);
+  }, [needRefresh, updateServiceWorker]);
 
   // Show toast for offline ready (less intrusive)
   useEffect(() => {
@@ -52,6 +52,11 @@ export function ReloadPrompt() {
       });
       // Auto-close the offline ready notification
       close();
+    }
+
+    // Reset flag when offlineReady becomes false
+    if (!offlineReady) {
+      hasShownOfflineToast.current = false;
     }
   }, [offlineReady, close]);
 
