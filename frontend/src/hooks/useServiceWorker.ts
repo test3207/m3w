@@ -16,6 +16,23 @@ const UPDATE_CHECK_INTERVAL = process.env.NODE_ENV === "development"
 // This is safe because there's only one service worker per app
 let updateIntervalId: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * Safely check for service worker updates
+ * Only attempts update when online, silently ignores failures
+ * This ensures offline-first experience is not broken
+ */
+function safeUpdateCheck(registration: ServiceWorkerRegistration) {
+  if (!navigator.onLine) {
+    logger.debug("Skipping SW update check - offline");
+    return;
+  }
+  
+  registration.update().catch(() => {
+    // Silently ignore update check failures
+    // This can happen due to network issues, which is fine
+  });
+}
+
 export function useServiceWorker() {
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
   
@@ -30,19 +47,19 @@ export function useServiceWorker() {
       if (r) {
         registrationRef.current = r;
         
-        // Check for updates immediately on registration
+        // Check for updates immediately on registration (if online)
         // This ensures users see updates promptly, not after waiting for the interval
-        r.update();
+        safeUpdateCheck(r);
         
         // Clear any existing interval to prevent duplicates
         if (updateIntervalId) {
           clearInterval(updateIntervalId);
         }
         
-        // Then check periodically
+        // Then check periodically (only when online)
         updateIntervalId = setInterval(() => {
-          logger.debug("Checking for service worker updates...");
-          r.update();
+          logger.debug("Periodic SW update check...");
+          safeUpdateCheck(r);
         }, UPDATE_CHECK_INTERVAL);
       }
     },
@@ -62,11 +79,12 @@ export function useServiceWorker() {
   // Check for updates when tab becomes visible (user returns to app)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === "visible" && navigator.onLine) {
         logger.debug("Tab became visible, checking for updates...");
-        // Trigger update check by re-registering
         navigator.serviceWorker?.getRegistration().then((registration) => {
-          registration?.update();
+          if (registration) {
+            safeUpdateCheck(registration);
+          }
         });
       }
     };
