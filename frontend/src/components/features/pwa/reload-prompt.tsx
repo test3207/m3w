@@ -42,6 +42,9 @@ export function ReloadPrompt() {
   }, [needRefresh, updateServiceWorker]);
 
   // Show toast for offline ready (less intrusive)
+  // Note: offlineReady state is set once when SW is ready, and persists.
+  // We only show the toast once per app lifecycle using hasShownOfflineToast ref.
+  // No close() call needed - toast auto-dismisses after 5 seconds.
   useEffect(() => {
     if (offlineReady && !hasShownOfflineToast.current) {
       hasShownOfflineToast.current = true;
@@ -50,15 +53,8 @@ export function ReloadPrompt() {
         description: I18n.settings.storage.pwa.reloadPrompt.offlineReadyDescription,
         duration: 5000,
       });
-      // Auto-close the offline ready notification
-      close();
     }
-
-    // Reset flag when offlineReady becomes false
-    if (!offlineReady) {
-      hasShownOfflineToast.current = false;
-    }
-  }, [offlineReady, close]);
+  }, [offlineReady]);
 
   // Only show persistent card for update prompt, not for offline ready
   if (!needRefresh) {
