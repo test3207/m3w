@@ -3,7 +3,7 @@
  * Registers service worker and handles updates
  */
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { logger } from "@/lib/logger-client";
 
@@ -12,7 +12,13 @@ const UPDATE_CHECK_INTERVAL = process.env.NODE_ENV === "development"
   ? 30 * 1000 
   : 5 * 60 * 1000;
 
+// Store interval ID at module level to persist across re-renders
+// This is safe because there's only one service worker per app
+let updateIntervalId: ReturnType<typeof setInterval> | null = null;
+
 export function useServiceWorker() {
+  const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
+  
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
@@ -22,11 +28,19 @@ export function useServiceWorker() {
       logger.info("Service Worker registered", { registration: !!r });
 
       if (r) {
+        registrationRef.current = r;
+        
         // Check for updates immediately on registration
+        // This ensures users see updates promptly, not after waiting for the interval
         r.update();
         
+        // Clear any existing interval to prevent duplicates
+        if (updateIntervalId) {
+          clearInterval(updateIntervalId);
+        }
+        
         // Then check periodically
-        setInterval(() => {
+        updateIntervalId = setInterval(() => {
           logger.debug("Checking for service worker updates...");
           r.update();
         }, UPDATE_CHECK_INTERVAL);

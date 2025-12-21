@@ -38,7 +38,7 @@ export function ReloadPrompt() {
     if (!needRefresh) {
       hasShownToast.current = false;
     }
-  }, [needRefresh, updateServiceWorker]);
+  }, [needRefresh, updateServiceWorker, close]);
 
   // Show toast for offline ready (less intrusive)
   useEffect(() => {
