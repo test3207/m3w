@@ -1,10 +1,13 @@
 /**
- * Service Worker Registration Hook
- * Registers service worker and handles updates
+ * Service Worker Registration Hook (Singleton)
+ * 
+ * Registers service worker and handles updates.
+ * Uses singleton pattern - SW registration happens once at module load,
+ * hook consumers share the same state via external store.
  */
 
-import { useEffect, useCallback, useRef } from "react";
-import { useRegisterSW } from "virtual:pwa-register/react";
+import { useCallback, useSyncExternalStore, useEffect } from "react";
+import { registerSW } from "virtual:pwa-register";
 import { logger } from "@/lib/logger-client";
 
 // Update check interval: 5 minutes in production, 30 seconds in development
@@ -12,103 +15,133 @@ const UPDATE_CHECK_INTERVAL = process.env.NODE_ENV === "development"
   ? 30 * 1000 
   : 5 * 60 * 1000;
 
-// Store interval ID at module level to persist across re-renders
-// This is safe because there's only one service worker per app
+// ============================================================================
+// Singleton State Store
+// ============================================================================
+
+interface SWState {
+  offlineReady: boolean;
+  needRefresh: boolean;
+  registration: ServiceWorkerRegistration | null;
+}
+
+let state: SWState = {
+  offlineReady: false,
+  needRefresh: false,
+  registration: null,
+};
+
+const listeners = new Set<() => void>();
+
+function getSnapshot(): SWState {
+  return state;
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function setState(partial: Partial<SWState>) {
+  state = { ...state, ...partial };
+  listeners.forEach((listener) => listener());
+}
+
+// ============================================================================
+// Service Worker Registration (runs once at module load)
+// ============================================================================
+
 let updateIntervalId: ReturnType<typeof setInterval> | null = null;
+let updateSW: ((reloadPage?: boolean) => Promise<void>) | null = null;
+let initialized = false;
 
 /**
  * Safely check for service worker updates
  * Only attempts update when online, silently ignores failures
- * This ensures offline-first experience is not broken
  */
-function safeUpdateCheck(registration: ServiceWorkerRegistration) {
+function safeUpdateCheck() {
   if (!navigator.onLine) {
     logger.debug("Skipping SW update check - offline");
     return;
   }
   
-  registration.update().catch(() => {
-    // Silently ignore update check failures
-    // This can happen due to network issues, which is fine
+  state.registration?.update().catch(() => {
+    // Silently ignore - network issues are expected
   });
 }
 
-export function useServiceWorker() {
-  const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
-  
-  const {
-    offlineReady: [offlineReady, setOfflineReady],
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
+function initServiceWorker() {
+  if (initialized) return;
+  initialized = true;
+
+  updateSW = registerSW({
     onRegistered(r) {
       logger.info("Service Worker registered", { registration: !!r });
 
       if (r) {
-        registrationRef.current = r;
+        setState({ registration: r });
         
-        // Check for updates immediately on registration (if online)
-        // This ensures users see updates promptly, not after waiting for the interval
-        safeUpdateCheck(r);
+        // Check for updates immediately
+        safeUpdateCheck();
         
-        // Clear any existing interval to prevent duplicates
-        if (updateIntervalId) {
-          clearInterval(updateIntervalId);
-        }
-        
-        // Then check periodically (only when online)
+        // Periodic update checks
+        if (updateIntervalId) clearInterval(updateIntervalId);
         updateIntervalId = setInterval(() => {
           logger.debug("Periodic SW update check...");
-          safeUpdateCheck(r);
+          safeUpdateCheck();
         }, UPDATE_CHECK_INTERVAL);
       }
     },
     onNeedRefresh() {
-      // This callback is triggered when a new service worker is available
-      // The needRefresh state is automatically set to true by useRegisterSW
       logger.info("New version available! Prompting user to refresh.");
+      setState({ needRefresh: true });
     },
     onOfflineReady() {
       logger.info("App is ready to work offline");
+      setState({ offlineReady: true });
     },
     onRegisterError(error) {
       logger.error("Service Worker registration failed", { error });
     },
   });
 
-  // Check for updates when tab becomes visible (user returns to app)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && navigator.onLine) {
-        logger.debug("Tab became visible, checking for updates...");
-        navigator.serviceWorker?.getRegistration().then((registration) => {
-          if (registration) {
-            safeUpdateCheck(registration);
-          }
-        });
-      }
-    };
+  // Check for updates when tab becomes visible
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && navigator.onLine) {
+      logger.debug("Tab became visible, checking for updates...");
+      safeUpdateCheck();
+    }
+  });
+}
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
+// Initialize on module load (browser only)
+if (typeof window !== "undefined") {
+  initServiceWorker();
+}
 
-  // Cleanup interval on unmount (important for HMR in development)
+// ============================================================================
+// React Hook
+// ============================================================================
+
+export function useServiceWorker() {
+  const { offlineReady, needRefresh } = useSyncExternalStore(subscribe, getSnapshot);
+
+  // HMR cleanup: re-initialize if needed
   useEffect(() => {
-    return () => {
-      if (updateIntervalId) {
-        clearInterval(updateIntervalId);
-        updateIntervalId = null;
-      }
-    };
+    if (!initialized) {
+      initServiceWorker();
+    }
   }, []);
 
   const close = useCallback(() => {
-    setOfflineReady(false);
-    setNeedRefresh(false);
-  }, [setOfflineReady, setNeedRefresh]);
+    setState({ offlineReady: false, needRefresh: false });
+  }, []);
+
+  const updateServiceWorker = useCallback(async (reloadPage = true) => {
+    if (updateSW) {
+      await updateSW(reloadPage);
+    }
+  }, []);
 
   return {
     offlineReady,
