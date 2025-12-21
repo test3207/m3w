@@ -25,10 +25,18 @@ function asyncCssPlugin(): Plugin {
     enforce: "post",
     transformIndexHtml(html) {
       // Convert stylesheet links to async loading using media="print" trick
-      // This is a well-supported technique that doesn't require JavaScript
+      // This uses a small inline onload handler but doesn't require external JS files
       return html.replace(
         /<link rel="stylesheet"([^>]*) href="([^"]+)"([^>]*)>/g,
-        '<link rel="stylesheet"$1 href="$2"$3 media="print" onload="this.media=\'all\'">'
+        (match, beforeHref: string, href: string, afterHref: string) => {
+          // Skip if href is missing
+          if (!href) return match;
+          // Skip links that already have a media attribute to avoid duplicates
+          if (/\smedia\s*=/.test(beforeHref) || /\smedia\s*=/.test(afterHref)) {
+            return match;
+          }
+          return `<link rel="stylesheet"${beforeHref} href="${href}"${afterHref} media="print" onload="this.media='all'">`;
+        }
       );
     },
   };

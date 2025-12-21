@@ -6,16 +6,17 @@
     
     <!-- Critical inline CSS for instant LCP - shows loading spinner immediately -->
     <style>
+      /* CSS variables matching Tailwind theme (gray-900, gray-50, background) */
+      :root{--m3w-bg:#ffffff;--m3w-spinner:#111827}
+      @media(prefers-color-scheme:dark){:root{--m3w-bg:#0a0a0a;--m3w-spinner:#f9fafb}}
       /* Minimal reset and loading state styles */
       *,*::before,*::after{box-sizing:border-box}
-      body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#fff}
+      body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--m3w-bg)}
       #root{min-height:100vh}
-      /* Loading spinner - matches PageLoader component */
+      /* Loading spinner - matches PageLoader component (border-gray-900/50) */
       .page-loader{display:flex;align-items:center;justify-content:center;min-height:100vh}
-      .page-loader-spinner{width:3rem;height:3rem;border-radius:50%;border:2px solid transparent;border-bottom-color:#111;animation:spin 1s linear infinite}
+      .page-loader-spinner{width:3rem;height:3rem;border-radius:50%;border:2px solid transparent;border-bottom-color:var(--m3w-spinner);animation:spin 1s linear infinite}
       @keyframes spin{to{transform:rotate(360deg)}}
-      /* Dark mode support */
-      @media(prefers-color-scheme:dark){body{background:#0a0a0a}.page-loader-spinner{border-bottom-color:#fafafa}}
     </style>
     
     <!-- PWA Meta Tags -->
