@@ -11,7 +11,12 @@
 
 import { db } from "@/lib/db/schema";
 import { logger } from "@/lib/logger-client";
-import { getCacheName } from "@/lib/pwa/cache-manager";
+
+// Lazy-load cache-manager to reduce initial bundle size
+async function getCacheNameLazy(type: "audio" | "covers"): Promise<string> {
+  const { getCacheName } = await import("@/lib/pwa/cache-manager");
+  return getCacheName(type);
+}
 
 export interface DeleteProgress {
   stage: "librarySongs" | "playlistSongs" | "songs" | "cache" | "library" | "complete";
@@ -90,7 +95,7 @@ class LibraryService {
         message: "Deleting songs and cache",
       });
 
-      const cache = await caches.open(getCacheName("audio"));
+      const cache = await caches.open(await getCacheNameLazy("audio"));
       let processed = 0;
 
       for (const song of songs) {
@@ -224,7 +229,7 @@ class LibraryService {
               await db.files.delete(fileId);
               
               if (songStreamUrl) {
-                const cache = await caches.open(getCacheName("audio"));
+                const cache = await caches.open(await getCacheNameLazy("audio"));
                 await cache.delete(songStreamUrl);
                 logger.debug("Cache and file deleted", { songId, fileId });
               }
@@ -240,7 +245,7 @@ class LibraryService {
           }
         } else if (songStreamUrl) {
           // No fileId means unique file (old data), safe to delete
-          const cache = await caches.open(getCacheName("audio"));
+          const cache = await caches.open(await getCacheNameLazy("audio"));
           await cache.delete(songStreamUrl);
           logger.debug("Cache deleted (unique file)", { songId });
         }
