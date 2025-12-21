@@ -12,6 +12,7 @@ import { I18n } from "@/locales/i18n";
 import { isOfflineAuthUser } from "@/stores/authStore";
 import { isSongCached } from "@/lib/storage/audio-cache";
 import { toast } from "@/components/ui/use-toast";
+import { scheduleLowPriorityTask } from "@/lib/prefetch";
 
 // Import from same module (playerStore/)
 import type { PlayerStore, QueueSource } from "./types";
@@ -554,8 +555,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
           isPlaying: false, // Don't auto-play
         });
 
-        // Preload audio and prime player
-        await primePlayerWithSong(song, progress.position, fullQueue.length);
+        // Schedule audio preload as low priority task
+        // This avoids impacting Lighthouse metrics while still preparing playback
+        scheduleLowPriorityTask(
+          "audio-preload",
+          () => primePlayerWithSong(song, progress.position, fullQueue.length)
+        );
       } catch (error) {
         logger.error("Failed to load playback progress", error);
       }

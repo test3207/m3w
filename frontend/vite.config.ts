@@ -117,7 +117,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // React core libraries
+          // React core libraries - must load first
           "react-vendor": ["react", "react-dom", "react-router-dom"],
           // Radix UI components (all used components)
           "ui-vendor": [
@@ -148,7 +148,13 @@ export default defineConfig({
           "utils-vendor": ["howler", "zustand", "clsx", "tailwind-merge"],
           // Gesture library (used by player and long-press hook)
           "gesture-vendor": ["@use-gesture/react"],
+          // Lucide icons - merge all into one chunk instead of separate tiny files
+          "icons-vendor": ["lucide-react"],
         },
+        // Merge small chunks into their parent to reduce HTTP requests
+        // Based on TCP initial congestion window (initcwnd = 10 × 1460 bytes ≈ 14KB)
+        // Chunks smaller than this can be transferred in a single RTT anyway
+        experimentalMinChunkSize: 14 * 1024, // 14KB minimum
       },
     },
     // Increase chunk size warning limit to 600KB (still reasonable with code splitting)
