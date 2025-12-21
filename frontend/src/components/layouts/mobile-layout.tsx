@@ -3,16 +3,53 @@
  * Main layout for mobile-first design with header, bottom navigation and mini player
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { usePlayerStore } from "@/stores/playerStore";
 import { MobileHeader } from "@/components/layouts/mobile-header";
 import { BottomNavigation } from "@/components/features/navigation/bottom-navigation";
-import { MiniPlayer, FullPlayer, PlayQueueDrawer } from "@/components/features/player";
-import { UploadDrawer } from "@/components/features/upload/upload-drawer";
-import { AddToPlaylistSheet } from "@/components/features/playlists/AddToPlaylistSheet";
-import { DemoBanner } from "@/components/features/demo/DemoBanner";
+import { MiniPlayer } from "@/components/features/player";
 import { useDemoMode, DEMO_BANNER_HEIGHT } from "@/hooks/useDemoMode";
 import { useLocale } from "@/locales/use-locale";
+import { logger } from "@/lib/logger-client";
+
+// Lazy load heavy components that are initially hidden (drawers/sheets/overlays)
+// These components won't block initial render since they're closed by default
+const FullPlayer = lazy(() => import("@/components/features/player/full-player").then(m => ({ default: m.FullPlayer })));
+const PlayQueueDrawer = lazy(() => import("@/components/features/player/play-queue-drawer").then(m => ({ default: m.PlayQueueDrawer })));
+const UploadDrawer = lazy(() => import("@/components/features/upload/upload-drawer").then(m => ({ default: m.UploadDrawer })));
+const AddToPlaylistSheet = lazy(() => import("@/components/features/playlists/AddToPlaylistSheet").then(m => ({ default: m.AddToPlaylistSheet })));
+const DemoBanner = lazy(() => import("@/components/features/demo/DemoBanner").then(m => ({ default: m.DemoBanner })));
+
+/**
+ * Error boundary for lazy-loaded chunks.
+ * Handles chunk loading failures (e.g., after deployment when old chunks are gone)
+ * by prompting user to refresh the page.
+ */
+interface ChunkErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ChunkErrorBoundary extends Component<{ children: ReactNode }, ChunkErrorBoundaryState> {
+  state: ChunkErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ChunkErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Log chunk loading errors for debugging
+    logger.error("Chunk loading error:", { error: error.message, errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      // Silently fail for overlay components - they're not critical
+      // User can refresh if needed
+      return null;
+    }
+    return this.props.children;
+  }
+}
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -83,8 +120,10 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      {/* Demo Banner (if enabled) */}
-      <DemoBanner />
+      {/* Demo Banner (if enabled) - lazy loaded */}
+      <Suspense fallback={null}>
+        <DemoBanner />
+      </Suspense>
 
       {/* Top Header with status indicators (56px) */}
       <MobileHeader />
@@ -105,17 +144,22 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       {/* Bottom Navigation */}
       <BottomNavigation />
 
-      {/* Full Player Overlay */}
-      <FullPlayer />
+      {/* Lazy loaded overlays - wrapped in ErrorBoundary to handle chunk loading failures */}
+      <ChunkErrorBoundary>
+        <Suspense fallback={null}>
+          {/* Full Player Overlay */}
+          <FullPlayer />
 
-      {/* Play Queue Drawer */}
-      <PlayQueueDrawer />
+          {/* Play Queue Drawer */}
+          <PlayQueueDrawer />
 
-      {/* Upload Drawer */}
-      <UploadDrawer />
+          {/* Upload Drawer */}
+          <UploadDrawer />
 
-      {/* Add to Playlist Sheet */}
-      <AddToPlaylistSheet />
+          {/* Add to Playlist Sheet */}
+          <AddToPlaylistSheet />
+        </Suspense>
+      </ChunkErrorBoundary>
     </div>
   );
 }

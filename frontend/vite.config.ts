@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { visualizer } from "rollup-plugin-visualizer";
 import path from "path";
 import { readFileSync } from "fs";
 
@@ -21,6 +22,15 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // Bundle analyzer - generates stats.html only when ANALYZE=true
+    // Usage: ANALYZE=true npm run build (or use npm run analyze)
+    process.env.ANALYZE === "true" &&
+      visualizer({
+        filename: "stats.html",
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+      }),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png", "apple-touch-icon.png"],
@@ -76,16 +86,21 @@ export default defineConfig({
         manualChunks: {
           // React core libraries
           "react-vendor": ["react", "react-dom", "react-router-dom"],
-          // Radix UI components
+          // Radix UI components (all used components)
           "ui-vendor": [
             "@radix-ui/react-alert-dialog",
             "@radix-ui/react-avatar",
             "@radix-ui/react-dialog",
             "@radix-ui/react-dropdown-menu",
             "@radix-ui/react-label",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-progress",
+            "@radix-ui/react-select",
             "@radix-ui/react-separator",
             "@radix-ui/react-slot",
+            "@radix-ui/react-switch",
             "@radix-ui/react-toast",
+            "@radix-ui/react-tooltip",
           ],
           // PWA and offline support
           "pwa-vendor": [
@@ -98,6 +113,8 @@ export default defineConfig({
           ],
           // Audio and utilities
           "utils-vendor": ["howler", "zustand", "clsx", "tailwind-merge"],
+          // Gesture library (used by player and long-press hook)
+          "gesture-vendor": ["@use-gesture/react"],
         },
       },
     },

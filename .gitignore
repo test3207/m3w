@@ -15,6 +15,7 @@ node_modules
 # vite
 dev-dist/
 dist/
+stats.html
 
 # production
 /build
