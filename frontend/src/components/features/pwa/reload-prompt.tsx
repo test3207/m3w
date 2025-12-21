@@ -14,6 +14,7 @@ import { I18n } from "@/locales/i18n";
 export function ReloadPrompt() {
   const { offlineReady, needRefresh, updateServiceWorker, close } = useServiceWorker();
   const hasShownToast = useRef(false);
+  const hasShownOfflineToast = useRef(false);
 
   // Show toast notification when new version is available
   useEffect(() => {
@@ -42,7 +43,8 @@ export function ReloadPrompt() {
 
   // Show toast for offline ready (less intrusive)
   useEffect(() => {
-    if (offlineReady) {
+    if (offlineReady && !hasShownOfflineToast.current) {
+      hasShownOfflineToast.current = true;
       toast({
         title: I18n.settings.storage.pwa.reloadPrompt.offlineReadyTitle,
         description: I18n.settings.storage.pwa.reloadPrompt.offlineReadyDescription,
