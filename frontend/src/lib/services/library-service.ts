@@ -13,13 +13,9 @@ import { db } from "@/lib/db/schema";
 import { logger } from "@/lib/logger-client";
 
 // Lazy-load cache-manager to reduce initial bundle size
-let cachedGetCacheName: ((type: "audio" | "covers") => string) | null = null;
 async function getCacheNameLazy(type: "audio" | "covers"): Promise<string> {
-  if (!cachedGetCacheName) {
-    const module = await import("@/lib/pwa/cache-manager");
-    cachedGetCacheName = module.getCacheName;
-  }
-  return cachedGetCacheName(type);
+  const { getCacheName } = await import("@/lib/pwa/cache-manager");
+  return getCacheName(type);
 }
 
 export interface DeleteProgress {
