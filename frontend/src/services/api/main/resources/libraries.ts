@@ -19,13 +19,13 @@ export type { CreateLibraryInput, UpdateLibraryInput };
  * Response data for song upload (matches backend: { song })
  */
 export interface UploadSongData {
-  song: Song & { coverUrl?: string };
+  song: Song;
 }
 
 export const libraries = {
   /**
    * List all libraries
-   * Returns libraries with new fields: coverUrl, isDefault, canDelete
+   * Returns libraries with new fields: coverSongId, isDefault, canDelete
    */
   list: async (): Promise<Library[]> => {
     return mainApiClient.get<Library[]>(MAIN_API_ENDPOINTS.libraries.list);

@@ -22,7 +22,7 @@ export interface Library {
   isDefault: boolean;
   canDelete: boolean;
   cacheOverride: CacheOverride;  // Offline cache policy
-  coverUrl: string | null;  // Computed: last added song's cover
+  coverSongId: string | null;  // Song ID for cover art (use buildCoverUrl(id) to get URL)
   createdAt: string; // ISO 8601 string
   updatedAt: string; // ISO 8601 string
 }

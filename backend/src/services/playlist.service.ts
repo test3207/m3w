@@ -5,24 +5,22 @@
  */
 
 import { prisma } from '../lib/prisma';
-import { resolveCoverUrl } from '../lib/cover-url-helper';
 import type { PlaylistInput, SongInput } from '@m3w/shared';
 
 /**
- * Get cover URL from first song in playlist
+ * Get cover song ID from first song in playlist
  */
-export async function getPlaylistCoverUrl(playlistId: string): Promise<string | null> {
+export async function getPlaylistCoverSongId(playlistId: string): Promise<string | null> {
   const firstSong = await prisma.playlistSong.findFirst({
     where: { playlistId },
     orderBy: { order: 'asc' },
     include: {
       song: {
-        select: { id: true, coverUrl: true },
+        select: { id: true },
       },
     },
   });
-  if (!firstSong?.song) return null;
-  return resolveCoverUrl({ id: firstSong.song.id, coverUrl: firstSong.song.coverUrl });
+  return firstSong?.song?.id ?? null;
 }
 
 /**
@@ -41,11 +39,11 @@ export function toPlaylistInput(
     createdAt: Date;
     updatedAt: Date;
   },
-  coverUrl: string | null
+  coverSongId: string | null
 ): PlaylistInput {
   return {
     ...playlist,
-    coverUrl,
+    coverSongId,
   };
 }
 
@@ -62,7 +60,6 @@ export async function findUserPlaylists(userId: string) {
           song: {
             select: {
               id: true,
-              coverUrl: true,
             },
           },
         },
@@ -86,7 +83,6 @@ export async function findPlaylistById(id: string, userId: string) {
           song: {
             select: {
               id: true,
-              coverUrl: true,
             },
           },
         },
@@ -184,7 +180,6 @@ export async function getPlaylistSongs(playlistId: string): Promise<SongInput[]>
           trackNumber: true,
           discNumber: true,
           composer: true,
-          coverUrl: true,
           fileId: true,
           libraryId: true,
           createdAt: true,
@@ -207,7 +202,6 @@ export async function getPlaylistSongs(playlistId: string): Promise<SongInput[]>
 
   return playlistSongs.map((ps) => ({
     ...ps.song,
-    coverUrl: resolveCoverUrl({ id: ps.song.id, coverUrl: ps.song.coverUrl }),
   }));
 }
 

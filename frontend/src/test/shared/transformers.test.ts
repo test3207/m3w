@@ -26,7 +26,7 @@ describe("Transformers", () => {
         isDefault: false,
         canDelete: true,
         cacheOverride: "always" as const,
-        coverUrl: "https://example.com/cover.jpg",
+        coverSongId: "song-1",
         createdAt: new Date("2024-01-01T00:00:00Z"),
         updatedAt: new Date("2024-01-02T00:00:00Z"),
       };
@@ -42,7 +42,7 @@ describe("Transformers", () => {
         isDefault: false,
         canDelete: true,
         cacheOverride: "always",
-        coverUrl: "https://example.com/cover.jpg",
+        coverSongId: "song-1",
         createdAt: "2024-01-01T00:00:00.000Z",
         updatedAt: "2024-01-02T00:00:00.000Z",
       });
@@ -104,7 +104,7 @@ describe("Transformers", () => {
       expect(result.updatedAt).toBe("2024-01-02T00:00:00.000Z");
     });
 
-    it("should handle null coverUrl", () => {
+    it("should handle null coverSongId", () => {
       const input = {
         id: "lib-1",
         name: "My Library",
@@ -113,14 +113,14 @@ describe("Transformers", () => {
         songCount: 0,
         isDefault: false,
         canDelete: true,
-        coverUrl: null,
+        coverSongId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       const result = toLibraryResponse(input);
 
-      expect(result.coverUrl).toBeNull();
+      expect(result.coverSongId).toBeNull();
     });
   });
 
@@ -135,7 +135,7 @@ describe("Transformers", () => {
         linkedLibraryId: "lib-1",
         isDefault: false,
         canDelete: true,
-        coverUrl: "https://example.com/cover.jpg",
+        coverSongId: "song-1",
         createdAt: new Date("2024-01-01T00:00:00Z"),
         updatedAt: new Date("2024-01-02T00:00:00Z"),
       };
@@ -151,7 +151,7 @@ describe("Transformers", () => {
         linkedLibraryId: "lib-1",
         isDefault: false,
         canDelete: true,
-        coverUrl: "https://example.com/cover.jpg",
+        coverSongId: "song-1",
         createdAt: "2024-01-01T00:00:00.000Z",
         updatedAt: "2024-01-02T00:00:00.000Z",
       });
@@ -176,7 +176,7 @@ describe("Transformers", () => {
       expect(result.linkedLibraryId).toBeNull();
     });
 
-    it("should handle undefined coverUrl", () => {
+    it("should handle undefined coverSongId", () => {
       const input = {
         id: "pl-1",
         name: "My Playlist",
@@ -186,14 +186,14 @@ describe("Transformers", () => {
         linkedLibraryId: null,
         isDefault: false,
         canDelete: true,
-        // coverUrl not provided
+        // coverSongId not provided
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       const result = toPlaylistResponse(input);
 
-      expect(result.coverUrl).toBeNull();
+      expect(result.coverSongId).toBeNull();
     });
   });
 
@@ -210,7 +210,6 @@ describe("Transformers", () => {
         trackNumber: 1,
         discNumber: 1,
         composer: "Test Composer",
-        coverUrl: "https://example.com/cover.jpg",
         fileId: "file-1",
         libraryId: "lib-1",
         createdAt: new Date("2024-01-01T00:00:00Z"),
@@ -237,7 +236,6 @@ describe("Transformers", () => {
         trackNumber: 1,
         discNumber: 1,
         composer: "Test Composer",
-        coverUrl: "https://example.com/cover.jpg",
         fileId: "file-1",
         libraryId: "lib-1",
         libraryName: "My Library",
@@ -260,7 +258,6 @@ describe("Transformers", () => {
         trackNumber: null,
         discNumber: null,
         composer: null,
-        coverUrl: null,
         fileId: "file-1",
         libraryId: "lib-1",
         createdAt: new Date(),
@@ -288,7 +285,6 @@ describe("Transformers", () => {
         trackNumber: null,
         discNumber: null,
         composer: null,
-        coverUrl: null,
         fileId: "file-1",
         libraryId: "lib-1",
         createdAt: new Date(),
@@ -326,7 +322,6 @@ describe("Transformers", () => {
         trackNumber: null,
         discNumber: null,
         composer: null,
-        coverUrl: null,
         fileId: "file-1",
         libraryId: "lib-1",
         createdAt: new Date(),
@@ -440,7 +435,6 @@ describe("Transformers", () => {
           trackNumber: null,
           discNumber: null,
           composer: null,
-          coverUrl: null,
           fileId: "file-1",
           libraryId: "lib-1",
           createdAt: new Date(),
@@ -457,7 +451,6 @@ describe("Transformers", () => {
           trackNumber: null,
           discNumber: null,
           composer: null,
-          coverUrl: null,
           fileId: "file-2",
           libraryId: "lib-1",
           createdAt: new Date(),

@@ -2,6 +2,8 @@
  * Cover Image Component with offline fallback support
  * 
  * Key design:
+ * - Accepts song ID and builds full URL using buildCoverUrl()
+ * - Supports multi-gateway fallback (uses active endpoint)
  * - Uses crossOrigin="anonymous" to enable CORS requests
  * - This allows Service Worker to intercept and cache the response
  * - On error, shows fallback icon (cover not cached or doesn't exist)
@@ -10,14 +12,15 @@
 import { useState } from "react";
 import { Music, ListMusic, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildCoverUrl } from "@/lib/utils/url";
 import { CoverType, CoverSize } from "./cover-image.types";
 
 // Re-export for convenience
 export { CoverType, CoverSize } from "./cover-image.types";
 
 interface CoverImageProps {
-  /** Cover image URL (e.g., /api/songs/:id/cover) */
-  src: string | null | undefined;
+  /** Song ID to build cover URL (or null if no cover) */
+  songId: string | null | undefined;
   /** Alt text for accessibility */
   alt: string;
   /** Type of content - determines fallback icon */
@@ -57,18 +60,18 @@ function FallbackIcon({ type, size }: { type: CoverType; size: CoverSize }) {
 }
 
 export function CoverImage({
-  src,
+  songId,
   alt,
   type = CoverType.Song,
   className,
   size = CoverSize.MD,
 }: CoverImageProps) {
-  // Use key on wrapper to reset state when src changes (React pattern)
+  // Use key on wrapper to reset state when songId changes (React pattern)
   // This avoids useEffect + setState which triggers cascading renders
   return (
     <CoverImageInner
-      key={src ?? "fallback"}
-      src={src}
+      key={songId ?? "fallback"}
+      songId={songId}
       alt={alt}
       type={type}
       className={className}
@@ -79,7 +82,7 @@ export function CoverImage({
 
 /** Internal component - state resets automatically via key prop */
 function CoverImageInner({
-  src,
+  songId,
   alt,
   type = CoverType.Song,
   className,
@@ -88,7 +91,9 @@ function CoverImageInner({
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const showFallback = !src || hasError;
+  // Build full URL from song ID (supports multi-gateway fallback)
+  const coverUrl = buildCoverUrl(songId);
+  const showFallback = !coverUrl || hasError;
 
   return (
     <div
@@ -101,7 +106,7 @@ function CoverImageInner({
       {!showFallback ? (
         <>
           <img
-            src={src}
+            src={coverUrl}
             alt={alt}
             crossOrigin="anonymous"
             loading="lazy"

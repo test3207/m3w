@@ -8,6 +8,7 @@ import { MAIN_API_ENDPOINTS } from "@/services/api/main/endpoints";
 import { getPlayQueue } from "@/lib/audio/queue";
 import { getPlayContext, type PlayContext } from "@/lib/audio/context";
 import { logger } from "@/lib/logger-client";
+import { buildCoverUrl } from "@/lib/utils/url";
 import type { Track } from "@/lib/audio/player";
 import type { Song } from "@m3w/shared";
 
@@ -20,7 +21,7 @@ export function songToTrack(song: Song): Track {
     title: song.title,
     artist: song.artist ?? undefined,
     album: song.album ?? undefined,
-    coverUrl: song.coverUrl ?? undefined,
+    coverUrl: buildCoverUrl(song.id) ?? undefined,
     duration: song.duration ?? undefined,
     audioUrl: MAIN_API_ENDPOINTS.songs.stream(song.id),
     mimeType: song.mimeType ?? "audio/mpeg",

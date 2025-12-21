@@ -198,7 +198,7 @@ export function PlayQueueDrawer() {
 
                 {/* Album Cover */}
                 <CoverImage
-                  src={song.coverUrl}
+                  songId={song.id}
                   alt={song.title}
                   type={CoverType.Song}
                   size={CoverSize.MD}

@@ -63,11 +63,6 @@ vi.mock("../../lib/logger", () => ({
   },
 }));
 
-// Mock cover URL helper
-vi.mock("../../lib/cover-url-helper", () => ({
-  resolveCoverUrl: vi.fn(({ id }) => `/api/songs/${id}/cover`),
-}));
-
 // Import mocked modules for assertions
 import * as songService from "../../services/song.service";
 

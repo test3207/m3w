@@ -6,7 +6,6 @@ import type { SongSortOption } from "@m3w/shared";
 export interface SelectedSongInfo {
   id: string;
   title: string;
-  coverUrl?: string | null;
 }
 
 interface UIState {

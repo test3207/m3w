@@ -66,7 +66,6 @@ export interface PlaylistTrackResponse {
   title: string;
   artist: string | null;
   album: string | null;
-  coverUrl: string | null;
   duration: number | null;
   mimeType: string | null;
 }

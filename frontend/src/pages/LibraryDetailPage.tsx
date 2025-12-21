@@ -247,7 +247,7 @@ export default function LibraryDetailPage() {
   // Long press handler - enters selection mode
   const handleLongPress = (song: Song) => {
     if (isSelectionMode) return;
-    enterSelectionMode({ id: song.id, title: song.title, coverUrl: song.coverUrl });
+    enterSelectionMode({ id: song.id, title: song.title });
   };
 
   const handlePlayAll = () => {
@@ -263,7 +263,7 @@ export default function LibraryDetailPage() {
 
   const handleSongClick = (song: Song, index: number) => {
     if (isSelectionMode) {
-      toggleSongSelection({ id: song.id, title: song.title, coverUrl: song.coverUrl });
+      toggleSongSelection({ id: song.id, title: song.title });
     } else {
       if (!currentLibrary) return;
       const displayName = getLibraryDisplayName(currentLibrary);
@@ -273,7 +273,7 @@ export default function LibraryDetailPage() {
   };
 
   const handleSelectAll = () => {
-    selectAllSongs(songs.map(song => ({ id: song.id, title: song.title, coverUrl: song.coverUrl })));
+    selectAllSongs(songs.map(song => ({ id: song.id, title: song.title })));
   };
 
   const handleBatchAddToPlaylist = () => {
@@ -415,7 +415,7 @@ export default function LibraryDetailPage() {
               canWrite={canWrite}
               onLongPress={handleLongPress}
               onClick={handleSongClick}
-              onAddToPlaylist={(s) => openAddToPlaylistSheet({ id: s.id, title: s.title, coverUrl: s.coverUrl })}
+              onAddToPlaylist={(s) => openAddToPlaylistSheet({ id: s.id, title: s.title })}
               onDelete={(s) => {
                 setSongToDelete({ id: s.id, title: s.title });
                 setDeleteDialogOpen(true);

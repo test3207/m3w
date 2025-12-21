@@ -7,7 +7,6 @@
 
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
-import { resolveCoverUrl } from '../lib/cover-url-helper';
 import { getPinyinSort } from '../lib/pinyin-helper';
 import type { SongSortOption, LibraryInput, SongInput } from '@m3w/shared';
 
@@ -77,7 +76,7 @@ export async function findUserLibraries(userId: string): Promise<LibraryInput[]>
       songs: {
         orderBy: { createdAt: 'desc' },
         take: 1,
-        select: { id: true, coverUrl: true },
+        select: { id: true },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -87,7 +86,7 @@ export async function findUserLibraries(userId: string): Promise<LibraryInput[]>
     const lastSong = lib.songs[0];
     return {
       ...lib,
-      coverUrl: lastSong ? resolveCoverUrl({ id: lastSong.id, coverUrl: lastSong.coverUrl }) : null,
+      coverSongId: lastSong?.id ?? null,
     };
   });
 }
@@ -102,7 +101,7 @@ export async function findLibraryById(libraryId: string, userId: string): Promis
       songs: {
         orderBy: { createdAt: 'desc' },
         take: 1,
-        select: { id: true, coverUrl: true },
+        select: { id: true },
       },
     },
   });
@@ -112,7 +111,7 @@ export async function findLibraryById(libraryId: string, userId: string): Promis
   const lastSong = library.songs[0];
   return {
     ...library,
-    coverUrl: lastSong ? resolveCoverUrl({ id: lastSong.id, coverUrl: lastSong.coverUrl }) : null,
+    coverSongId: lastSong?.id ?? null,
   };
 }
 
@@ -133,7 +132,7 @@ export async function createLibrary(
 
   return {
     ...library,
-    coverUrl: null, // New library has no songs
+    coverSongId: null, // New library has no songs
   };
 }
 
@@ -159,7 +158,7 @@ export async function updateLibrary(
       songs: {
         orderBy: { createdAt: 'desc' },
         take: 1,
-        select: { id: true, coverUrl: true },
+        select: { id: true },
       },
     },
   });
@@ -167,7 +166,7 @@ export async function updateLibrary(
   const lastSong = library.songs[0];
   return {
     ...library,
-    coverUrl: lastSong ? resolveCoverUrl({ id: lastSong.id, coverUrl: lastSong.coverUrl }) : null,
+    coverSongId: lastSong?.id ?? null,
   };
 }
 
@@ -227,7 +226,6 @@ export async function getLibrarySongs(
 
   return sortedSongs.map(song => ({
     ...song,
-    coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
   }));
 }
 
@@ -361,6 +359,5 @@ export async function createSongWithFileRef(
 
   return {
     ...song,
-    coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
   };
 }

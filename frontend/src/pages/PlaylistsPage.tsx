@@ -245,7 +245,7 @@ export default function PlaylistsPage() {
                     {/* Cover Image - 96px (clickable) */}
                     <Link to={`/playlists/${playlist.id}`} className="shrink-0">
                       <CoverImage
-                        src={playlist.coverUrl}
+                        songId={playlist.coverSongId}
                         alt={getPlaylistDisplayName(playlist)}
                         type={CoverType.Playlist}
                         size={CoverSize.LG}

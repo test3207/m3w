@@ -225,7 +225,7 @@ export default function LibrariesPage() {
                     {/* Cover Image - 96px (clickable) */}
                     <Link to={`/libraries/${library.id}`} className="shrink-0">
                       <CoverImage
-                        src={library.coverUrl}
+                        songId={library.coverSongId}
                         alt={getLibraryDisplayName(library)}
                         type={CoverType.Library}
                         size={CoverSize.LG}

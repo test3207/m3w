@@ -15,7 +15,6 @@ function createMockSong(overrides: Partial<OfflineSong> = {}): OfflineSong {
     trackNumber: 1,
     discNumber: 1,
     composer: null,
-    coverUrl: null,
     fileId: "file-1",
     libraryId: "lib-1",
     libraryName: "My Library",

@@ -199,7 +199,6 @@ model Playlist {
   id          String   @id @default(cuid())
   name        String
   description String?
-  coverUrl    String?
   
   // Cached count for fast access (updated on add/remove)
   songCount   Int      @default(0)

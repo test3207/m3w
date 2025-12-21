@@ -123,13 +123,11 @@ app.delete("/:id", async (c: Context) => {
       logger.warn("[OfflineProxy] Failed to delete cached audio:", cacheError);
     }
 
-    // Delete cached cover from Cache Storage if exists
-    if (song.coverUrl) {
-      try {
-        await deleteFromCache(song.coverUrl);
-      } catch {
-        // Cover may not be in cache
-      }
+    // Delete cached cover from Cache Storage
+    try {
+      await deleteFromCache(`/api/songs/${id}/cover`);
+    } catch {
+      // Cover may not be in cache
     }
 
     return c.json({

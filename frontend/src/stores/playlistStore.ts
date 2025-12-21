@@ -32,7 +32,7 @@ interface PlaylistActions {
   deletePlaylist: (id: string) => Promise<boolean>;
 
   // Song management
-  addSongToPlaylist: (playlistId: string, songId: string, songCoverUrl?: string | null) => Promise<boolean>;
+  addSongToPlaylist: (playlistId: string, songId: string) => Promise<boolean>;
   removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<boolean>;
   reorderPlaylistSongs: (playlistId: string, songIds: string[]) => Promise<boolean>;
   
@@ -43,7 +43,7 @@ interface PlaylistActions {
 
   // Favorites
   isSongFavorited: (songId: string) => boolean;
-  toggleFavorite: (songId: string, songCoverUrl?: string | null) => Promise<boolean>;
+  toggleFavorite: (songId: string) => Promise<boolean>;
 
   // Computed getters
   getFavoritesPlaylist: () => Playlist | null;
@@ -164,7 +164,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   },
 
   // Add song to playlist
-  addSongToPlaylist: async (playlistId: string, songId: string, songCoverUrl?: string | null) => {
+  addSongToPlaylist: async (playlistId: string, songId: string) => {
     set({ isLoading: true, error: null });
     try {
       await api.main.playlists.addSong(playlistId, { songId });
@@ -180,8 +180,8 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
             return {
               ...pl,
               songCount: pl.songCount + 1,
-              // Update coverUrl if playlist was empty and we have a cover
-              coverUrl: wasEmpty && songCoverUrl ? songCoverUrl : pl.coverUrl,
+              // Update coverSongId if playlist was empty
+              coverSongId: wasEmpty ? songId : pl.coverSongId,
             };
           }),
           playlistSongIds: {
@@ -308,7 +308,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   },
 
   // Toggle song favorite status (add/remove from favorites playlist)
-  toggleFavorite: async (songId: string, songCoverUrl?: string | null) => {
+  toggleFavorite: async (songId: string) => {
     const { getFavoritesPlaylist, addSongToPlaylist, removeSongFromPlaylist, isSongFavorited } = get();
     
     const favorites = getFavoritesPlaylist();
@@ -323,7 +323,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     if (isCurrentlyFavorited) {
       return await removeSongFromPlaylist(favorites.id, songId);
     } else {
-      return await addSongToPlaylist(favorites.id, songId, songCoverUrl);
+      return await addSongToPlaylist(favorites.id, songId);
     }
   },
 

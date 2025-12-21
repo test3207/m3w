@@ -25,7 +25,7 @@ export type { CreatePlaylistInput, UpdatePlaylistInput, AddSongToPlaylistInput, 
 export const playlists = {
   /**
    * List all playlists
-   * Returns playlists with new fields: coverUrl, isDefault, canDelete, songIds
+   * Returns playlists with new fields: coverSongId, isDefault, canDelete, songIds
    */
   list: async (): Promise<Playlist[]> => {
     return mainApiClient.get<Playlist[]>(MAIN_API_ENDPOINTS.playlists.list);

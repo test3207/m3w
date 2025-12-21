@@ -36,7 +36,7 @@ export function MiniPlayer() {
       <div className="flex h-18 items-center gap-3 px-4 py-2">
         {/* Album Cover */}
         <CoverImage
-          src={currentSong.coverUrl}
+          songId={currentSong.id}
           alt={currentSong.title}
           type={CoverType.Song}
           size={CoverSize.MD}
