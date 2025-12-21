@@ -95,7 +95,7 @@ const mockLibrary = {
   isDefault: false,
   canDelete: true,
   cacheOverride: "inherit",
-  coverUrl: null,
+  coverSongId: null,
   createdAt: "2024-01-01T00:00:00.000Z",
   updatedAt: "2024-01-01T00:00:00.000Z",
 };
@@ -167,7 +167,7 @@ describe("Offline Library Routes", () => {
       expect(json.data[0].songCount).toBe(2);
     });
 
-    it("should use last song cover as library cover", async () => {
+    it("should use last song id as library coverSongId", async () => {
       vi.mocked(db.libraries.where).mockReturnValue({
         equals: vi.fn().mockReturnValue({
           reverse: vi.fn().mockReturnValue({
@@ -177,8 +177,8 @@ describe("Offline Library Routes", () => {
       } as never);
 
       const mockSongs = [
-        { id: "song-1", libraryId: "lib-1", coverUrl: "/covers/old.jpg", createdAt: "2024-01-01T00:00:00.000Z" },
-        { id: "song-2", libraryId: "lib-1", coverUrl: "/covers/new.jpg", createdAt: "2024-01-02T00:00:00.000Z" },
+        { id: "song-1", libraryId: "lib-1", createdAt: "2024-01-01T00:00:00.000Z" },
+        { id: "song-2", libraryId: "lib-1", createdAt: "2024-01-02T00:00:00.000Z" },
       ];
 
       vi.mocked(db.songs.where).mockReturnValue({
@@ -191,8 +191,8 @@ describe("Offline Library Routes", () => {
       expect(res.status).toBe(200);
 
       const json = await res.json();
-      // Last song by date should be used for cover
-      expect(json.data[0].coverUrl).toBe("/covers/new.jpg");
+      // Last song by date should be used for coverSongId
+      expect(json.data[0].coverSongId).toBe("song-2");
     });
   });
 

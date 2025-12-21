@@ -31,8 +31,8 @@ export interface LibraryInput {
   cacheOverride?: string;  // Optional for backward compatibility
   createdAt: Date | string;
   updatedAt: Date | string;
-  // Optional: last song for cover URL
-  coverUrl?: string | null;
+  // Optional: song ID for cover (last added song)
+  coverSongId?: string | null;
 }
 
 /**
@@ -47,7 +47,7 @@ export interface PlaylistInput {
   linkedLibraryId: string | null;
   isDefault: boolean;
   canDelete: boolean;
-  coverUrl?: string | null;
+  coverSongId?: string | null;  // Song ID for cover (first song)
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -66,7 +66,6 @@ export interface SongInput {
   trackNumber: number | null;
   discNumber: number | null;
   composer: string | null;
-  coverUrl: string | null;
   fileId: string;
   libraryId: string;
   createdAt: Date | string;
@@ -116,7 +115,7 @@ export function toLibraryResponse(input: LibraryInput): Library {
     isDefault: input.isDefault,
     canDelete: input.canDelete,
     cacheOverride,
-    coverUrl: input.coverUrl ?? null,
+    coverSongId: input.coverSongId ?? null,
     createdAt: toISOString(input.createdAt),
     updatedAt: toISOString(input.updatedAt),
   };
@@ -135,7 +134,7 @@ export function toPlaylistResponse(input: PlaylistInput): Playlist {
     linkedLibraryId: input.linkedLibraryId ?? null,
     isDefault: input.isDefault,
     canDelete: input.canDelete,
-    coverUrl: input.coverUrl ?? null,
+    coverSongId: input.coverSongId ?? null,
     createdAt: toISOString(input.createdAt),
     updatedAt: toISOString(input.updatedAt),
   };
@@ -157,7 +156,6 @@ export function toSongResponse(input: SongInput): Song {
     trackNumber: input.trackNumber,
     discNumber: input.discNumber,
     composer: input.composer,
-    coverUrl: input.coverUrl,
     fileId: input.fileId,
     libraryId: input.libraryId,
     // Computed fields: prioritize direct fields, then relations

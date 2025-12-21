@@ -46,9 +46,7 @@ export interface PlayerTrack {
   title: string;
   artist: string | null;
   album: string | null;
-  coverUrl: string | null;
   duration?: number;
-  audioUrl?: string;
   mimeType?: string;
 }
 

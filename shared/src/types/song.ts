@@ -23,7 +23,6 @@ export interface Song {
   trackNumber: number | null;
   discNumber: number | null;
   composer: string | null;
-  coverUrl: string | null;
   fileId: string;
   libraryId: string;
   // Computed fields (from relations)
@@ -48,7 +47,6 @@ export interface UpdateSongInput {
   trackNumber?: number | null;
   discNumber?: number | null;
   composer?: string | null;
-  coverUrl?: string | null;
 }
 
 // ============================================================

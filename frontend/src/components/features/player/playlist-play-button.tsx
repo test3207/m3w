@@ -7,6 +7,7 @@ import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { api } from "@/services";
 import { MAIN_API_ENDPOINTS } from "@/services/api/main/endpoints";
+import { buildCoverUrl } from "@/lib/utils/url";
 
 interface PlaylistPlayButtonProps {
   playlistId: string;
@@ -36,7 +37,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
           title: track.title,
           artist: track.artist ?? undefined,
           album: track.album ?? undefined,
-          coverUrl: track.coverUrl ?? undefined,
+          coverUrl: buildCoverUrl(track.id),
           duration: track.duration ?? undefined,
           audioUrl: MAIN_API_ENDPOINTS.songs.stream(track.id),
           mimeType: track.mimeType ?? "audio/mpeg",

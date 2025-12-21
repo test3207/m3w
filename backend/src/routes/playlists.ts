@@ -14,7 +14,6 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
-import { resolveCoverUrl } from '../lib/cover-url-helper';
 import { getUserId } from '../lib/auth-helper';
 import {
   createPlaylistSchema,
@@ -28,7 +27,7 @@ import {
 import type { Context } from 'hono';
 import type { ApiResponse, Playlist, Song, PlaylistInput, PlaylistSongOperationResult, PlaylistReorderResult } from '@m3w/shared';
 import {
-  getPlaylistCoverUrl,
+  getPlaylistCoverSongId,
   findUserPlaylists,
   findPlaylistById,
   findPlaylistByLibrary,
@@ -69,7 +68,7 @@ app.get('/', async (c: Context) => {
         linkedLibraryId: pl.linkedLibraryId,
         isDefault: pl.isDefault,
         canDelete: pl.canDelete,
-        coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
+        coverSongId: firstSong?.id ?? null,
         createdAt: pl.createdAt,
         updatedAt: pl.updatedAt,
       };
@@ -98,7 +97,7 @@ app.get('/by-library/:libraryId', async (c: Context) => {
 
     const input: PlaylistInput = {
       ...playlist,
-      coverUrl: await getPlaylistCoverUrl(playlist.id),
+      coverSongId: await getPlaylistCoverSongId(playlist.id),
     };
 
     return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
@@ -156,7 +155,7 @@ app.post('/for-library', async (c: Context) => {
 
     const input: PlaylistInput = {
       ...playlist,
-      coverUrl: await getPlaylistCoverUrl(playlist.id),
+      coverSongId: await getPlaylistCoverSongId(playlist.id),
     };
 
     return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
@@ -181,7 +180,7 @@ app.get('/:id', async (c: Context) => {
     const firstSong = playlist.songs[0]?.song;
     const input: PlaylistInput = {
       ...playlist,
-      coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
+      coverSongId: firstSong?.id ?? null,
     };
 
     return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
@@ -208,7 +207,7 @@ app.post('/', async (c: Context) => {
       songCount: 0,
     });
 
-    const input: PlaylistInput = { ...playlist, coverUrl: null };
+    const input: PlaylistInput = { ...playlist, coverSongId: null };
 
     return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) }, 201);
   } catch (error) {
@@ -242,7 +241,7 @@ app.patch('/:id', async (c: Context) => {
     const firstSong = playlist.songs[0]?.song;
     const input: PlaylistInput = {
       ...playlist,
-      coverUrl: firstSong ? resolveCoverUrl({ id: firstSong.id, coverUrl: firstSong.coverUrl }) : null,
+      coverSongId: firstSong?.id ?? null,
     };
 
     return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });

@@ -8,9 +8,10 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Music, Play, X } from "lucide-react";
+import { GripVertical, Play, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { cn } from "@/lib/utils";
 import type { Song } from "@m3w/shared";
 import { I18n } from "@/locales/i18n";
@@ -85,18 +86,12 @@ export function SortableSongItem({
             .replace("{0}", song.title)
             .replace("{1}", song.artist || I18n.common.unknownArtist)}
         >
-          {song.coverUrl ? (
-            <img
-              src={song.coverUrl}
-              alt={song.title}
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
-          ) : (
-            <div className="flex items-center justify-center w-full h-full">
-              <Music className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
+          <CoverImage
+            songId={song.id}
+            alt={song.title}
+            type={CoverType.Song}
+            size={CoverSize.MD}
+          />
           <div
             className={cn(
               "absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity",

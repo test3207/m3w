@@ -15,6 +15,7 @@ import {
   loadFullQueueForTrack,
   setupQueueWithContext,
 } from "@/lib/audio/track-loader";
+import { buildCoverUrl, buildStreamUrl } from "@/lib/utils/url";
 import type { PlayContextType } from "@/lib/audio/context";
 
 interface PrimePlaybackPayload {
@@ -114,9 +115,9 @@ export function useAudioPlayer() {
               title: progress.track.title,
               artist: progress.track.artist ?? undefined,
               album: progress.track.album ?? undefined,
-              coverUrl: progress.track.coverUrl ?? undefined,
+              coverUrl: buildCoverUrl(progress.track.id),
               duration: progress.track.duration ?? undefined,
-              audioUrl: progress.track.audioUrl,
+              audioUrl: buildStreamUrl(progress.track.id),
               mimeType: progress.track.mimeType ?? undefined,
             };
             await primeTrackFromData(track, progress.context ?? undefined, progress.position);
@@ -133,9 +134,9 @@ export function useAudioPlayer() {
               title: seed.track.title,
               artist: seed.track.artist ?? undefined,
               album: seed.track.album ?? undefined,
-              coverUrl: seed.track.coverUrl ?? undefined,
+              coverUrl: buildCoverUrl(seed.track.id),
               duration: seed.track.duration ?? undefined,
-              audioUrl: seed.track.audioUrl,
+              audioUrl: buildStreamUrl(seed.track.id),
               mimeType: seed.track.mimeType ?? undefined,
             };
             await primeTrackFromData(track, seed.context);

@@ -22,7 +22,6 @@ export function apiTrackToSong(track: {
   title: string;
   artist?: string | null;
   album?: string | null;
-  coverUrl?: string | null;
   duration?: number | null;
   mimeType?: string | null;
 }): Song {
@@ -37,7 +36,6 @@ export function apiTrackToSong(track: {
     trackNumber: null,
     discNumber: null,
     composer: null,
-    coverUrl: track.coverUrl ?? null,
     libraryId: "", // Not available from API
     libraryName: null, // Not available from API
     fileId: "", // Not needed for playback

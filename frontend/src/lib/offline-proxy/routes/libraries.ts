@@ -32,7 +32,8 @@ app.get("/", async (c: Context) => {
       .reverse()
       .sortBy("createdAt");
 
-    // Add song counts and coverUrl from last added song
+    // Add song counts and coverSongId
+    // Libraries use LAST added song for cover (vs Playlists which use FIRST song)
     const librariesWithCounts = await Promise.all(
       libraries.map(async (library) => {
         const songs = await db.songs.where("libraryId").equals(library.id).toArray();
@@ -47,7 +48,7 @@ app.get("/", async (c: Context) => {
         return {
           ...library,
           songCount,
-          coverUrl: lastSong?.coverUrl || null,
+          coverSongId: lastSong?.id || null,
         };
       })
     );
@@ -96,7 +97,7 @@ app.get("/:id", async (c: Context) => {
       );
     }
 
-    // Add song count and coverUrl from last added song
+    // Add song count and coverSongId from last added song
     const songCount = await db.songs.where("libraryId").equals(id).count();
 
     // Get last added song for cover (matches backend)
@@ -110,7 +111,7 @@ app.get("/:id", async (c: Context) => {
     const libraryWithCount = {
       ...library,
       songCount,
-      coverUrl: lastSong?.coverUrl || null,
+      coverSongId: lastSong?.id || null,
     };
 
     return c.json({
@@ -145,7 +146,7 @@ app.post("/", async (c: Context) => {
       isDefault: false,
       canDelete: true,
       cacheOverride: "inherit",  // Default: follow global setting
-      coverUrl: null, // New library has no songs yet
+      coverSongId: null, // New library has no songs yet
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -337,7 +338,6 @@ app.post("/:id/songs", async (c: Context) => {
     const songId = generateUUID();
 
     // 6. Extract cover art if available and cache it
-    let coverUrl: string | null = null;
     if (common.picture && common.picture.length > 0) {
       const picture = common.picture[0];
       // Convert Uint8Array to Blob
@@ -346,7 +346,7 @@ app.post("/:id/songs", async (c: Context) => {
       });
 
       // Cache cover in Cache Storage using unified /api/ URL
-      coverUrl = await cacheCoverForOffline(songId, coverBlob);
+      await cacheCoverForOffline(songId, coverBlob);
     }
 
     // 7. Cache audio file in Cache Storage using unified /api/ URL
@@ -368,7 +368,6 @@ app.post("/:id/songs", async (c: Context) => {
       discNumber: common.disk.no || null,
       composer:
         common.composer && common.composer.length > 0 ? common.composer[0] : null,
-      coverUrl: coverUrl || null,
       streamUrl, // Unified URL: /api/songs/{id}/stream (works for both Guest and Auth)
       fileId: fileEntity.id, // Reference to File entity
       duration: format.duration || null,

@@ -16,7 +16,6 @@ import { logger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 import { updateSongSchema, songIdSchema, toSongResponse, toSongListResponse } from '@m3w/shared';
-import { resolveCoverUrl } from '../lib/cover-url-helper';
 import type { Context } from 'hono';
 import type { ApiResponse, Song, SongSortOption, SongInput, SongPlaylistCount } from '@m3w/shared';
 import {
@@ -50,7 +49,6 @@ app.get('/search', async (c: Context) => {
 
     const songInputs: SongInput[] = sortedSongs.map((song) => ({
       ...song,
-      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
     }));
 
     const transformedSongs = toSongListResponse(songInputs);
@@ -81,7 +79,6 @@ app.get('/:id', async (c: Context) => {
 
     const songInput: SongInput = {
       ...song,
-      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
     };
 
     return c.json<ApiResponse<Song>>({ success: true, data: toSongResponse(songInput) });
@@ -125,7 +122,6 @@ app.patch('/:id', async (c: Context) => {
 
     const songInput: SongInput = {
       ...song,
-      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
     };
 
     return c.json<ApiResponse<Song>>({ success: true, data: toSongResponse(songInput) });

@@ -66,7 +66,7 @@ const mockPlaylist = {
   isDefault: false,
   canDelete: true,
   linkedLibraryId: null,
-  coverUrl: null,
+  coverSongId: null,
   createdAt: "2024-01-01T00:00:00.000Z",
   updatedAt: "2024-01-01T00:00:00.000Z",
 };
@@ -79,7 +79,6 @@ const mockSong = {
   albumArtist: "Test Album Artist",
   composer: "Test Composer",
   duration: 180,
-  coverUrl: null,
   libraryId: "lib-1",
   libraryName: "My Library",
   isCached: true,

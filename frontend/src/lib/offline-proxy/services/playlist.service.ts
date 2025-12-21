@@ -9,9 +9,10 @@ import type { OfflinePlaylist, OfflinePlaylistSong } from "../../db/schema";
 import { generateUUID } from "../../utils/uuid";
 
 /**
- * Get first song's cover URL for a playlist
+ * Get first song's ID for a playlist cover
+ * Frontend uses buildCoverUrl(coverSongId) to construct the cover URL
  */
-export async function getPlaylistCoverUrl(playlistId: string): Promise<string | null> {
+export async function getPlaylistCoverSongId(playlistId: string): Promise<string | null> {
   const playlistSongs = await db.playlistSongs
     .where("playlistId")
     .equals(playlistId)
@@ -21,12 +22,12 @@ export async function getPlaylistCoverUrl(playlistId: string): Promise<string | 
   const firstPlaylistSong = sortedSongs[0];
   if (!firstPlaylistSong) return null;
   
-  const song = await db.songs.get(firstPlaylistSong.songId);
-  return song?.coverUrl || null;
+  return firstPlaylistSong.songId;
 }
 
 /**
- * Get all playlists for a user with cover URLs
+ * Get all playlists for a user
+ * Includes coverSongId (first song's ID) for frontend to build cover URL
  */
 export async function getUserPlaylistsWithCovers(userId: string) {
   const playlists = await db.playlists
@@ -37,8 +38,8 @@ export async function getUserPlaylistsWithCovers(userId: string) {
 
   return Promise.all(
     playlists.map(async (playlist) => {
-      const coverUrl = await getPlaylistCoverUrl(playlist.id);
-      return { ...playlist, coverUrl };
+      const coverSongId = await getPlaylistCoverSongId(playlist.id);
+      return { ...playlist, coverSongId };
     })
   );
 }
@@ -50,8 +51,8 @@ export async function getPlaylistById(playlistId: string, userId: string) {
   const playlist = await db.playlists.get(playlistId);
   if (!playlist || playlist.userId !== userId) return null;
 
-  const coverUrl = await getPlaylistCoverUrl(playlistId);
-  return { ...playlist, coverUrl };
+  const coverSongId = await getPlaylistCoverSongId(playlistId);
+  return { ...playlist, coverSongId };
 }
 
 /**
@@ -87,7 +88,7 @@ export async function createPlaylist(userId: string, input: CreatePlaylistInput)
     linkedLibraryId: input.linkedLibraryId ?? null,
     isDefault: false,
     canDelete: true,
-    coverUrl: null,
+    coverSongId: input.songIds?.[0] ?? null,  // First song as cover
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

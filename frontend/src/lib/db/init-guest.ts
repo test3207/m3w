@@ -24,7 +24,7 @@ export async function initGuestResources() {
       isDefault: true,
       canDelete: false,
       cacheOverride: "inherit",  // Follow global setting
-      coverUrl: null,  // No songs yet
+      coverSongId: null,  // No songs yet
       createdAt: now,
       updatedAt: now,
     };
@@ -48,7 +48,7 @@ export async function initGuestResources() {
       linkedLibraryId: null,
       isDefault: true,
       canDelete: false,
-      coverUrl: null,  // No songs yet
+      coverSongId: null,  // No songs yet
       createdAt: now,
       updatedAt: now,
     };

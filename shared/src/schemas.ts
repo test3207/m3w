@@ -55,7 +55,6 @@ export const updateSongSchema = z.object({
   trackNumber: z.number().int().positive().optional().nullable(),
   discNumber: z.number().int().positive().optional().nullable(),
   composer: z.string().max(255).optional().nullable(),
-  coverUrl: z.string().url().optional().nullable(),
 });
 
 export const songIdSchema = z.object({

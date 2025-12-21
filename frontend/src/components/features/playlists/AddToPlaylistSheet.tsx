@@ -21,6 +21,7 @@ import { getPlaylistDisplayName } from "@/lib/utils/defaults";
 import { isFavoritesPlaylist } from "@m3w/shared";
 import { Check, Plus, Music, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 
 export function AddToPlaylistSheet() {
   const { toast } = useToast();
@@ -114,8 +115,7 @@ export function AddToPlaylistSheet() {
         
         const success = await addSongToPlaylist(
           playlistId, 
-          song.id, 
-          song.coverUrl
+          song.id
         );
         
         if (success) {
@@ -178,8 +178,7 @@ export function AddToPlaylistSheet() {
         for (const song of songsToAdd) {
           const success = await addSongToPlaylist(
             newPlaylist.id, 
-            song.id, 
-            song.coverUrl
+            song.id
           );
           if (success) addedCount++;
         }
@@ -328,11 +327,12 @@ export function AddToPlaylistSheet() {
                   >
                     {/* Playlist Cover */}
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                      {playlist.coverUrl ? (
-                        <img
-                          src={playlist.coverUrl}
+                      {playlist.coverSongId ? (
+                        <CoverImage
+                          songId={playlist.coverSongId}
                           alt={displayName}
-                          className="h-full w-full object-cover"
+                          type={CoverType.Playlist}
+                          size={CoverSize.MD}
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">

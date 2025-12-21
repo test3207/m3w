@@ -15,6 +15,7 @@ import {
 import { prefetchAudioBlob } from "@/lib/audio/prefetch";
 import { getStreamUrl } from "@/services/api/main/endpoints";
 import { isSongCached } from "@/lib/storage/audio-cache";
+import { buildCoverUrl } from "@/lib/utils/url";
 import type { PlayerState } from "./types";
 
 /**
@@ -96,7 +97,7 @@ export function songToTrack(song: Song): Track {
     title: song.title,
     artist: song.artist || undefined,
     album: song.album || undefined,
-    coverUrl: song.coverUrl || undefined,
+    coverUrl: buildCoverUrl(song.id),
     duration: song.duration || undefined,
     mimeType: song.mimeType || undefined,
     audioUrl: getStreamUrl(song.id),
@@ -116,7 +117,7 @@ export function updateMediaSessionForSong(song: Song | null): void {
     title: song.title,
     artist: song.artist ?? undefined,
     album: song.album ?? undefined,
-    coverUrl: song.coverUrl ?? undefined,
+    coverUrl: buildCoverUrl(song.id),
     duration: song.duration ?? undefined,
   });
 

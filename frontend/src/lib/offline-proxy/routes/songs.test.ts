@@ -232,9 +232,9 @@ describe("Offline Song Routes", () => {
 
       expect(res.status).toBe(200);
 
-      // Should delete both audio stream and cover
+      // Should delete both audio stream and cover using buildStreamUrl/buildCoverUrl paths
       expect(deleteFromCache).toHaveBeenCalledWith("/api/songs/song-1/stream");
-      expect(deleteFromCache).toHaveBeenCalledWith("/covers/song-1.jpg");
+      expect(deleteFromCache).toHaveBeenCalledWith("/api/songs/song-1/cover");
     });
 
     it("should not fail if cache deletion fails", async () => {

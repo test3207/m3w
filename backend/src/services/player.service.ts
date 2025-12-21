@@ -7,7 +7,6 @@
 
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
-import { resolveCoverUrl } from '../lib/cover-url-helper';
 import { RepeatMode } from '@m3w/shared';
 
 // ============================================================================
@@ -19,9 +18,7 @@ export interface TrackResponse {
   title: string;
   artist: string | null;
   album: string | null;
-  coverUrl: string | null;
   duration?: number;
-  audioUrl: string;
   mimeType?: string;
 }
 
@@ -51,14 +48,6 @@ export interface PlaybackProgressResponse {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-function getApiBaseUrl(): string {
-  return process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
-}
-
-function buildAudioUrl(songId: string): string {
-  return `${getApiBaseUrl()}/api/songs/${songId}/stream`;
-}
 
 export function normalizeRepeatMode(value: string | null | undefined): RepeatMode {
   if (!value) return RepeatMode.Off;
@@ -117,7 +106,6 @@ export async function getPlaybackSeed(userId: string): Promise<PlaybackSeedRespo
               title: true,
               artist: true,
               album: true,
-              coverUrl: true,
               file: {
                 select: {
                   duration: true,
@@ -145,9 +133,7 @@ export async function getPlaybackSeed(userId: string): Promise<PlaybackSeedRespo
         title: playlistSong.title,
         artist: playlistSong.artist,
         album: playlistSong.album,
-        coverUrl: resolveCoverUrl({ id: playlistSong.id, coverUrl: playlistSong.coverUrl }),
         duration: playlistSong.file.duration ?? undefined,
-        audioUrl: buildAudioUrl(playlistSong.id),
         mimeType: playlistSong.file.mimeType ?? undefined,
       },
       context: {
@@ -174,7 +160,6 @@ export async function getPlaybackSeed(userId: string): Promise<PlaybackSeedRespo
           title: true,
           artist: true,
           album: true,
-          coverUrl: true,
           file: {
             select: {
               duration: true,
@@ -200,9 +185,7 @@ export async function getPlaybackSeed(userId: string): Promise<PlaybackSeedRespo
         title: librarySong.title,
         artist: librarySong.artist,
         album: librarySong.album,
-        coverUrl: resolveCoverUrl({ id: librarySong.id, coverUrl: librarySong.coverUrl }),
         duration: librarySong.file.duration ?? undefined,
-        audioUrl: buildAudioUrl(librarySong.id),
         mimeType: librarySong.file.mimeType ?? undefined,
       },
       context: {
@@ -296,7 +279,6 @@ export async function getPlaybackProgress(userId: string): Promise<PlaybackProgr
       title: true,
       artist: true,
       album: true,
-      coverUrl: true,
       file: {
         select: {
           duration: true,
@@ -320,9 +302,7 @@ export async function getPlaybackProgress(userId: string): Promise<PlaybackProgr
       title: song.title,
       artist: song.artist,
       album: song.album,
-      coverUrl: resolveCoverUrl({ id: song.id, coverUrl: song.coverUrl }),
       duration: song.file.duration ?? undefined,
-      audioUrl: buildAudioUrl(song.id),
       mimeType: song.file.mimeType ?? undefined,
     },
     position: progress.position,

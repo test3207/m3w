@@ -245,7 +245,7 @@ export function FullPlayer() {
   const handleToggleFavorite = async () => {
     if (!currentSong) return;
     const wasFavorited = isFavorited;
-    const wasSuccess = await toggleFavorite(currentSong.id, currentSong.coverUrl);
+    const wasSuccess = await toggleFavorite(currentSong.id);
     toast({
       title: wasSuccess
         ? wasFavorited ? I18n.player.favorite.removed : I18n.player.favorite.added
@@ -313,9 +313,9 @@ export function FullPlayer() {
 
       {/* Album Cover */}
       <Stack align="center" className="px-8 py-4 shrink-0">
-        <div className="aspect-square w-full max-w-[280px] overflow-hidden rounded-lg shadow-2xl">
+        <div className="aspect-square w-full max-w-70 overflow-hidden rounded-lg shadow-2xl">
           <CoverImage
-            src={displaySong.coverUrl}
+            songId={displaySong.id}
             alt={I18n.player.fullPlayer.albumCoverAlt}
             type={CoverType.Song}
             size={CoverSize.XL}
