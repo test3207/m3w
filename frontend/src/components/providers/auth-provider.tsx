@@ -9,6 +9,7 @@ import { startAutoSync, stopAutoSync } from "@/lib/sync/metadata-sync";
 import { triggerAutoDownload } from "@/lib/storage/download-manager";
 import { useAuthStore } from "@/stores/authStore";
 import { initializeEndpoint, isMultiRegionEnabled } from "@/lib/api/multi-region";
+import { startIdlePrefetch } from "@/lib/prefetch";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -20,6 +21,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   // Get auth state
   const { isAuthenticated, isGuest } = useAuthStore();
+
+  // Start idle-time prefetch of heavy modules after initial render
+  useEffect(() => {
+    startIdlePrefetch();
+  }, []);
 
   // Initialize multi-region endpoint detection on app startup
   // Checks Gateway first, falls back to fastest region if Gateway is down

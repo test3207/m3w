@@ -26,7 +26,6 @@ import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { eventBus, EVENTS } from "@/lib/events";
 import { processAudioFileStream } from "@/lib/utils/stream-processor";
-import { cacheAudioForOffline, cacheCoverForOffline } from "@/lib/pwa/cache-manager";
 import { api } from "@/services";
 import type { LibraryOption } from "@/types/models";
 import { LibraryBig } from "lucide-react";
@@ -134,7 +133,9 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
     const songTitle = data.song.title || file.name;
     
     // Cache audio and cover for offline use (non-blocking, fail silently)
+    // Dynamic import to avoid loading cache-manager in initial bundle
     try {
+      const { cacheAudioForOffline, cacheCoverForOffline } = await import("@/lib/pwa/cache-manager");
       await cacheAudioForOffline(songId, file);
       if (coverBlob) {
         await cacheCoverForOffline(songId, coverBlob);
