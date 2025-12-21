@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
@@ -11,6 +11,37 @@ const rootPkg = JSON.parse(readFileSync(path.resolve(__dirname, "../package.json
 // Falls back to package.json version for local dev
 const appVersion = process.env.APP_VERSION || `v${rootPkg.version}-dev`;
 
+/**
+ * Vite plugin to convert render-blocking CSS to async loading.
+ * This improves LCP by allowing the page to render with inline critical CSS
+ * while the full stylesheet loads in the background.
+ * 
+ * Converts: <link rel="stylesheet" href="...">
+ * To: <link rel="stylesheet" href="..." media="print" onload="this.media='all'">
+ */
+function asyncCssPlugin(): Plugin {
+  return {
+    name: "async-css",
+    enforce: "post",
+    transformIndexHtml(html) {
+      // Convert stylesheet links to async loading using media="print" trick
+      // This uses a small inline onload handler but doesn't require external JS files
+      return html.replace(
+        /<link rel="stylesheet"([^>]*) href="([^"]+)"([^>]*)>/g,
+        (match, beforeHref: string, href: string, afterHref: string) => {
+          // Skip if href is missing
+          if (!href) return match;
+          // Skip links that already have a media attribute to avoid duplicates
+          if (/\smedia\s*=/.test(beforeHref) || /\smedia\s*=/.test(afterHref)) {
+            return match;
+          }
+          return `<link rel="stylesheet"${beforeHref} href="${href}"${afterHref} media="print" onload="this.media='all'">`;
+        }
+      );
+    },
+  };
+}
+
 export default defineConfig({
   define: {
     // Inject compile-time boolean constant for tree-shaking
@@ -22,6 +53,8 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // Convert CSS to async loading for better LCP
+    asyncCssPlugin(),
     // Bundle analyzer - generates stats.html only when ANALYZE=true
     // Usage: ANALYZE=true npm run build (or use npm run analyze)
     process.env.ANALYZE === "true" &&

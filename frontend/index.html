@@ -2,12 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Critical inline CSS for instant LCP - shows loading spinner immediately -->
+    <style>
+      /* CSS variables matching Tailwind theme (gray-900, gray-50, background) */
+      :root{--m3w-bg:#ffffff;--m3w-spinner:#111827}
+      @media(prefers-color-scheme:dark){:root{--m3w-bg:#0a0a0a;--m3w-spinner:#f9fafb}}
+      /* Minimal reset and loading state styles */
+      *,*::before,*::after{box-sizing:border-box}
+      body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--m3w-bg)}
+      #root{min-height:100vh}
+      /* Loading spinner - matches PageLoader component (border-gray-900/50) */
+      .page-loader{display:flex;align-items:center;justify-content:center;min-height:100vh}
+      .page-loader-spinner{width:3rem;height:3rem;border-radius:50%;border:2px solid transparent;border-bottom-color:var(--m3w-spinner);animation:spin 1s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Self-hosted music player with offline support" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- manifest will be auto-injected by vite-plugin-pwa -->
     
@@ -58,7 +73,12 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Initial loading state - replaced by React when app mounts -->
+    <div id="root">
+      <div class="page-loader">
+        <div class="page-loader-spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
