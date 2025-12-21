@@ -7,7 +7,6 @@
  * Also handles automatic caching of GET responses to IndexedDB for offline access.
  */
 
-import offlineProxy from "../offline-proxy";
 import { isOfflineCapable } from "@m3w/shared";
 import { logger } from "../logger-client";
 import { API_BASE_URL } from "./config";
@@ -19,6 +18,17 @@ import {
   ensureEndpointInitialized,
   getAuthToken,
 } from "./multi-region";
+
+// Lazy-loaded offline proxy module to reduce initial bundle size
+// The offline-proxy includes Hono + music-metadata; lazy-loading saves ~36KB from the main bundle
+let offlineProxyModule: typeof import("../offline-proxy") | null = null;
+
+async function getOfflineProxy() {
+  if (!offlineProxyModule) {
+    offlineProxyModule = await import("../offline-proxy");
+  }
+  return offlineProxyModule.default;
+}
 
 // Track backend reachability
 let isBackendReachable = true;
@@ -248,6 +258,9 @@ async function callOfflineProxy(
   init?: RequestInit
 ): Promise<Response> {
   try {
+    // Dynamically load offline proxy module (lazy loading)
+    const offlineProxy = await getOfflineProxy();
+    
     // Create a mock Request object for Hono
     const request = new Request(`http://localhost${path}`, init);
 
