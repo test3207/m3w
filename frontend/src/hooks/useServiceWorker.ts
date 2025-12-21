@@ -95,6 +95,16 @@ export function useServiceWorker() {
     };
   }, []);
 
+  // Cleanup interval on unmount (important for HMR in development)
+  useEffect(() => {
+    return () => {
+      if (updateIntervalId) {
+        clearInterval(updateIntervalId);
+        updateIntervalId = null;
+      }
+    };
+  }, []);
+
   const close = useCallback(() => {
     setOfflineReady(false);
     setNeedRefresh(false);
