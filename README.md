@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://developer.chrome.com/docs/lighthouse/overview"><img src="https://img.shields.io/badge/Lighthouse-Audit-orange?logo=lighthouse&logoColor=white" alt="Lighthouse"></a>
-  <img src="https://img.shields.io/badge/Performance-100%25-brightgreen" alt="Lighthouse Performance">
+  <img src="https://img.shields.io/badge/Performance-76%25-orange" alt="Lighthouse Performance">
   <img src="https://img.shields.io/badge/Accessibility-100%25-brightgreen" alt="Lighthouse Accessibility">
   <img src="https://img.shields.io/badge/Best%20Practices-100%25-brightgreen" alt="Lighthouse Best Practices">
   <img src="https://img.shields.io/badge/SEO-100%25-brightgreen" alt="Lighthouse SEO">
