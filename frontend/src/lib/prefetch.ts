@@ -17,25 +17,51 @@
  * This module provides a unified scheduler that:
  * 
  * 1. Waits for `window.load` event (critical resources done)
- * 2. Adds a priority-based delay (3s/8s/15s) to clear Lighthouse window
+ * 2. Adds a priority-based delay (3s/8s/15s) AFTER load event
  * 3. Uses `requestIdleCallback` to execute during CPU idle time
  * 4. Deduplicates tasks by ID (won't run the same task twice)
+ * 
+ * ============================================================================
+ * EXECUTION TIMELINE
+ * ============================================================================
+ * 
+ *   Navigation Start
+ *        │
+ *        ▼
+ *   [Page Loading...]
+ *        │
+ *        ▼
+ *   window.load event ──────────────────────────────────────┐
+ *        │                                                  │
+ *        │  +3s                                             │
+ *        ├──────► HIGH priority tasks → requestIdleCallback │
+ *        │                                                  │
+ *        │  +8s                                             │
+ *        ├──────► NORMAL priority tasks → requestIdleCallback
+ *        │                                                  │
+ *        │  +15s                                            │
+ *        └──────► LOW priority tasks → requestIdleCallback  │
+ *                                                           │
+ *   Lighthouse measurement window (~10-15s) ────────────────┘
+ * 
+ * The delays are measured FROM the load event, not from navigation start.
+ * This ensures tasks run well after the page is fully interactive.
  * 
  * ============================================================================
  * PRIORITY LEVELS
  * ============================================================================
  * 
- * HIGH (3s delay):
+ * HIGH (load + 3s):
  *   - Module prefetch that improves perceived UX
  *   - Example: Pre-import cache-manager for faster upload dialog
  * 
- * NORMAL (8s delay):
+ * NORMAL (load + 8s):
  *   - Background tasks that can wait a bit
- *   - Example: Non-critical data prefetch
+ *   - Example: Metadata sync from backend
  * 
- * LOW (15s delay):
+ * LOW (load + 15s):
  *   - Tasks that absolutely shouldn't impact Lighthouse
- *   - Example: Auto-download 90MB of audio files, metadata sync
+ *   - Example: Auto-download 90MB of audio files, audio preload
  * 
  * ============================================================================
  * EXPORTED API
@@ -61,12 +87,12 @@
  * USAGE IN M3W
  * ============================================================================
  * 
- * Task                    | Priority | Location
- * ------------------------|----------|---------------------------
- * Module prefetch         | HIGH     | startIdlePrefetch()
- * Metadata sync           | NORMAL   | auth-provider.tsx
- * Auto-download audio     | LOW      | auth-provider.tsx
- * Audio preload (resume)  | LOW      | playerStore/index.ts
+ * Task                    | Priority | Delay       | Location
+ * ------------------------|----------|-------------|---------------------------
+ * Module prefetch         | HIGH     | load + 3s   | startIdlePrefetch()
+ * Metadata sync           | NORMAL   | load + 8s   | auth-provider.tsx
+ * Auto-download audio     | LOW      | load + 15s  | auth-provider.tsx
+ * Audio preload (resume)  | LOW      | load + 15s  | playerStore/index.ts
  * 
  * ============================================================================
  * WHY requestIdleCallback?
