@@ -24,7 +24,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
       
       - name: Run Lighthouse CI
         id: lighthouse
@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '25.2.1'
       
       - name: Generate Lighthouse badges
         run: |
