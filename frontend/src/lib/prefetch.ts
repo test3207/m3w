@@ -17,49 +17,48 @@
  * This module provides a unified scheduler that:
  * 
  * 1. Waits for `window.load` event (critical resources done)
- * 2. Adds a priority-based delay (3s/8s/15s) AFTER load event
+ * 2. Calculates remaining delay from navigation start (adaptive to device speed)
  * 3. Uses `requestIdleCallback` to execute during CPU idle time
  * 4. Deduplicates tasks by ID (won't run the same task twice)
  * 
  * ============================================================================
- * EXECUTION TIMELINE
+ * ADAPTIVE DELAY CALCULATION
  * ============================================================================
  * 
- *   Navigation Start
- *        │
- *        ▼
- *   [Page Loading...]
- *        │
- *        ▼
- *   window.load event ──────────────────────────────────────┐
- *        │                                                  │
- *        │  +3s                                             │
- *        ├──────► HIGH priority tasks → requestIdleCallback │
- *        │                                                  │
- *        │  +8s                                             │
- *        ├──────► NORMAL priority tasks → requestIdleCallback
- *        │                                                  │
- *        │  +15s                                            │
- *        └──────► LOW priority tasks → requestIdleCallback  │
- *                                                           │
- *   Lighthouse measurement window (~10-15s) ────────────────┘
+ * The delay is measured from **navigation start**, not from load event.
+ * This adapts to device performance:
  * 
- * The delays are measured FROM the load event, not from navigation start.
- * This ensures tasks run well after the page is fully interactive.
+ *   Fast device (load completes at 2s):
+ *   ├── HIGH (3s target): wait 1s more after load
+ *   ├── NORMAL (8s target): wait 6s more after load
+ *   └── LOW (15s target): wait 13s more after load
+ * 
+ *   Average device (load completes at 5s):
+ *   ├── HIGH (3s target): execute immediately (already past 3s)
+ *   ├── NORMAL (8s target): wait 3s more after load
+ *   └── LOW (15s target): wait 10s more after load
+ * 
+ *   Slow device (load completes at 12s):
+ *   ├── HIGH (3s target): execute immediately
+ *   ├── NORMAL (8s target): execute immediately
+ *   └── LOW (15s target): wait 3s more after load
+ * 
+ *   Very slow device (load completes at 20s):
+ *   └── All tasks execute immediately (Lighthouse measurement long over)
  * 
  * ============================================================================
  * PRIORITY LEVELS
  * ============================================================================
  * 
- * HIGH (load + 3s):
+ * HIGH (nav + 3s):
  *   - Module prefetch that improves perceived UX
  *   - Example: Pre-import cache-manager for faster upload dialog
  * 
- * NORMAL (load + 8s):
+ * NORMAL (nav + 8s):
  *   - Background tasks that can wait a bit
  *   - Example: Metadata sync from backend
  * 
- * LOW (load + 15s):
+ * LOW (nav + 15s):
  *   - Tasks that absolutely shouldn't impact Lighthouse
  *   - Example: Auto-download 90MB of audio files, audio preload
  * 
@@ -87,12 +86,12 @@
  * USAGE IN M3W
  * ============================================================================
  * 
- * Task                    | Priority | Delay       | Location
+ * Task                    | Priority | Min Time    | Location
  * ------------------------|----------|-------------|---------------------------
- * Module prefetch         | HIGH     | load + 3s   | startIdlePrefetch()
- * Metadata sync           | NORMAL   | load + 8s   | auth-provider.tsx
- * Auto-download audio     | LOW      | load + 15s  | auth-provider.tsx
- * Audio preload (resume)  | LOW      | load + 15s  | playerStore/index.ts
+ * Module prefetch         | HIGH     | nav + 3s    | startIdlePrefetch()
+ * Metadata sync           | NORMAL   | nav + 8s    | auth-provider.tsx
+ * Auto-download audio     | LOW      | nav + 15s   | auth-provider.tsx
+ * Audio preload (resume)  | LOW      | nav + 15s   | playerStore/index.ts
  * 
  * ============================================================================
  * WHY requestIdleCallback?
@@ -134,10 +133,19 @@ interface IdleTask {
 // Configuration
 // ============================================================================
 
-const PRIORITY_DELAYS: Record<TaskPriority, number> = {
-  high: 3000,    // 3s - for UX-critical prefetch (modules)
-  normal: 8000,  // 8s - for less critical tasks
-  low: 15000,    // 15s - for tasks that shouldn't impact Lighthouse
+/**
+ * Minimum time from navigation start before executing tasks.
+ * This ensures tasks don't run during Lighthouse measurement window (~10-15s).
+ * 
+ * Example scenarios:
+ * - Fast device (load at 2s): HIGH waits 1s more, NORMAL waits 6s, LOW waits 13s
+ * - Slow device (load at 10s): HIGH runs immediately, NORMAL runs immediately, LOW waits 5s
+ * - Very slow (load at 20s): All tasks run immediately after load
+ */
+const MIN_TIME_FROM_NAV_START: Record<TaskPriority, number> = {
+  high: 3000,    // 3s from navigation - UX-critical prefetch
+  normal: 8000,  // 8s from navigation - background tasks
+  low: 15000,    // 15s from navigation - tasks that shouldn't impact Lighthouse
 };
 
 const IDLE_TIMEOUT: Record<TaskPriority, number> = {
@@ -145,6 +153,11 @@ const IDLE_TIMEOUT: Record<TaskPriority, number> = {
   normal: 10000, // 10s max wait for idle
   low: 30000,    // 30s max wait for idle
 };
+
+// Navigation start time (fallback to now if Performance API unavailable)
+const navigationStart = typeof performance !== "undefined" && performance.timing
+  ? performance.timing.navigationStart
+  : Date.now();
 
 // ============================================================================
 // State
@@ -202,19 +215,34 @@ function startScheduler(): void {
       tasksByPriority[task.priority].push(task);
     }
     
+    // Calculate remaining delay based on time since navigation start
+    const now = Date.now();
+    const timeSinceNavStart = now - navigationStart;
+    
     // Schedule each priority level
     for (const priority of ["high", "normal", "low"] as TaskPriority[]) {
       const tasks = tasksByPriority[priority];
       if (tasks.length === 0) continue;
       
-      const delay = PRIORITY_DELAYS[priority];
+      const minTime = MIN_TIME_FROM_NAV_START[priority];
       const timeout = IDLE_TIMEOUT[priority];
       
-      setTimeout(() => {
+      // Calculate remaining delay: if already past minimum time, delay is 0
+      const remainingDelay = Math.max(0, minTime - timeSinceNavStart);
+      
+      if (remainingDelay === 0) {
+        // Already past minimum time, execute immediately when idle
         for (const { id, task } of tasks) {
           executeWhenIdle(id, task, timeout);
         }
-      }, delay);
+      } else {
+        // Wait for remaining time before executing
+        setTimeout(() => {
+          for (const { id, task } of tasks) {
+            executeWhenIdle(id, task, timeout);
+          }
+        }, remainingDelay);
+      }
     }
   };
   
