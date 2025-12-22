@@ -1,10 +1,7 @@
 name: Lighthouse CI
 
 on:
-  # Run on releases (after deploy to demo site)
-  release:
-    types: [published]
-  # Allow manual trigger
+  # Manual trigger only (release to deploy has delay)
   workflow_dispatch:
     inputs:
       url:
@@ -53,9 +50,23 @@ jobs:
           MANIFEST_PATH: ${{ steps.lighthouse.outputs.manifest }}
       
       - name: Commit badges
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Configure SSH for Deploy Key (bypasses branch protection ruleset)
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "Host github.com" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+          
+          # Switch remote to SSH for ruleset bypass
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+          
           # Always commit to main branch (badges should be updated in main)
           git fetch origin main
           git checkout main

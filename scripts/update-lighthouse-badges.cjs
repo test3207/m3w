@@ -46,9 +46,7 @@ function getScores(report) {
     performance: Math.round(categories.performance.score * 100),
     accessibility: Math.round(categories.accessibility.score * 100),
     'best-practices': Math.round(categories['best-practices'].score * 100),
-    seo: Math.round(categories.seo.score * 100),
-    // PWA is optional - may not be present in all Lighthouse reports
-    pwa: Math.round((categories.pwa?.score || 0) * 100)
+    seo: Math.round(categories.seo.score * 100)
   };
 }
 
@@ -85,10 +83,6 @@ function updateReadme(filePath, badges) {
   content = content.replace(
     /https:\/\/img\.shields\.io\/badge\/SEO-\d+%25-[\w-]+/g,
     badges.seo
-  );
-  content = content.replace(
-    /https:\/\/img\.shields\.io\/badge\/PWA-\d+%25-[\w-]+/g,
-    badges.pwa
   );
   
   try {
@@ -159,8 +153,7 @@ function main() {
     'performance': 'Performance',
     'accessibility': 'Accessibility',
     'best-practices': 'Best Practices',
-    'seo': 'SEO',
-    'pwa': 'PWA'
+    'seo': 'SEO'
   };
   
   // Generate badge URLs for shields.io
