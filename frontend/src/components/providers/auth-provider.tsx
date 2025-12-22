@@ -9,7 +9,7 @@ import { startAutoSync, stopAutoSync } from "@/lib/sync/metadata-sync";
 import { triggerAutoDownload } from "@/lib/storage/download-manager";
 import { useAuthStore } from "@/stores/authStore";
 import { initializeEndpoint, isMultiRegionEnabled } from "@/lib/api/multi-region";
-import { startIdlePrefetch, scheduleLowPriorityTask } from "@/lib/prefetch";
+import { startIdlePrefetch, scheduleLowPriorityTask, scheduleNormalPriorityTask } from "@/lib/prefetch";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -41,7 +41,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Triggers: periodic (5min), online event
   useEffect(() => {
     if (isAuthenticated && !isGuest) {
-      startAutoSync();
+      // Schedule metadata sync as normal priority task
+      // Uses unified idle scheduler - executes 8s+ after load
+      scheduleNormalPriorityTask("metadata-sync", startAutoSync);
       
       // Schedule auto-download as low priority task
       // Uses unified idle scheduler - executes 15s+ after load to avoid Lighthouse impact

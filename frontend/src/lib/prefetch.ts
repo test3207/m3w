@@ -1,13 +1,93 @@
 /**
- * Idle Task Scheduler - Unified management for deferred tasks
+ * Idle Task Scheduler - Unified management for deferred background tasks
  * 
- * Uses requestIdleCallback to schedule tasks during browser idle time.
- * Provides different priority levels to control execution order.
+ * ============================================================================
+ * PROBLEM
+ * ============================================================================
+ * Background tasks (auto-download, metadata sync, audio preload) that run
+ * immediately on page load compete for network/CPU bandwidth and destroy
+ * Lighthouse performance scores. The key insight:
  * 
- * Priority levels:
- * - HIGH: Execute ASAP when idle (e.g., module prefetch for UX)
- * - NORMAL: Execute after page is stable (~5s after load)
- * - LOW: Execute well after Lighthouse measurement (~15s after load)
+ *   Lighthouse measures for ~10-15 seconds after navigation starts.
+ *   Any heavy task during this window impacts LCP, TBT, and Speed Index.
+ * 
+ * ============================================================================
+ * SOLUTION
+ * ============================================================================
+ * This module provides a unified scheduler that:
+ * 
+ * 1. Waits for `window.load` event (critical resources done)
+ * 2. Adds a priority-based delay (3s/8s/15s) to clear Lighthouse window
+ * 3. Uses `requestIdleCallback` to execute during CPU idle time
+ * 4. Deduplicates tasks by ID (won't run the same task twice)
+ * 
+ * ============================================================================
+ * PRIORITY LEVELS
+ * ============================================================================
+ * 
+ * HIGH (3s delay):
+ *   - Module prefetch that improves perceived UX
+ *   - Example: Pre-import cache-manager for faster upload dialog
+ * 
+ * NORMAL (8s delay):
+ *   - Background tasks that can wait a bit
+ *   - Example: Non-critical data prefetch
+ * 
+ * LOW (15s delay):
+ *   - Tasks that absolutely shouldn't impact Lighthouse
+ *   - Example: Auto-download 90MB of audio files, metadata sync
+ * 
+ * ============================================================================
+ * EXPORTED API
+ * ============================================================================
+ * 
+ * prefetchModule(loader, name)
+ *   - HIGH priority module preloading
+ *   - Example: prefetchModule(() => import("./heavy-module"), "heavy")
+ * 
+ * scheduleLowPriorityTask(id, task)
+ *   - LOW priority task scheduling
+ *   - Example: scheduleLowPriorityTask("auto-download", downloadAll)
+ * 
+ * scheduleNormalPriorityTask(id, task)
+ *   - NORMAL priority task scheduling  
+ *   - Example: scheduleNormalPriorityTask("metadata-sync", syncAll)
+ * 
+ * startIdlePrefetch()
+ *   - Initialize pre-configured prefetch tasks
+ *   - Should be called once in AuthProvider
+ * 
+ * ============================================================================
+ * USAGE IN M3W
+ * ============================================================================
+ * 
+ * Task                    | Priority | Location
+ * ------------------------|----------|---------------------------
+ * Module prefetch         | HIGH     | startIdlePrefetch()
+ * Metadata sync           | NORMAL   | auth-provider.tsx
+ * Auto-download audio     | LOW      | auth-provider.tsx
+ * Audio preload (resume)  | LOW      | playerStore/index.ts
+ * 
+ * ============================================================================
+ * WHY requestIdleCallback?
+ * ============================================================================
+ * 
+ * Unlike setTimeout which only waits for a fixed time, requestIdleCallback
+ * waits for the browser to be truly idle:
+ * - No pending user input
+ * - No pending animation frames
+ * - No pending high-priority tasks
+ * 
+ * This ensures our background tasks don't compete with UI interactions.
+ * Safari doesn't support requestIdleCallback, so we fall back to setTimeout.
+ * 
+ * ============================================================================
+ * WHY NOT Web Workers?
+ * ============================================================================
+ * 
+ * Web Workers help with CPU-bound tasks but not network-bound tasks.
+ * Our tasks are primarily network I/O (downloads, API calls), so
+ * requestIdleCallback + delay is the right approach.
  */
 
 import { logger } from "./logger-client";
@@ -53,12 +133,12 @@ let isSchedulerStarted = false;
 // ============================================================================
 
 /**
- * Schedule a task to run during browser idle time
+ * Schedule a task to run during browser idle time (internal use)
  * @param id - Unique task identifier (prevents duplicates)
  * @param task - Function to execute
  * @param priority - Execution priority level
  */
-export function scheduleIdleTask(
+function scheduleIdleTask(
   id: string,
   task: () => void | Promise<void>,
   priority: TaskPriority = "normal"
@@ -175,6 +255,7 @@ export function prefetchModule(
 
 /**
  * Schedule a low-priority task (won't impact Lighthouse)
+ * Executes 15s+ after page load during browser idle time
  * @param id - Unique task identifier
  * @param task - Function to execute
  */
@@ -183,6 +264,19 @@ export function scheduleLowPriorityTask(
   task: () => void | Promise<void>
 ): void {
   scheduleIdleTask(id, task, "low");
+}
+
+/**
+ * Schedule a normal-priority task
+ * Executes 8s+ after page load during browser idle time
+ * @param id - Unique task identifier
+ * @param task - Function to execute
+ */
+export function scheduleNormalPriorityTask(
+  id: string,
+  task: () => void | Promise<void>
+): void {
+  scheduleIdleTask(id, task, "normal");
 }
 
 // ============================================================================
