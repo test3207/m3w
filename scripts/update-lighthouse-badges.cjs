@@ -8,18 +8,47 @@
  * 
  * Environment variables:
  *   MANIFEST_PATH - Path to Lighthouse CI manifest.json (optional)
+ *                   If not provided, defaults to '.lighthouseci/manifest.json'
+ * 
+ * Fallback behavior:
+ *   1. Try MANIFEST_PATH or default manifest.json
+ *   2. If manifest not found, look for any .json file in .lighthouseci/
+ *   3. If no manifest available, try lhr-*.json files directly
  */
 
 const fs = require('fs');
 
-// Helper function to extract scores from report
+/**
+ * Extract scores from Lighthouse report
+ * @param {Object} report - Lighthouse report object
+ * @returns {Object} Scores object with performance, accessibility, best-practices, seo, pwa
+ * @throws {Error} If report structure is invalid
+ */
 function getScores(report) {
+  if (!report || typeof report !== 'object') {
+    throw new Error('Invalid Lighthouse report: report is missing or not an object');
+  }
+  
+  const categories = report.categories;
+  if (!categories || typeof categories !== 'object') {
+    throw new Error('Invalid Lighthouse report: "categories" is missing or not an object');
+  }
+  
+  const requiredCategories = ['performance', 'accessibility', 'best-practices', 'seo'];
+  for (const key of requiredCategories) {
+    const category = categories[key];
+    if (!category || typeof category.score !== 'number') {
+      throw new Error(`Invalid Lighthouse report: missing or invalid "score" for category "${key}"`);
+    }
+  }
+  
   return {
-    performance: Math.round(report.categories.performance.score * 100),
-    accessibility: Math.round(report.categories.accessibility.score * 100),
-    'best-practices': Math.round(report.categories['best-practices'].score * 100),
-    seo: Math.round(report.categories.seo.score * 100),
-    pwa: Math.round((report.categories.pwa?.score || 0) * 100)
+    performance: Math.round(categories.performance.score * 100),
+    accessibility: Math.round(categories.accessibility.score * 100),
+    'best-practices': Math.round(categories['best-practices'].score * 100),
+    seo: Math.round(categories.seo.score * 100),
+    // PWA is optional - may not be present in all Lighthouse reports
+    pwa: Math.round((categories.pwa?.score || 0) * 100)
   };
 }
 
@@ -32,9 +61,15 @@ function getColor(score) {
 
 // Update README badges
 function updateReadme(filePath, badges) {
-  let content = fs.readFileSync(filePath, 'utf8');
+  let content;
+  try {
+    content = fs.readFileSync(filePath, 'utf8');
+  } catch (err) {
+    console.error(`Failed to read ${filePath}: ${err.message}`);
+    return;
+  }
   
-  // Replace each badge
+  // Replace each badge - always update all badges including PWA
   content = content.replace(
     /https:\/\/img\.shields\.io\/badge\/Performance-\d+%25-\w+/g,
     badges.performance
@@ -51,26 +86,29 @@ function updateReadme(filePath, badges) {
     /https:\/\/img\.shields\.io\/badge\/SEO-\d+%25-\w+/g,
     badges.seo
   );
-  if (badges.pwa) {
-    content = content.replace(
-      /https:\/\/img\.shields\.io\/badge\/PWA-\d+%25-\w+/g,
-      badges.pwa
-    );
-  }
+  content = content.replace(
+    /https:\/\/img\.shields\.io\/badge\/PWA-\d+%25-\w+/g,
+    badges.pwa
+  );
   
-  fs.writeFileSync(filePath, content);
-  console.log(`Updated ${filePath}`);
+  try {
+    fs.writeFileSync(filePath, content);
+    console.log(`Updated ${filePath}`);
+  } catch (err) {
+    console.error(`Failed to write ${filePath}: ${err.message}`);
+  }
 }
 
 function main() {
-  // Read manifest
+  // Step 1: Try to read manifest from MANIFEST_PATH or default location
   const manifestPath = (process.env.MANIFEST_PATH && process.env.MANIFEST_PATH.trim()) || '.lighthouseci/manifest.json';
   let manifest;
   
   try {
     manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   } catch (e) {
-    // Try alternative path if manifest file is not readable
+    // Step 2: Manifest not found - look for any .json file in .lighthouseci/
+    // This handles cases where Lighthouse CI output structure varies
     let files = [];
     try {
       if (fs.existsSync('.lighthouseci')) {
@@ -79,7 +117,7 @@ function main() {
           .filter(f => f.endsWith('.json') && f !== 'manifest.json');
       }
     } catch (dirErr) {
-      // Ignore and handle as "no results"
+      // Directory doesn't exist or not readable - will be handled below
     }
     
     if (files.length > 0) {
@@ -90,7 +128,7 @@ function main() {
     }
   }
   
-  // Get the first result
+  // Step 3: Extract report path from manifest
   const result = Array.isArray(manifest) ? manifest[0] : manifest;
   const summaryPath = result.summary || result.jsonPath;
   
@@ -99,7 +137,7 @@ function main() {
     const report = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
     scores = getScores(report);
   } else {
-    // Try to find lhr file
+    // Step 4: Direct fallback - try lhr-*.json files if summary path is invalid
     if (fs.existsSync('.lighthouseci')) {
       const lhrFiles = fs.readdirSync('.lighthouseci').filter(f => f.startsWith('lhr-') && f.endsWith('.json'));
       if (lhrFiles.length > 0) {
@@ -137,8 +175,12 @@ function main() {
   }
   
   // Save scores JSON for README generation
-  fs.writeFileSync('assets/lighthouse/scores.json', JSON.stringify({ scores, badges, timestamp: new Date().toISOString() }, null, 2));
-  console.log('Scores saved to assets/lighthouse/scores.json');
+  try {
+    fs.writeFileSync('assets/lighthouse/scores.json', JSON.stringify({ scores, badges, timestamp: new Date().toISOString() }, null, 2));
+    console.log('Scores saved to assets/lighthouse/scores.json');
+  } catch (err) {
+    console.error(`Failed to write scores.json: ${err.message}`);
+  }
   
   // Update READMEs
   updateReadme('README.md', badges);
