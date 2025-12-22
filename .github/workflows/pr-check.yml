@@ -157,20 +157,12 @@ jobs:
         run: npm run test:coverage
         working-directory: frontend
       
-      - name: Run tests (Backend)
-        run: npm run test
+      - name: Run tests with coverage (Backend)
+        run: npm run test:coverage
         working-directory: backend
       
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./frontend/coverage/lcov.info
-          flags: unittests
-          name: codecov-pr-${{ github.event.pull_request.number }}
-          fail_ci_if_error: false
-      
+      # Coverage is uploaded to Codecov on main branch merge (see coverage.yml)
+      # PR coverage comment for visibility only
       - name: Comment coverage on PR
         uses: romeovs/lcov-reporter-action@v0.3.1
         if: github.event_name == 'pull_request'

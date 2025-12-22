@@ -13,6 +13,14 @@
   <a href="https://github.com/test3207/m3w/releases"><img src="https://img.shields.io/github/v/release/test3207/m3w?include_prereleases&label=version" alt="Version"></a>
   <a href="https://github.com/test3207/m3w/blob/main/LICENSE"><img src="https://img.shields.io/github/license/test3207/m3w" alt="License"></a>
   <a href="https://github.com/test3207/m3w/actions"><img src="https://img.shields.io/github/actions/workflow/status/test3207/m3w/pr-check.yml?label=build" alt="Build"></a>
+  <a href="https://codecov.io/gh/test3207/m3w"><img src="https://codecov.io/gh/test3207/m3w/branch/main/graph/badge.svg" alt="Coverage"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Performance-100%25-brightgreen" alt="Lighthouse Performance">
+  <img src="https://img.shields.io/badge/Accessibility-100%25-brightgreen" alt="Lighthouse Accessibility">
+  <img src="https://img.shields.io/badge/Best%20Practices-100%25-brightgreen" alt="Lighthouse Best Practices">
+  <img src="https://img.shields.io/badge/SEO-100%25-brightgreen" alt="Lighthouse SEO">
 </p>
 
 <p align="center">
@@ -132,7 +140,7 @@ Requires Node.js 25+ and Docker/Podman. See [Development Guide](./docs/DEVELOPME
 ## Documentation
 
 | Document | Description |
-|----------|-------------|
+| ---------- | ------------- |
 | [Deployment Guide](./docker/README.md) | Docker Compose deployment options |
 | [Development Guide](./docs/DEVELOPMENT.md) | Local development setup |
 | [PWA & Offline](./docs/PWA_OFFLINE_GUIDE.md) | Offline functionality details |
