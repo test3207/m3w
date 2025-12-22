@@ -170,9 +170,9 @@ export default defineConfig({
           "icons-vendor": ["lucide-react"],
         },
         // Merge small chunks into their parent to reduce HTTP requests
-        // Based on TCP initial congestion window (initcwnd = 10 × 1460 bytes ≈ 14KB)
-        // Chunks smaller than this can be transferred in a single RTT anyway
-        experimentalMinChunkSize: 14 * 1024, // 14KB minimum
+        // Based on TCP initial congestion window (initcwnd = 10 × 1460 bytes ≈ 14.6KB)
+        // Using 10KB to leave room for TLS/HTTP/2 overhead (~1-1.5KB per request)
+        experimentalMinChunkSize: 10 * 1024, // 10KB minimum
       },
     },
     // Increase chunk size warning limit to 600KB (still reasonable with code splitting)
