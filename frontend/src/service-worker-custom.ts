@@ -17,6 +17,7 @@ import { precacheAndRoute } from "workbox-precaching";
 precacheAndRoute(self.__WB_MANIFEST);
 
 const CACHE_NAME = "m3w-media-v1";
+const AVATAR_CACHE_NAME = "m3w-avatars-v1";
 const AUTH_DB_NAME = "m3w-auth";
 const AUTH_STORE_NAME = "tokens";
 
@@ -284,8 +285,14 @@ self.addEventListener("activate", (event) => {
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
+            // Clean old media caches
             if (cacheName !== CACHE_NAME && cacheName.startsWith("m3w-media-")) {
               swLogger.info("🗑️ Deleting old cache:", cacheName);
+              return caches.delete(cacheName);
+            }
+            // Clean old avatar caches
+            if (cacheName !== AVATAR_CACHE_NAME && cacheName.startsWith("m3w-avatars-")) {
+              swLogger.info("🗑️ Deleting old avatar cache:", cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -300,10 +307,49 @@ self.addEventListener("activate", (event) => {
 });
 
 /**
+ * Handle GitHub avatar requests with caching
+ * GitHub avatar URLs lack proper cache headers, causing Lighthouse warnings.
+ * We cache them for 24 hours to improve performance.
+ */
+async function handleAvatarRequest(request: Request): Promise<Response> {
+  const cache = await caches.open(AVATAR_CACHE_NAME);
+  
+  // Check cache first
+  const cached = await cache.match(request);
+  if (cached) {
+    swLogger.debug("✅ Avatar from cache:", request.url);
+    return cached;
+  }
+  
+  // Fetch and cache
+  try {
+    const response = await fetch(request);
+    
+    if (response.ok) {
+      // Clone response before caching (response body can only be read once)
+      cache.put(request, response.clone());
+      swLogger.debug("📥 Avatar cached:", request.url);
+    }
+    
+    return response;
+  } catch (error) {
+    swLogger.error("Failed to fetch avatar:", error);
+    // Return a placeholder or let it fail
+    return new Response("Avatar unavailable", { status: 503 });
+  }
+}
+
+/**
  * Fetch event: Intercept media requests
  */
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
+
+  // Cache GitHub avatars (improves Lighthouse score)
+  if (url.hostname === "avatars.githubusercontent.com") {
+    event.respondWith(handleAvatarRequest(event.request));
+    return;
+  }
 
   // Only intercept media requests (audio/cover)
   // Unified URL: /api/songs/:id/stream or /api/songs/:id/cover (works for both Guest and Auth)

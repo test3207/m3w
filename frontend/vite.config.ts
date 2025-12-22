@@ -1,15 +1,32 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
 import path from "path";
 import { readFileSync } from "fs";
 
+// Load .env files (vite.config.ts runs in Node.js, doesn't auto-load .env)
+const env = loadEnv(process.env.NODE_ENV || "development", process.cwd(), "VITE_");
+
 // Read version from package.json as fallback
 const rootPkg = JSON.parse(readFileSync(path.resolve(__dirname, "../package.json"), "utf-8"));
 // APP_VERSION env var is set by build-docker.cjs (e.g., "v1.0.0-rc.1" or "v1.0.0")
 // Falls back to package.json version for local dev
 const appVersion = process.env.APP_VERSION || `v${rootPkg.version}-dev`;
+
+// Build target: 'rc' for release candidate (demo), 'prod' for production
+// Default to 'rc' for local development to enable demo feature testing
+const buildTarget = process.env.BUILD_TARGET || "rc";
+
+// Demo mode: explicit control via VITE_DEMO_MODE, otherwise follows BUILD_TARGET
+// - VITE_DEMO_MODE=true  → demo enabled (regardless of BUILD_TARGET)
+// - VITE_DEMO_MODE=false → demo disabled (regardless of BUILD_TARGET)
+// - Not set              → follows BUILD_TARGET (rc=enabled, prod=disabled)
+// Note: Check both loadEnv() result (.env files) and process.env (CI/CD injection)
+const demoModeEnv = env.VITE_DEMO_MODE ?? process.env.VITE_DEMO_MODE;
+const isDemoBuild = demoModeEnv !== undefined
+  ? demoModeEnv === "true"
+  : buildTarget === "rc";
 
 /**
  * Vite plugin to convert render-blocking CSS to async loading.
@@ -45,9 +62,8 @@ function asyncCssPlugin(): Plugin {
 export default defineConfig({
   define: {
     // Inject compile-time boolean constant for tree-shaking
-    // When BUILD_TARGET=prod, this becomes literal `false` and dead code is eliminated
-    // Default to 'rc' in development so demo features can be tested locally
-    "__VITE_IS_DEMO_BUILD__": JSON.stringify((process.env.BUILD_TARGET || "rc") === "rc"),
+    // Controlled by VITE_DEMO_MODE env var, or falls back to BUILD_TARGET
+    "__VITE_IS_DEMO_BUILD__": JSON.stringify(isDemoBuild),
     // Inject version info for display (set by CI or defaults to dev)
     "__APP_VERSION__": JSON.stringify(appVersion),
   },
@@ -114,10 +130,13 @@ export default defineConfig({
     },
   },
   build: {
+    // RC builds include hidden sourcemaps for error tracking (Alloy/Faro)
+    // Production builds exclude sourcemaps for smaller bundle size
+    sourcemap: buildTarget === "rc" ? "hidden" : false,
     rollupOptions: {
       output: {
         manualChunks: {
-          // React core libraries
+          // React core libraries - must load first
           "react-vendor": ["react", "react-dom", "react-router-dom"],
           // Radix UI components (all used components)
           "ui-vendor": [
@@ -148,7 +167,13 @@ export default defineConfig({
           "utils-vendor": ["howler", "zustand", "clsx", "tailwind-merge"],
           // Gesture library (used by player and long-press hook)
           "gesture-vendor": ["@use-gesture/react"],
+          // Lucide icons - merge all into one chunk instead of separate tiny files
+          "icons-vendor": ["lucide-react"],
         },
+        // Merge small chunks into their parent to reduce HTTP requests
+        // Based on TCP initial congestion window (initcwnd = 10 × 1460 bytes ≈ 14.6KB)
+        // Using 10KB to leave room for TLS/HTTP/2 overhead (~1-1.5KB per request)
+        experimentalMinChunkSize: 10 * 1024, // 10KB minimum
       },
     },
     // Increase chunk size warning limit to 600KB (still reasonable with code splitting)

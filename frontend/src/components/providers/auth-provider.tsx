@@ -9,7 +9,7 @@ import { startAutoSync, stopAutoSync } from "@/lib/sync/metadata-sync";
 import { triggerAutoDownload } from "@/lib/storage/download-manager";
 import { useAuthStore } from "@/stores/authStore";
 import { initializeEndpoint, isMultiRegionEnabled } from "@/lib/api/multi-region";
-import { startIdlePrefetch } from "@/lib/prefetch";
+import { startIdlePrefetch, scheduleLowPriorityTask, scheduleNormalPriorityTask } from "@/lib/prefetch";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -41,11 +41,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Triggers: periodic (5min), online event
   useEffect(() => {
     if (isAuthenticated && !isGuest) {
-      startAutoSync();
+      // Schedule metadata sync as normal priority task
+      // Uses unified idle scheduler - executes 8s+ after load
+      scheduleNormalPriorityTask("metadata-sync", startAutoSync);
       
-      // Trigger auto-download for audio files on app startup
-      // This respects the user's auto-download setting (off/wifi-only/always)
-      triggerAutoDownload();
+      // Schedule auto-download as low priority task
+      // Uses unified idle scheduler - executes 15s+ after load to avoid Lighthouse impact
+      scheduleLowPriorityTask("auto-download", triggerAutoDownload);
+      
+      return () => {
+        stopAutoSync();
+      };
     }
     
     return () => {

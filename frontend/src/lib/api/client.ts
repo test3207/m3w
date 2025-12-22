@@ -17,6 +17,8 @@ export class ApiError extends Error {
 
 export interface ApiRequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean>;
+  /** Suppress error logging (for expected errors like demo mode check) */
+  silent?: boolean;
 }
 
 /**
@@ -66,7 +68,7 @@ class ApiClient {
     endpoint: string,
     options: ApiRequestOptions = {}
   ): Promise<T> {
-    const { params, ...fetchOptions } = options;
+    const { params, silent, ...fetchOptions } = options;
     const url = this.buildURL(endpoint, params);
 
     try {
@@ -91,6 +93,13 @@ class ApiClient {
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         if (!response.ok) {
+          // Don't log expected errors when silent mode is enabled
+          if (!silent) {
+            logger.error("API error (non-JSON)", {
+              status: response.status,
+              statusText: response.statusText,
+            });
+          }
           throw new ApiError(
             response.status,
             response.statusText,
@@ -104,11 +113,13 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        logger.error("API error", {
-          status: response.status,
-          statusText: response.statusText,
-          data,
-        });
+        if (!silent) {
+          logger.error("API error", {
+            status: response.status,
+            statusText: response.statusText,
+            data,
+          });
+        }
 
         throw new ApiError(
           response.status,
@@ -125,7 +136,9 @@ class ApiClient {
         throw error;
       }
 
-      logger.error("API request failed", { error, url });
+      if (!silent) {
+        logger.error("API request failed", { error, url });
+      }
       throw new ApiError(
         HttpStatusCode.INTERNAL_SERVER_ERROR,
         "Request Failed",

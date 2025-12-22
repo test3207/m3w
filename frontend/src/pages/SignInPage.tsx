@@ -72,7 +72,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background to-muted p-4">
+    <main className="min-h-screen flex items-center justify-center bg-linear-to-br from-background to-muted p-4">
       <div className="w-full max-w-md">
         {/* Back Button */}
         <div className="mb-4">
@@ -165,6 +165,6 @@ export default function SignInPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

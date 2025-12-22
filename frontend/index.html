@@ -4,18 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Critical inline CSS for instant LCP - shows loading spinner immediately -->
+    <!-- Critical inline CSS for instant LCP -->
     <style>
-      /* CSS variables matching Tailwind theme (gray-900, gray-50, background) */
-      :root{--m3w-bg:#ffffff;--m3w-spinner:#111827}
-      @media(prefers-color-scheme:dark){:root{--m3w-bg:#0a0a0a;--m3w-spinner:#f9fafb}}
-      /* Minimal reset and loading state styles */
+      /* CSS variables matching Tailwind theme */
+      :root{--m3w-bg:#ffffff;--m3w-fg:#0a0a0a;--m3w-muted:#6b7280;--m3w-primary:#2563eb}
+      @media(prefers-color-scheme:dark){:root{--m3w-bg:#0a0a0a;--m3w-fg:#fafafa;--m3w-muted:#9ca3af;--m3w-primary:#3b82f6}}
+      /* Minimal reset */
       *,*::before,*::after{box-sizing:border-box}
-      body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--m3w-bg)}
+      body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--m3w-bg);color:var(--m3w-fg)}
       #root{min-height:100vh}
-      /* Loading spinner - matches PageLoader component (border-gray-900/50) */
+      /* Pre-rendered home page for instant LCP */
+      .prerender-home{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+      .prerender-hero{text-align:center;max-width:28rem}
+      .prerender-icon{margin-bottom:1.5rem;display:flex;justify-content:center}
+      .prerender-icon>svg{padding:1rem;border-radius:50%;background:rgba(37,99,235,0.1);background:color-mix(in srgb,var(--m3w-primary) 10%,transparent);color:var(--m3w-primary)}
+      .prerender-title{font-size:1.875rem;font-weight:700;margin:0 0 0.75rem;letter-spacing:-0.025em}
+      .prerender-desc{color:var(--m3w-muted);margin:0;line-height:1.5}
+      /* Fallback spinner for non-home routes */
       .page-loader{display:flex;align-items:center;justify-content:center;min-height:100vh}
-      .page-loader-spinner{width:3rem;height:3rem;border-radius:50%;border:2px solid transparent;border-bottom-color:var(--m3w-spinner);animation:spin 1s linear infinite}
+      .page-loader-spinner{width:3rem;height:3rem;border-radius:50%;border:2px solid transparent;border-bottom-color:var(--m3w-fg);animation:spin 1s linear infinite}
       @keyframes spin{to{transform:rotate(360deg)}}
     </style>
     
@@ -73,10 +80,18 @@
     </script>
   </head>
   <body>
-    <!-- Initial loading state - replaced by React when app mounts -->
+    <!-- Pre-rendered landing page for instant LCP -->
+    <!-- React replaces this content on mount, i18n updates text dynamically -->
     <div id="root">
-      <div class="page-loader">
-        <div class="page-loader-spinner"></div>
+      <div class="prerender-home">
+        <!-- Hero content (LCP target) -->
+        <div class="prerender-hero">
+          <div class="prerender-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+          <h1 class="prerender-title">M3W</h1>
+          <p class="prerender-desc">Self-hosted music player with offline support and complete library ownership.</p>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

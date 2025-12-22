@@ -149,7 +149,7 @@ export default function LibrariesPage() {
               <TooltipTrigger asChild>
                 <span tabIndex={!canWrite ? 0 : undefined}>
                   <DialogTrigger asChild>
-                    <Button size="icon" variant="outline" disabled={!canWrite}>
+                    <Button size="icon" variant="outline" disabled={!canWrite} aria-label={I18n.libraries.create.dialogTitle}>
                       <Plus className="h-5 w-5" />
                     </Button>
                   </DialogTrigger>
@@ -216,32 +216,35 @@ export default function LibrariesPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {libraries.map((library) => {
+          {libraries.map((library, index) => {
             const canDeleteLibrary = !isDefaultLibrary(library) && library.canDelete !== false && canWrite;
+            // First few items are above-the-fold, load them eagerly for better LCP
+            const isPriority = index < 3;
             return (
               <Card key={library.id} className="overflow-hidden transition-colors hover:bg-accent">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     {/* Cover Image - 96px (clickable) */}
-                    <Link to={`/libraries/${library.id}`} className="shrink-0">
+                    <Link to={`/libraries/${library.id}`} className="shrink-0" aria-label={getLibraryDisplayName(library)}>
                       <CoverImage
                         songId={library.coverSongId}
                         alt={getLibraryDisplayName(library)}
                         type={CoverType.Library}
                         size={CoverSize.LG}
+                        priority={isPriority}
                       />
                     </Link>
 
                     {/* Metadata (clickable) */}
                     <Link to={`/libraries/${library.id}`} className="flex flex-1 flex-col justify-center gap-1 overflow-hidden">
-                      <h3 className="truncate font-semibold text-base flex items-center gap-2">
+                      <h2 className="truncate font-semibold text-base flex items-center gap-2">
                         {getLibraryDisplayName(library)}
                         {isDefaultLibrary(library) && (
                           <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded whitespace-nowrap">
                             {getLibraryBadge(library)}
                           </span>
                         )}
-                      </h3>
+                      </h2>
                       <p className="text-sm text-muted-foreground">
                         {I18n.libraries.card.songsCount.replace("{0}", String(library.songCount || 0))}
                       </p>
