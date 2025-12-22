@@ -559,7 +559,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         // This avoids impacting Lighthouse metrics while still preparing playback
         scheduleLowPriorityTask(
           "audio-preload",
-          () => primePlayerWithSong(song, progress.position, fullQueue.length)
+          async () => {
+            await primePlayerWithSong(song, progress.position, fullQueue.length);
+          }
         );
       } catch (error) {
         logger.error("Failed to load playback progress", error);

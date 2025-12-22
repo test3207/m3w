@@ -191,9 +191,35 @@ function scheduleIdleTask(
   
   pendingTasks.set(id, { id, task, priority });
   
-  // Auto-start scheduler if not running
+  // Start scheduler or process immediately if page already loaded
   if (!isSchedulerStarted) {
     startScheduler();
+  } else if (document.readyState === "complete") {
+    // Page already loaded and scheduler already started
+    // Process this new task immediately with appropriate delay
+    processNewTask(id, task, priority);
+  }
+}
+
+/**
+ * Process a single task that was added after page load
+ * Calculates the remaining delay from navigation start
+ */
+function processNewTask(
+  id: string,
+  task: () => void | Promise<void>,
+  priority: TaskPriority
+): void {
+  const now = Date.now();
+  const timeSinceNavStart = now - navigationStart;
+  const minTime = MIN_TIME_FROM_NAV_START[priority];
+  const timeout = IDLE_TIMEOUT[priority];
+  const remainingDelay = Math.max(0, minTime - timeSinceNavStart);
+  
+  if (remainingDelay === 0) {
+    executeWhenIdle(id, task, timeout);
+  } else {
+    setTimeout(() => executeWhenIdle(id, task, timeout), remainingDelay);
   }
 }
 
