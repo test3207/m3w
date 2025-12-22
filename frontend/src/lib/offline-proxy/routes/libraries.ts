@@ -12,7 +12,9 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { db } from "../../db/schema";
 import type { OfflineLibrary, OfflineSong } from "../../db/schema";
-import { createLibrarySchema, updateLibrarySchema, toLibraryResponse } from "@m3w/shared";
+// Import schemas from subpath (these require Zod, but this module is lazy-loaded anyway)
+import { createLibrarySchema, updateLibrarySchema } from "@m3w/shared/schemas";
+import { toLibraryResponse } from "@m3w/shared/transformers";
 import { getUserId, isGuestUser, sortSongsOffline } from "../utils";
 import { parseBlob } from "music-metadata";
 import { calculateFileHash } from "../../utils/hash";

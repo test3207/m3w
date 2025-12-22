@@ -4,7 +4,8 @@
  * Type definitions for the player Zustand store.
  */
 
-import { type Song, RepeatMode } from "@m3w/shared";
+import type { Song } from "@m3w/shared";
+import { RepeatMode } from "@/lib/shared";
 
 export type QueueSource = "library" | "playlist" | "all" | null;
 
@@ -81,4 +82,4 @@ export interface PlayerActions {
 export type PlayerStore = PlayerState & PlayerActions;
 
 // Re-export RepeatMode for convenience
-export { RepeatMode } from "@m3w/shared";
+export { RepeatMode } from "@m3w/shared/types";

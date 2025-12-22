@@ -15,9 +15,21 @@ import { defineConfig } from 'tsup';
  * - tsup's DTS plugin conflicts with composite mode
  * - tsconfig.build.json extends tsconfig.json but disables composite for build
  * - tsconfig.json with composite: true remains for backend project references
+ * 
+ * Multiple Entry Points:
+ * - Enables subpath exports like @m3w/shared/constants
+ * - Prevents Zod from being pulled into main bundle when only constants/types are needed
+ * - Consumers can import { isOfflineCapable } from "@m3w/shared/api-contracts" without Zod
  */
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: {
+    index: 'src/index.ts',
+    types: 'src/types/index.ts',
+    schemas: 'src/schemas.ts',
+    'api-contracts': 'src/api-contracts.ts',
+    constants: 'src/constants.ts',
+    transformers: 'src/transformers.ts',
+  },
   format: ['esm'],
   target: 'es2022',
   dts: {

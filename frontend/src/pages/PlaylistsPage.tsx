@@ -14,7 +14,8 @@ import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { useToast } from "@/components/ui/use-toast";
 import { eventBus, EVENTS } from "@/lib/events";
 import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
-import { isFavoritesPlaylist } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { isFavoritesPlaylist } from "@m3w/shared/constants";
 import { I18n } from "@/locales/i18n";
 import { logger } from "@/lib/logger-client";
 import { useCanWrite } from "@/hooks/useCanWrite";

@@ -18,7 +18,8 @@ import {
   Shuffle,
 } from "lucide-react";
 import { I18n } from "@/locales/i18n";
-import { RepeatMode } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { RepeatMode } from "@m3w/shared/types";
 
 interface PlaybackControlsProps {
   isPlaying: boolean;

@@ -9,7 +9,7 @@
  */
 
 import { I18n } from "@/locales/i18n";
-import { isDefaultLibrary, isFavoritesPlaylist } from "@m3w/shared";
+import { isDefaultLibrary, isFavoritesPlaylist } from "@/lib/shared";
 import type { Library, Playlist } from "@m3w/shared";
 
 /**

@@ -13,7 +13,8 @@ import { Library, Plus, Trash2 } from "lucide-react";
 import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";
 import { useToast } from "@/components/ui/use-toast";
 import { getLibraryDisplayName, getLibraryBadge } from "@/lib/utils/defaults";
-import { isDefaultLibrary } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { isDefaultLibrary } from "@m3w/shared/constants";
 import { I18n } from "@/locales/i18n";
 import { useCanWrite } from "@/hooks/useCanWrite";
 import {

@@ -10,7 +10,7 @@
 
 import { mainApiClient } from "../client";
 import { MAIN_API_ENDPOINTS } from "../endpoints";
-import { RepeatMode } from "@m3w/shared";
+import { RepeatMode } from "@/lib/shared";
 
 export interface Track {
   id: string;

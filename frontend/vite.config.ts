@@ -136,25 +136,28 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // React core libraries - must load first
+          // React core libraries - must load first, smallest possible
           "react-vendor": ["react", "react-dom", "react-router-dom"],
-          // Radix UI components (all used components)
-          "ui-vendor": [
+          // Radix UI core - used on HomePage (landing page)
+          "ui-core": [
+            "@radix-ui/react-slot",           // Button dependency
+            "@radix-ui/react-dropdown-menu",  // LanguageSwitcher
+          ],
+          // Radix UI extended - lazy loaded with authenticated pages
+          "ui-extended": [
             "@radix-ui/react-alert-dialog",
             "@radix-ui/react-avatar",
             "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
             "@radix-ui/react-label",
             "@radix-ui/react-popover",
             "@radix-ui/react-progress",
             "@radix-ui/react-select",
             "@radix-ui/react-separator",
-            "@radix-ui/react-slot",
             "@radix-ui/react-switch",
             "@radix-ui/react-toast",
             "@radix-ui/react-tooltip",
           ],
-          // PWA and offline support
+          // PWA offline storage - lazy loaded when needed
           "pwa-vendor": [
             "workbox-core",
             "workbox-precaching",
@@ -163,8 +166,10 @@ export default defineConfig({
             "dexie",
             "dexie-react-hooks",
           ],
-          // Audio and utilities
-          "utils-vendor": ["howler", "zustand", "clsx", "tailwind-merge"],
+          // Audio player - lazy loaded when player activates
+          "audio-vendor": ["howler"],
+          // State and utility libraries
+          "utils-vendor": ["zustand", "clsx", "tailwind-merge"],
           // Gesture library (used by player and long-press hook)
           "gesture-vendor": ["@use-gesture/react"],
           // Lucide icons - merge all into one chunk instead of separate tiny files

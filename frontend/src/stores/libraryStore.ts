@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import { api } from "@/services";
 import { logger } from "@/lib/logger-client";
-import { isDefaultLibrary } from "@m3w/shared";
+import { isDefaultLibrary } from "@/lib/shared";
 import type { Library } from "@m3w/shared";
 
 interface LibraryState {

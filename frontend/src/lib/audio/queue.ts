@@ -5,7 +5,7 @@
  */
 
 import { Track } from "./player";
-import { RepeatMode } from "@m3w/shared";
+import { RepeatMode } from "@/lib/shared";
 
 // Re-export RepeatMode for convenience
 export { RepeatMode };

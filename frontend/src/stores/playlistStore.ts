@@ -10,7 +10,7 @@
 import { create } from "zustand";
 import { api } from "@/services";
 import { logger } from "@/lib/logger-client";
-import { isFavoritesPlaylist } from "@m3w/shared";
+import { isFavoritesPlaylist } from "@/lib/shared";
 import type { Playlist } from "@m3w/shared";
 
 interface PlaylistState {

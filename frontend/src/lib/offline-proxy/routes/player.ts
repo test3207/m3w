@@ -11,11 +11,12 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { db } from "../../db/schema";
-import {
-  RepeatMode,
-  type ApiResponse,
-  type ProgressSyncResult,
-  type PreferencesUpdateResult,
+// Import from specific subpaths for better tree-shaking
+import { RepeatMode } from "@m3w/shared/types";
+import type {
+  ApiResponse,
+  ProgressSyncResult,
+  PreferencesUpdateResult,
 } from "@m3w/shared";
 import { getUserId } from "../utils";
 

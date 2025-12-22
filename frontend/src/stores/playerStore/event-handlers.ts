@@ -5,7 +5,7 @@
  * - Sync interval for state synchronization
  */
 
-import { RepeatMode } from "@m3w/shared";
+import { RepeatMode } from "@/lib/shared";
 import { getAudioPlayer, type AudioPlayer } from "@/lib/audio/player";
 import { prefetchAudioBlob } from "@/lib/audio/prefetch";
 import {

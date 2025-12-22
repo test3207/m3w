@@ -7,7 +7,7 @@ import {
   updateMediaSessionPositionState,
   clearMediaSessionMetadata,
 } from "@/lib/audio/media-session";
-import { RepeatMode } from "@m3w/shared";
+import { RepeatMode } from "@/lib/shared";
 import { I18n } from "@/locales/i18n";
 import { isOfflineAuthUser } from "@/stores/authStore";
 import { isSongCached } from "@/lib/storage/audio-cache";

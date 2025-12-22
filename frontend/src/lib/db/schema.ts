@@ -16,7 +16,8 @@
  */
 
 import Dexie, { type EntityTable, type Table } from "dexie";
-import { RepeatMode, type Library, type Playlist, type Song, type PlaylistSong } from "@m3w/shared";
+import { RepeatMode } from "@/lib/shared";
+import type { Library, Playlist, Song, PlaylistSong } from "@m3w/shared";
 
 // ============================================================
 // Core Entities (extended from @m3w/shared)

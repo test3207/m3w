@@ -5,7 +5,7 @@
  * Uses cache config from api-contracts.ts to determine how to cache each response.
  */
 
-import { getCacheConfig } from "@m3w/shared";
+import { getCacheConfig } from "@/lib/shared";
 import { logger } from "../logger-client";
 import {
   cacheLibraries,
