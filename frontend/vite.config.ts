@@ -11,6 +11,9 @@ const rootPkg = JSON.parse(readFileSync(path.resolve(__dirname, "../package.json
 // Falls back to package.json version for local dev
 const appVersion = process.env.APP_VERSION || `v${rootPkg.version}-dev`;
 
+// Build target: 'rc' for release candidate (demo), 'prod' for production
+const buildTarget = process.env.BUILD_TARGET || "rc";
+
 /**
  * Vite plugin to convert render-blocking CSS to async loading.
  * This improves LCP by allowing the page to render with inline critical CSS
@@ -47,7 +50,7 @@ export default defineConfig({
     // Inject compile-time boolean constant for tree-shaking
     // When BUILD_TARGET=prod, this becomes literal `false` and dead code is eliminated
     // Default to 'rc' in development so demo features can be tested locally
-    "__VITE_IS_DEMO_BUILD__": JSON.stringify((process.env.BUILD_TARGET || "rc") === "rc"),
+    "__VITE_IS_DEMO_BUILD__": JSON.stringify(buildTarget === "rc"),
     // Inject version info for display (set by CI or defaults to dev)
     "__APP_VERSION__": JSON.stringify(appVersion),
   },
@@ -114,6 +117,9 @@ export default defineConfig({
     },
   },
   build: {
+    // RC builds include hidden sourcemaps for error tracking (Alloy/Faro)
+    // Production builds exclude sourcemaps for smaller bundle size
+    sourcemap: buildTarget === "rc" ? "hidden" : false,
     rollupOptions: {
       output: {
         manualChunks: {
