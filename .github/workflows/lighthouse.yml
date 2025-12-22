@@ -1,9 +1,9 @@
 name: Lighthouse CI
 
 on:
-  # Run on releases (after deploy to demo site)
-  release:
-    types: [published]
+  # Run daily at 10:00 AM Beijing time (02:00 UTC)
+  schedule:
+    - cron: '0 2 * * *'
   # Allow manual trigger
   workflow_dispatch:
     inputs:
