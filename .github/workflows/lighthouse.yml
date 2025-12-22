@@ -65,7 +65,7 @@ jobs:
           }
           
           // Read manifest
-          const manifestPath = process.env.MANIFEST_PATH || '.lighthouseci/manifest.json';
+          const manifestPath = (process.env.MANIFEST_PATH && process.env.MANIFEST_PATH.trim()) || '.lighthouseci/manifest.json';
           let manifest;
           try {
             manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -180,6 +180,9 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          # Always commit to main branch (badges should be updated in main)
+          git fetch origin main
+          git checkout main
           git add assets/lighthouse/ README.md README.zh-CN.md
           git diff --staged --quiet || git commit -m "chore: update lighthouse badges [skip ci]"
-          git push
+          git push origin main

@@ -8,7 +8,10 @@ on:
       - 'frontend/src/**'
       - 'backend/src/**'
       - 'shared/src/**'
-      - '**/package.json'
+      - 'package.json'
+      - 'frontend/package.json'
+      - 'backend/package.json'
+      - 'shared/package.json'
 
 jobs:
   coverage:
