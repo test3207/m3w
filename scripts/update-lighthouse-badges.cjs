@@ -116,10 +116,19 @@ function main() {
   
   console.log('Scores:', scores);
   
+  // Special case labels (acronyms should be uppercase)
+  const labelMap = {
+    'performance': 'Performance',
+    'accessibility': 'Accessibility',
+    'best-practices': 'Best Practices',
+    'seo': 'SEO',
+    'pwa': 'PWA'
+  };
+  
   // Generate badge URLs for shields.io
   const badges = {};
   for (const [key, score] of Object.entries(scores)) {
-    const label = key
+    const label = labelMap[key] || key
       .split('-')
       .map(part => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
