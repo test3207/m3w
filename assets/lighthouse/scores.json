@@ -13,6 +13,6 @@
     "seo": "https://img.shields.io/badge/SEO-100%25-brightgreen",
     "pwa": "https://img.shields.io/badge/PWA-100%25-brightgreen"
   },
-  "timestamp": null,
+  "timestamp": "pending",
   "note": "Initial placeholder scores. Will be updated with actual values by GitHub Actions on first Lighthouse run."
 }

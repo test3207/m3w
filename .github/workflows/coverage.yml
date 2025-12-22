@@ -12,6 +12,8 @@ on:
       - 'frontend/package.json'
       - 'backend/package.json'
       - 'shared/package.json'
+      - 'frontend/vitest.config.*'
+      - 'backend/vitest.config.*'
 
 jobs:
   coverage:

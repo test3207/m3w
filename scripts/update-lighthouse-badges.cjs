@@ -71,23 +71,23 @@ function updateReadme(filePath, badges) {
   
   // Replace each badge - always update all badges including PWA
   content = content.replace(
-    /https:\/\/img\.shields\.io\/badge\/Performance-\d+%25-\w+/g,
+    /https:\/\/img\.shields\.io\/badge\/Performance-\d+%25-[\w-]+/g,
     badges.performance
   );
   content = content.replace(
-    /https:\/\/img\.shields\.io\/badge\/Accessibility-\d+%25-\w+/g,
+    /https:\/\/img\.shields\.io\/badge\/Accessibility-\d+%25-[\w-]+/g,
     badges.accessibility
   );
   content = content.replace(
-    /https:\/\/img\.shields\.io\/badge\/Best%20Practices-\d+%25-\w+/g,
+    /https:\/\/img\.shields\.io\/badge\/Best%20Practices-\d+%25-[\w-]+/g,
     badges['best-practices']
   );
   content = content.replace(
-    /https:\/\/img\.shields\.io\/badge\/SEO-\d+%25-\w+/g,
+    /https:\/\/img\.shields\.io\/badge\/SEO-\d+%25-[\w-]+/g,
     badges.seo
   );
   content = content.replace(
-    /https:\/\/img\.shields\.io\/badge\/PWA-\d+%25-\w+/g,
+    /https:\/\/img\.shields\.io\/badge\/PWA-\d+%25-[\w-]+/g,
     badges.pwa
   );
   
