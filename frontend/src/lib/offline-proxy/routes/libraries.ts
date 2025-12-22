@@ -17,8 +17,11 @@ import { getUserId, isGuestUser, sortSongsOffline } from "../utils";
 import { parseBlob } from "music-metadata";
 import { calculateFileHash } from "../../utils/hash";
 import { generateUUID } from "../../utils/uuid";
-import { cacheAudioForOffline, cacheCoverForOffline } from "../../pwa/cache-manager";
 import { logger } from "@/lib/logger-client";
+
+// Lazy import cache-manager to enable code splitting
+// This module contains music-metadata (~100KB) which is only needed for upload
+const getCacheManager = () => import("../../pwa/cache-manager");
 
 const app = new Hono();
 
@@ -346,10 +349,12 @@ app.post("/:id/songs", async (c: Context) => {
       });
 
       // Cache cover in Cache Storage using unified /api/ URL
+      const { cacheCoverForOffline } = await getCacheManager();
       await cacheCoverForOffline(songId, coverBlob);
     }
 
     // 7. Cache audio file in Cache Storage using unified /api/ URL
+    const { cacheAudioForOffline } = await getCacheManager();
     const streamUrl = await cacheAudioForOffline(songId, file);
 
     // 8. Create Song object

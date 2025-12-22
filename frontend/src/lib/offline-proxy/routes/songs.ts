@@ -13,8 +13,10 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { db } from "../../db/schema";
-import { deleteFromCache } from "../../pwa/cache-manager";
 import { logger } from "@/lib/logger-client";
+
+// Lazy import cache-manager to enable code splitting
+const getCacheManager = () => import("../../pwa/cache-manager");
 
 const app = new Hono();
 
@@ -117,6 +119,7 @@ app.delete("/:id", async (c: Context) => {
 
     // Delete cached audio file from Cache Storage
     try {
+      const { deleteFromCache } = await getCacheManager();
       await deleteFromCache(`/api/songs/${id}/stream`);
     } catch (cacheError) {
       // Log but don't fail - audio may not be cached
@@ -126,6 +129,7 @@ app.delete("/:id", async (c: Context) => {
     // Delete cached cover from Cache Storage
     // Always attempts /api/songs/${id}/cover; silently ignores if not cached
     try {
+      const { deleteFromCache } = await getCacheManager();
       await deleteFromCache(`/api/songs/${id}/cover`);
     } catch {
       // Cover may not be in cache - ignore
