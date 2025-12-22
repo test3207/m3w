@@ -340,7 +340,10 @@ app.post("/:id/songs", async (c: Context) => {
     // 5. Generate song ID (needed for cache URLs)
     const songId = generateUUID();
 
-    // 6. Extract cover art if available and cache it
+    // 6. Get cache manager once for all caching operations
+    const { cacheCoverForOffline, cacheAudioForOffline } = await getCacheManager();
+
+    // 7. Extract cover art if available and cache it
     if (common.picture && common.picture.length > 0) {
       const picture = common.picture[0];
       // Convert Uint8Array to Blob
@@ -349,12 +352,10 @@ app.post("/:id/songs", async (c: Context) => {
       });
 
       // Cache cover in Cache Storage using unified /api/ URL
-      const { cacheCoverForOffline } = await getCacheManager();
       await cacheCoverForOffline(songId, coverBlob);
     }
 
-    // 7. Cache audio file in Cache Storage using unified /api/ URL
-    const { cacheAudioForOffline } = await getCacheManager();
+    // 8. Cache audio file in Cache Storage using unified /api/ URL
     const streamUrl = await cacheAudioForOffline(songId, file);
 
     // 8. Create Song object
