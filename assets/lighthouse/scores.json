@@ -11,6 +11,6 @@
     "best-practices": "https://img.shields.io/badge/Best%20Practices-100%25-brightgreen",
     "seo": "https://img.shields.io/badge/SEO-100%25-brightgreen"
   },
-  "timestamp": "2025-12-22T00:00:00.000Z",
-  "note": "Initial scores based on manual Lighthouse audit. Will be updated automatically by GitHub Actions."
+  "timestamp": null,
+  "note": "Initial placeholder scores. Will be updated with actual values by GitHub Actions on first Lighthouse run."
 }
