@@ -159,6 +159,12 @@ jobs:
               /https:\/\/img\.shields\.io\/badge\/SEO-\d+%25-\w+/g,
               badges.seo
             );
+            if (badges.pwa) {
+              content = content.replace(
+                /https:\/\/img\.shields\.io\/badge\/PWA-\d+%25-\w+/g,
+                badges.pwa
+              );
+            }
             
             fs.writeFileSync(filePath, content);
             console.log(`Updated ${filePath}`);
