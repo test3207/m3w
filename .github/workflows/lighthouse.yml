@@ -1,0 +1,64 @@
+name: Lighthouse CI
+
+on:
+  # Run on releases (after deploy to demo site)
+  release:
+    types: [published]
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to audit'
+        required: false
+        default: 'https://m3w.test3207.top'
+
+permissions:
+  contents: write
+
+jobs:
+  lighthouse:
+    name: Lighthouse Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
+      
+      - name: Run Lighthouse CI
+        id: lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            ${{ github.event.inputs.url || 'https://m3w.test3207.top' }}
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25.2.1'
+      
+      - name: Generate Lighthouse badges
+        run: |
+          # Create output directory
+          mkdir -p assets/lighthouse
+          
+          # Generate badges from manifest
+          MANIFEST_PATH="${{ steps.lighthouse.outputs.manifest }}"
+          echo "Manifest path: $MANIFEST_PATH"
+          node scripts/update-lighthouse-badges.cjs
+        env:
+          MANIFEST_PATH: ${{ steps.lighthouse.outputs.manifest }}
+      
+      - name: Commit badges
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          # Always commit to main branch (badges should be updated in main)
+          git fetch origin main
+          git checkout main
+          git add assets/lighthouse/ README.md README.zh-CN.md
+          git diff --staged --quiet || git commit -m "chore: update lighthouse badges [skip ci]"
+          git push origin main

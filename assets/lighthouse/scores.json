@@ -1,0 +1,18 @@
+{
+  "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100,
+    "pwa": 100
+  },
+  "badges": {
+    "performance": "https://img.shields.io/badge/Performance-100%25-brightgreen",
+    "accessibility": "https://img.shields.io/badge/Accessibility-100%25-brightgreen",
+    "best-practices": "https://img.shields.io/badge/Best%20Practices-100%25-brightgreen",
+    "seo": "https://img.shields.io/badge/SEO-100%25-brightgreen",
+    "pwa": "https://img.shields.io/badge/PWA-100%25-brightgreen"
+  },
+  "timestamp": "pending",
+  "note": "Initial placeholder scores. Will be updated with actual values by GitHub Actions on first Lighthouse run."
+}
