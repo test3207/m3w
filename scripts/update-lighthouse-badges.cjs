@@ -176,7 +176,12 @@ function main() {
   
   // Save scores JSON for README generation
   try {
-    fs.writeFileSync('assets/lighthouse/scores.json', JSON.stringify({ scores, badges, timestamp: new Date().toISOString() }, null, 2));
+    // Ensure directory exists
+    const dir = 'assets/lighthouse';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(`${dir}/scores.json`, JSON.stringify({ scores, badges, timestamp: new Date().toISOString() }, null, 2));
     console.log('Scores saved to assets/lighthouse/scores.json');
   } catch (err) {
     console.error(`Failed to write scores.json: ${err.message}`);
