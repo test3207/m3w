@@ -22,6 +22,7 @@ const buildTarget = process.env.BUILD_TARGET || "rc";
 // - VITE_DEMO_MODE=true  → demo enabled (regardless of BUILD_TARGET)
 // - VITE_DEMO_MODE=false → demo disabled (regardless of BUILD_TARGET)
 // - Not set              → follows BUILD_TARGET (rc=enabled, prod=disabled)
+// Note: Check both loadEnv() result (.env files) and process.env (CI/CD injection)
 const demoModeEnv = env.VITE_DEMO_MODE ?? process.env.VITE_DEMO_MODE;
 const isDemoBuild = demoModeEnv !== undefined
   ? demoModeEnv === "true"
