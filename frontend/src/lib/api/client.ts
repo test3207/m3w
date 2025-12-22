@@ -93,6 +93,13 @@ class ApiClient {
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         if (!response.ok) {
+          // Don't log expected errors when silent mode is enabled
+          if (!silent) {
+            logger.error("API error (non-JSON)", {
+              status: response.status,
+              statusText: response.statusText,
+            });
+          }
           throw new ApiError(
             response.status,
             response.statusText,

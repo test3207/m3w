@@ -7,7 +7,8 @@ import "./styles/globals.css";
 import "./locales/init";
 
 // Lazy load pages for code splitting
-const HomePage = lazy(() => import("./pages/HomePage"));
+// HomePage is eagerly loaded as the landing page LCP target
+import HomePage from "./pages/HomePage";
 const SignInPage = lazy(() => import("./pages/SignInPage"));
 const AuthCallbackPage = lazy(() => import("./pages/AuthCallbackPage"));
 const LibrariesPage = lazy(() => import("./pages/LibrariesPage"));

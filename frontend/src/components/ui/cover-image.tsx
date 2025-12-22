@@ -29,6 +29,8 @@ interface CoverImageProps {
   className?: string;
   /** Size variant */
   size?: CoverSize;
+  /** Priority loading - disables lazy loading for above-the-fold images */
+  priority?: boolean;
 }
 
 const sizeClasses: Record<CoverSize, string> = {
@@ -65,6 +67,7 @@ export function CoverImage({
   type = CoverType.Song,
   className,
   size = CoverSize.MD,
+  priority = false,
 }: CoverImageProps) {
   // Use key on wrapper to reset state when songId changes (React pattern)
   // This avoids useEffect + setState which triggers cascading renders
@@ -76,6 +79,7 @@ export function CoverImage({
       type={type}
       className={className}
       size={size}
+      priority={priority}
     />
   );
 }
@@ -87,6 +91,7 @@ function CoverImageInner({
   type = CoverType.Song,
   className,
   size = CoverSize.MD,
+  priority = false,
 }: CoverImageProps) {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -109,8 +114,10 @@ function CoverImageInner({
             src={coverUrl}
             alt={alt}
             crossOrigin="anonymous"
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
             decoding="async"
+            // Priority images get fetchpriority="high" for faster loading
+            {...(priority && { fetchPriority: "high" as const })}
             className={cn(
               "h-full w-full object-cover transition-opacity duration-200",
               isLoaded ? "opacity-100" : "opacity-0"

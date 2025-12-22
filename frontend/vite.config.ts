@@ -1,9 +1,12 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
 import path from "path";
 import { readFileSync } from "fs";
+
+// Load .env files (vite.config.ts runs in Node.js, doesn't auto-load .env)
+const env = loadEnv(process.env.NODE_ENV || "development", process.cwd(), "VITE_");
 
 // Read version from package.json as fallback
 const rootPkg = JSON.parse(readFileSync(path.resolve(__dirname, "../package.json"), "utf-8"));
@@ -12,7 +15,17 @@ const rootPkg = JSON.parse(readFileSync(path.resolve(__dirname, "../package.json
 const appVersion = process.env.APP_VERSION || `v${rootPkg.version}-dev`;
 
 // Build target: 'rc' for release candidate (demo), 'prod' for production
+// Default to 'rc' for local development to enable demo feature testing
 const buildTarget = process.env.BUILD_TARGET || "rc";
+
+// Demo mode: explicit control via VITE_DEMO_MODE, otherwise follows BUILD_TARGET
+// - VITE_DEMO_MODE=true  → demo enabled (regardless of BUILD_TARGET)
+// - VITE_DEMO_MODE=false → demo disabled (regardless of BUILD_TARGET)
+// - Not set              → follows BUILD_TARGET (rc=enabled, prod=disabled)
+const demoModeEnv = env.VITE_DEMO_MODE ?? process.env.VITE_DEMO_MODE;
+const isDemoBuild = demoModeEnv !== undefined
+  ? demoModeEnv === "true"
+  : buildTarget === "rc";
 
 /**
  * Vite plugin to convert render-blocking CSS to async loading.
@@ -48,9 +61,8 @@ function asyncCssPlugin(): Plugin {
 export default defineConfig({
   define: {
     // Inject compile-time boolean constant for tree-shaking
-    // When BUILD_TARGET=prod, this becomes literal `false` and dead code is eliminated
-    // Default to 'rc' in development so demo features can be tested locally
-    "__VITE_IS_DEMO_BUILD__": JSON.stringify(buildTarget === "rc"),
+    // Controlled by VITE_DEMO_MODE env var, or falls back to BUILD_TARGET
+    "__VITE_IS_DEMO_BUILD__": JSON.stringify(isDemoBuild),
     // Inject version info for display (set by CI or defaults to dev)
     "__APP_VERSION__": JSON.stringify(appVersion),
   },

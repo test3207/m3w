@@ -1,0 +1,12 @@
+# M3W - Self-hosted music player with full library ownership
+# https://github.com/test3207/m3w
+
+User-agent: *
+Allow: /
+Allow: /signin
+
+# Protect user data routes
+Disallow: /libraries
+Disallow: /playlists
+Disallow: /settings
+Disallow: /api/

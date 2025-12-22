@@ -72,17 +72,17 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background to-muted p-4">
+    <main className="min-h-screen flex items-center justify-center bg-linear-to-br from-background to-muted p-4">
       <div className="w-full max-w-md">
         {/* Back Button */}
-        <div className="mb-4">
+        <nav className="mb-4" aria-label="Back navigation">
           <Button asChild variant="ghost" size="sm">
             <Link to="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
               <span suppressHydrationWarning>{I18n.signin.back}</span>
             </Link>
           </Button>
-        </div>
+        </nav>
 
         <Card>
           <CardHeader className="text-center space-y-2">
@@ -165,6 +165,6 @@ export default function SignInPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

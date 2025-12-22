@@ -171,7 +171,7 @@ export default function PlaylistsPage() {
               <TooltipTrigger asChild>
                 <span tabIndex={!canWrite ? 0 : undefined}>
                   <DialogTrigger asChild>
-                    <Button size="icon" variant="outline" disabled={!canWrite}>
+                    <Button size="icon" variant="outline" disabled={!canWrite} aria-label={I18n.playlists.create.dialogTitle}>
                       <Plus className="h-5 w-5" />
                     </Button>
                   </DialogTrigger>
@@ -236,32 +236,35 @@ export default function PlaylistsPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {playlists.map((playlist) => {
+          {playlists.map((playlist, index) => {
             const canDeletePlaylist = !isFavoritesPlaylist(playlist) && playlist.canDelete !== false && canWrite;
+            // First few items are above-the-fold, load them eagerly for better LCP
+            const isPriority = index < 3;
             return (
               <Card key={playlist.id} className="overflow-hidden transition-colors hover:bg-accent">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     {/* Cover Image - 96px (clickable) */}
-                    <Link to={`/playlists/${playlist.id}`} className="shrink-0">
+                    <Link to={`/playlists/${playlist.id}`} className="shrink-0" aria-label={getPlaylistDisplayName(playlist)}>
                       <CoverImage
                         songId={playlist.coverSongId}
                         alt={getPlaylistDisplayName(playlist)}
                         type={CoverType.Playlist}
                         size={CoverSize.LG}
+                        priority={isPriority}
                       />
                     </Link>
 
                     {/* Metadata (clickable) */}
                     <Link to={`/playlists/${playlist.id}`} className="flex flex-1 flex-col justify-center gap-1 overflow-hidden">
-                      <h3 className="truncate font-semibold text-base flex items-center gap-2">
+                      <h2 className="truncate font-semibold text-base flex items-center gap-2">
                         {getPlaylistDisplayName(playlist)}
                         {isFavoritesPlaylist(playlist) && (
                           <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded whitespace-nowrap">
                             {getPlaylistBadge(playlist)}
                           </span>
                         )}
-                      </h3>
+                      </h2>
                       <p className="text-sm text-muted-foreground">
                         {I18n.playlists.card.songsCount.replace("{0}", String(playlist.songCount || 0))}
                       </p>
