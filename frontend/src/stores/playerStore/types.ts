@@ -5,7 +5,7 @@
  */
 
 import type { Song } from "@m3w/shared";
-import { RepeatMode } from "@m3w/shared/types";
+import { RepeatMode } from "@/lib/shared";
 
 export type QueueSource = "library" | "playlist" | "all" | null;
 

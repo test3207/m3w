@@ -7,8 +7,7 @@
  * Also handles automatic caching of GET responses to IndexedDB for offline access.
  */
 
-// Import from specific subpath to avoid pulling Zod into main bundle
-import { isOfflineCapable } from "@m3w/shared/api-contracts";
+import { isOfflineCapable } from "@/lib/shared";
 import { logger } from "../logger-client";
 import { API_BASE_URL } from "./config";
 import { isGuestUser } from "../offline-proxy/utils";

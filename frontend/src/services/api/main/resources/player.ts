@@ -10,8 +10,7 @@
 
 import { mainApiClient } from "../client";
 import { MAIN_API_ENDPOINTS } from "../endpoints";
-// Import from specific subpath to avoid pulling Zod into main bundle
-import { RepeatMode } from "@m3w/shared/types";
+import { RepeatMode } from "@/lib/shared";
 
 export interface Track {
   id: string;

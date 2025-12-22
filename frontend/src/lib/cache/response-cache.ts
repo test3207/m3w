@@ -5,8 +5,7 @@
  * Uses cache config from api-contracts.ts to determine how to cache each response.
  */
 
-// Import from specific subpath to avoid pulling Zod into main bundle
-import { getCacheConfig } from "@m3w/shared/api-contracts";
+import { getCacheConfig } from "@/lib/shared";
 import { logger } from "../logger-client";
 import {
   cacheLibraries,

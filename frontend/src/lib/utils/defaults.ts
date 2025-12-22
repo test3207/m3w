@@ -9,8 +9,7 @@
  */
 
 import { I18n } from "@/locales/i18n";
-// Import from specific subpath to avoid pulling Zod into main bundle
-import { isDefaultLibrary, isFavoritesPlaylist } from "@m3w/shared/constants";
+import { isDefaultLibrary, isFavoritesPlaylist } from "@/lib/shared";
 import type { Library, Playlist } from "@m3w/shared";
 
 /**

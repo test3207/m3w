@@ -10,8 +10,7 @@
 import { create } from "zustand";
 import { api } from "@/services";
 import { logger } from "@/lib/logger-client";
-// Import from specific subpath to avoid pulling Zod into main bundle
-import { isFavoritesPlaylist } from "@m3w/shared/constants";
+import { isFavoritesPlaylist } from "@/lib/shared";
 import type { Playlist } from "@m3w/shared";
 
 interface PlaylistState {
