@@ -22,7 +22,6 @@
   <img src="https://img.shields.io/badge/Accessibility-100%25-brightgreen" alt="Lighthouse Accessibility">
   <img src="https://img.shields.io/badge/Best%20Practices-100%25-brightgreen" alt="Lighthouse Best Practices">
   <img src="https://img.shields.io/badge/SEO-100%25-brightgreen" alt="Lighthouse SEO">
-  <img src="https://img.shields.io/badge/PWA-100%25-brightgreen" alt="Lighthouse PWA">
 </p>
 
 <p align="center">
