@@ -154,9 +154,11 @@ const IDLE_TIMEOUT: Record<TaskPriority, number> = {
   low: 30000,    // 30s max wait for idle
 };
 
-// Navigation start time (fallback to now if Performance API unavailable)
-const navigationStart = typeof performance !== "undefined" && performance.timing
-  ? performance.timing.navigationStart
+// Navigation start time using Performance API (Level 2)
+// performance.timeOrigin: high-resolution timestamp of navigation start
+// Fallback to Date.now() if Performance API unavailable (very old browsers)
+const navigationStart = typeof performance !== "undefined" && performance.timeOrigin
+  ? performance.timeOrigin
   : Date.now();
 
 // ============================================================================
