@@ -74,6 +74,99 @@
 - Frontend components organized by purpose: `components/ui` (primitives), `components/features` (domain), `components/layouts` (structure).
 - Dashboard routes render inside `DashboardLayoutShell`; compose page sections with `AdaptiveLayout` and `AdaptiveSection` so base and minimum heights stay consistent across breakpoints.
 
+## Bundle Optimization
+
+### Core Principle: Know Your Critical Path
+
+The **critical path** is code that runs before the user sees anything useful:
+- `main.tsx` → `App.tsx` → `AuthProvider` → first route render
+
+Everything on this path should be as small as possible. Everything else can load later.
+
+### What Goes Where
+
+| Category | Examples | Strategy |
+|----------|----------|----------|
+| **Critical** | Router, auth store, API client, i18n | Static import, keep lean |
+| **Route-level** | Pages (`LibrariesPage`, `SettingsPage`) | Auto code-split by React Router |
+| **Feature-heavy** | Upload form, playlist editor, offline-proxy | Lazy load on first use |
+| **Heavy libs** | `music-metadata`, `@aws-crypto`, Zod schemas | Dynamic import or isolate to specific chunks |
+
+### Lazy Loading Patterns
+
+**Pattern 1: Route-based (automatic)**
+```tsx
+// React Router handles this - pages are auto-split
+const LibrariesPage = lazy(() => import("@/pages/LibrariesPage"));
+```
+
+**Pattern 2: Feature-based (on user action)**
+```tsx
+// Load heavy module only when user clicks upload
+const handleUpload = async () => {
+  const { processAudioFile } = await import("@/lib/audio/processor");
+  await processAudioFile(file);
+};
+```
+
+**Pattern 3: Singleton lazy load (load once, reuse)**
+```tsx
+// In lib/offline-proxy/index.ts
+let module: typeof import("./routes") | null = null;
+export async function getOfflineProxy() {
+  if (!module) module = await import("./routes");
+  return module.default;
+}
+```
+
+### When NOT to Lazy Load
+
+❌ **Don't lazy load if already statically imported elsewhere**
+```tsx
+// BAD: prefetch.ts is already imported by playerStore
+useEffect(() => {
+  import("@/lib/prefetch").then(...); // Useless, already in main bundle
+}, []);
+
+// GOOD: Just import directly
+import { startIdlePrefetch } from "@/lib/prefetch";
+useEffect(() => startIdlePrefetch(), []);
+```
+
+❌ **Don't lazy load tiny modules** (< 5KB)
+- The chunk overhead + network request isn't worth it
+
+❌ **Don't lazy load on the critical render path**
+- If users see a loading spinner for basic UI, it's too much
+
+### Shared Package Imports
+
+`@m3w/shared` has subpath exports to avoid pulling Zod into main bundle:
+
+```tsx
+// In critical path modules (stores, lib/api, providers):
+import { RepeatMode, isDefaultLibrary, type Song } from "@/lib/shared";
+
+// In lazy-loaded modules (pages, offline-proxy):
+import { anything } from "@m3w/shared";  // OK, already code-split
+```
+
+The `@/lib/shared.ts` file re-exports safe items from subpaths. See its comments for details.
+
+### Checking Bundle Impact
+
+```bash
+# Generate bundle visualization
+cd frontend && npx vite-bundle-visualizer
+
+# Check for warnings during build
+npm run build 2>&1 | grep -i warning
+```
+
+If you see "X is dynamically imported by Y but also statically imported by Z":
+- The dynamic import is useless → convert to static import
+- Or refactor to remove the static import from critical path
+
 ## API Response Patterns
 - API routes return `ApiResponse<T>` with `{ success, data?, error?, details? }` structure.
 - Export shared types from `@m3w/shared` (types are organized in `shared/src/types/` directory).

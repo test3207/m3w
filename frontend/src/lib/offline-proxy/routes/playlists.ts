@@ -14,7 +14,9 @@
 
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { createPlaylistSchema, updatePlaylistSchema, toPlaylistResponse } from "@m3w/shared";
+// Import schemas from subpath (these require Zod, but this module is lazy-loaded anyway)
+import { createPlaylistSchema, updatePlaylistSchema } from "@m3w/shared/schemas";
+import { toPlaylistResponse } from "@m3w/shared/transformers";
 import type { ApiResponse, PlaylistReorderResult } from "@m3w/shared";
 import { getUserId } from "../utils";
 import { logger } from "../../logger-client";

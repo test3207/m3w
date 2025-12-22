@@ -17,7 +17,8 @@ import { I18n } from "@/locales/i18n";
 import { api } from "@/services";
 import { eventBus, EVENTS, type SongCachedPayload } from "@/lib/events";
 import { getLibraryDisplayName } from "@/lib/utils/defaults";
-import { isDefaultLibrary } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { isDefaultLibrary } from "@m3w/shared/constants";
 import type { Song, SongSortOption } from "@m3w/shared";
 import { logger } from "@/lib/logger-client";
 import { getLibraryCacheStats, queueLibraryDownload } from "@/lib/storage/download-manager";

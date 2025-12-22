@@ -16,7 +16,9 @@
  */
 
 import Dexie, { type EntityTable, type Table } from "dexie";
-import { RepeatMode, type Library, type Playlist, type Song, type PlaylistSong } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { RepeatMode } from "@m3w/shared/types";
+import type { Library, Playlist, Song, PlaylistSong } from "@m3w/shared";
 
 // ============================================================
 // Core Entities (extended from @m3w/shared)

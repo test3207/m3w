@@ -163,3 +163,6 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     </div>
   );
 }
+
+// Default export for lazy loading in main.tsx
+export default MobileLayout;

@@ -18,7 +18,8 @@ import { usePlaylistStore } from "@/stores/playlistStore";
 import { useToast } from "@/components/ui/use-toast";
 import { I18n } from "@/locales/i18n";
 import { getPlaylistDisplayName } from "@/lib/utils/defaults";
-import { isFavoritesPlaylist } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { isFavoritesPlaylist } from "@m3w/shared/constants";
 import { Check, Plus, Music, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CoverImage, CoverType, CoverSize } from "@/components/ui/cover-image";

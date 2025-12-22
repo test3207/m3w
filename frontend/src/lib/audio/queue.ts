@@ -5,7 +5,8 @@
  */
 
 import { Track } from "./player";
-import { RepeatMode } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { RepeatMode } from "@m3w/shared/types";
 
 // Re-export RepeatMode for convenience
 export { RepeatMode };

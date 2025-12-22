@@ -18,13 +18,18 @@ const PlaylistDetailPage = lazy(() => import("./pages/PlaylistDetailPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
+// Lazy load MobileLayout - only needed for authenticated pages
+// This removes playerStore + audio system from the critical path
+const MobileLayout = lazy(() => import("./components/layouts/mobile-layout"));
+
+// Lazy load PWA prompts - only shown when service worker updates or install available
+const ReloadPrompt = lazy(() => import("./components/features/pwa/reload-prompt").then(m => ({ default: m.ReloadPrompt })));
+const InstallPrompt = lazy(() => import("./components/features/pwa/install-prompt").then(m => ({ default: m.InstallPrompt })));
+
 // Import UI components (keep these eager loaded as they're used globally)
 import { Toaster } from "./components/ui/toaster";
 import { PageLoader } from "./components/ui/page-loader";
 import { ProtectedRoute } from "./components/providers/protected-route";
-import { ReloadPrompt } from "./components/features/pwa/reload-prompt";
-import { InstallPrompt } from "./components/features/pwa/install-prompt";
-import { MobileLayout } from "./components/layouts/mobile-layout";
 import { AuthProvider } from "./components/providers/auth-provider";
 import { LocaleProvider } from "./components/providers/locale-provider";
 

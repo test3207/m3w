@@ -9,8 +9,9 @@ export { cn } from "./cn";
 // Duration formatting
 export { formatDuration } from "./format-duration";
 
-// Hash utilities
-export { calculateFileHash, calculateBufferHash } from "./hash";
+// NOTE: Hash utilities (calculateFileHash, calculateBufferHash) are NOT exported here
+// to avoid pulling @aws-crypto/sha256-browser (~15KB) into main bundle.
+// Import directly from "@/lib/utils/hash" when needed.
 
 // UUID utilities (with fallback for non-secure contexts)
 export { generateUUID } from "./uuid";

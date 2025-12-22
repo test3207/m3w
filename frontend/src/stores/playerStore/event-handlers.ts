@@ -5,7 +5,8 @@
  * - Sync interval for state synchronization
  */
 
-import { RepeatMode } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { RepeatMode } from "@m3w/shared/types";
 import { getAudioPlayer, type AudioPlayer } from "@/lib/audio/player";
 import { prefetchAudioBlob } from "@/lib/audio/prefetch";
 import {

@@ -29,7 +29,8 @@ import { processAudioFileStream } from "@/lib/utils/stream-processor";
 import { api } from "@/services";
 import type { LibraryOption } from "@/types/models";
 import { LibraryBig } from "lucide-react";
-import { isDefaultLibrary } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { isDefaultLibrary } from "@m3w/shared/constants";
 
 import { UploadStatus, type FileUploadItem, type UploadSongFormProps } from "./types";
 import { FileInputSection } from "./file-input-section";

@@ -6,7 +6,8 @@
 import { create } from "zustand";
 import { api } from "@/services";
 import { logger } from "@/lib/logger-client";
-import { isDefaultLibrary } from "@m3w/shared";
+// Import from specific subpath to avoid pulling Zod into main bundle
+import { isDefaultLibrary } from "@m3w/shared/constants";
 import type { Library } from "@m3w/shared";
 
 interface LibraryState {

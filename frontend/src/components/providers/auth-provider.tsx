@@ -1,15 +1,22 @@
 /**
  * Auth Provider Component
  * Wraps app with automatic token refresh, background metadata sync, and auto-download
+ * 
+ * Note: These modules are already statically imported elsewhere in the app
+ * (router.ts, playerStore, LibraryDetailPage, OfflineSettings), so dynamic imports
+ * here would not reduce bundle size. We use static imports for cleaner code.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuthRefresh } from "@/hooks/useAuthRefresh";
+import { useAuthStore } from "@/stores/authStore";
+import {
+  isMultiRegionEnabled,
+  initializeEndpoint,
+} from "@/lib/api/multi-region";
+import { startIdlePrefetch, scheduleNormalPriorityTask, scheduleLowPriorityTask } from "@/lib/prefetch";
 import { startAutoSync, stopAutoSync } from "@/lib/sync/metadata-sync";
 import { triggerAutoDownload } from "@/lib/storage/download-manager";
-import { useAuthStore } from "@/stores/authStore";
-import { initializeEndpoint, isMultiRegionEnabled } from "@/lib/api/multi-region";
-import { startIdlePrefetch, scheduleLowPriorityTask, scheduleNormalPriorityTask } from "@/lib/prefetch";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -21,6 +28,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   // Get auth state
   const { isAuthenticated, isGuest } = useAuthStore();
+  
+  // Track if sync was started for cleanup
+  const syncStartedRef = useRef(false);
 
   // Start idle-time prefetch of heavy modules after initial render
   useEffect(() => {
@@ -42,21 +52,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     if (isAuthenticated && !isGuest) {
       // Schedule metadata sync as normal priority task
-      // Uses unified idle scheduler - executes 8s+ after load
       scheduleNormalPriorityTask("metadata-sync", startAutoSync);
       
       // Schedule auto-download as low priority task
-      // Uses unified idle scheduler - executes 15s+ after load to avoid Lighthouse impact
       scheduleLowPriorityTask("auto-download", triggerAutoDownload);
       
+      syncStartedRef.current = true;
+      
       return () => {
-        stopAutoSync();
+        if (syncStartedRef.current) {
+          stopAutoSync();
+          syncStartedRef.current = false;
+        }
       };
     }
     
-    return () => {
-      stopAutoSync();
-    };
+    return undefined;
   }, [isAuthenticated, isGuest]);
 
   return <>{children}</>;
