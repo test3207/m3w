@@ -3,7 +3,7 @@
 ## Metadata
 
 **Created**: 2025-11-06  
-**Last Updated**: 2025-12-18  
+**Last Updated**: 2025-12-22  
 **Current Phase**: Multi-Region Architecture & Production Deployment
 
 ## Mission Snapshot
@@ -60,6 +60,7 @@
 - [project-context.instructions.md](./instructions/project-context.instructions.md)
 - [development-standards.instructions.md](./instructions/development-standards.instructions.md)
 - [user-stories.instructions.md](./instructions/user-stories.instructions.md)
+- [release-workflow.instructions.md](./instructions/release-workflow.instructions.md)
 - **GitHub Milestone 3** (Production Readiness): <https://github.com/test3207/m3w/milestone/3>
 - **GitHub Project Board**: <https://github.com/users/test3207/projects/3>
 - Vite Documentation: <https://vitejs.dev/>
@@ -69,5 +70,5 @@
 - Tailwind CSS: <https://tailwindcss.com/docs>
 - TypeScript Handbook: <https://www.typescriptlang.org/docs/>
 
-**Document Version**: v4.3  
-**Last Updated**: 2025-11-25
+**Document Version**: v4.4  
+**Last Updated**: 2025-12-22
