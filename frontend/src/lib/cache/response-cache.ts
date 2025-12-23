@@ -77,7 +77,7 @@ export async function cacheResponseToIndexedDB(
         } else if (config.strategy === "replace-by-key") {
           // Validate keyParam is provided for replace-by-key strategy
           if (!config.keyParam || !(config.keyParam in params)) {
-            logger.warn("[ResponseCache] Missing keyParam for replace-by-key strategy", { path, config, params });
+            logger.warn("[ResponseCache][cacheResponseToIndexedDB]", "Missing keyParam for replace-by-key strategy", { raw: { path, config, params } });
             return;
           }
           const keyValue = params[config.keyParam];
@@ -94,9 +94,9 @@ export async function cacheResponseToIndexedDB(
       // No default case needed - TypeScript ensures exhaustive switch on CacheTable union
     }
 
-    logger.debug("[ResponseCache] Cached response", { path, table: config.table, strategy: config.strategy });
+    logger.debug("[ResponseCache][cacheResponseToIndexedDB]", "Cached response", { raw: { path, table: config.table, strategy: config.strategy } });
   } catch (error) {
     // Log but don't throw - caching failure shouldn't break the request
-    logger.error("[ResponseCache] Failed to cache response", { path, error });
+    logger.error("[ResponseCache][cacheResponseToIndexedDB]", "Failed to cache response", error, { raw: { path } });
   }
 }

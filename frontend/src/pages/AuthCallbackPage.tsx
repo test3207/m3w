@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
       // Flow 2: GitHub redirected here with code (Gateway backend down, frontend still reachable)
       // Use consistent error code pattern: auth_failed for authentication errors
       handleCodeRedirectFlow(code).catch((error) => {
-        logger.error("Auth code redirect flow failed", { error });
+        logger.error("[AuthCallbackPage][handleCodeRedirectFlow]", "Auth code redirect flow failed", error);
         navigate("/signin?error=auth_failed");
       });
     } else {
@@ -94,15 +94,15 @@ export default function AuthCallbackPage() {
           });
           navigate("/libraries");
         } else {
-          logger.error("Failed to get session", { tokenData });
+          logger.error("[AuthCallbackPage][fetchUserInfoFromCookies]", "Failed to get session", undefined, { raw: { tokenData } });
           navigate("/signin?error=session_failed");
         }
       } else {
-        logger.error("Auth failed", { data });
+        logger.error("[AuthCallbackPage][fetchUserInfoFromCookies]", "Auth failed", undefined, { raw: { data } });
         navigate("/signin?error=auth_failed");
       }
     } catch (error) {
-      logger.error("Fetch user error", { error });
+      logger.error("[AuthCallbackPage][fetchUserInfoFromCookies]", "Fetch user error", error);
       navigate("/signin?error=auth_failed");
     }
   }

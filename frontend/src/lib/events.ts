@@ -21,17 +21,17 @@ class EventBus {
       this.listeners.set(event, new Set());
     }
     this.listeners.get(event)!.add(callback);
-    logger.debug(`[EventBus] Registered listener for event: ${event}. Total listeners: ${this.listeners.get(event)?.size}`);
+    logger.debug("[EventBus][on]", `Registered listener for event: ${event}. Total listeners: ${this.listeners.get(event)?.size}`);
 
     // Return unsubscribe function
     return () => {
       this.listeners.get(event)?.delete(callback);
-      logger.debug(`[EventBus] Unregistered listener for event: ${event}. Remaining: ${this.listeners.get(event)?.size}`);
+      logger.debug("[EventBus][on]", `Unregistered listener for event: ${event}. Remaining: ${this.listeners.get(event)?.size}`);
     };
   }
 
   emit<T = void>(event: string, payload?: T): void {
-    logger.debug(`[EventBus] Emitting event: ${event}`, payload);
+    logger.debug("[EventBus][emit]", `Emitting event: ${event}`, { raw: payload as Record<string, unknown> });
     this.listeners.get(event)?.forEach((callback) => callback(payload));
   }
 

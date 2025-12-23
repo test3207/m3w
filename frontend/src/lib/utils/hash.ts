@@ -53,15 +53,13 @@ export async function calculateFileHash(file: File): Promise<string> {
   try {
     const hashHex = await calculateHashFromStream(file.stream());
 
-    logger.info("Calculated file hash (streaming)", {
-      fileName: file.name,
-      fileSize: file.size,
-      hash: hashHex,
+    logger.info("[Hash][calculateFileHash]", "Calculated file hash (streaming)", {
+      raw: { fileName: file.name, fileSize: file.size, hash: hashHex },
     });
 
     return hashHex;
   } catch (error) {
-    logger.error("Error calculating file hash", error);
+    logger.error("[Hash][calculateFileHash]", "Error calculating file hash", error);
     throw error;
   }
 }
@@ -77,14 +75,13 @@ export async function calculateBufferHash(buffer: ArrayBuffer): Promise<string> 
     const digest = await hash.digest();
     const hashHex = digestToHex(digest);
 
-    logger.info("Calculated buffer hash", {
-      size: buffer.byteLength,
-      hash: hashHex,
+    logger.info("[Hash][calculateBufferHash]", "Calculated buffer hash", {
+      raw: { size: buffer.byteLength, hash: hashHex },
     });
 
     return hashHex;
   } catch (error) {
-    logger.error("Error calculating buffer hash", error);
+    logger.error("[Hash][calculateBufferHash]", "Error calculating buffer hash", error);
     throw error;
   }
 }

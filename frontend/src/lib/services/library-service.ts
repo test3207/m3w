@@ -53,7 +53,7 @@ class LibraryService {
     };
 
     try {
-      logger.info("Starting library deletion", { libraryId });
+      logger.info("[LibraryService][deleteLibrary]", "Starting library deletion", { raw: { libraryId } });
 
       // Step 1: Get all songs from this library (via song.libraryId)
       const songs = await db.songs.where("libraryId").equals(libraryId).toArray();
@@ -110,7 +110,7 @@ class LibraryService {
             // Delete song metadata FIRST (within transaction)
             await db.songs.delete(song.id);
             result.deletedSongs++;
-            logger.debug("Song deleted", { songId: song.id });
+            logger.debug("[LibraryService][deleteLibrary]", "Song deleted", { raw: { songId: song.id } });
 
             // Decrement file refCount and check if cache should be deleted
             if (fileId) {
@@ -125,15 +125,13 @@ class LibraryService {
                   if (songStreamUrl) {
                     await cache.delete(songStreamUrl);
                     result.deletedCacheEntries++;
-                    logger.debug("Cache and file deleted", { songId: song.id, fileId });
+                    logger.debug("[LibraryService][deleteLibrary]", "Cache and file deleted", { raw: { songId: song.id, fileId } });
                   }
                 } else {
                   // Update refCount
                   await db.files.update(fileId, { refCount: newRefCount });
-                  logger.debug("File refCount decremented", { 
-                    songId: song.id, 
-                    fileId,
-                    newRefCount
+                  logger.debug("[LibraryService][deleteLibrary]", "File refCount decremented", { 
+                    raw: { songId: song.id, fileId, newRefCount },
                   });
                 }
               }
@@ -141,7 +139,7 @@ class LibraryService {
               // No fileId means unique file (old data), safe to delete
               await cache.delete(songStreamUrl);
               result.deletedCacheEntries++;
-              logger.debug("Cache deleted (unique file)", { songId: song.id });
+              logger.debug("[LibraryService][deleteLibrary]", "Cache deleted (unique file)", { raw: { songId: song.id } });
             }
           });
 
@@ -153,7 +151,7 @@ class LibraryService {
           });
         } catch (error) {
           result.errors.push(`Failed to process song ${song.id}: ${String(error)}`);
-          logger.error("Failed to process song deletion", { songId: song.id, error });
+          logger.error("[LibraryService][deleteLibrary]", "Failed to process song deletion", error, { raw: { songId: song.id } });
         }
       }
 
@@ -174,16 +172,15 @@ class LibraryService {
         message: "Deletion complete",
       });
 
-      logger.info("Library deleted successfully", {
-        libraryId,
-        result,
+      logger.info("[LibraryService][deleteLibrary]", "Library deleted successfully", {
+        raw: { libraryId, result },
       });
 
       return result;
     } catch (error) {
       result.success = false;
       result.errors.push(`Fatal error: ${String(error)}`);
-      logger.error("Library deletion failed", { libraryId, error });
+      logger.error("[LibraryService][deleteLibrary]", "Library deletion failed", error, { raw: { libraryId } });
       return result;
     }
   }
@@ -199,7 +196,7 @@ class LibraryService {
       const song = await db.songs.get(songId);
       
       if (!song || song.libraryId !== libraryId) {
-        logger.warn("Song not found in library", { libraryId, songId });
+        logger.warn("[LibraryService][removeSongFromLibrary]", "Song not found in library", { raw: { libraryId, songId } });
         return;
       }
 
@@ -216,7 +213,7 @@ class LibraryService {
       await db.transaction("rw", [db.songs, db.files], async () => {
         // Delete song metadata (within transaction)
         await db.songs.delete(songId);
-        logger.info("Song deleted from library", { songId, libraryId });
+        logger.info("[LibraryService][removeSongFromLibrary]", "Song deleted from library", { raw: { songId, libraryId } });
 
         // Decrement file refCount and check if cache should be deleted
         if (fileId) {
@@ -231,15 +228,13 @@ class LibraryService {
               if (songStreamUrl) {
                 const cache = await caches.open(await getCacheNameLazy("audio"));
                 await cache.delete(songStreamUrl);
-                logger.debug("Cache and file deleted", { songId, fileId });
+                logger.debug("[LibraryService][removeSongFromLibrary]", "Cache and file deleted", { raw: { songId, fileId } });
               }
             } else {
               // Update refCount
               await db.files.update(fileId, { refCount: newRefCount });
-              logger.debug("File refCount decremented", { 
-                songId, 
-                fileId,
-                newRefCount
+              logger.debug("[LibraryService][removeSongFromLibrary]", "File refCount decremented", { 
+                raw: { songId, fileId, newRefCount },
               });
             }
           }
@@ -247,11 +242,11 @@ class LibraryService {
           // No fileId means unique file (old data), safe to delete
           const cache = await caches.open(await getCacheNameLazy("audio"));
           await cache.delete(songStreamUrl);
-          logger.debug("Cache deleted (unique file)", { songId });
+          logger.debug("[LibraryService][removeSongFromLibrary]", "Cache deleted (unique file)", { raw: { songId } });
         }
       });
     } catch (error) {
-      logger.error("Failed to remove song from library", { libraryId, songId, error });
+      logger.error("[LibraryService][removeSongFromLibrary]", "Failed to remove song from library", error, { raw: { libraryId, songId } });
       throw error;
     }
   }
@@ -289,7 +284,7 @@ class LibraryService {
         cachedSize,
       };
     } catch (error) {
-      logger.error("Failed to get library stats", { libraryId, error });
+      logger.error("[LibraryService][getLibraryStats]", "Failed to get library stats", error, { raw: { libraryId } });
       return {
         songCount: 0,
         totalSize: 0,

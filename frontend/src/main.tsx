@@ -6,6 +6,10 @@ import "./styles/globals.css";
 // Import i18n initialization
 import "./locales/init";
 
+// Initialize logger (must be early to catch startup errors)
+import { logger } from "./lib/logger-client";
+logger.initialize();
+
 // Lazy load pages for code splitting
 // HomePage is eagerly loaded as the landing page LCP target
 import HomePage from "./pages/HomePage";

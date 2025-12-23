@@ -75,7 +75,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         set({ currentSong: song, lastPlayedSong: song, isPlaying: true });
         // Update Media Session metadata for lock screen display
         updateMediaSessionForSong(song);
-        logger.info("Playing song", { songId: song.id, title: song.title });
+        logger.info("[PlayerStore][play]", "Playing song", { raw: { songId: song.id, title: song.title } });
       } else {
         // Resume playback and ensure Media Session metadata is restored
         // (may have been cleared by browser during background/sleep)
@@ -182,7 +182,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     playFromLibrary: async (libraryId, libraryName, songs, startIndex = 0) => {
       const currentSong = songs[startIndex];
       if (!currentSong) {
-        logger.warn("No song at start index", { startIndex, songCount: songs.length });
+        logger.warn("[PlayerStore][playFromLibrary]", "No song at start index", { raw: { startIndex, songCount: songs.length } });
         return;
       }
 
@@ -199,7 +199,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
           // Update existing playlist
           await api.main.playlists.updateSongs(existingPlaylist.id, { songIds });
           playlistId = existingPlaylist.id;
-          logger.info("Updated library playlist", { playlistId, songCount: songIds.length });
+          logger.info("[PlayerStore][playFromLibrary]", "Updated library playlist", { raw: { playlistId, songCount: songIds.length } });
         } else {
           // Create new playlist linked to library
           const newPlaylist = await api.main.playlists.createForLibrary({
@@ -208,14 +208,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
             songIds,
           });
           playlistId = newPlaylist.id;
-          logger.info("Created library playlist", { playlistId, libraryId });
+          logger.info("[PlayerStore][playFromLibrary]", "Created library playlist", { raw: { playlistId, libraryId } });
         }
 
         // Now play from this playlist
         get().playFromPlaylist(playlistId, playlistName, songs, startIndex);
 
       } catch (error) {
-        logger.error("Failed to create/update library playlist", { error, libraryId });
+        logger.error("[PlayerStore][playFromLibrary]", "Failed to create/update library playlist", error, { raw: { libraryId } });
 
         // Fallback: play without saving playlist
         const track = songToTrack(currentSong);
@@ -241,17 +241,13 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     playFromPlaylist: async (playlistId, playlistName, songs, startIndex = 0) => {
       const currentRepeatMode = get().repeatMode;
 
-      logger.info("playFromPlaylist called", {
-        playlistId,
-        playlistName,
-        songCount: songs.length,
-        startIndex,
-        currentRepeatMode
+      logger.info("[PlayerStore][playFromPlaylist]", "playFromPlaylist called", {
+        raw: { playlistId, playlistName, songCount: songs.length, startIndex, currentRepeatMode },
       });
 
       const currentSong = songs[startIndex];
       if (!currentSong) {
-        logger.warn("No song at start index", { startIndex, songCount: songs.length });
+        logger.warn("[PlayerStore][playFromPlaylist]", "No song at start index", { raw: { startIndex, songCount: songs.length } });
         return;
       }
 
@@ -277,12 +273,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         repeatMode: currentRepeatMode,
       });
 
-      logger.info("Playing from playlist", {
-        playlistId,
-        playlistName,
-        songCount: songs.length,
-        startIndex,
-        songTitle: currentSong.title
+      logger.info("[PlayerStore][playFromPlaylist]", "Playing from playlist", {
+        raw: { playlistId, playlistName, songCount: songs.length, startIndex, songTitle: currentSong.title },
       });
     },
 
@@ -290,7 +282,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       const { queue } = get();
 
       if (queue.length === 0) {
-        logger.warn("Cannot save empty queue as playlist");
+        logger.warn("[PlayerStore][saveQueueAsPlaylist]", "Cannot save empty queue as playlist");
         return false;
       }
 
@@ -303,10 +295,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
           await api.main.playlists.addSong(newPlaylist.id, { songId });
         }
 
-        logger.info("Saved queue as playlist", { playlistName: name, songCount: songIds.length });
+        logger.info("[PlayerStore][saveQueueAsPlaylist]", "Saved queue as playlist", { raw: { playlistName: name, songCount: songIds.length } });
         return true;
       } catch (error) {
-        logger.error("Failed to save queue as playlist", { error, name });
+        logger.error("[PlayerStore][saveQueueAsPlaylist]", "Failed to save queue as playlist", error, { raw: { name } });
         return false;
       }
     },
@@ -442,9 +434,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
 
       try {
         await api.main.player.updatePreferences({ repeatMode: mode });
-        logger.info("Saved repeat mode preference", { repeatMode: mode });
+        logger.info("[PlayerStore][setRepeatMode]", "Saved repeat mode preference", { raw: { repeatMode: mode } });
       } catch (error) {
-        logger.error("Failed to save repeat mode preference", error);
+        logger.error("[PlayerStore][setRepeatMode]", "Failed to save repeat mode preference", error);
       }
     },
 
@@ -455,11 +447,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       const nextIndex = (currentIndex + 1) % modes.length;
       const nextMode = modes[nextIndex];
 
-      logger.info("Toggle repeat mode", {
-        from: state.repeatMode,
-        to: nextMode,
-        currentIndex,
-        nextIndex
+      logger.info("[PlayerStore][toggleRepeat]", "Toggle repeat mode", {
+        raw: { from: state.repeatMode, to: nextMode, currentIndex, nextIndex },
       });
 
       // Save to backend (async, don't wait)
@@ -497,9 +486,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       // Save to backend (async, don't wait)
       try {
         await api.main.player.updatePreferences({ shuffleEnabled: newShuffled });
-        logger.info("Saved shuffle preference", { shuffleEnabled: newShuffled });
+        logger.info("[PlayerStore][toggleShuffle]", "Saved shuffle preference", { raw: { shuffleEnabled: newShuffled } });
       } catch (error) {
-        logger.error("Failed to save shuffle preference", error);
+        logger.error("[PlayerStore][toggleShuffle]", "Failed to save shuffle preference", error);
       }
     },
 
@@ -511,7 +500,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     // Initialization & Persistence
     loadPlaybackProgress: async () => {
       try {
-        logger.info("Loading playback progress...");
+        logger.info("[PlayerStore][loadPlaybackProgress]", "Loading playback progress...");
 
         // Load playback preferences (repeat mode and shuffle)
         const { hasUserModifiedPreferences } = get();
@@ -520,15 +509,13 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         const progress = await api.main.player.getProgress();
 
         if (!progress?.track) {
-          logger.info("No playback progress found, trying seed...");
+          logger.info("[PlayerStore][loadPlaybackProgress]", "No playback progress found, trying seed...");
           await loadDefaultSeed(set);
           return;
         }
 
-        logger.info("Found playback progress", {
-          trackId: progress.track.id,
-          position: progress.position,
-          context: progress.context
+        logger.info("[PlayerStore][loadPlaybackProgress]", "Found playback progress", {
+          raw: { trackId: progress.track.id, position: progress.position, context: progress.context },
         });
 
         // Convert API track to Song
@@ -564,7 +551,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
           }
         );
       } catch (error) {
-        logger.error("Failed to load playback progress", error);
+        logger.error("[PlayerStore][loadPlaybackProgress]", "Failed to load playback progress", error);
       }
     },
 
@@ -587,13 +574,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
         contextName: queueSourceName ?? undefined,
       })
         .then(() => {
-          logger.info("Saved playback progress", {
-            songId: currentSong.id,
-            position: Math.round(currentTime)
+          logger.info("[PlayerStore][savePlaybackProgress]", "Saved playback progress", {
+            raw: { songId: currentSong.id, position: Math.round(currentTime) },
           });
         })
         .catch((error) => {
-          logger.error("Failed to save playback progress", error);
+          logger.error("[PlayerStore][savePlaybackProgress]", "Failed to save playback progress", "/player", error);
         });
     },
 
@@ -620,12 +606,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       // keepalive ensures request completes even if page is already closing
       void api.main.player.updateProgress(data, { keepalive: true }).catch((err) => {
         // Log error but can't handle it during page unload
-        logger.error("Failed to send playback progress with keepalive", err);
+        logger.error("[PlayerStore][savePlaybackProgressSync]", "Failed to send playback progress with keepalive", err);
       });
 
-      logger.info("Sent playback progress with keepalive", {
-        songId: currentSong.id,
-        position: Math.round(currentTime)
+      logger.info("[PlayerStore][savePlaybackProgressSync]", "Sent playback progress with keepalive", {
+        raw: { songId: currentSong.id, position: Math.round(currentTime) },
       });
     },
   };

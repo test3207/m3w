@@ -94,7 +94,7 @@ export function setupAudioPlayerListeners(
   audioPlayer.on("play", (state) => {
     setState({ isPlaying: true, currentTime: state.currentTime, duration: state.duration });
     updateMediaSessionPlaybackState("playing");
-    logger.info("AudioPlayer playing");
+    logger.info("[PlayerStore][onplay]", "AudioPlayer playing");
   });
 
   audioPlayer.on("pause", (state) => {
@@ -102,12 +102,12 @@ export function setupAudioPlayerListeners(
     updateMediaSessionPlaybackState("paused");
     // Update position state to ensure lock screen reflects current position
     updateMediaSessionPositionState(state.currentTime, state.duration);
-    logger.info("AudioPlayer paused");
+    logger.info("[PlayerStore][onpause]", "AudioPlayer paused");
   });
 
   audioPlayer.on("end", async () => {
     const { next, repeatMode, currentSong } = getState();
-    logger.info("Track ended, repeatMode:", repeatMode);
+    logger.info("[PlayerStore][onend]", `Track ended, repeatMode: ${repeatMode}`);
 
     if (repeatMode === RepeatMode.One) {
       // Replay current track
@@ -124,7 +124,7 @@ export function setupAudioPlayerListeners(
   });
 
   audioPlayer.on("error", (state) => {
-    logger.error("AudioPlayer error", { track: state.currentTrack });
+    logger.error("[PlayerStore][onerror]", "AudioPlayer error", undefined, { raw: { track: state.currentTrack } });
     setState({ isPlaying: false });
   });
 }

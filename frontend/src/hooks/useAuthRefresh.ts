@@ -29,23 +29,25 @@ export function useAuthRefresh() {
 
     const checkAndRefresh = async () => {
       if (isRefreshingRef.current) {
-        logger.info("Token refresh already in progress, skipping");
+        logger.info("[useAuthRefresh][checkAndRefresh]", "Token refresh already in progress, skipping");
         return;
       }
 
       const now = Date.now();
       const timeUntilExpiry = tokens.expiresAt - now;
 
-      logger.info("Token expiry check", {
-        expiresAt: new Date(tokens.expiresAt).toISOString(),
-        timeUntilExpiry: Math.floor(timeUntilExpiry / 1000 / 60), // minutes
-        threshold: Math.floor(REFRESH_THRESHOLD_MS / 1000 / 60), // minutes
+      logger.info("[useAuthRefresh][checkAndRefresh]", "Token expiry check", {
+        raw: {
+          expiresAt: new Date(tokens.expiresAt).toISOString(),
+          timeUntilExpiry: Math.floor(timeUntilExpiry / 1000 / 60), // minutes
+          threshold: Math.floor(REFRESH_THRESHOLD_MS / 1000 / 60), // minutes
+        }
       });
 
       // Refresh if less than threshold remains
       if (timeUntilExpiry <= REFRESH_THRESHOLD_MS) {
-        logger.info("Token expiring soon, refreshing...", {
-          minutesRemaining: Math.floor(timeUntilExpiry / 1000 / 60),
+        logger.info("[useAuthRefresh][checkAndRefresh]", "Token expiring soon, refreshing...", {
+          raw: { minutesRemaining: Math.floor(timeUntilExpiry / 1000 / 60) }
         });
 
         isRefreshingRef.current = true;
@@ -54,14 +56,14 @@ export function useAuthRefresh() {
           const success = await refreshToken();
 
           if (success) {
-            logger.info("Token refreshed successfully");
+            logger.info("[useAuthRefresh][checkAndRefresh]", "Token refreshed successfully");
             // Show success toast (optional, can be commented out if too noisy)
             // toast({
             //   title: 'Session renewed',
             //   description: 'Your login session has been extended.',
             // });
           } else {
-            logger.warn("Token refresh failed - user may need to re-authenticate");
+            logger.warn("[useAuthRefresh][checkAndRefresh]", "Token refresh failed - user may need to re-authenticate");
 
             // Only show toast once every 10 minutes to avoid spam
             if (now - lastFailureToastRef.current > 10 * 60 * 1000) {
@@ -74,7 +76,7 @@ export function useAuthRefresh() {
             }
           }
         } catch (error) {
-          logger.error("Token refresh error", error);
+          logger.error("[useAuthRefresh][checkAndRefresh]", "Token refresh error", error);
         } finally {
           isRefreshingRef.current = false;
         }

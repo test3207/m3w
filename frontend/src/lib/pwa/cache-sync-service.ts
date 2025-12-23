@@ -30,21 +30,21 @@ class CacheSyncService {
    */
   start() {
     if (this.intervalId) {
-      logger.warn("Cache sync service already running");
+      logger.warn("[CacheSyncService][start]", "Cache sync service already running");
       return;
     }
 
-    logger.info("Starting cache sync service", { interval: CACHE_SYNC_INTERVAL });
+    logger.info("[CacheSyncService][start]", "Starting cache sync service", { raw: { interval: CACHE_SYNC_INTERVAL } });
     
     // Run immediately on start
     this.runSync().catch((error) => {
-      logger.error("Initial cache sync failed", { error });
+      logger.error("[CacheSyncService][start]", "Initial cache sync failed", error);
     });
 
     // Then run on interval
     this.intervalId = setInterval(() => {
       this.runSync().catch((error) => {
-        logger.error("Scheduled cache sync failed", { error });
+        logger.error("[CacheSyncService][start]", "Scheduled cache sync failed", error);
       });
     }, CACHE_SYNC_INTERVAL);
   }
@@ -56,7 +56,7 @@ class CacheSyncService {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      logger.info("Cache sync service stopped");
+      logger.info("[CacheSyncService][stop]", "Cache sync service stopped");
     }
   }
 
@@ -86,7 +86,7 @@ class CacheSyncService {
    */
   private async runSync(): Promise<SyncStats> {
     if (this.isRunning) {
-      logger.warn("Cache sync already in progress, skipping");
+      logger.warn("[CacheSyncService][runSync]", "Cache sync already in progress, skipping");
       throw new Error("Sync already in progress");
     }
 
@@ -100,14 +100,14 @@ class CacheSyncService {
     };
 
     try {
-      logger.info("Cache sync started");
+      logger.info("[CacheSyncService][runSync]", "Cache sync started");
 
       // Get all songs from IndexedDB
       const songs = await db.songs.toArray();
       stats.totalChecked = songs.length;
 
       if (songs.length === 0) {
-        logger.info("No songs to sync");
+        logger.info("[CacheSyncService][runSync]", "No songs to sync");
         return stats;
       }
 
@@ -136,10 +136,12 @@ class CacheSyncService {
                   lastCacheCheck: Date.now(),
                 });
 
-                logger.debug("Cache mismatch fixed", {
-                  songId: song.id,
-                  wasCached: song.isCached,
-                  nowCached: isCached,
+                logger.debug("[CacheSyncService][runSync]", "Cache mismatch fixed", {
+                  raw: {
+                    songId: song.id,
+                    wasCached: song.isCached,
+                    nowCached: isCached,
+                  },
                 });
               } else {
                 // Just update lastCacheCheck
@@ -149,7 +151,7 @@ class CacheSyncService {
               }
             } catch (error) {
               stats.errors++;
-              logger.error("Failed to sync song cache", { songId: song.id, error });
+              logger.error("[CacheSyncService][runSync]", "Failed to sync song cache", error, { raw: { songId: song.id } });
             }
           })
         );
@@ -158,11 +160,11 @@ class CacheSyncService {
       this.lastSyncTime = Date.now();
       stats.duration = Date.now() - startTime;
 
-      logger.info("Cache sync completed", stats);
+      logger.info("[CacheSyncService][runSync]", "Cache sync completed", stats as unknown as Record<string, unknown>);
       
       return stats;
     } catch (error) {
-      logger.error("Cache sync failed", { error });
+      logger.error("[CacheSyncService][runSync]", "Cache sync failed", error);
       throw error;
     } finally {
       this.isRunning = false;
@@ -179,7 +181,7 @@ class CacheSyncService {
       const response = await cache.match(streamUrl);
       return response !== undefined;
     } catch (error) {
-      logger.error("Failed to check cache", { songId, error });
+      logger.error("[CacheSyncService][checkSongCache]", "Failed to check cache", error, { raw: { songId } });
       return false;
     }
   }
@@ -197,7 +199,7 @@ class CacheSyncService {
       const blob = await response.blob();
       return blob.size;
     } catch (error) {
-      logger.error("Failed to get cache size", { streamUrl, error });
+      logger.error("[CacheSyncService][getCacheSize]", "Failed to get cache size", error, { raw: { streamUrl } });
       return undefined;
     }
   }

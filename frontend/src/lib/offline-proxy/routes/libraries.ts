@@ -124,7 +124,7 @@ app.get("/:id", async (c: Context) => {
       data: libraryWithCount,
     });
   } catch (error) {
-    logger.error("[OfflineProxy] GET /libraries/:id error:", error);
+    logger.error("[OfflineProxy][getLibrary]", "GET /libraries/:id error", error);
     return c.json(
       {
         success: false,
@@ -417,7 +417,7 @@ app.post("/:id/songs", async (c: Context) => {
       },
     });
   } catch (error) {
-    logger.error("[OfflineProxy] Offline upload failed", error);
+    logger.error("[OfflineProxy][uploadSong]", "Offline upload failed", error);
     return c.json({ success: false, error: "Upload failed" }, 500);
   }
 });

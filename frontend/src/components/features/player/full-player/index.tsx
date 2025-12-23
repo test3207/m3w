@@ -198,11 +198,11 @@ export function FullPlayer() {
       if (isHorizontalGesture && (absX > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vx) > GESTURE_CONFIG.VELOCITY_THRESHOLD)) {
         if (dx < 0) {
           // Swipe left → next track
-          logger.debug("[FullPlayer] Swipe left: next track");
+          logger.debug("[FullPlayer][onDragEnd]", "Swipe left: next track");
           next();
         } else {
           // Swipe right → previous track
-          logger.debug("[FullPlayer] Swipe right: previous track");
+          logger.debug("[FullPlayer][onDragEnd]", "Swipe right: previous track");
           previous();
         }
         return;
@@ -213,12 +213,12 @@ export function FullPlayer() {
       if (isVerticalGesture && (absY > GESTURE_CONFIG.SWIPE_THRESHOLD || Math.abs(vy) > GESTURE_CONFIG.VELOCITY_THRESHOLD)) {
         if (dy > 0) {
           // Swipe down → close
-          logger.debug("[FullPlayer] Swipe down: close");
+          logger.debug("[FullPlayer][onDragEnd]", "Swipe down: close");
           dispatch({ type: AnimationActionType.Close, direction: ExitDirection.Down });
           setTimeout(() => closeFullPlayer(), 0);
         } else {
           // Swipe up → open queue
-          logger.debug("[FullPlayer] Swipe up: open queue");
+          logger.debug("[FullPlayer][onDragEnd]", "Swipe up: open queue");
           openPlayQueueDrawer();
         }
       }

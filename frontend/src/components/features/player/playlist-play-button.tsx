@@ -25,7 +25,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
       const tracks = await api.main.playlists.getSongs(playlistId);
 
       if (tracks.length === 0) {
-        logger.warn("Playlist has no tracks", { playlistId });
+        logger.warn("[PlaylistPlayButton][handlePlay]", "Playlist has no tracks", { raw: { playlistId } });
         return;
       }
 
@@ -45,7 +45,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
       }
 
       if (tracksWithAudio.length === 0) {
-        logger.warn("No playable tracks in playlist", { playlistId });
+        logger.warn("[PlaylistPlayButton][handlePlay]", "No playable tracks in playlist", { raw: { playlistId } });
         return;
       }
 
@@ -57,7 +57,7 @@ export function PlaylistPlayButton({ playlistId, playlistName }: PlaylistPlayBut
 
       await playFromQueue(tracksWithAudio, 0, context);
     } catch (error) {
-      logger.error("Failed to start playlist playback", error);
+      logger.error("[PlaylistPlayButton][handlePlay]", "Failed to start playlist playback", error);
     } finally {
       setIsLoading(false);
     }

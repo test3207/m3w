@@ -40,16 +40,16 @@ export function isStorageSupported(): boolean {
  */
 export async function requestPersistentStorage(): Promise<boolean> {
   if (!isStorageSupported()) {
-    logger.warn("Storage API not supported");
+    logger.warn("[QuotaManager][requestPersistentStorage]", "Storage API not supported");
     return false;
   }
 
   try {
     const isPersisted = await navigator.storage.persist();
-    logger.info("Persistent storage request result", { isPersisted });
+    logger.info("[QuotaManager][requestPersistentStorage]", "Persistent storage request result", { raw: { isPersisted } });
     return isPersisted;
   } catch (error) {
-    logger.error("Failed to request persistent storage", { error });
+    logger.error("[QuotaManager][requestPersistentStorage]", "Failed to request persistent storage", error);
     return false;
   }
 }
@@ -65,7 +65,7 @@ export async function isStoragePersisted(): Promise<boolean> {
   try {
     return await navigator.storage.persisted();
   } catch (error) {
-    logger.error("Failed to check storage persistence", { error });
+    logger.error("[QuotaManager][isStoragePersisted]", "Failed to check storage persistence", error);
     return false;
   }
 }
@@ -101,7 +101,7 @@ export async function getStorageQuota(): Promise<StorageQuota | null> {
       availableFormatted: formatBytes(quota - usage),
     };
   } catch (error) {
-    logger.error("Failed to get storage quota", { error });
+    logger.error("[QuotaManager][getStorageQuota]", "Failed to get storage quota", error);
     return null;
   }
 }
@@ -181,26 +181,28 @@ export async function getStorageStatus(): Promise<StorageStatus> {
  * Initialize storage management (call on PWA install)
  */
 export async function initializeStorage(): Promise<void> {
-  logger.info("Initializing storage management");
+  logger.info("[QuotaManager][initializeStorage]", "Initializing storage management");
 
   const status = await getStorageStatus();
 
-  logger.info("Storage status", {
-    isPWAInstalled: status.isPWAInstalled,
-    isPersisted: status.isPersisted,
-    usage: status.quota?.usageFormatted,
-    quota: status.quota?.quotaFormatted,
+  logger.info("[QuotaManager][initializeStorage]", "Storage status", {
+    raw: {
+      isPWAInstalled: status.isPWAInstalled,
+      isPersisted: status.isPersisted,
+      usage: status.quota?.usageFormatted,
+      quota: status.quota?.quotaFormatted,
+    },
   });
 
   // If PWA is installed but storage not persisted, request it
   if (status.isPWAInstalled && !status.isPersisted) {
-    logger.info("Requesting persistent storage");
+    logger.info("[QuotaManager][initializeStorage]", "Requesting persistent storage");
     const granted = await requestPersistentStorage();
 
     if (granted) {
-      logger.info("Persistent storage granted");
+      logger.info("[QuotaManager][initializeStorage]", "Persistent storage granted");
     } else {
-      logger.warn("Persistent storage denied");
+      logger.warn("[QuotaManager][initializeStorage]", "Persistent storage denied");
     }
   }
 }

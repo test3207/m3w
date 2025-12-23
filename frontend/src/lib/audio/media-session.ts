@@ -67,13 +67,15 @@ export function updateMediaSessionMetadata(track: MediaSessionTrack): void {
       artwork,
     });
 
-    logger.info("Media Session metadata updated", {
-      title: track.title,
-      artist: track.artist,
-      hasArtwork: artwork.length > 0,
+    logger.info("[MediaSession][updateMediaSessionMetadata]", "Media Session metadata updated", {
+      raw: {
+        title: track.title,
+        artist: track.artist,
+        hasArtwork: artwork.length > 0,
+      }
     });
   } catch (error) {
-    logger.warn("Failed to update Media Session metadata", { error });
+    logger.warn("[MediaSession][updateMediaSessionMetadata]", "Failed to update Media Session metadata", { raw: { error } });
   }
 }
 
@@ -90,7 +92,7 @@ export function updateMediaSessionPlaybackState(
   try {
     navigator.mediaSession.playbackState = state;
   } catch (error) {
-    logger.warn("Failed to update Media Session playback state", { error });
+    logger.warn("[MediaSession][updateMediaSessionPlaybackState]", "Failed to update Media Session playback state", { raw: { error } });
   }
 }
 
@@ -121,7 +123,7 @@ export function updateMediaSessionPositionState(
     });
   } catch (error) {
     // Some browsers don't support setPositionState
-    logger.debug("Failed to update Media Session position state", { error });
+    logger.debug("[MediaSession][updateMediaSessionPositionState]", "Failed to update Media Session position state", { raw: { error } });
   }
 }
 
@@ -133,7 +135,7 @@ export function registerMediaSessionHandlers(
   callbacks: MediaSessionCallbacks
 ): void {
   if (!isMediaSessionSupported()) {
-    logger.info("Media Session API not supported");
+    logger.info("[MediaSession][registerMediaSessionHandlers]", "Media Session API not supported");
     return;
   }
 
@@ -142,10 +144,10 @@ export function registerMediaSessionHandlers(
     if (callbacks.onPlay) {
       navigator.mediaSession.setActionHandler("play", () => {
         try {
-          logger.info("Media Session: play action triggered");
+          logger.info("[MediaSession][play]", "Media Session: play action triggered");
           callbacks.onPlay?.();
         } catch (error) {
-          logger.warn("Media Session: play callback error", { error });
+          logger.warn("[MediaSession][play]", "Media Session: play callback error", { raw: { error } });
         }
       });
     }
@@ -153,10 +155,10 @@ export function registerMediaSessionHandlers(
     if (callbacks.onPause) {
       navigator.mediaSession.setActionHandler("pause", () => {
         try {
-          logger.info("Media Session: pause action triggered");
+          logger.info("[MediaSession][pause]", "Media Session: pause action triggered");
           callbacks.onPause?.();
         } catch (error) {
-          logger.warn("Media Session: pause callback error", { error });
+          logger.warn("[MediaSession][pause]", "Media Session: pause callback error", { raw: { error } });
         }
       });
     }
@@ -165,10 +167,10 @@ export function registerMediaSessionHandlers(
     if (callbacks.onPreviousTrack) {
       navigator.mediaSession.setActionHandler("previoustrack", () => {
         try {
-          logger.info("Media Session: previoustrack action triggered");
+          logger.info("[MediaSession][previoustrack]", "Media Session: previoustrack action triggered");
           callbacks.onPreviousTrack?.();
         } catch (error) {
-          logger.warn("Media Session: previoustrack callback error", { error });
+          logger.warn("[MediaSession][previoustrack]", "Media Session: previoustrack callback error", { raw: { error } });
         }
       });
     }
@@ -176,10 +178,10 @@ export function registerMediaSessionHandlers(
     if (callbacks.onNextTrack) {
       navigator.mediaSession.setActionHandler("nexttrack", () => {
         try {
-          logger.info("Media Session: nexttrack action triggered");
+          logger.info("[MediaSession][nexttrack]", "Media Session: nexttrack action triggered");
           callbacks.onNextTrack?.();
         } catch (error) {
-          logger.warn("Media Session: nexttrack callback error", { error });
+          logger.warn("[MediaSession][nexttrack]", "Media Session: nexttrack callback error", { raw: { error } });
         }
       });
     }
@@ -189,13 +191,13 @@ export function registerMediaSessionHandlers(
       navigator.mediaSession.setActionHandler("seekto", (details) => {
         try {
           if (details.seekTime !== undefined && isFinite(details.seekTime) && details.seekTime >= 0) {
-            logger.info("Media Session: seekto action triggered", {
-              seekTime: details.seekTime,
+            logger.info("[MediaSession][seekto]", "Media Session: seekto action triggered", {
+              raw: { seekTime: details.seekTime }
             });
             callbacks.onSeekTo?.(details.seekTime);
           }
         } catch (error) {
-          logger.warn("Media Session: seekto callback error", { error });
+          logger.warn("[MediaSession][seekto]", "Media Session: seekto callback error", { raw: { error } });
         }
       });
     }
@@ -206,10 +208,10 @@ export function registerMediaSessionHandlers(
           const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
           // Validate offset is a positive finite number
           if (!isFinite(offset) || offset <= 0) return;
-          logger.info("Media Session: seekbackward action triggered", { offset });
+          logger.info("[MediaSession][seekbackward]", "Media Session: seekbackward action triggered", { raw: { offset } });
           callbacks.onSeekBackward?.(offset);
         } catch (error) {
-          logger.warn("Media Session: seekbackward callback error", { error });
+          logger.warn("[MediaSession][seekbackward]", "Media Session: seekbackward callback error", { raw: { error } });
         }
       });
     }
@@ -220,21 +222,23 @@ export function registerMediaSessionHandlers(
           const offset = details.seekOffset ?? DEFAULT_SEEK_OFFSET;
           // Validate offset is a positive finite number
           if (!isFinite(offset) || offset <= 0) return;
-          logger.info("Media Session: seekforward action triggered", { offset });
+          logger.info("[MediaSession][seekforward]", "Media Session: seekforward action triggered", { raw: { offset } });
           callbacks.onSeekForward?.(offset);
         } catch (error) {
-          logger.warn("Media Session: seekforward callback error", { error });
+          logger.warn("[MediaSession][seekforward]", "Media Session: seekforward callback error", { raw: { error } });
         }
       });
     }
 
-    logger.info("Media Session handlers registered", {
-      handlers: Object.keys(callbacks).filter(
-        (k) => callbacks[k as keyof MediaSessionCallbacks]
-      ),
+    logger.info("[MediaSession][registerMediaSessionHandlers]", "Media Session handlers registered", {
+      raw: {
+        handlers: Object.keys(callbacks).filter(
+          (k) => callbacks[k as keyof MediaSessionCallbacks]
+        ),
+      }
     });
   } catch (error) {
-    logger.warn("Failed to register Media Session handlers", { error });
+    logger.warn("[MediaSession][registerMediaSessionHandlers]", "Failed to register Media Session handlers", { raw: { error } });
   }
 }
 
@@ -256,6 +260,6 @@ export function clearMediaSessionMetadata(): void {
       // setPositionState without args may not be supported in all browsers
     }
   } catch (error) {
-    logger.warn("Failed to clear Media Session metadata", { error });
+    logger.warn("[MediaSession][clearMediaSessionMetadata]", "Failed to clear Media Session metadata", { raw: { error } });
   }
 }

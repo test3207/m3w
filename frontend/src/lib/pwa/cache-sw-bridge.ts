@@ -27,12 +27,12 @@ class CacheSWBridge {
    */
   init() {
     if (this.isInitialized) {
-      logger.warn("Cache SW bridge already initialized");
+      logger.warn("[CacheSWBridge][init]", "Cache SW bridge already initialized");
       return;
     }
 
     if (!("serviceWorker" in navigator)) {
-      logger.warn("Service Worker not supported");
+      logger.warn("[CacheSWBridge][init]", "Service Worker not supported");
       return;
     }
 
@@ -42,7 +42,7 @@ class CacheSWBridge {
     });
 
     this.isInitialized = true;
-    logger.info("Cache SW bridge initialized");
+    logger.info("[CacheSWBridge][init]", "Cache SW bridge initialized");
   }
 
   /**
@@ -51,7 +51,7 @@ class CacheSWBridge {
   private async handleMessage(data: unknown) {
     if (!this.isCacheMessage(data)) return;
 
-    logger.debug("Cache message received from SW", data);
+    logger.debug("[CacheSWBridge][handleMessage]", "Cache message received from SW", data as unknown as Record<string, unknown>);
 
     // Notify listeners
     this.listeners.forEach((listener) => listener(data));
@@ -65,7 +65,7 @@ class CacheSWBridge {
         await this.handleCacheDeleted(data);
         break;
       case "CACHE_ERROR":
-        logger.error("Cache error from SW", { songId: data.songId, error: data.error });
+        logger.error("[CacheSWBridge][handleMessage]", "Cache error from SW", data.error, { raw: { songId: data.songId } });
         break;
     }
   }
@@ -91,7 +91,7 @@ class CacheSWBridge {
     try {
       const song = await db.songs.get(message.songId);
       if (!song) {
-        logger.warn("Song not found in IndexedDB", { songId: message.songId });
+        logger.warn("[CacheSWBridge][handleCacheAdded]", "Song not found in IndexedDB", { raw: { songId: message.songId } });
         return;
       }
 
@@ -105,12 +105,14 @@ class CacheSWBridge {
       // Invalidate memory cache in validator
       cacheValidator.invalidateSong(message.songId);
 
-      logger.info("Cache added", {
-        songId: message.songId,
-        cacheSize: message.cacheSize,
+      logger.info("[CacheSWBridge][handleCacheAdded]", "Cache added", {
+        raw: {
+          songId: message.songId,
+          cacheSize: message.cacheSize,
+        },
       });
     } catch (error) {
-      logger.error("Failed to handle CACHE_ADDED", { message, error });
+      logger.error("[CacheSWBridge][handleCacheAdded]", "Failed to handle CACHE_ADDED", error, { raw: { songId: message.songId } });
     }
   }
 
@@ -121,7 +123,7 @@ class CacheSWBridge {
     try {
       const song = await db.songs.get(message.songId);
       if (!song) {
-        logger.warn("Song not found in IndexedDB", { songId: message.songId });
+        logger.warn("[CacheSWBridge][handleCacheDeleted]", "Song not found in IndexedDB", { raw: { songId: message.songId } });
         return;
       }
 
@@ -135,9 +137,9 @@ class CacheSWBridge {
       // Invalidate memory cache in validator
       cacheValidator.invalidateSong(message.songId);
 
-      logger.info("Cache deleted", { songId: message.songId });
+      logger.info("[CacheSWBridge][handleCacheDeleted]", "Cache deleted", { raw: { songId: message.songId } });
     } catch (error) {
-      logger.error("Failed to handle CACHE_DELETED", { message, error });
+      logger.error("[CacheSWBridge][handleCacheDeleted]", "Failed to handle CACHE_DELETED", error, { raw: { songId: message.songId } });
     }
   }
 
@@ -159,7 +161,7 @@ class CacheSWBridge {
    */
   async sendToSW(message: unknown): Promise<void> {
     if (!navigator.serviceWorker.controller) {
-      logger.warn("No active Service Worker controller");
+      logger.warn("[CacheSWBridge][sendToSW]", "No active Service Worker controller");
       return;
     }
 

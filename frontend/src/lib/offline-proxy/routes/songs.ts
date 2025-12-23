@@ -123,7 +123,7 @@ app.delete("/:id", async (c: Context) => {
       await deleteFromCache(`/api/songs/${id}/stream`);
     } catch (cacheError) {
       // Log but don't fail - audio may not be cached
-      logger.warn("[OfflineProxy] Failed to delete cached audio:", cacheError);
+      logger.warn("[OfflineProxy][deleteSong]", "Failed to delete cached audio", { raw: { error: cacheError } });
     }
 
     // Delete cached cover from Cache Storage
@@ -140,7 +140,7 @@ app.delete("/:id", async (c: Context) => {
       data: null,
     });
   } catch (error) {
-    logger.error("[OfflineProxy] Failed to delete song:", error);
+    logger.error("[OfflineProxy][deleteSong]", "Failed to delete song", error);
     return c.json(
       {
         success: false,

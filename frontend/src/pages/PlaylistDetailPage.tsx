@@ -25,10 +25,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { I18n } from "@/locales/i18n";
+import { logger } from "@/lib/logger-client";
 import { usePlaylistStore } from "@/stores/playlistStore";
 import { usePlayerStore } from "@/stores/playerStore";
 import { api } from "@/services";
-import { logger } from "@/lib/logger-client";
 import { useToast } from "@/components/ui/use-toast";
 import { eventBus, EVENTS } from "@/lib/events";
 import type { Song as SharedSong } from "@m3w/shared";
@@ -91,7 +91,7 @@ export default function PlaylistDetailPage() {
         setCurrentPlaylist(playlistData);
         setSongs(songsData);
       } catch (error) {
-        logger.error("Failed to fetch playlist", { error, playlistId: id });
+        logger.error("[PlaylistDetailPage][fetchData]", "Failed to fetch playlist", error, { raw: { playlistId: id } });
         toast({
           variant: "destructive",
           title: I18n.error.failedToGetPlaylists,
@@ -111,14 +111,14 @@ export default function PlaylistDetailPage() {
 
     const refetchSongs = async () => {
       try {
-        logger.debug("[PlaylistDetailPage] Event triggered, refetching songs");
+        logger.debug("[PlaylistDetailPage][refetchSongs]", "Event triggered, refetching songs");
         const songsData = await api.main.playlists.getSongs(id);
         setSongs(songsData);
         logger.debug(
-          "[PlaylistDetailPage] Songs refreshed due to external changes"
+          "[PlaylistDetailPage][refetchSongs]", "Songs refreshed due to external changes"
         );
       } catch (error) {
-        logger.error("[PlaylistDetailPage] Failed to refresh songs:", error);
+        logger.error("[PlaylistDetailPage][refetchSongs]", "Failed to refresh songs", error);
       }
     };
 
@@ -174,6 +174,12 @@ export default function PlaylistDetailPage() {
     const success = await reorderPlaylistSongs(currentPlaylist.id, newSongIds);
 
     if (success) {
+      logger.info(
+        "[PlaylistDetailPage][handleDragEnd]",
+        "Playlist songs reordered",
+        { traceId: undefined, raw: { playlistId: currentPlaylist.id, songCount: newSongIds.length, from: oldIndex, to: newIndex } }
+      );
+
       // If currently playing this playlist in sequential mode, update queue
       if (
         queueSource === "playlist" &&
@@ -193,6 +199,13 @@ export default function PlaylistDetailPage() {
         title: I18n.playlists.detail.moveSong.successTitle,
       });
     } else {
+      logger.error(
+        "[PlaylistDetailPage][handleDragEnd]",
+        "Failed to reorder playlist songs",
+        undefined,
+        { traceId: undefined, raw: { playlistId: currentPlaylist.id, from: oldIndex, to: newIndex } }
+      );
+
       // Revert on failure - refetch from server
       const serverSongs = await api.main.playlists.getSongs(currentPlaylist.id);
       setSongs(serverSongs);
@@ -213,10 +226,23 @@ export default function PlaylistDetailPage() {
       // Update local state
       setSongs((prev) => prev.filter((s) => s.id !== songId));
 
+      logger.info(
+        "[PlaylistDetailPage][handleRemove]",
+        "Song removed from playlist",
+        { traceId: undefined, raw: { playlistId: currentPlaylist.id, songId, songTitle } }
+      );
+
       toast({
         title: I18n.playlists.detail.removeSong.successTitle.replace("{0}", songTitle),
       });
     } else {
+      logger.error(
+        "[PlaylistDetailPage][handleRemove]",
+        "Failed to remove song from playlist",
+        undefined,
+        { traceId: undefined, raw: { playlistId: currentPlaylist.id, songId, songTitle } }
+      );
+
       toast({
         variant: "destructive",
         title: I18n.playlists.detail.removeSong.errorTitle,

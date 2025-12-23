@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.7",
+    "@hono/zod-validator": "^0.7.6",
     "@m3w/shared": "file:../shared",
     "@prisma/client": "^6.19.1",
     "bcrypt": "^6.0.0",

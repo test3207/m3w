@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { usePlaylistStore } from "@/stores/playlistStore";
+import { logger } from "@/lib/logger-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,6 @@ import { getPlaylistDisplayName, getPlaylistBadge } from "@/lib/utils/defaults";
 // Import from specific subpath to avoid pulling Zod into main bundle
 import { isFavoritesPlaylist } from "@m3w/shared/constants";
 import { I18n } from "@/locales/i18n";
-import { logger } from "@/lib/logger-client";
 import { useCanWrite } from "@/hooks/useCanWrite";
 import {
   Tooltip,
@@ -70,7 +70,7 @@ export default function PlaylistsPage() {
   // Listen for external song changes (delete/upload) that may affect playlists
   useEffect(() => {
     const refetchPlaylists = () => {
-      logger.debug("[PlaylistsPage] Event triggered, refetching playlists");
+      logger.debug("[PlaylistsPage][refetchPlaylists]", "Event triggered, refetching playlists");
       fetchPlaylists();
     };
 
@@ -101,6 +101,11 @@ export default function PlaylistsPage() {
     setIsCreating(true);
     try {
       await createPlaylist(newPlaylistName.trim());
+      logger.info(
+        "[PlaylistsPage][handleCreatePlaylist]",
+        "Playlist created",
+        { traceId: undefined, raw: { playlistName: newPlaylistName.trim() } }
+      );
       toast({
         title: I18n.playlists.create.successTitle,
         description: I18n.playlists.create.successDescription.replace("{0}", newPlaylistName),
@@ -108,6 +113,12 @@ export default function PlaylistsPage() {
       setNewPlaylistName("");
       setIsDialogOpen(false);
     } catch (error) {
+      logger.error(
+        "[PlaylistsPage][handleCreatePlaylist]",
+        "Failed to create playlist",
+        error,
+        { traceId: undefined, raw: { playlistName: newPlaylistName.trim() } }
+      );
       toast({
         variant: "destructive",
         title: I18n.playlists.create.errorTitle,
@@ -124,11 +135,21 @@ export default function PlaylistsPage() {
     try {
       const success = await deletePlaylist(playlistToDelete.id);
       if (success) {
+        logger.info(
+          "[PlaylistsPage][handleDeletePlaylist]",
+          "Playlist deleted",
+          { traceId: undefined, raw: { playlistId: playlistToDelete.id, playlistName: playlistToDelete.name } }
+        );
         toast({
           title: I18n.playlists.delete.successTitle,
           description: I18n.playlists.delete.successDescription.replace("{0}", playlistToDelete.name),
         });
       } else {
+        logger.warn(
+          "[PlaylistsPage][handleDeletePlaylist]",
+          "Cannot delete default playlist",
+          { traceId: undefined, raw: { playlistId: playlistToDelete.id, playlistName: playlistToDelete.name } }
+        );
         toast({
           variant: "destructive",
           title: I18n.playlists.delete.errorTitle,

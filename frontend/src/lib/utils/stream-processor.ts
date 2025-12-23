@@ -51,14 +51,16 @@ export async function processAudioFileStream(file: File): Promise<AudioFileInfo>
   }
 
   const duration = performance.now() - startTime;
-  logger.info("Processed audio file (streaming)", {
-    fileName: file.name,
-    fileSize: file.size,
-    hash,
-    title: metadata.common.title,
-    artist: metadata.common.artist,
-    hasCover: !!coverBlob,
-    durationMs: Math.round(duration),
+  logger.info("[StreamProcessor][processAudioFileStream]", "Processed audio file (streaming)", {
+    raw: {
+      fileName: file.name,
+      fileSize: file.size,
+      hash,
+      title: metadata.common.title,
+      artist: metadata.common.artist,
+      hasCover: !!coverBlob,
+      durationMs: Math.round(duration),
+    },
   });
 
   return { hash, metadata, coverBlob };

@@ -1,5 +1,5 @@
 import { HttpStatusCode } from "@/lib/constants/http-status";
-import { logger } from "@/lib/logger-client";
+import { logger, type Trace } from "@/lib/logger-client";
 import { routeRequest } from "./router";
 import { API_BASE_URL } from "./config";
 
@@ -19,6 +19,8 @@ export interface ApiRequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean>;
   /** Suppress error logging (for expected errors like demo mode check) */
   silent?: boolean;
+  /** Trace instance for request correlation with backend logs */
+  trace?: Trace;
 }
 
 /**
@@ -68,11 +70,11 @@ class ApiClient {
     endpoint: string,
     options: ApiRequestOptions = {}
   ): Promise<T> {
-    const { params, silent, ...fetchOptions } = options;
+    const { params, silent, trace, ...fetchOptions } = options;
     const url = this.buildURL(endpoint, params);
 
     try {
-      logger.info("API request", { url, method: options.method || "GET" });
+      logger.info("[ApiClient][request]", "API request", { raw: { url, method: options.method || "GET" } });
 
       // Build headers - don't set Content-Type for FormData (browser will set it with boundary)
       const headers: HeadersInit = { ...fetchOptions.headers };
@@ -87,7 +89,7 @@ class ApiClient {
       const response = await routeRequest(path, {
         ...fetchOptions,
         headers,
-      });
+      }, { trace });
 
       // Handle non-JSON responses (e.g., audio streams)
       const contentType = response.headers.get("content-type");
@@ -95,9 +97,8 @@ class ApiClient {
         if (!response.ok) {
           // Don't log expected errors when silent mode is enabled
           if (!silent) {
-            logger.error("API error (non-JSON)", {
-              status: response.status,
-              statusText: response.statusText,
+            logger.error("[ApiClient][request]", "API error (non-JSON)", undefined, {
+              raw: { status: response.status, statusText: response.statusText },
             });
           }
           throw new ApiError(
@@ -114,10 +115,8 @@ class ApiClient {
 
       if (!response.ok) {
         if (!silent) {
-          logger.error("API error", {
-            status: response.status,
-            statusText: response.statusText,
-            data,
+          logger.error("[ApiClient][request]", "API error", undefined, {
+            raw: { status: response.status, statusText: response.statusText, data },
           });
         }
 
@@ -129,7 +128,7 @@ class ApiClient {
         );
       }
 
-      logger.info("API response", { url, status: response.status });
+      logger.info("[ApiClient][request]", "API response", { raw: { url, status: response.status } });
       return data;
     } catch (error) {
       if (error instanceof ApiError) {
@@ -137,7 +136,7 @@ class ApiClient {
       }
 
       if (!silent) {
-        logger.error("API request failed", { error, url });
+        logger.error("[ApiClient][request]", "API request failed", error, { raw: { url } });
       }
       throw new ApiError(
         HttpStatusCode.INTERNAL_SERVER_ERROR,

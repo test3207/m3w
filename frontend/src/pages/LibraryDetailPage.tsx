@@ -127,7 +127,7 @@ export default function LibraryDetailPage() {
         const songsData = await api.main.libraries.getSongs(id, sortOption);
         setSongs(songsData);
       } catch (error) {
-        logger.error("[LibraryDetailPage] Failed to fetch songs:", error);
+        logger.error("[LibraryDetailPage][fetchSongs]", "Failed to fetch songs", error);
       } finally {
         setIsLoadingSongs(false);
       }
@@ -165,7 +165,7 @@ export default function LibraryDetailPage() {
       );
       setSongCacheStatus(statusMap);
     } catch (error) {
-      logger.error("[LibraryDetailPage] Failed to load cache stats:", error);
+      logger.error("[LibraryDetailPage][loadCacheStats]", "Failed to load cache stats", error);
     }
   }, [id, songs]);
 
@@ -209,7 +209,7 @@ export default function LibraryDetailPage() {
         toast({ title: I18n.libraries.detail.cache.allCached });
       }
     } catch (error) {
-      logger.error("[LibraryDetailPage] Failed to start download:", error);
+      logger.error("[LibraryDetailPage][handleDownloadAll]", "Failed to start download", error);
       toast({
         variant: "destructive",
         title: I18n.error.title,
@@ -236,7 +236,7 @@ export default function LibraryDetailPage() {
           const songsData = await api.main.libraries.getSongs(id, sortOption);
           setSongs(songsData);
         } catch (error) {
-          logger.error("[LibraryDetailPage] Failed to refresh songs:", error);
+          logger.error("[LibraryDetailPage][refetchSongs]", "Failed to refresh songs", error);
         }
       };
       void refetchSongs();
@@ -293,11 +293,24 @@ export default function LibraryDetailPage() {
       await fetchPlaylists();
       eventBus.emit(EVENTS.SONG_DELETED);
 
+      logger.info(
+        "[LibraryDetailPage][handleDeleteSong]",
+        "Song deleted from library",
+        { traceId: undefined, raw: { libraryId: id, songId, songTitle } }
+      );
+
       toast({
         title: I18n.library.detail.deleteSong.successTitle,
         description: I18n.library.detail.deleteSong.successDescription.replace("{0}", songTitle),
       });
     } catch (error) {
+      logger.error(
+        "[LibraryDetailPage][handleDeleteSong]",
+        "Failed to delete song",
+        error,
+        { traceId: undefined, raw: { libraryId: id, songId, songTitle } }
+      );
+
       toast({
         variant: "destructive",
         title: I18n.library.detail.deleteSong.errorTitle,

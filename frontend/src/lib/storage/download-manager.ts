@@ -52,7 +52,7 @@ export async function queueLibraryDownload(
   // Check if caching is available (requires Cache API and sufficient quota)
   const cacheAvailable = await isAudioCacheAvailable();
   if (!cacheAvailable) {
-    logger.debug("Audio cache not available: no storage quota");
+    logger.debug("[DownloadManager][queueLibraryDownload]", "Audio cache not available: no storage quota");
     return 0;
   }
 
@@ -60,7 +60,7 @@ export async function queueLibraryDownload(
   if (!force) {
     const canDownload = await canAutoDownload();
     if (!canDownload) {
-      logger.debug("Auto-download not allowed based on setting/network");
+      logger.debug("[DownloadManager][queueLibraryDownload]", "Auto-download not allowed based on setting/network");
       return 0;
     }
   }
@@ -80,7 +80,7 @@ export async function queueLibraryDownload(
     }
   }
 
-  logger.info(`Queued ${queued} songs from library ${libraryId} for download`);
+  logger.info("[DownloadManager][queueLibraryDownload]", `Queued ${queued} songs from library ${libraryId} for download`);
 
   // Start processing
   processQueue();
@@ -103,7 +103,7 @@ export function cancelLibraryDownloads(libraryId: string): number {
   const before = downloadQueue.length;
   downloadQueue = downloadQueue.filter(task => task.libraryId !== libraryId);
   const cancelled = before - downloadQueue.length;
-  logger.info(`Cancelled ${cancelled} downloads for library ${libraryId}`);
+  logger.info("[DownloadManager][cancelLibraryDownloads]", `Cancelled ${cancelled} downloads for library ${libraryId}`);
   return cancelled;
 }
 
@@ -112,7 +112,7 @@ export function cancelLibraryDownloads(libraryId: string): number {
  */
 export function cancelAllDownloads(): void {
   downloadQueue = [];
-  logger.info("Cancelled all pending downloads");
+  logger.info("[DownloadManager][cancelAllDownloads]", "Cancelled all pending downloads");
 }
 
 /**
@@ -139,7 +139,7 @@ export async function triggerAutoDownload(): Promise<void> {
     // Check if we can auto-download
     const canDownload = await canAutoDownload();
     if (!canDownload) {
-      logger.debug("Auto-download not allowed based on setting/network");
+      logger.debug("[DownloadManager][triggerAutoDownload]", "Auto-download not allowed based on setting/network");
       return;
     }
 
@@ -148,7 +148,7 @@ export async function triggerAutoDownload(): Promise<void> {
     const userId = isGuest ? GUEST_USER_ID : user?.id;
 
     if (!userId) {
-      logger.debug("No user ID, skipping auto-download");
+      logger.debug("[DownloadManager][triggerAutoDownload]", "No user ID, skipping auto-download");
       return;
     }
 
@@ -157,14 +157,14 @@ export async function triggerAutoDownload(): Promise<void> {
       .filter(lib => lib.userId === userId)
       .toArray();
 
-    logger.info(`Auto-download triggered for ${userLibraries.length} libraries`);
+    logger.info("[DownloadManager][triggerAutoDownload]", `Auto-download triggered for ${userLibraries.length} libraries`);
 
     for (const library of userLibraries) {
       // Use force=false since we already checked canAutoDownload
       await queueLibraryDownload(library.id, false);
     }
   } catch (error) {
-    logger.error("Auto-download failed", error);
+    logger.error("[DownloadManager][triggerAutoDownload]", "Auto-download failed", error);
   }
 }
 
@@ -182,17 +182,17 @@ function addToQueue(task: DownloadTask): void {
 
 async function processQueue(): Promise<void> {
   if (isProcessing) {
-    logger.debug("processQueue: already processing, skipping");
+    logger.debug("[DownloadManager][processQueue]", "already processing, skipping");
     return;
   }
   isProcessing = true;
-  logger.debug(`processQueue: starting, queue length=${downloadQueue.length}`);
+  logger.debug("[DownloadManager][processQueue]", `starting, queue length=${downloadQueue.length}`);
 
   try {
     // Check if caching is available
     const cacheAvailable = await isAudioCacheAvailable();
     if (!cacheAvailable) {
-      logger.debug("processQueue: cache not available, clearing queue");
+      logger.debug("[DownloadManager][processQueue]", "cache not available, clearing queue");
       downloadQueue = [];
       return;
     }
@@ -201,26 +201,26 @@ async function processQueue(): Promise<void> {
       // Check if we can still download (auto-download may have been disabled or network changed)
       const canDownload = await canAutoDownload();
       if (!canDownload) {
-        logger.debug("processQueue: pausing downloads, auto-download not allowed");
+        logger.debug("[DownloadManager][processQueue]", "pausing downloads, auto-download not allowed");
         break;
       }
 
       const task = downloadQueue.shift();
       if (!task) break;
 
-      logger.debug(`processQueue: starting download for song ${task.songId}`);
+      logger.debug("[DownloadManager][processQueue]", `starting download for song ${task.songId}`);
       activeDownloads++;
       // Don't await - let it run in parallel
       processTask(task).finally(() => {
         activeDownloads--;
-        logger.debug(`processQueue: finished task, active=${activeDownloads}, pending=${downloadQueue.length}`);
+        logger.debug("[DownloadManager][processQueue]", `finished task, active=${activeDownloads}, pending=${downloadQueue.length}`);
         // Schedule next batch after task completes (avoid race conditions)
         scheduleNextBatch();
       });
     }
   } finally {
     isProcessing = false;
-    logger.debug(`processQueue: finished loop, active=${activeDownloads}, pending=${downloadQueue.length}`);
+    logger.debug("[DownloadManager][processQueue]", `finished loop, active=${activeDownloads}, pending=${downloadQueue.length}`);
   }
 }
 
@@ -243,14 +243,14 @@ async function processTask(task: DownloadTask): Promise<void> {
     // Check if song still exists in IndexedDB (may have been deleted by sync)
     const songExists = await db.songs.get(task.songId);
     if (!songExists) {
-      logger.debug(`Song ${task.songId} no longer exists in IndexedDB, skipping`);
+      logger.debug("[DownloadManager][processTask]", `Song ${task.songId} no longer exists in IndexedDB, skipping`);
       return;
     }
 
     // Check if already cached
     const cached = await isSongCached(task.songId);
     if (cached) {
-      logger.debug(`Song ${task.songId} already cached, skipping`);
+      logger.debug("[DownloadManager][processTask]", `Song ${task.songId} already cached, skipping`);
       return;
     }
 
@@ -263,19 +263,19 @@ async function processTask(task: DownloadTask): Promise<void> {
       lastCacheCheck: Date.now(),
     });
 
-    logger.debug(`Successfully cached song ${task.songId}`);
+    logger.debug("[DownloadManager][processTask]", `Successfully cached song ${task.songId}`);
 
     // Notify UI to refresh cache status (with libraryId for filtering)
     eventBus.emit<SongCachedPayload>(EVENTS.SONG_CACHED, { libraryId: task.libraryId });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.warn(`Failed to cache song ${task.songId}: ${errorMessage}`);
+    logger.warn("[DownloadManager][processTask]", `Failed to cache song ${task.songId}: ${errorMessage}`);
 
     // Don't retry for permanent failures (404, not found, not available)
     if (errorMessage.includes("not available") ||
       errorMessage.includes("not found") ||
       errorMessage.includes("404")) {
-      logger.debug(`Permanent failure for song ${task.songId}, not retrying`);
+      logger.debug("[DownloadManager][processTask]", `Permanent failure for song ${task.songId}, not retrying`);
       return;
     }
 
@@ -287,7 +287,7 @@ async function processTask(task: DownloadTask): Promise<void> {
         processQueue();
       }, DOWNLOAD_RETRY_DELAY * task.retries);
     } else {
-      logger.warn(`Max retries reached for song ${task.songId}`);
+      logger.warn("[DownloadManager][processTask]", `Max retries reached for song ${task.songId}`);
     }
   }
 }
