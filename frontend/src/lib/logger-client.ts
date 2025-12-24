@@ -19,6 +19,7 @@
  */
 
 import { API_BASE_URL } from "./api/config";
+import { useAuthStore } from "@/stores/authStore";
 
 // ============================================================================
 // Configuration
@@ -53,6 +54,7 @@ interface LogEntry {
   service: string;
   traceId: string;
   sessionId: string;
+  userId?: string;
   page: string;
   source: string;
   message: string;
@@ -151,6 +153,15 @@ class LogBuffer {
     }
   }
 
+  /** Get userId from auth store (may change during session) */
+  private getUserId(): string | undefined {
+    try {
+      return useAuthStore.getState().user?.id;
+    } catch {
+      return undefined;
+    }
+  }
+
   initialize(): void {
     if (this.flushTimer) return;
 
@@ -196,12 +207,15 @@ class LogBuffer {
       }
     }
 
+    const userId = this.getUserId();
+
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       service: SERVICE,
       traceId,
       sessionId: this.sessionId,
+      ...(userId && { userId }),
       page,
       source,
       message,
