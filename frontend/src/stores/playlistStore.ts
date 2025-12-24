@@ -314,7 +314,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     const favorites = getFavoritesPlaylist();
     
     if (!favorites) {
-      logger.error("[PlaylistStore][toggleFavorite]", "Favorites playlist not found", "/playlists");
+      logger.error("[PlaylistStore][toggleFavorite]", "Favorites playlist not found", new Error("Favorites not found"));
       return false;
     }
 

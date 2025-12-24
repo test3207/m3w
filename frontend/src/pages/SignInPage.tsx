@@ -48,7 +48,7 @@ export default function SignInPage() {
         description: getErrorMessage(errorCode),
         variant: "destructive",
       });
-      logger.error("[SignInPage] Auth callback error:", String(errorCode), "/signin");
+      logger.error("[SignInPage]", "Auth callback error", new Error(String(errorCode)), { traceId: undefined, raw: { errorCode } });
     }
   }, [searchParams, toast]);
 

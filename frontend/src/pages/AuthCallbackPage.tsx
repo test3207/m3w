@@ -94,11 +94,11 @@ export default function AuthCallbackPage() {
           });
           navigate("/libraries");
         } else {
-          logger.error("[AuthCallbackPage][fetchUserInfoFromCookies]", "Failed to get session", undefined, { raw: { tokenData } });
+          logger.error("[AuthCallbackPage][fetchUserInfoFromCookies]", "Failed to get session", new Error("Session fetch failed"), { raw: { tokenData } });
           navigate("/signin?error=session_failed");
         }
       } else {
-        logger.error("[AuthCallbackPage][fetchUserInfoFromCookies]", "Auth failed", undefined, { raw: { data } });
+        logger.error("[AuthCallbackPage][fetchUserInfoFromCookies]", "Auth failed", new Error("Auth check failed"), { raw: { data } });
         navigate("/signin?error=auth_failed");
       }
     } catch (error) {

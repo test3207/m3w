@@ -17,12 +17,12 @@ const app = new Hono();
 const FrontendLogSchema = z.object({
   // Required fields
   level: z.enum(['error', 'warn', 'info']).default('info'),
-  source: z.string().min(1).max(200),
-  col1: z.string().min(1).max(50),
-  col2: z.string().min(1).max(50),
   message: z.string().min(1).max(1000),
 
-  // Optional fields
+  // Optional fields (relaxed from required to match frontend LogOptions)
+  source: z.string().max(200).optional(),
+  col1: z.string().max(50).optional(),
+  col2: z.string().max(50).optional(),
   col3: z.string().max(200).optional(),
   raw: z.record(z.string(), z.unknown()).optional(),
   error: z.string().max(2000).optional(),

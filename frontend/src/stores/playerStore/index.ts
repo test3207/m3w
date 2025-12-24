@@ -579,7 +579,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
           });
         })
         .catch((error) => {
-          logger.error("[PlayerStore][savePlaybackProgress]", "Failed to save playback progress", "/player", error);
+          logger.error("[PlayerStore][savePlaybackProgress]", "Failed to save playback progress", error);
         });
     },
 

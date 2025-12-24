@@ -124,7 +124,7 @@ export function setupAudioPlayerListeners(
   });
 
   audioPlayer.on("error", (state) => {
-    logger.error("[PlayerStore][onerror]", "AudioPlayer error", undefined, { raw: { track: state.currentTrack } });
+    logger.error("[PlayerStore][onerror]", "AudioPlayer error", new Error("Audio playback error"), { raw: { track: state.currentTrack } });
     setState({ isPlaying: false });
   });
 }
