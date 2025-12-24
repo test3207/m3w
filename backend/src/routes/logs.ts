@@ -24,7 +24,7 @@ const FrontendLogSchema = z.object({
   col1: z.string().max(50).optional(),
   col2: z.string().max(50).optional(),
   col3: z.string().max(200).optional(),
-  raw: z.record(z.string(), z.unknown()).optional(),
+  raw: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
   error: z.string().max(2000).optional(),
   errorStack: z.string().max(5000).optional(),
 
@@ -97,7 +97,7 @@ app.post('/', zValidator('json', LogBatchSchema), async (c) => {
     // Build log object
     const logObj: Record<string, unknown> = {
       service: 'm3w-frontend', // Override to ensure correct service
-      source,
+      ...(source && { source }),
       col1,
       col2,
       ...(col3 && { col3 }),

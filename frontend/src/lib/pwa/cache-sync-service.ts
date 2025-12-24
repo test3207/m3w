@@ -160,7 +160,7 @@ class CacheSyncService {
       this.lastSyncTime = Date.now();
       stats.duration = Date.now() - startTime;
 
-      logger.info("[CacheSyncService][runSync]", "Cache sync completed", stats as unknown as Record<string, unknown>);
+      logger.info("[CacheSyncService][runSync]", "Cache sync completed", { raw: stats });
       
       return stats;
     } catch (error) {

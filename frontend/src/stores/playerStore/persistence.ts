@@ -71,7 +71,9 @@ export async function loadPreferences(
       });
     }
   } catch (prefError) {
-    logger.warn("[PlayerStore][loadPreferences]", "Failed to load playback preferences", { raw: { error: String(prefError) } });
+    logger.warn("[PlayerStore][loadPreferences]", "Failed to load playback preferences", { 
+      raw: { error: String(prefError) },
+    });
   }
 }
 
@@ -105,7 +107,9 @@ export async function loadDefaultSeed(
     logger.info("[PlayerStore][loadDefaultSeed]", "Loaded default seed and primed player", { raw: { songId: song.id, title: song.title } });
     return true;
   } catch (seedError) {
-    logger.warn("[PlayerStore][loadDefaultSeed]", "Failed to load default seed", { raw: { error: String(seedError) } });
+    logger.warn("[PlayerStore][loadDefaultSeed]", "Failed to load default seed", {
+      raw: { error: String(seedError) },
+    });
     return false;
   }
 }
@@ -145,7 +149,9 @@ export async function loadQueueFromContext(
       return { queue: songs, startIndex };
     }
   } catch (queueError) {
-    logger.warn("[PlayerStore][loadQueueFromContext]", "Failed to load full queue, using single track", { raw: { error: String(queueError) } });
+    logger.warn("[PlayerStore][loadQueueFromContext]", "Failed to load full queue, using single track", { 
+      raw: { context, error: String(queueError) },
+    });
   }
 
   return { queue: [], startIndex: 0 };
