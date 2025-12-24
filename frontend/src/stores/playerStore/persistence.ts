@@ -72,7 +72,7 @@ export async function loadPreferences(
     }
   } catch (prefError) {
     logger.warn("[PlayerStore][loadPreferences]", "Failed to load playback preferences", { 
-      raw: { error: String(prefError) },
+      raw: { error: prefError },
     });
   }
 }
@@ -108,7 +108,7 @@ export async function loadDefaultSeed(
     return true;
   } catch (seedError) {
     logger.warn("[PlayerStore][loadDefaultSeed]", "Failed to load default seed", {
-      raw: { error: String(seedError) },
+      raw: { error: seedError },
     });
     return false;
   }
@@ -150,7 +150,7 @@ export async function loadQueueFromContext(
     }
   } catch (queueError) {
     logger.warn("[PlayerStore][loadQueueFromContext]", "Failed to load full queue, using single track", { 
-      raw: { context, error: String(queueError) },
+      raw: { context, error: queueError },
     });
   }
 
