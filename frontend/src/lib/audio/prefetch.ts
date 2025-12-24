@@ -17,14 +17,14 @@ export async function prefetchAudioBlob(url: string): Promise<string | null> {
     const { isAuthenticated, isGuest } = useAuthStore.getState();
     
     if (!isAuthenticated) {
-      logger.debug("Skipping prefetch: user not authenticated", { url });
+      logger.debug("[prefetchAudioBlob][prefetchAudioBlob]", "Skipping prefetch: user not authenticated", { raw: { url } });
       return null;
     }
     
     if (isGuest) {
       // Guest mode: Files should already be in cache (uploaded locally)
       // Service Worker will serve them directly
-      logger.debug("Skipping prefetch for guest mode (served by Service Worker)", { url });
+      logger.debug("[prefetchAudioBlob][prefetchAudioBlob]", "Skipping prefetch for guest mode (served by Service Worker)", { raw: { url } });
       return null;
     }
     
@@ -32,14 +32,14 @@ export async function prefetchAudioBlob(url: string): Promise<string | null> {
     const response = await streamApiClient.get(url);
     if (!response.ok) {
       // Non-fatal: prefetch is optional optimization
-      logger.debug("Prefetch returned non-ok status", { url, status: response.status });
+      logger.debug("[prefetchAudioBlob][prefetchAudioBlob]", "Prefetch returned non-ok status", { raw: { url, status: response.status } });
       return null;
     }
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch (error) {
     // Non-fatal: prefetch is optional optimization, player will use streaming URL
-    logger.debug("Prefetch skipped (will use streaming URL)", { url, error });
+    logger.debug("[prefetchAudioBlob][prefetchAudioBlob]", "Prefetch skipped (will use streaming URL)", { raw: { url, error } });
     return null;
   }
 }

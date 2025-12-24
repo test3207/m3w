@@ -58,7 +58,7 @@ export async function loadTracksFromContext(
       }
     }
   } catch (error) {
-    logger.error("Failed to load tracks from context", { error, context });
+    logger.error("[TrackLoader][loadTracksFromContext]", "Failed to load tracks from context", error, { raw: { context } });
   }
 
   return null;
@@ -105,15 +105,17 @@ export async function loadFullQueueForTrack(
   const result = await loadTracksFromContext(context);
   if (result && result.tracks.length > 0) {
     const currentIndex = findTrackIndex(result.tracks, track.id);
-    logger.info("Loaded full queue from context", {
-      contextType: context.type,
-      contextId: context.id,
-      tracksCount: result.tracks.length,
-      currentIndex
+    logger.info("[TrackLoader][loadFullQueueForTrack]", "Loaded full queue from context", {
+      raw: {
+        contextType: context.type,
+        contextId: context.id,
+        tracksCount: result.tracks.length,
+        currentIndex
+      }
     });
     return { tracks: result.tracks, currentIndex };
   }
 
-  logger.warn("Failed to load full queue, using single track", { context });
+  logger.warn("[TrackLoader][loadFullQueueForTrack]", "Failed to load full queue, using single track", { raw: { context } });
   return { tracks: [track], currentIndex: 0 };
 }

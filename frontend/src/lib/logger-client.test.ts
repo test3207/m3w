@@ -1,5 +1,7 @@
 /**
  * Client logger tests
+ *
+ * Tests for the unified frontend logger API
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -23,152 +25,166 @@ describe("logger-client", () => {
   });
 
   describe("logger.error", () => {
-    it("should log error message with prefix", () => {
-      logger.error("Test error");
-      
+    it("should log error message with source", () => {
+      logger.error("[Test][error]", "Test error");
+
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Client Error] Test error",
-        undefined
+        "[Error] [Test][error] Test error",
+        undefined,
+        ""
       );
     });
 
-    it("should log error with data object", () => {
-      const data = { code: 500, details: "Server error" };
-      logger.error("Test error", data);
-      
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Client Error] Test error",
-        data
-      );
-    });
-
-    it("should handle Error object as data", () => {
+    it("should log error with Error object", () => {
       const error = new Error("Something went wrong");
-      logger.error("Operation failed", error);
-      
+      logger.error("[Test][error]", "Operation failed", error);
+
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Client Error] Operation failed",
-        error
+        "[Error] [Test][error] Operation failed",
+        error,
+        ""
+      );
+    });
+
+    it("should log error with raw data", () => {
+      const raw = { code: 500, details: "Server error" };
+      logger.error("[Test][error]", "Test error", undefined, { raw });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[Error] [Test][error] Test error",
+        undefined,
+        { code: 500, details: "Server error" }
+      );
+    });
+
+    it("should log error with both Error and raw data", () => {
+      const error = new Error("Something went wrong");
+      const raw = { requestId: "req-123" };
+      logger.error("[Test][error]", "Operation failed", error, { raw });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[Error] [Test][error] Operation failed",
+        error,
+        { requestId: "req-123" }
       );
     });
   });
 
   describe("logger.warn", () => {
-    it("should log warning message with prefix", () => {
-      logger.warn("Test warning");
-      
+    it("should log warning message with source", () => {
+      logger.warn("[Test][warn]", "Test warning");
+
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[Client Warning] Test warning",
-        undefined
+        "[Warn] [Test][warn] Test warning",
+        ""
       );
     });
 
-    it("should log warning with data", () => {
-      const data = { deprecated: "oldMethod" };
-      logger.warn("Deprecation notice", data);
-      
+    it("should log warning with raw data", () => {
+      const raw = { deprecated: "oldMethod" };
+      logger.warn("[Test][warn]", "Deprecation notice", { raw });
+
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[Client Warning] Deprecation notice",
-        data
+        "[Warn] [Test][warn] Deprecation notice",
+        { deprecated: "oldMethod" }
       );
     });
   });
 
   describe("logger.info", () => {
-    it("should log info message with prefix", () => {
-      logger.info("Test info");
-      
+    it("should log info message with source", () => {
+      logger.info("[Test][info]", "Test info");
+
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        "[Client Info] Test info",
-        undefined
+        "[Info] [Test][info] Test info",
+        ""
       );
     });
 
-    it("should log info with data", () => {
-      const data = { user: "test", action: "login" };
-      logger.info("User action", data);
-      
+    it("should log info with raw data", () => {
+      const raw = { user: "test", action: "login" };
+      logger.info("[Test][info]", "User action", { raw });
+
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        "[Client Info] User action",
-        data
+        "[Info] [Test][info] User action",
+        { user: "test", action: "login" }
       );
     });
   });
 
   describe("logger.debug", () => {
-    it("should log debug message with prefix in dev mode", () => {
-      // In test environment, DEV is typically true
-      logger.debug("Debug message");
-      
-      // Debug should be called since we're in dev mode during tests
+    it("should log debug message in dev mode", () => {
+      logger.debug("[Test][debug]", "Debug message");
+
       expect(consoleDebugSpy).toHaveBeenCalledWith(
-        "[Client Debug] Debug message",
-        undefined
+        "[Debug] [Test][debug] Debug message",
+        ""
       );
     });
 
-    it("should log debug with data", () => {
-      const data = { step: 1, value: "test" };
-      logger.debug("Debug step", data);
-      
+    it("should log debug with raw data", () => {
+      const raw = { step: 1, value: "test" };
+      logger.debug("[Test][debug]", "Debug step", { raw });
+
       expect(consoleDebugSpy).toHaveBeenCalledWith(
-        "[Client Debug] Debug step",
-        data
+        "[Debug] [Test][debug] Debug step",
+        { step: 1, value: "test" }
       );
     });
   });
 
   describe("data types", () => {
-    it("should handle null data", () => {
-      logger.error("Error with null", null);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Client Error] Error with null",
-        null
+    it("should handle array in raw data", () => {
+      const raw = { items: [1, 2, 3] };
+      logger.info("[Test][info]", "Array data", { raw });
+
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        "[Info] [Test][info] Array data",
+        { items: [1, 2, 3] }
       );
     });
 
-    it("should handle array data", () => {
-      const data = [1, 2, 3];
-      logger.info("Array data", data);
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        "[Client Info] Array data",
-        data
-      );
-    });
-
-    it("should handle primitive data", () => {
-      logger.info("Number", 42);
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        "[Client Info] Number",
-        42
-      );
-
-      logger.info("String", "value");
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        "[Client Info] String",
-        "value"
-      );
-
-      logger.info("Boolean", true);
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        "[Client Info] Boolean",
-        true
-      );
-    });
-
-    it("should handle nested objects", () => {
-      const data = {
+    it("should handle nested objects in raw data", () => {
+      const raw = {
         level1: {
           level2: {
-            value: "deep"
-          }
-        }
+            value: "deep",
+          },
+        },
       };
-      logger.info("Nested object", data);
+      logger.info("[Test][info]", "Nested object", { raw });
+
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        "[Client Info] Nested object",
-        data
+        "[Info] [Test][info] Nested object",
+        {
+          level1: {
+            level2: {
+              value: "deep",
+            },
+          },
+        }
       );
+    });
+  });
+
+  describe("tracing", () => {
+    it("should generate new trace on startTrace", () => {
+      const trace = logger.startTrace("/test");
+
+      expect(trace).toBeTruthy();
+      expect(trace.traceId).toBeTruthy();
+      expect(typeof trace.traceId).toBe("string");
+    });
+
+    it("should allow trace methods", () => {
+      const trace = logger.startTrace("/test");
+      
+      // These should not throw
+      trace.info("[Test][trace]", "Trace info");
+      trace.warn("[Test][trace]", "Trace warn");
+      trace.error("[Test][trace]", "Trace error");
+      trace.debug("[Test][trace]", "Trace debug");
+      trace.end();
     });
   });
 });

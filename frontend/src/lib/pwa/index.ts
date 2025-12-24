@@ -28,32 +28,34 @@ export interface PWAStatus {
  * Initialize PWA features
  */
 export async function initializePWA(): Promise<void> {
-  logger.info("Initializing PWA features");
+  logger.info("[PWA][initializePWA]", "Initializing PWA features");
 
   // Step 1: Initialize storage management
   await initializeStorage();
 
   // Step 2: Get current status
   const storageStatus = await getStorageStatus();
-  logger.info("Storage status", {
-    isPWAInstalled: storageStatus.isPWAInstalled,
-    isPersisted: storageStatus.isPersisted,
-    canCache: storageStatus.canCache,
+  logger.info("[PWA][initializePWA]", "Storage status", {
+    raw: {
+      isPWAInstalled: storageStatus.isPWAInstalled,
+      isPersisted: storageStatus.isPersisted,
+      canCache: storageStatus.canCache,
+    },
   });
 
   // Step 3: Start automatic metadata sync if online
   if (navigator.onLine) {
-    logger.info("Starting metadata sync");
+    logger.info("[PWA][initializePWA]", "Starting metadata sync");
     startAutoSync();
   } else {
-    logger.info("Offline, skipping metadata sync");
+    logger.info("[PWA][initializePWA]", "Offline, skipping metadata sync");
   }
 
   // Step 4: Check audio caching availability
   const audioCacheAvailable = await isAudioCacheAvailable();
-  logger.info("Audio caching status", { available: audioCacheAvailable });
+  logger.info("[PWA][initializePWA]", "Audio caching status", { raw: { available: audioCacheAvailable } });
 
-  logger.info("PWA initialization complete");
+  logger.info("[PWA][initializePWA]", "PWA initialization complete");
 }
 
 /**
@@ -81,21 +83,21 @@ export async function getPWAStatus(): Promise<PWAStatus> {
  * This should be called when the browser's beforeinstallprompt fires
  */
 export async function handlePWAInstall(): Promise<void> {
-  logger.info("PWA installation detected");
+  logger.info("[PWA][handlePWAInstall]", "PWA installation detected");
 
   // Request persistent storage
   const persisted = await requestPersistentStorage();
 
   if (persisted) {
-    logger.info("Persistent storage granted");
+    logger.info("[PWA][handlePWAInstall]", "Persistent storage granted");
 
     // Trigger initial metadata sync
     if (navigator.onLine) {
-      logger.info("Starting initial metadata sync");
+      logger.info("[PWA][handlePWAInstall]", "Starting initial metadata sync");
       await manualSync();
     }
   } else {
-    logger.warn("Persistent storage denied, audio caching unavailable");
+    logger.warn("[PWA][handlePWAInstall]", "Persistent storage denied, audio caching unavailable");
   }
 }
 
@@ -107,12 +109,12 @@ export function setupPWAInstallPrompt(
 ): void {
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
-    logger.info("PWA install prompt available");
+    logger.info("[PWA][setupPWAInstallPrompt]", "PWA install prompt available");
     onInstallPrompt?.(e);
   });
 
   window.addEventListener("appinstalled", () => {
-    logger.info("PWA installed");
+    logger.info("[PWA][setupPWAInstallPrompt]", "PWA installed");
     handlePWAInstall();
   });
 }
@@ -122,12 +124,12 @@ export function setupPWAInstallPrompt(
  */
 export function setupNetworkListeners(): void {
   window.addEventListener("online", () => {
-    logger.info("Network online, starting sync");
+    logger.info("[PWA][setupNetworkListeners]", "Network online, starting sync");
     startAutoSync();
   });
 
   window.addEventListener("offline", () => {
-    logger.info("Network offline");
+    logger.info("[PWA][setupNetworkListeners]", "Network offline");
   });
 }
 
@@ -137,7 +139,7 @@ export function setupNetworkListeners(): void {
 export async function setupPWA(options?: {
   onInstallPrompt?: (event: Event) => void;
 }): Promise<void> {
-  logger.info("Setting up PWA");
+  logger.info("[PWA][setupPWA]", "Setting up PWA");
 
   // Initialize core PWA features
   await initializePWA();
@@ -146,5 +148,5 @@ export async function setupPWA(options?: {
   setupPWAInstallPrompt(options?.onInstallPrompt);
   setupNetworkListeners();
 
-  logger.info("PWA setup complete");
+  logger.info("[PWA][setupPWA]", "PWA setup complete");
 }

@@ -55,7 +55,7 @@ export function useAudioPlayer() {
           setQueueState(queue.getState());
         }
       } catch (error) {
-        logger.error("Failed to load playback preferences", error);
+        logger.error("[useAudioPlayer][loadPreferences]", "Failed to load playback preferences", error);
       }
     };
     void loadPreferences();
@@ -107,7 +107,7 @@ export function useAudioPlayer() {
         try {
           // Try to load progress first
           const progress = await api.main.player.getProgress();
-          logger.info("Loaded playback progress", { hasProgress: !!progress, trackId: progress?.track?.id });
+          logger.info("[useAudioPlayer][loadInitialPlaybackState]", "Loaded playback progress", { raw: { hasProgress: !!progress, trackId: progress?.track?.id } });
 
           if (progress?.track) {
             const track: Track = {
@@ -126,7 +126,7 @@ export function useAudioPlayer() {
 
           // Fallback to seed
           const seed = await api.main.player.getSeed();
-          logger.info("Loaded default seed", { hasSeed: !!seed, trackId: seed?.track?.id });
+          logger.info("[useAudioPlayer][loadInitialPlaybackState]", "Loaded default seed", { raw: { hasSeed: !!seed, trackId: seed?.track?.id } });
 
           if (seed?.track) {
             const track: Track = {
@@ -142,7 +142,7 @@ export function useAudioPlayer() {
             await primeTrackFromData(track, seed.context);
           }
         } catch (error) {
-          logger.error("Failed to load initial playback state", error);
+          logger.error("[useAudioPlayer][loadInitialPlaybackState]", "Failed to load initial playback state", error);
         } finally {
           isInitializing = false;
           initializationPromise = null;
@@ -160,7 +160,7 @@ export function useAudioPlayer() {
   const persistPreferences = useCallback(
     (preferences: Partial<{ shuffleEnabled: boolean; repeatMode: RepeatMode }>) => {
       void api.main.player.updatePreferences(preferences).catch((error: unknown) => {
-        logger.error("Failed to persist playback preferences", error);
+        logger.error("[useAudioPlayer][persistPreferences]", "Failed to persist playback preferences", error);
       });
     },
     []
@@ -190,7 +190,7 @@ export function useAudioPlayer() {
       contextId: context?.id,
       contextName: context?.name,
     }).catch((error: unknown) => {
-      logger.error("Failed to persist playback progress", error);
+      logger.error("[useAudioPlayer][persistProgress]", "Failed to persist playback progress", error);
     });
   }, []);
 
@@ -230,7 +230,7 @@ export function useAudioPlayer() {
     setQueueState(queue.getState());
     if (nextTrack) {
       void playWithPreload(nextTrack).catch((error) => {
-        logger.error("Failed to auto-play next track", error);
+        logger.error("[useAudioPlayer][handleTrackEnd]", "Failed to auto-play next track", error);
       });
     }
   }, [playWithPreload]);
@@ -261,7 +261,7 @@ export function useAudioPlayer() {
 
   const playFromQueue = useCallback(
     async (tracks: Track[], startIndex = 0, context?: PlayContext) => {
-      logger.info("playFromQueue called", { tracksCount: tracks.length, startIndex, context });
+      logger.info("[useAudioPlayer][playFromQueue]", "playFromQueue called", { raw: { tracksCount: tracks.length, startIndex, context } });
       const queue = getPlayQueue();
       queue.setQueue(tracks, startIndex);
       setQueueState(queue.getState());
@@ -270,7 +270,7 @@ export function useAudioPlayer() {
         if (context) getPlayContext().setContext(context);
         await playWithPreload(track);
       } else {
-        logger.warn("No track to play from queue");
+        logger.warn("[useAudioPlayer][playFromQueue]", "No track to play from queue");
       }
     },
     [playWithPreload]
@@ -361,23 +361,23 @@ export function useAudioPlayer() {
 
         const songs = await api.main.playlists.getSongs(playlistId);
         if (!songs) {
-          logger.warn("Failed to refresh playlist queue", { playlistId });
+          logger.warn("[useAudioPlayer][refreshPlaylistQueue]", "Failed to refresh playlist queue", { raw: { playlistId } });
           return;
         }
 
         const tracks = songsToTracks(songs);
         const currentIndex = tracks.findIndex((t) => t.id === currentTrack.id);
         if (currentIndex === -1) {
-          logger.info("Current track removed from playlist");
+          logger.info("[useAudioPlayer][refreshPlaylistQueue]", "Current track removed from playlist");
           return;
         }
 
         const queue = getPlayQueue();
         queue.setQueue(tracks, currentIndex);
         setQueueState(queue.getState());
-        logger.info("Refreshed playlist queue", { playlistId, trackCount: tracks.length, currentIndex });
+        logger.info("[useAudioPlayer][refreshPlaylistQueue]", "Refreshed playlist queue", { raw: { playlistId, trackCount: tracks.length, currentIndex } });
       } catch (error) {
-        logger.error("Failed to refresh playlist queue", { error, playlistId });
+        logger.error("[useAudioPlayer][refreshPlaylistQueue]", "Failed to refresh playlist queue", error, { raw: { playlistId } });
       }
     },
     [playerState.currentTrack]

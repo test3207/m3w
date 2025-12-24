@@ -51,10 +51,10 @@ export async function cacheAudioForOffline(
     // Store in cache
     await cache.put(streamUrl, response);
     
-    logger.debug("[CacheManager] ✅ Cached audio:", streamUrl);
+    logger.debug("[CacheManager][cacheAudioForOffline]", `✅ Cached audio: ${streamUrl}`);
     return streamUrl;
   } catch (error) {
-    logger.error("[CacheManager] ❌ Failed to cache audio:", error);
+    logger.error("[CacheManager][cacheAudioForOffline]", "❌ Failed to cache audio", error);
     throw new Error("Failed to cache audio file");
   }
 }
@@ -88,10 +88,10 @@ export async function cacheCoverForOffline(
     // Store in cache
     await cache.put(coverUrl, response);
     
-    logger.debug("[CacheManager] ✅ Cached cover:", coverUrl);
+    logger.debug("[CacheManager][cacheCoverForOffline]", `✅ Cached cover: ${coverUrl}`);
     return coverUrl;
   } catch (error) {
-    logger.error("[CacheManager] ❌ Failed to cache cover:", error);
+    logger.error("[CacheManager][cacheCoverForOffline]", "❌ Failed to cache cover", error);
     throw new Error("Failed to cache cover image");
   }
 }
@@ -107,7 +107,7 @@ export async function isMediaCached(url: string): Promise<boolean> {
     const response = await cache.match(url);
     return !!response;
   } catch (error) {
-    logger.error("[CacheManager] Failed to check cache:", error);
+    logger.error("[CacheManager][isMediaCached]", "Failed to check cache", error);
     return false;
   }
 }
@@ -120,9 +120,9 @@ export async function deleteFromCache(url: string): Promise<void> {
   try {
     const cache = await caches.open(CACHE_NAME);
     await cache.delete(url);
-    logger.debug("[CacheManager] 🗑️ Deleted from cache:", url);
+    logger.debug("[CacheManager][deleteFromCache]", `🗑️ Deleted from cache: ${url}`);
   } catch (error) {
-    logger.error("[CacheManager] Failed to delete from cache:", error);
+    logger.error("[CacheManager][deleteFromCache]", "Failed to delete from cache", error);
     throw error;
   }
 }
@@ -143,10 +143,10 @@ export async function downloadSongForOffline(
     const audioResponse = await fetch(streamUrl);
     if (audioResponse.ok) {
       await cache.put(streamUrl, audioResponse);
-      logger.debug("[CacheManager] ✅ Downloaded audio:", streamUrl);
+      logger.debug("[CacheManager][downloadSongForOffline]", `✅ Downloaded audio: ${streamUrl}`);
     }
   } catch (error) {
-    logger.error("[CacheManager] Failed to download audio:", error);
+    logger.error("[CacheManager][downloadSongForOffline]", "Failed to download audio", error);
     throw error;
   }
   
@@ -156,11 +156,11 @@ export async function downloadSongForOffline(
       const coverResponse = await fetch(coverUrl);
       if (coverResponse.ok) {
         await cache.put(coverUrl, coverResponse);
-        logger.debug("[CacheManager] ✅ Downloaded cover:", coverUrl);
+        logger.debug("[CacheManager][downloadSongForOffline]", `✅ Downloaded cover: ${coverUrl}`);
       }
     } catch (error) {
       // Cover download failure is non-fatal
-      logger.warn("[CacheManager] Failed to download cover:", error);
+      logger.warn("[CacheManager][downloadSongForOffline]", "Failed to download cover", { raw: { error } });
     }
   }
 }
@@ -172,9 +172,9 @@ export async function clearAllMediaCache(): Promise<void> {
   try {
     await caches.delete(CACHE_NAME);
     await caches.open(CACHE_NAME); // Recreate empty cache
-    logger.debug("[CacheManager] ✅ All media cache cleared");
+    logger.debug("[CacheManager][clearAllMediaCache]", "✅ All media cache cleared");
   } catch (error) {
-    logger.error("[CacheManager] Failed to clear cache:", error);
+    logger.error("[CacheManager][clearAllMediaCache]", "Failed to clear cache", error);
     throw error;
   }
 }

@@ -301,9 +301,9 @@ function executeWhenIdle(
     
     try {
       await task();
-      logger.debug(`Idle task completed: ${id}`);
+      logger.debug("[IdleScheduler][scheduleOnIdle]", `Idle task completed: ${id}`);
     } catch (error) {
-      logger.warn(`Idle task failed: ${id}`, error);
+      logger.warn("[IdleScheduler][scheduleOnIdle]", `Idle task failed: ${id}`, { raw: { error } });
     }
   };
   

@@ -80,7 +80,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
   }, [libraryId, defaultLibraryId]);
 
   const handleUploadSuccess = async () => {
-    logger.info("Upload completed, refreshing data");
+    logger.info("[UploadForm][handleUploadSuccess]", "Upload completed, refreshing data");
 
     // Fetch updated data - Router will automatically cache these GET responses to IndexedDB
     await fetchLibraries();
@@ -123,7 +123,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
       coverBlob = result.coverBlob;
     } catch (err) {
       // If streaming fails, try hash-only fallback
-      logger.warn("Stream processing failed, falling back to hash-only", { fileName: file.name, error: err });
+      logger.warn("[UploadForm][uploadFile]", "Stream processing failed, falling back to hash-only", { raw: { fileName: file.name, error: err } });
       const { calculateFileHash } = await import("@/lib/utils/hash");
       hash = await calculateFileHash(file);
     }
@@ -141,10 +141,10 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
       if (coverBlob) {
         await cacheCoverForOffline(songId, coverBlob);
       }
-      logger.debug("Cached uploaded file for offline use", { songId });
+      logger.debug("[UploadForm][uploadFile]", "Cached uploaded file for offline use", { raw: { songId } });
     } catch (err) {
       // Non-critical: upload succeeded, caching failed
-      logger.warn("Failed to cache uploaded file", { songId, error: err });
+      logger.warn("[UploadForm][uploadFile]", "Failed to cache uploaded file", { raw: { songId, error: err } });
     }
 
     setFiles((prev) =>
@@ -194,7 +194,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
                 idx === i ? { ...f, status: UploadStatus.Error, error: errorMessage } : f
               )
             );
-            logger.error("Upload failed", { fileName: item.file.name, error: err });
+            logger.error("[UploadForm][processUploads]", "Upload failed", err, { raw: { fileName: item.file.name } });
           }
         } else if (item.status === UploadStatus.Success) {
           successCount++;
@@ -202,6 +202,11 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
       }
 
       if (successCount > 0) {
+        logger.info(
+          "[UploadForm][handleSubmit]",
+          "Upload completed",
+          { raw: { successCount, totalFiles: files.length, libraryId } }
+        );
         toast({
           title: I18n.success.title,
           description: `${I18n.upload.form.successUploadedCount}${successCount}${I18n.upload.form.successUploadedSuffix}`,
@@ -210,6 +215,12 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
       }
 
       if (errorCount > 0) {
+        logger.error(
+          "[UploadForm][handleSubmit]",
+          "Upload batch had failures",
+          undefined,
+          { raw: { errorCount, successCount, totalFiles: files.length, libraryId } }
+        );
         toast({
           title: I18n.error.title,
           description: `${errorCount}${I18n.upload.form.errorUploadedSuffix}`,

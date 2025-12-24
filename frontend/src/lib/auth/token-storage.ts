@@ -52,7 +52,7 @@ export async function saveTokenToIndexedDB(accessToken: string): Promise<void> {
       };
     });
   } catch (error) {
-    logger.error("[Auth] Failed to save token to IndexedDB:", error);
+    logger.error("[TokenStorage][saveTokenToIndexedDB]", "Failed to save token to IndexedDB", error);
     throw error;
   }
 }
@@ -79,7 +79,7 @@ export async function clearTokenFromIndexedDB(): Promise<void> {
       };
     });
   } catch (error) {
-    logger.error("[Auth] Failed to clear token from IndexedDB:", error);
+    logger.error("[TokenStorage][clearTokenFromIndexedDB]", "Failed to clear token from IndexedDB", error);
     throw error;
   }
 }
@@ -105,7 +105,7 @@ export async function getTokenFromIndexedDB(): Promise<string | null> {
       };
     });
   } catch (error) {
-    logger.error("[Auth] Failed to get token from IndexedDB:", error);
+    logger.error("[TokenStorage][getTokenFromIndexedDB]", "Failed to get token from IndexedDB", error);
     return null;
   }
 }

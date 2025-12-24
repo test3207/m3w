@@ -123,7 +123,7 @@ function notifySyncStatusChange(): void {
  */
 export async function syncMetadata(): Promise<SyncResult> {
   try {
-    logger.info("[MetadataSync] Starting full sync");
+    logger.info("[MetadataSync][syncMetadata]", "Starting full sync");
 
     // Fetch and cache all libraries
     const libraries = await api.main.libraries.list();
@@ -145,7 +145,7 @@ export async function syncMetadata(): Promise<SyncResult> {
         await cacheSongsForLibrary(library.id, songs);
         totalSongs += songs.length;
       } catch (error) {
-        logger.error("[MetadataSync] Failed to sync library songs", { libraryId: library.id, error });
+        logger.error("[MetadataSync][syncMetadata]", "Failed to sync library songs", error, { raw: { libraryId: library.id } });
       }
     }
 
@@ -156,7 +156,7 @@ export async function syncMetadata(): Promise<SyncResult> {
         songs.forEach(song => serverSongIds.add(song.id));
         await cacheSongsForPlaylist(playlist.id, songs);
       } catch (error) {
-        logger.error("[MetadataSync] Failed to sync playlist songs", { playlistId: playlist.id, error });
+        logger.error("[MetadataSync][syncMetadata]", "Failed to sync playlist songs", error, { raw: { playlistId: playlist.id } });
       }
     }
 
@@ -170,10 +170,12 @@ export async function syncMetadata(): Promise<SyncResult> {
     // Update last sync timestamp
     setLastSyncTime(Date.now());
 
-    logger.info("[MetadataSync] Full sync completed", {
-      libraries: libraries.length,
-      playlists: playlists.length,
-      songs: totalSongs,
+    logger.info("[MetadataSync][syncMetadata]", "Full sync completed", {
+      raw: {
+        libraries: libraries.length,
+        playlists: playlists.length,
+        songs: totalSongs,
+      },
     });
 
     return {
@@ -183,7 +185,7 @@ export async function syncMetadata(): Promise<SyncResult> {
       songs: totalSongs,
     };
   } catch (error) {
-    logger.error("[MetadataSync] Sync failed", { error });
+    logger.error("[MetadataSync][syncMetadata]", "Sync failed", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -228,7 +230,7 @@ async function performSyncIfNeeded(): Promise<void> {
   try {
     await syncMetadata();
   } catch (error) {
-    logger.error("[MetadataSync] Auto-sync failed", { error });
+    logger.error("[MetadataSync][performSyncIfNeeded]", "Auto-sync failed", error);
   } finally {
     isSyncing = false;
   }
@@ -236,7 +238,7 @@ async function performSyncIfNeeded(): Promise<void> {
 
 // Event handlers
 const handleOnline = () => {
-  logger.info("[MetadataSync] Network online, triggering sync");
+  logger.info("[MetadataSync][handleOnline]", "Network online, triggering sync");
   performSyncIfNeeded();
 };
 
@@ -248,11 +250,11 @@ const handleOnline = () => {
  */
 export function startAutoSync(): void {
   if (syncIntervalId) {
-    logger.debug("[MetadataSync] Auto-sync already running");
+    logger.debug("[MetadataSync][startAutoSync]", "Auto-sync already running");
     return;
   }
 
-  logger.info("[MetadataSync] Starting auto-sync service");
+  logger.info("[MetadataSync][startAutoSync]", "Starting auto-sync service");
 
   // Attach network listener
   if (!networkListenersAttached) {
@@ -279,7 +281,7 @@ export function stopAutoSync(): void {
   if (syncIntervalId) {
     clearInterval(syncIntervalId);
     syncIntervalId = null;
-    logger.info("[MetadataSync] Auto-sync stopped");
+    logger.info("[MetadataSync][stopAutoSync]", "Auto-sync stopped");
   }
 
   if (networkListenersAttached) {
@@ -302,7 +304,7 @@ export function restartAutoSync(): void {
  * Trigger manual sync (ignores shouldSync check)
  */
 export async function manualSync(): Promise<SyncResult> {
-  logger.info("[MetadataSync] Manual sync triggered");
+  logger.info("[MetadataSync][manualSync]", "Manual sync triggered");
   
   if (isSyncing) {
     return { success: false, error: "Sync already in progress" };

@@ -54,7 +54,7 @@ export async function loadPreferences(
   set: (state: Partial<PlayerState>) => void
 ): Promise<void> {
   if (hasUserModifiedPreferences) {
-    logger.info("Skipped loading preferences - user has local changes");
+    logger.info("[PlayerStore][loadPreferences]", "Skipped loading preferences - user has local changes");
     return;
   }
 
@@ -66,13 +66,14 @@ export async function loadPreferences(
         isShuffled: preferences.shuffleEnabled,
         hasLoadedPreferences: true,
       });
-      logger.info("Loaded playback preferences", { 
-        repeatMode: preferences.repeatMode, 
-        shuffleEnabled: preferences.shuffleEnabled 
+      logger.info("[PlayerStore][loadPreferences]", "Loaded playback preferences", { 
+        raw: { repeatMode: preferences.repeatMode, shuffleEnabled: preferences.shuffleEnabled },
       });
     }
   } catch (prefError) {
-    logger.warn("Failed to load playback preferences", prefError);
+    logger.warn("[PlayerStore][loadPreferences]", "Failed to load playback preferences", { 
+      raw: { error: prefError },
+    });
   }
 }
 
@@ -103,10 +104,12 @@ export async function loadDefaultSeed(
     const track = songToTrack(song);
     getAudioPlayer().prime(track);
     
-    logger.info("Loaded default seed and primed player", { songId: song.id, title: song.title });
+    logger.info("[PlayerStore][loadDefaultSeed]", "Loaded default seed and primed player", { raw: { songId: song.id, title: song.title } });
     return true;
   } catch (seedError) {
-    logger.warn("Failed to load default seed", seedError);
+    logger.warn("[PlayerStore][loadDefaultSeed]", "Failed to load default seed", {
+      raw: { error: seedError },
+    });
     return false;
   }
 }
@@ -128,17 +131,15 @@ export async function loadQueueFromContext(
     if (context.type === "playlist") {
       songs = await api.main.playlists.getSongs(context.id);
       if (songs.length > 0) {
-        logger.info("Loaded playlist queue", { 
-          playlistId: context.id, 
-          songCount: songs.length
+        logger.info("[PlayerStore][loadQueueFromContext]", "Loaded playlist queue", { 
+          raw: { playlistId: context.id, songCount: songs.length },
         });
       }
     } else if (context.type === "library") {
       songs = await api.main.libraries.getSongs(context.id);
       if (songs.length > 0) {
-        logger.info("Loaded library queue", { 
-          libraryId: context.id, 
-          songCount: songs.length
+        logger.info("[PlayerStore][loadQueueFromContext]", "Loaded library queue", { 
+          raw: { libraryId: context.id, songCount: songs.length },
         });
       }
     }
@@ -148,7 +149,9 @@ export async function loadQueueFromContext(
       return { queue: songs, startIndex };
     }
   } catch (queueError) {
-    logger.warn("Failed to load full queue, using single track", queueError);
+    logger.warn("[PlayerStore][loadQueueFromContext]", "Failed to load full queue, using single track", { 
+      raw: { context, error: queueError },
+    });
   }
 
   return { queue: [], startIndex: 0 };
@@ -169,16 +172,12 @@ export async function primePlayerWithSong(
   
   if (objectUrl) {
     track.resolvedUrl = objectUrl;
-    logger.info("Restored playback state with preloaded audio", { 
-      songId: song.id, 
-      position,
-      queueLength 
+    logger.info("[PlayerStore][primePlayerWithSong]", "Restored playback state with preloaded audio", { 
+      raw: { songId: song.id, position, queueLength },
     });
   } else {
-    logger.info("Restored playback state (Guest mode - Service Worker streaming)", { 
-      songId: song.id, 
-      position,
-      queueLength 
+    logger.info("[PlayerStore][primePlayerWithSong]", "Restored playback state (Guest mode - Service Worker streaming)", { 
+      raw: { songId: song.id, position, queueLength },
     });
   }
   

@@ -93,7 +93,7 @@ export function registerMessages(locale: string, messages: Record<string, unknow
  */
 export function setLocale(locale: string): void {
   if (!messagesStore.has(locale)) {
-    logger.warn("Locale not registered, falling back", { locale, fallback: currentLocale });
+    logger.warn("[I18n][setLocale]", "Locale not registered, falling back", { raw: { locale, fallback: currentLocale } });
     return;
   }
   currentLocale = locale;

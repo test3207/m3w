@@ -67,7 +67,7 @@ async function cacheCoverImage(songId: string, cache: Cache): Promise<void> {
   // Check if already cached
   const existing = await cache.match(coverPath);
   if (existing) {
-    logger.debug("Cover already cached", { songId });
+    logger.debug("[AudioCache][cacheCoverImage]", "Cover already cached", { raw: { songId } });
     return;
   }
   
@@ -76,7 +76,7 @@ async function cacheCoverImage(songId: string, cache: Cache): Promise<void> {
   if (!response.ok) {
     // Cover might not exist (song has no cover art), this is fine
     if (response.status === 404) {
-      logger.debug("Song has no cover art", { songId });
+      logger.debug("[AudioCache][cacheCoverImage]", "Song has no cover art", { raw: { songId } });
       return;
     }
     throw new Error(`Failed to fetch cover: ${response.status}`);
@@ -84,7 +84,7 @@ async function cacheCoverImage(songId: string, cache: Cache): Promise<void> {
   
   // Cache the cover using relative path as key
   await cache.put(coverPath, response.clone());
-  logger.debug("Cover cached successfully", { songId });
+  logger.debug("[AudioCache][cacheCoverImage]", "Cover cached successfully", { raw: { songId } });
 }
 
 /**
@@ -126,7 +126,7 @@ export async function cacheSong(
     } catch (fetchError) {
       // Handle 404 - song no longer exists on server, clean up local data
       if (fetchError instanceof Error && fetchError.message.includes("404")) {
-        logger.warn("Song not found on server (404), removing from local cache", { songId });
+        logger.warn("[AudioCache][cacheSong]", "Song not found on server (404), removing from local cache", { raw: { songId } });
         await db.songs.delete(songId);
         throw new Error(`Song ${songId} not found on server (404)`);
       }
@@ -136,7 +136,7 @@ export async function cacheSong(
     if (!response.ok) {
       // Handle 404 - song no longer exists on server, clean up local data
       if (response.status === 404) {
-        logger.warn("Song not found on server, removing from local cache", { songId });
+        logger.warn("[AudioCache][cacheSong]", "Song not found on server, removing from local cache", { raw: { songId } });
         await db.songs.delete(songId);
         throw new Error(`Song ${songId} not found on server (removed from local cache)`);
       }
@@ -152,7 +152,7 @@ export async function cacheSong(
 
     // Also cache the cover image (non-blocking, best effort)
     cacheCoverImage(songId, cache).catch((err) => {
-      logger.warn("Failed to cache cover image (non-fatal)", { songId, error: err });
+      logger.warn("[AudioCache][cacheSong]", "Failed to cache cover image (non-fatal)", { raw: { songId, error: err } });
     });
 
     onProgress?.({
@@ -162,7 +162,7 @@ export async function cacheSong(
       status: "completed",
     });
 
-    logger.info("Song cached successfully", { songId, title: song.title });
+    logger.info("[AudioCache][cacheSong]", "Song cached successfully", { raw: { songId, title: song.title } });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
@@ -174,7 +174,7 @@ export async function cacheSong(
       error: errorMessage,
     });
 
-    logger.error("Failed to cache song", { songId, error });
+    logger.error("[AudioCache][cacheSong]", "Failed to cache song", error, { raw: { songId } });
     throw error;
   }
 }
@@ -186,18 +186,18 @@ export async function cacheSongs(
   songIds: string[],
   onProgress?: (progress: CacheProgress) => void
 ): Promise<void> {
-  logger.info("Caching songs batch", { count: songIds.length });
+  logger.info("[AudioCache][cacheSongs]", "Caching songs batch", { raw: { count: songIds.length } });
 
   for (const songId of songIds) {
     try {
       await cacheSong(songId, onProgress);
     } catch (error) {
-      logger.error("Failed to cache song in batch", { songId, error });
+      logger.error("[AudioCache][cacheSongs]", "Failed to cache song in batch", error, { raw: { songId } });
       // Continue with next song instead of failing entire batch
     }
   }
 
-  logger.info("Finished caching batch");
+  logger.info("[AudioCache][cacheSongs]", "Finished caching batch");
 }
 
 /**
@@ -209,7 +209,7 @@ export async function isSongCached(songId: string): Promise<boolean> {
     const response = await cache.match(MAIN_API_ENDPOINTS.songs.stream(songId));
     return response !== undefined;
   } catch (error) {
-    logger.error("Error checking cache", { songId, error });
+    logger.error("[AudioCache][isSongCached]", "Error checking cache", error, { raw: { songId } });
     return false;
   }
 }
@@ -223,12 +223,12 @@ export async function removeCachedSong(songId: string): Promise<boolean> {
     const deleted = await cache.delete(MAIN_API_ENDPOINTS.songs.stream(songId));
 
     if (deleted) {
-      logger.info("Removed cached song", { songId });
+      logger.info("[AudioCache][removeCachedSong]", "Removed cached song", { raw: { songId } });
     }
 
     return deleted;
   } catch (error) {
-    logger.error("Failed to remove cached song", { songId, error });
+    logger.error("[AudioCache][removeCachedSong]", "Failed to remove cached song", error, { raw: { songId } });
     return false;
   }
 }
@@ -251,7 +251,7 @@ export async function getCachedSongs(): Promise<string[]> {
 
     return songIds;
   } catch (error) {
-    logger.error("Failed to get cached songs", { error });
+    logger.error("[AudioCache][getCachedSongs]", "Failed to get cached songs", error);
     return [];
   }
 }
@@ -292,7 +292,7 @@ export async function getCacheStats(): Promise<CacheStats> {
       songs,
     };
   } catch (error) {
-    logger.error("Failed to get cache stats", { error });
+    logger.error("[AudioCache][getCacheStats]", "Failed to get cache stats", error);
     return {
       totalCached: 0,
       totalSize: 0,
@@ -307,10 +307,10 @@ export async function getCacheStats(): Promise<CacheStats> {
 export async function clearAudioCache(): Promise<boolean> {
   try {
     const deleted = await caches.delete(AUDIO_CACHE_NAME);
-    logger.info("Audio cache cleared", { deleted });
+    logger.info("[AudioCache][clearAudioCache]", "Audio cache cleared", { raw: { deleted } });
     return deleted;
   } catch (error) {
-    logger.error("Failed to clear cache", { error });
+    logger.error("[AudioCache][clearAudioCache]", "Failed to clear cache", error);
     return false;
   }
 }
@@ -322,7 +322,7 @@ export async function cachePlaylist(
   playlistId: string,
   onProgress?: (progress: CacheProgress) => void
 ): Promise<void> {
-  logger.info("Caching playlist", { playlistId });
+  logger.info("[AudioCache][cachePlaylist]", "Caching playlist", { raw: { playlistId } });
 
   // Get all songs in playlist from IndexedDB
   const playlistSongs = await db.playlistSongs
@@ -342,7 +342,7 @@ export async function cacheLibrary(
   libraryId: string,
   onProgress?: (progress: CacheProgress) => void
 ): Promise<void> {
-  logger.info("Caching library", { libraryId });
+  logger.info("[AudioCache][cacheLibrary]", "Caching library", { raw: { libraryId } });
 
   // Get all songs in library from IndexedDB
   const songs = await db.songs
@@ -360,7 +360,7 @@ export async function cacheLibrary(
  * (Note: Cache API doesn't track access time, so this is a simplified version)
  */
 export async function evictOldestCachedSongs(count: number): Promise<void> {
-  logger.info("Evicting oldest cached songs", { count });
+  logger.info("[AudioCache][evictOldestCachedSongs]", "Evicting oldest cached songs", { raw: { count } });
 
   const stats = await getCacheStats();
 
@@ -382,7 +382,7 @@ export async function checkAndEvictIfNeeded(): Promise<void> {
   const hasQuota = await hasEnoughQuota(MIN_FREE_QUOTA);
 
   if (!hasQuota) {
-    logger.warn("Low storage quota, evicting cached songs");
+    logger.warn("[AudioCache][checkAndEvictIfNeeded]", "Low storage quota, evicting cached songs");
     await evictOldestCachedSongs(10); // Remove 10 oldest songs
   }
 }

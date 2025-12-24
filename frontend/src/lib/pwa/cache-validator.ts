@@ -75,7 +75,7 @@ class CacheValidator {
 
       return { isCached: true, cacheSize, checkedAt };
     } catch (error) {
-      logger.error("Failed to validate cache", { songId, error });
+      logger.error("[CacheValidator][validateSongCache]", "Failed to validate cache", error, { raw: { songId } });
       return { isCached: false, checkedAt };
     }
   }
@@ -111,7 +111,7 @@ class CacheValidator {
    */
   clearMemoryCache() {
     this.cache.clear();
-    logger.debug("Cache validator memory cleared");
+    logger.debug("[CacheValidator][clearMemoryCache]", "Cache validator memory cleared");
   }
 
   /**
@@ -141,14 +141,16 @@ class CacheValidator {
           lastCacheCheck: Date.now(),
         });
 
-        logger.debug("Cache status updated in IndexedDB", {
-          songId,
-          isCached,
-          cacheSize,
+        logger.debug("[CacheValidator][updateIndexedDB]", "Cache status updated in IndexedDB", {
+          raw: {
+            songId,
+            isCached,
+            cacheSize,
+          },
         });
       }
     } catch (error) {
-      logger.error("Failed to update IndexedDB", { songId, error });
+      logger.error("[CacheValidator][updateIndexedDB]", "Failed to update IndexedDB", error, { raw: { songId } });
     }
   }
 }

@@ -13,6 +13,7 @@ import 'dotenv/config';
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { logger } from './lib/logger';
 import { prisma } from './lib/prisma';
+import { traceMiddleware } from './lib/trace-middleware';
 
 const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
 if (proxyUrl) {
@@ -85,6 +86,7 @@ import playlistsRoutes from './routes/playlists';
 import songsRoutes from './routes/songs';
 import playerRoutes from './routes/player';
 import healthRoutes from './routes/health';
+import logsRoutes from './routes/logs';
 
 // ============================================================================
 // Demo Mode - Two-Layer Control
@@ -184,6 +186,8 @@ if (__IS_DEMO_BUILD__) {
 const app = new Hono();
 
 // Middleware
+// Trace middleware must be first to capture traceId for all subsequent logging
+app.use('*', traceMiddleware());
 app.use('*', honoLogger());
 app.use('*', prettyJSON());
 
@@ -224,6 +228,7 @@ app.route('/api/libraries', librariesRoutes);
 app.route('/api/playlists', playlistsRoutes);
 app.route('/api/songs', songsRoutes);
 app.route('/api/player', playerRoutes);
+app.route('/api/logs', logsRoutes);
 
 // ============================================================================
 // Static Frontend Serving (All-in-One Deployment)

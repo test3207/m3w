@@ -38,7 +38,7 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, ChunkErrorBo
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log chunk loading errors for debugging
-    logger.error("Chunk loading error:", { error: error.message, errorInfo });
+    logger.error("[ChunkErrorBoundary][componentDidCatch]", "Chunk loading error", error, { raw: { errorInfo } });
   }
 
   render() {

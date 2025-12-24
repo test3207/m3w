@@ -61,7 +61,7 @@ let initialized = false;
  */
 function safeUpdateCheck() {
   if (!navigator.onLine) {
-    logger.debug("Skipping SW update check - offline");
+    logger.debug("[useServiceWorker][safeUpdateCheck]", "Skipping SW update check - offline");
     return;
   }
   
@@ -76,7 +76,7 @@ function initServiceWorker() {
 
   updateSW = registerSW({
     onRegistered(r) {
-      logger.info("Service Worker registered", { registration: !!r });
+      logger.info("[useServiceWorker][initServiceWorker]", "Service Worker registered", { raw: { registration: !!r } });
 
       if (r) {
         setState({ registration: r });
@@ -87,28 +87,28 @@ function initServiceWorker() {
         // Periodic update checks
         if (updateIntervalId) clearInterval(updateIntervalId);
         updateIntervalId = setInterval(() => {
-          logger.debug("Periodic SW update check...");
+          logger.debug("[useServiceWorker][initServiceWorker]", "Periodic SW update check...");
           safeUpdateCheck();
         }, UPDATE_CHECK_INTERVAL);
       }
     },
     onNeedRefresh() {
-      logger.info("New version available! Prompting user to refresh.");
+      logger.info("[useServiceWorker][initServiceWorker]", "New version available! Prompting user to refresh.");
       setState({ needRefresh: true });
     },
     onOfflineReady() {
-      logger.info("App is ready to work offline");
+      logger.info("[useServiceWorker][initServiceWorker]", "App is ready to work offline");
       setState({ offlineReady: true });
     },
     onRegisterError(error) {
-      logger.error("Service Worker registration failed", { error });
+      logger.error("[useServiceWorker][initServiceWorker]", "Service Worker registration failed", error);
     },
   });
 
   // Check for updates when tab becomes visible
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && navigator.onLine) {
-      logger.debug("Tab became visible, checking for updates...");
+      logger.debug("[useServiceWorker][initServiceWorker]", "Tab became visible, checking for updates...");
       safeUpdateCheck();
     }
   });

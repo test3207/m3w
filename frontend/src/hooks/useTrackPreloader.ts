@@ -79,7 +79,7 @@ export function useTrackPreloader(limit: number = MAX_PRELOADED_TRACKS) {
 
           return objectUrl;
         } catch (error) {
-          logger.error("Failed to preload track", error);
+          logger.error("[useTrackPreloader][ensurePreloadedTrack]", "Failed to preload track", error);
           return null;
         } finally {
           promises.delete(track.id);

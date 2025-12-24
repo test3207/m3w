@@ -8,7 +8,7 @@
  */
 
 import { isOfflineCapable } from "@/lib/shared";
-import { logger } from "../logger-client";
+import { logger, type Trace } from "../logger-client";
 import { API_BASE_URL } from "./config";
 import { isGuestUser } from "../offline-proxy/utils";
 import { cacheResponseToIndexedDB } from "../cache/response-cache";
@@ -18,6 +18,28 @@ import {
   ensureEndpointInitialized,
   getAuthToken,
 } from "./multi-region";
+
+/** Options for routeRequest */
+export interface RouterOptions {
+  /** Trace instance for request correlation. If not provided, logs go to global logger. */
+  trace?: Trace;
+}
+
+/** Generate UUID for traceId (with fallback for non-secure contexts like LAN HTTP) */
+function generateTraceId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // Falls through to fallback
+    }
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 // Lazy-loaded offline proxy module to reduce initial bundle size
 // The offline-proxy includes Hono + music-metadata; lazy-loading saves ~36KB from the main bundle
@@ -58,13 +80,13 @@ async function checkBackendHealth(): Promise<boolean> {
 function startHealthCheck() {
   if (healthCheckInterval) return;
   
-  logger.info("Starting backend health check polling");
+  logger.info("[Router][startHealthCheck]", "Starting backend health check polling");
   healthCheckInterval = setInterval(async () => {
     if (!isBackendReachable) {
-      logger.debug("Checking backend health...");
+      logger.debug("[Router][healthCheck]", "Checking backend health...");
       const isHealthy = await checkBackendHealth();
       if (isHealthy) {
-        logger.info("Backend recovered, stopping health checks");
+        logger.info("[Router][healthCheck]", "Backend recovered, stopping health checks");
         emitNetworkStatus(true);
         stopHealthCheck();
       }
@@ -77,7 +99,7 @@ function stopHealthCheck() {
   if (healthCheckInterval) {
     clearInterval(healthCheckInterval);
     healthCheckInterval = null;
-    logger.info("Stopped backend health check polling");
+    logger.info("[Router][stopHealthCheck]", "Stopped backend health check polling");
   }
 }
 
@@ -93,24 +115,28 @@ function emitNetworkStatus(isReachable: boolean) {
     }
     
     window.dispatchEvent(new CustomEvent(isReachable ? "api-success" : "api-error"));
-    logger.info("Backend reachability changed", { isReachable });
+    logger.info("[Router][emitNetworkStatus]", "Backend reachability changed", { raw: { isReachable } });
   }
 }
 
 // API Router
 export async function routeRequest(
   path: string,
-  init?: RequestInit
+  init?: RequestInit,
+  options?: RouterOptions
 ): Promise<Response> {
   const method = init?.method || "GET";
   const isOnline = navigator.onLine;
   const offlineCapable = isOfflineCapable(path, method);
   const isGuest = isGuestUser();
+  
+  // Use trace if provided, otherwise global logger with shared traceId
+  const traceId = options?.trace?.traceId || generateTraceId();
+  const log = options?.trace || logger;
 
   // Guest Mode: Always use offline proxy for capable routes
   if (isGuest) {
     if (offlineCapable) {
-      logger.info("Guest mode: Using offline proxy", { path, method });
       return await callOfflineProxy(path, init);
     } else {
       return new Response(
@@ -126,20 +152,11 @@ export async function routeRequest(
     }
   }
 
-  // Decision matrix:
-  // 1. Guest mode: use offline proxy for all capable routes
-  // 2. Auth + Offline + Write: block (read-only mode per User Stories)
-  // 3. Auth + Offline + Read: use offline proxy if capable
-  // 4. Auth + Online: try backend, fallback to offline proxy if capable
-
   const effectivelyOffline = !isOnline || !isBackendReachable;
-
-  // Auth users in offline mode are read-only (no writes allowed)
-  // This enforces the design decision from User Stories Part 3
-  // Only block actual write methods, allow safe methods like HEAD/OPTIONS
   const isWriteMethod = ["POST", "PUT", "DELETE", "PATCH"].includes(method);
-  if (effectivelyOffline && !isGuest && isWriteMethod) {
-    logger.info("Blocking write operation for Auth user offline", { path, method });
+
+  // Auth users in offline mode are read-only
+  if (effectivelyOffline && isWriteMethod) {
     return new Response(
       JSON.stringify({
         success: false,
@@ -154,10 +171,8 @@ export async function routeRequest(
 
   if (effectivelyOffline) {
     if (offlineCapable) {
-      logger.info("Using offline proxy", { path, method, reason: !isOnline ? "no network" : "backend unreachable" });
       return await callOfflineProxy(path, init);
     } else {
-      // Cannot fulfill request offline
       return new Response(
         JSON.stringify({
           success: false,
@@ -171,29 +186,21 @@ export async function routeRequest(
     }
   }
 
-  // Online: try backend first
+  // Online: try backend
   try {
-    // Ensure multi-region endpoint is initialized before making requests
-    // This is a no-op if multi-region is not enabled or already initialized
     await ensureEndpointInitialized();
 
-    // Build full backend URL from path
-    // Use active endpoint (fallback) if Gateway is down, otherwise use default API_BASE_URL
     const baseUrl = getActiveEndpoint() || API_BASE_URL;
-    const fullUrl = path.startsWith("http")
-      ? path
-      : `${baseUrl}${path}`;
+    const fullUrl = path.startsWith("http") ? path : `${baseUrl}${path}`;
 
-    // Build headers with auth token and region preference using Headers API for type safety
     const headers = new Headers(init?.headers);
+    headers.set("X-Trace-Id", traceId);
     
-    // Add authorization header if token exists
     const authToken = getAuthToken();
     if (authToken) {
       headers.set("Authorization", `Bearer ${authToken}`);
     }
     
-    // Add X-Region header for multi-region routing (Gateway uses this for routing hints)
     const homeRegion = getUserHomeRegion();
     if (homeRegion) {
       headers.set("X-Region", homeRegion);
@@ -205,40 +212,32 @@ export async function routeRequest(
       headers,
     });
 
-    // Mark backend as reachable on successful connection
     emitNetworkStatus(true);
 
-    // If backend succeeds, cache GET responses and return
     if (response.ok) {
-      // Cache GET JSON responses to IndexedDB for offline access (non-blocking)
-      // Note: Guest users return early at line 108-124, so only Auth users reach this caching logic
       if (method === "GET") {
-        cacheResponseToIndexedDB(path, response.clone()).catch(err =>
-          logger.warn("Failed to cache response", { path, err })
-        );
+        cacheResponseToIndexedDB(path, response.clone()).catch(() => {});
       }
+      log.info(`${method} ${path}`, "OK", { traceId, raw: { status: response.status } });
       return response;
     }
     
-    // If backend fails but route is not offline-capable, return the error response
-    if (!offlineCapable) {
-      return response;
+    // Backend error
+    log.error(`${method} ${path}`, "Failed", undefined, { traceId, raw: { status: response.status } });
+    
+    if (offlineCapable) {
+      return await callOfflineProxy(path, init);
     }
-
-    // If backend fails and route is offline-capable, fallback to offline proxy
-    logger.warn("Backend request failed, falling back to offline proxy", { path, status: response.status });
-    return await callOfflineProxy(path, init);
+    return response;
   } catch (error) {
-    // Mark backend as unreachable on connection error
     emitNetworkStatus(false);
 
-    // Network error: fallback to offline proxy if possible
+    log.error(`${method} ${path}`, "Network error", error, { traceId });
+
     if (offlineCapable) {
-      logger.warn("Backend unreachable, using offline proxy", { path, error });
       return await callOfflineProxy(path, init);
     }
 
-    // Cannot fallback, return error
     return new Response(
       JSON.stringify({
         success: false,
@@ -267,7 +266,7 @@ async function callOfflineProxy(
     // Call offline proxy via Hono fetch
     return await offlineProxy.fetch(request);
   } catch (error) {
-    logger.error("Offline proxy failed", { path, error });
+    logger.error("[Router][callOfflineProxy]", "Offline proxy failed", error, { raw: { path } });
     return new Response(
       JSON.stringify({
         success: false,

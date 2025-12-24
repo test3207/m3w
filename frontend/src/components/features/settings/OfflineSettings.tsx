@@ -113,7 +113,7 @@ export default function OfflineSettings() {
           setIsSyncing(syncStatus.isSyncing);
         }
       } catch (error) {
-        logger.error("Failed to load offline settings", error);
+        logger.error("[OfflineSettings][loadSettings]", "Failed to load offline settings", error);
       } finally {
         setLoading(false);
       }
@@ -166,7 +166,7 @@ export default function OfflineSettings() {
       await setAutoDownloadSetting(value);
       setAutoDownload(value);
     } catch (error) {
-      logger.error("Failed to update auto-download setting", error);
+      logger.error("[OfflineSettings][handleAutoDownloadChange]", "Failed to update auto-download setting", error);
     }
   }, []);
 
@@ -184,7 +184,7 @@ export default function OfflineSettings() {
     try {
       await manualSync();
     } catch (error) {
-      logger.error("Manual sync failed", error);
+      logger.error("[OfflineSettings][handleManualSync]", "Manual sync failed", error);
     }
   }, [isSyncing]);
 
@@ -243,7 +243,7 @@ export default function OfflineSettings() {
               </Popover>
             </Stack>
             <Select value={autoDownload} onValueChange={handleAutoDownloadChange}>
-              <SelectTrigger className="w-auto min-w-[100px] h-8">
+              <SelectTrigger className="w-auto min-w-25 h-8">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

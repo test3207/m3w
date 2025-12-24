@@ -56,7 +56,7 @@ export function getMultiRegionConfig(): M3WConfig | null {
   if (config === "__M3W_CONFIG__") {
     if (!hasLoggedPlaceholderWarning) {
       hasLoggedPlaceholderWarning = true;
-      logger.debug("[Multi-Region] __M3W_CONFIG__ placeholder not replaced, using non-multi-region mode");
+      logger.debug("[MultiRegion][getMultiRegionConfig]", "__M3W_CONFIG__ placeholder not replaced, using non-multi-region mode");
     }
     return null;
   }
@@ -118,7 +118,7 @@ export function getUserHomeRegion(): string | null {
       const paddedBase64 = base64 + "=".repeat(paddingNeeded);
       payload = JSON.parse(atob(paddedBase64));
     } catch (decodeErr) {
-      logger.debug("[Multi-Region] Failed to decode JWT payload", { decodeErr });
+      logger.debug("[MultiRegion][getUserHomeRegion]", "Failed to decode JWT payload", { raw: { decodeErr } });
       return null;
     }
     
@@ -129,7 +129,7 @@ export function getUserHomeRegion(): string | null {
     const homeRegion = (payload as Record<string, unknown>).homeRegion;
     return typeof homeRegion === "string" ? homeRegion : null;
   } catch (err) {
-    logger.debug("[Multi-Region] Failed to read homeRegion from JWT", { err });
+    logger.debug("[MultiRegion][getUserHomeRegion]", "Failed to read homeRegion from JWT", { raw: { err } });
     return null;
   }
 }
@@ -155,7 +155,7 @@ export async function checkEndpointLatency(
     
     return response.ok ? latency : null;
   } catch (err) {
-    logger.warn("[Multi-Region] Endpoint health check failed", { endpoint, err });
+    logger.warn("[MultiRegion][checkEndpointLatency]", "Endpoint health check failed", { raw: { endpoint, err: String(err) } });
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -190,10 +190,10 @@ export async function initializeEndpoint(): Promise<void> {
       const gatewayLatency = await checkEndpointLatency(config.mainDomain);
       if (gatewayLatency !== null) {
         activeEndpoint = config.mainDomain;
-        logger.info("[Multi-Region] Using Gateway", { endpoint: activeEndpoint, latency: Math.round(gatewayLatency) });
+        logger.info("[MultiRegion][initializeEndpoint]", "Using Gateway", { raw: { endpoint: activeEndpoint, latency: Math.round(gatewayLatency) } });
         return;
       }
-      logger.warn("[Multi-Region] Gateway unavailable, checking region endpoints...");
+      logger.warn("[MultiRegion][initializeEndpoint]", "Gateway unavailable, checking region endpoints...");
     }
     
     // Gateway down - find fastest region endpoint (4th-level domain)
@@ -219,7 +219,7 @@ export async function initializeEndpoint(): Promise<void> {
         
         if (available.length > 0) {
           activeEndpoint = available[0].endpoint;
-          logger.info("[Multi-Region] Using fallback", { name: available[0].name, latency: Math.round(available[0].latency) });
+          logger.info("[MultiRegion][initializeEndpoint]", "Using fallback", { raw: { name: available[0].name, latency: Math.round(available[0].latency) } });
           return;
         }
       }
@@ -227,7 +227,7 @@ export async function initializeEndpoint(): Promise<void> {
     
     // All endpoints down
     activeEndpoint = null;
-    logger.error("[Multi-Region] All endpoints unavailable!");
+    logger.error("[MultiRegion][initializeEndpoint]", "All endpoints unavailable!");
   })();
   
   return endpointCheckPromise;
@@ -281,12 +281,12 @@ export async function recheckEndpoints(): Promise<void> {
       await ensureEndpointInitialized();
       // If recheck found no endpoint, restore previous (stale data is better than none)
       if (!activeEndpoint && previousEndpoint) {
-        logger.warn("[Multi-Region] Recheck found no endpoint, restoring previous");
+        logger.warn("[MultiRegion][recheckEndpoint]", "Recheck found no endpoint, restoring previous");
         activeEndpoint = previousEndpoint;
       }
     } catch (error) {
       // Restore previous endpoint on failure (keep endpointCheckPromise null so next request can re-init)
-      logger.error("[Multi-Region] Recheck failed, restoring previous endpoint", error);
+      logger.error("[MultiRegion][recheckEndpoint]", "Recheck failed, restoring previous endpoint", error);
       activeEndpoint = previousEndpoint;
     } finally {
       endpointRecheckPromise = null;

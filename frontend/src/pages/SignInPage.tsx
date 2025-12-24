@@ -48,7 +48,7 @@ export default function SignInPage() {
         description: getErrorMessage(errorCode),
         variant: "destructive",
       });
-      logger.error("[SignInPage] Auth callback error:", errorCode);
+      logger.error("[SignInPage]", "Auth callback error", new Error(String(errorCode)), { raw: { errorCode } });
     }
   }, [searchParams, toast]);
 
@@ -137,7 +137,7 @@ export default function SignInPage() {
                   loginAsGuest();
                   navigate("/libraries");
                 } catch (error) {
-                  logger.error("[SignInPage] Failed to initialize guest mode", error);
+                  logger.error("[SignInPage][initGuest]", "Failed to initialize guest mode", error);
                   toast({
                     title: "Error",
                     description: "Failed to initialize guest mode",

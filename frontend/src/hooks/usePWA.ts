@@ -39,13 +39,13 @@ if (typeof window !== "undefined" && !listenersInitialized) {
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     globalDeferredPrompt = e as BeforeInstallPromptEvent;
-    logger.info("PWA install prompt available");
+    logger.info("[usePWA][initListeners]", "PWA install prompt available");
     notifyInstallPromptListeners();
   });
 
   window.addEventListener("appinstalled", () => {
     globalDeferredPrompt = null;
-    logger.info("PWA installed");
+    logger.info("[usePWA][initListeners]", "PWA installed");
     notifyInstallPromptListeners();
   });
 }
@@ -76,12 +76,12 @@ export function usePWAInstall() {
       const { outcome } = await globalDeferredPrompt.userChoice;
       
       if (outcome === "accepted") {
-        logger.info("User accepted PWA install");
+        logger.info("[usePWA][install]", "User accepted PWA install");
         globalDeferredPrompt = null;
         notifyInstallPromptListeners();
         return true;
       } else {
-        logger.info("User dismissed PWA install");
+        logger.info("[usePWA][install]", "User dismissed PWA install");
         return false;
       }
     } finally {

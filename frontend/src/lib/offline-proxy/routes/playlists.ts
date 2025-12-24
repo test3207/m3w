@@ -192,7 +192,7 @@ app.put("/:id/songs/reorder", async (c: Context) => {
 
     return c.json<ApiResponse<PlaylistReorderResult>>({ success: true, data: result.data! });
   } catch (error) {
-    logger.error("Failed to reorder songs in playlist", { error });
+    logger.error("[OfflineProxy][reorderPlaylistSongs]", "Failed to reorder songs in playlist", error);
     return c.json<ApiResponse<never>>({ success: false, error: "Failed to reorder songs in playlist" }, 500);
   }
 });

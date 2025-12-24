@@ -65,38 +65,44 @@ class AudioPlayer {
    * Load and play a track
    */
   async play(track: Track): Promise<void> {
-    logger.info("🎵 AudioPlayer.play() called", {
-      trackId: track.id,
-      title: track.title,
-      audioUrl: track.audioUrl,
-      duration: track.duration,
+    logger.info("[AudioPlayer][play]", "🎵 AudioPlayer.play() called", {
+      raw: {
+        trackId: track.id,
+        title: track.title,
+        audioUrl: track.audioUrl,
+        duration: track.duration,
+      }
     });
 
     // Always unload and create new Howl instance to ensure fresh event listeners
     this.unloadHowl();
     this.currentTrack = track;
 
-    logger.info("🎵 Creating Howl instance...");
+    logger.info("[AudioPlayer][play]", "🎵 Creating Howl instance...");
     this.howl = this.createHowl(track);
 
-    logger.info("🎵 Calling howl.play()...", {
-      howlState: this.howl.state(),
-      howlPlaying: this.howl.playing(),
+    logger.info("[AudioPlayer][play]", "🎵 Calling howl.play()...", {
+      raw: {
+        howlState: this.howl.state(),
+        howlPlaying: this.howl.playing(),
+      }
     });
     this.howl.play();
 
-    logger.info("🎵 howl.play() called, waiting for onplay event");
+    logger.info("[AudioPlayer][play]", "🎵 howl.play() called, waiting for onplay event");
   }
 
   /**
    * Prime player with a track without auto-playing
    */
   prime(track: Track): void {
-    logger.info("Priming player", {
-      trackId: track.id,
-      audioUrl: track.audioUrl,
-      hasExistingHowl: !!this.howl,
-      isSameTrack: this.currentTrack?.id === track.id
+    logger.info("[AudioPlayer][prime]", "Priming player", {
+      raw: {
+        trackId: track.id,
+        audioUrl: track.audioUrl,
+        hasExistingHowl: !!this.howl,
+        isSameTrack: this.currentTrack?.id === track.id
+      }
     });
 
     if (this.currentTrack?.id === track.id && this.howl) {
@@ -105,7 +111,7 @@ class AudioPlayer {
     }
 
     if (!this.canInitializeAudio()) {
-      logger.info("Cannot initialize audio yet, deferring");
+      logger.info("[AudioPlayer][prime]", "Cannot initialize audio yet, deferring");
       this.currentTrack = track;
       this.emit("load");
       return;
@@ -113,7 +119,7 @@ class AudioPlayer {
 
     this.unloadHowl();
     this.currentTrack = track;
-    logger.info("Creating Howl instance", { audioUrl: track.audioUrl });
+    logger.info("[AudioPlayer][prime]", "Creating Howl instance", { raw: { audioUrl: track.audioUrl } });
     this.howl = this.createHowl(track);
     this.howl.load();
     this.emit("load");
@@ -287,11 +293,13 @@ class AudioPlayer {
     const sourceUrl = track.resolvedUrl ?? track.audioUrl;
     const format = resolveAudioFormat(track);
 
-    logger.info("🎵 Creating Howl with config", {
-      sourceUrl,
-      format,
-      html5: true,
-      preload: true,
+    logger.info("[AudioPlayer][createHowl]", "🎵 Creating Howl with config", {
+      raw: {
+        sourceUrl,
+        format,
+        html5: true,
+        preload: true,
+      }
     });
 
     return new Howl({
@@ -300,19 +308,19 @@ class AudioPlayer {
       html5: true,
       preload: true,
       onload: () => {
-        logger.info("🎵 Howl onload fired");
+        logger.info("[AudioPlayer][onload]", "🎵 Howl onload fired");
         if (this.pendingSeek !== null && this.howl) {
           try {
             this.howl.seek(this.pendingSeek);
             this.pendingSeek = null;
           } catch (error) {
-            logger.warn("Deferred seek during onload failed", { err: error });
+            logger.warn("[AudioPlayer][onload]", "Deferred seek during onload failed", { raw: { err: error } });
           }
         }
         this.emit("load");
       },
       onplay: () => {
-        logger.info("🎵 Howl onplay fired");
+        logger.info("[AudioPlayer][onplay]", "🎵 Howl onplay fired");
         this.isRecovering = false;
         if (this.pendingSeek !== null && this.howl) {
           const target = this.pendingSeek;
@@ -320,28 +328,28 @@ class AudioPlayer {
           try {
             this.howl.seek(target);
           } catch (error) {
-            logger.warn("Deferred seek during onplay failed", { err: error });
+            logger.warn("[AudioPlayer][onplay]", "Deferred seek during onplay failed", { raw: { err: error } });
           }
         }
         this.startProgressUpdate();
         this.emit("play");
       },
       onpause: () => {
-        logger.info("🎵 Howl onpause fired");
+        logger.info("[AudioPlayer][onpause]", "🎵 Howl onpause fired");
         this.stopProgressUpdate();
         this.emit("pause");
       },
       onend: () => {
-        logger.info("🎵 Howl onend fired");
+        logger.info("[AudioPlayer][onend]", "🎵 Howl onend fired");
         this.stopProgressUpdate();
         this.emit("end");
       },
       onseek: () => {
-        logger.info("🎵 Howl onseek fired");
+        logger.info("[AudioPlayer][onseek]", "🎵 Howl onseek fired");
         this.emit("seek");
       },
       onloaderror: (_id, error) => {
-        logger.error("🎵 Howl onloaderror fired", { error });
+        logger.error("[AudioPlayer][onloaderror]", "🎵 Howl onloaderror fired", error);
 
         // In development, hot reload or initial page load can cause stale audio URLs
         // Suppress errors if we're in dev mode and the player hasn't been actively used
@@ -349,18 +357,18 @@ class AudioPlayer {
         const hasUserInteraction = this.howl?.playing() || false;
 
         if (isDev && !hasUserInteraction && !this.currentTrack) {
-          logger.info("Audio load error suppressed (likely dev environment or page load)", { err: error });
+          logger.info("[AudioPlayer][onloaderror]", "Audio load error suppressed (likely dev environment or page load)", { raw: { err: error } });
           return;
         }
 
         // Only log errors for actual playback attempts
         if (hasUserInteraction || !isDev) {
-          logger.error("Audio load error", { err: error });
+          logger.error("[AudioPlayer][onloaderror]", "Audio load error", error);
           this.emit("error");
         }
       },
       onplayerror: (_id, error) => {
-        logger.error("🎵 Howl onplayerror fired", { error });
+        logger.error("[AudioPlayer][onplayerror]", "🎵 Howl onplayerror fired", error);
 
         const trackContext = this.currentTrack ? { trackId: this.currentTrack.id } : {};
         const logPayload = {
@@ -372,18 +380,18 @@ class AudioPlayer {
           typeof error === "string" && error.includes(HOWLER_AUTOPLAY_BLOCK_MESSAGE);
 
         if (this.isRecovering) {
-          logger.error("Audio play retry failed", logPayload);
+          logger.error("[AudioPlayer][onplayerror]", "Audio play retry failed", logPayload.err ? new Error(String(logPayload.err)) : new Error("Unknown error"), { raw: { ...trackContext } });
         } else if (autoplayBlocked) {
           // Browsers reject autoplay without user interaction; downgrade noise to info level.
-          logger.info("Audio play blocked by autoplay policy", logPayload);
+          logger.info("[AudioPlayer][onplayerror]", "Audio play blocked by autoplay policy", { raw: { ...trackContext } });
         } else {
-          logger.warn("Audio play failed, attempting recovery", logPayload);
+          logger.warn("[AudioPlayer][onplayerror]", "Audio play failed, attempting recovery", { raw: { ...trackContext } });
         }
 
         const audioCtx = Howler.ctx;
         if (audioCtx?.state === "suspended") {
           void audioCtx.resume().catch((resumeError: unknown) => {
-            logger.error("Audio context resume failed", { err: resumeError, ...trackContext });
+            logger.error("[AudioPlayer][onplayerror]", "Audio context resume failed", resumeError, { raw: trackContext });
           });
         }
 
@@ -393,7 +401,7 @@ class AudioPlayer {
         if (trackToRetry && !this.isRecovering) {
           this.isRecovering = true;
           void this.play(trackToRetry).catch((retryError: unknown) => {
-            logger.error("Audio auto-retry failed", { err: retryError, ...trackContext });
+            logger.error("[AudioPlayer][onplayerror]", "Audio auto-retry failed", retryError, { raw: trackContext });
             this.isRecovering = false;
           });
         } else {

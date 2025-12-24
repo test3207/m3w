@@ -39,9 +39,9 @@ export function setLastSyncTime(timestamp: number): void {
 export async function cacheLibraries(libraries: Library[]): Promise<void> {
   try {
     await db.libraries.bulkPut(libraries);
-    logger.debug("[MetadataCache] Libraries cached", { count: libraries.length });
+    logger.debug("[MetadataCache][cacheLibraries]", "Libraries cached", { raw: { count: libraries.length } });
   } catch (error) {
-    logger.error("[MetadataCache] Failed to cache libraries", { error });
+    logger.error("[MetadataCache][cacheLibraries]", "Failed to cache libraries", error);
     throw error;
   }
 }
@@ -53,9 +53,9 @@ export async function cacheLibraries(libraries: Library[]): Promise<void> {
 export async function cacheLibrary(library: Library): Promise<void> {
   try {
     await db.libraries.put(library);
-    logger.debug("[MetadataCache] Library cached", { id: library.id });
+    logger.debug("[MetadataCache][cacheLibrary]", "Library cached", { raw: { id: library.id } });
   } catch (error) {
-    logger.error("[MetadataCache] Failed to cache library", { error });
+    logger.error("[MetadataCache][cacheLibrary]", "Failed to cache library", error);
     throw error;
   }
 }
@@ -67,9 +67,9 @@ export async function cacheLibrary(library: Library): Promise<void> {
 export async function cachePlaylists(playlists: Playlist[]): Promise<void> {
   try {
     await db.playlists.bulkPut(playlists);
-    logger.debug("[MetadataCache] Playlists cached", { count: playlists.length });
+    logger.debug("[MetadataCache][cachePlaylists]", "Playlists cached", { raw: { count: playlists.length } });
   } catch (error) {
-    logger.error("[MetadataCache] Failed to cache playlists", { error });
+    logger.error("[MetadataCache][cachePlaylists]", "Failed to cache playlists", error);
     throw error;
   }
 }
@@ -81,9 +81,9 @@ export async function cachePlaylists(playlists: Playlist[]): Promise<void> {
 export async function cachePlaylist(playlist: Playlist): Promise<void> {
   try {
     await db.playlists.put(playlist);
-    logger.debug("[MetadataCache] Playlist cached", { id: playlist.id });
+    logger.debug("[MetadataCache][cachePlaylist]", "Playlist cached", { raw: { id: playlist.id } });
   } catch (error) {
-    logger.error("[MetadataCache] Failed to cache playlist", { error });
+    logger.error("[MetadataCache][cachePlaylist]", "Failed to cache playlist", error);
     throw error;
   }
 }
@@ -130,13 +130,13 @@ export async function cacheSongsForLibrary(
     
     if (toDelete.length > 0) {
       await db.songs.bulkDelete(toDelete);
-      logger.debug("[MetadataCache] Deleted stale songs", { libraryId, count: toDelete.length });
+      logger.debug("[MetadataCache][cacheSongsForLibrary]", "Deleted stale songs", { raw: { libraryId, count: toDelete.length } });
     }
     
     await db.songs.bulkPut(mergedSongs);
-    logger.debug("[MetadataCache] Songs cached for library", { libraryId, count: songs.length });
+    logger.debug("[MetadataCache][cacheSongsForLibrary]", "Songs cached for library", { raw: { libraryId, count: songs.length } });
   } catch (error) {
-    logger.error("[MetadataCache] Failed to cache songs for library", { libraryId, error });
+    logger.error("[MetadataCache][cacheSongsForLibrary]", "Failed to cache songs for library", error, { raw: { libraryId } });
     throw error;
   }
 }
@@ -168,9 +168,9 @@ export async function cacheSongsForPlaylist(
     }));
     
     await db.playlistSongs.bulkPut(playlistSongRecords);
-    logger.debug("[MetadataCache] Songs cached for playlist", { playlistId, count: songs.length });
+    logger.debug("[MetadataCache][cacheSongsForPlaylist]", "Songs cached for playlist", { raw: { playlistId, count: songs.length } });
   } catch (error) {
-    logger.error("[MetadataCache] Failed to cache songs for playlist", { playlistId, error });
+    logger.error("[MetadataCache][cacheSongsForPlaylist]", "Failed to cache songs for playlist", error, { raw: { playlistId } });
     throw error;
   }
 }
@@ -183,9 +183,9 @@ export async function cacheSong(song: Song): Promise<void> {
   try {
     const [merged] = await mergeSongsWithCacheStatus([song]);
     await db.songs.put(merged);
-    logger.debug("[MetadataCache] Song cached", { id: song.id });
+    logger.debug("[MetadataCache][cacheSong]", "Song cached", { raw: { id: song.id } });
   } catch (error) {
-    logger.error("[MetadataCache] Failed to cache song", { error });
+    logger.error("[MetadataCache][cacheSong]", "Failed to cache song", error);
     throw error;
   }
 }
@@ -206,12 +206,12 @@ export async function deleteStaleSongs(
     
     if (songsToDelete.length > 0) {
       await db.songs.bulkDelete(songsToDelete);
-      logger.debug("[MetadataCache] Deleted stale songs", { count: songsToDelete.length });
+      logger.debug("[MetadataCache][deleteStaleSongs]", "Deleted stale songs", { raw: { count: songsToDelete.length } });
     }
     
     return songsToDelete.length;
   } catch (error) {
-    logger.error("[MetadataCache] Failed to delete stale songs", { error });
+    logger.error("[MetadataCache][deleteStaleSongs]", "Failed to delete stale songs", error);
     throw error;
   }
 }

@@ -64,9 +64,9 @@ export default function StorageManager() {
       
       setUsage(usageData);
       setWarning(warningData);
-      logger.info("Storage usage loaded", usageData);
+      logger.info("[StorageManager][loadStorageUsage]", "Storage usage loaded", { raw: usageData });
     } catch (error) {
-      logger.error("Failed to load storage usage", { error });
+      logger.error("[StorageManager][loadStorageUsage]", "Failed to load storage usage", error);
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +100,7 @@ export default function StorageManager() {
       // Clear localStorage
       localStorage.clear();
       
-      logger.info("All data cleared");
+      logger.info("[StorageManager][handleClearAllData]", "All data cleared");
       
       // Show success toast briefly
       toast({
@@ -114,7 +114,7 @@ export default function StorageManager() {
         window.location.replace("/");
       }, 1000);
     } catch (error) {
-      logger.error("Failed to clear data", { error });
+      logger.error("[StorageManager][handleClearAllData]", "Failed to clear data", error);
       toast({
         title: I18n.settings.storage.clearError,
         variant: "destructive",

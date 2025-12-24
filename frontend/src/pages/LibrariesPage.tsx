@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLibraryStore } from "@/stores/libraryStore";
+import { logger } from "@/lib/logger-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,11 @@ export default function LibrariesPage() {
     setIsCreating(true);
     try {
       await createLibrary(newLibraryName.trim());
+      logger.info(
+        "[LibrariesPage][handleCreateLibrary]",
+        "Library created",
+        { raw: { libraryName: newLibraryName.trim() } }
+      );
       toast({
         title: I18n.libraries.create.successTitle,
         description: I18n.libraries.create.successDescription.replace("{0}", newLibraryName),
@@ -86,6 +92,12 @@ export default function LibrariesPage() {
       setNewLibraryName("");
       setIsDialogOpen(false);
     } catch (error) {
+      logger.error(
+        "[LibrariesPage][handleCreateLibrary]",
+        "Failed to create library",
+        error,
+        { raw: { libraryName: newLibraryName.trim() } }
+      );
       toast({
         variant: "destructive",
         title: I18n.libraries.create.errorTitle,
@@ -102,11 +114,21 @@ export default function LibrariesPage() {
     try {
       const success = await deleteLibrary(libraryToDelete.id);
       if (success) {
+        logger.info(
+          "[LibrariesPage][handleDeleteLibrary]",
+          "Library deleted",
+          { raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
+        );
         toast({
           title: I18n.libraries.delete.successTitle,
           description: I18n.libraries.delete.successDescription.replace("{0}", libraryToDelete.name),
         });
       } else {
+        logger.warn(
+          "[LibrariesPage][handleDeleteLibrary]",
+          "Cannot delete default library",
+          { raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
+        );
         toast({
           variant: "destructive",
           title: I18n.libraries.delete.errorTitle,
@@ -114,6 +136,12 @@ export default function LibrariesPage() {
         });
       }
     } catch (error) {
+      logger.error(
+        "[LibrariesPage][handleDeleteLibrary]",
+        "Failed to delete library",
+        error,
+        { raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
+      );
       toast({
         variant: "destructive",
         title: I18n.libraries.delete.errorTitle,

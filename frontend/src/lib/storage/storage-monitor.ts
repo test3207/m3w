@@ -64,7 +64,7 @@ class StorageMonitor {
         breakdown,
       };
     } catch (error) {
-      logger.error("Failed to get storage usage", { error });
+      logger.error("[StorageMonitor][getStorageUsage]", "Failed to get storage usage", error);
       return {
         quota: 0,
         usage: 0,
@@ -108,7 +108,7 @@ class StorageMonitor {
         metadata: metadataSize,
       };
     } catch (error) {
-      logger.error("Failed to get storage breakdown", { error });
+      logger.error("[StorageMonitor][getDetailedBreakdown]", "Failed to get storage breakdown", error);
       return { audio: 0, covers: 0, metadata: 0 };
     }
   }
@@ -145,31 +145,33 @@ class StorageMonitor {
   async requestPersistentStorage(): Promise<"granted" | "denied" | "unsupported"> {
     try {
       if (!navigator.storage || !navigator.storage.persist) {
-        logger.warn("Persistent storage not supported");
+        logger.warn("[StorageMonitor][requestPersistentStorage]", "Persistent storage not supported");
         return "unsupported";
       }
 
       // Check current persisted status first
       const alreadyPersisted = await navigator.storage.persisted();
-      logger.info("Current persisted status", { alreadyPersisted });
+      logger.info("[StorageMonitor][requestPersistentStorage]", "Current persisted status", { raw: { alreadyPersisted } });
 
       // If already persisted, return granted immediately
       if (alreadyPersisted) {
-        logger.info("Storage already persisted");
+        logger.info("[StorageMonitor][requestPersistentStorage]", "Storage already persisted");
         return "granted";
       }
 
       const isPersisted = await navigator.storage.persist();
-      logger.info("Persistent storage request result", { 
-        isPersisted, 
-        alreadyPersisted,
-        userAgent: navigator.userAgent,
-        isStandalone: window.matchMedia("(display-mode: standalone)").matches
+      logger.info("[StorageMonitor][requestPersistentStorage]", "Persistent storage request result", { 
+        raw: {
+          isPersisted, 
+          alreadyPersisted,
+          userAgent: navigator.userAgent,
+          isStandalone: window.matchMedia("(display-mode: standalone)").matches,
+        },
       });
       
       return isPersisted ? "granted" : "denied";
     } catch (error) {
-      logger.error("Failed to request persistent storage", { error });
+      logger.error("[StorageMonitor][requestPersistentStorage]", "Failed to request persistent storage", error);
       return "denied";
     }
   }
@@ -227,7 +229,7 @@ class StorageMonitor {
         totalCacheSize,
       };
     } catch (error) {
-      logger.error("Failed to get cache stats", { error });
+      logger.error("[StorageMonitor][getCacheStats]", "Failed to get cache stats", error);
       return {
         totalSongs: 0,
         cachedSongs: 0,
