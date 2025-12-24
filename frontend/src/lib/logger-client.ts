@@ -32,15 +32,27 @@ const MAX_BUFFER_SIZE = 10;
 
 /**
  * Check if remote logging is enabled (runtime injection)
- * Reads from window.__ENABLE_REMOTE_LOGGING__ (injected by docker-entrypoint or build)
+ * Priority:
+ *   1. Runtime: window.__ENABLE_REMOTE_LOGGING__ (docker-entrypoint injection)
+ *   2. Dev-only: VITE_ENABLE_REMOTE_LOGGING env var (for local testing)
  * Default: false
  */
 function isRemoteLoggingEnabled(): boolean {
   if (typeof window === "undefined") return false;
+  
+  // 1. Check runtime injection (production)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const runtimeFlag = (window as any).__ENABLE_REMOTE_LOGGING__;
-  // Check if it's explicitly set to true (string "true" or boolean true)
-  return runtimeFlag === "true" || runtimeFlag === true;
+  if (runtimeFlag !== undefined && runtimeFlag !== "__ENABLE_REMOTE_LOGGING__") {
+    return runtimeFlag === "true" || runtimeFlag === true;
+  }
+  
+  // 2. Fallback to env var (development only, for local testing)
+  if (isDev) {
+    return import.meta.env.VITE_ENABLE_REMOTE_LOGGING === "true";
+  }
+  
+  return false;
 }
 
 // ============================================================================

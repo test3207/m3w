@@ -18,8 +18,12 @@ import type { Context } from 'hono';
 // Service name constant
 const SERVICE_NAME = 'm3w-backend';
 
-// Region from environment (jp, sea, etc.)
-const REGION = process.env.REGION || 'unknown';
+// Region from environment (jp, sea, etc.) - use HOME_REGION for SSOT consistency
+const REGION = process.env.HOME_REGION || 'default';
+
+// Remote logging flag (for future structured log forwarding)
+// Currently all logs go to stdout; this flag reserved for future use
+const ENABLE_REMOTE_LOGGING = process.env.ENABLE_REMOTE_LOGGING === 'true';
 
 /**
  * Base Pino logger instance
