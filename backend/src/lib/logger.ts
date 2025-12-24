@@ -23,6 +23,7 @@ const REGION = process.env.HOME_REGION || 'default';
 
 // Remote logging flag (for future structured log forwarding)
 // Currently all logs go to stdout; this flag reserved for future use
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ENABLE_REMOTE_LOGGING = process.env.ENABLE_REMOTE_LOGGING === 'true';
 
 /**
