@@ -53,7 +53,7 @@ describe("logger-client", () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "[Error] [Test][error] Test error",
         undefined,
-        raw
+        { code: 500, details: "Server error" }
       );
     });
 
@@ -65,7 +65,7 @@ describe("logger-client", () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "[Error] [Test][error] Operation failed",
         error,
-        raw
+        { requestId: "req-123" }
       );
     });
   });
@@ -86,7 +86,7 @@ describe("logger-client", () => {
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         "[Warn] [Test][warn] Deprecation notice",
-        raw
+        { deprecated: "oldMethod" }
       );
     });
   });
@@ -107,7 +107,7 @@ describe("logger-client", () => {
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
         "[Info] [Test][info] User action",
-        raw
+        { user: "test", action: "login" }
       );
     });
   });
@@ -128,7 +128,7 @@ describe("logger-client", () => {
 
       expect(consoleDebugSpy).toHaveBeenCalledWith(
         "[Debug] [Test][debug] Debug step",
-        raw
+        { step: 1, value: "test" }
       );
     });
   });
@@ -140,7 +140,7 @@ describe("logger-client", () => {
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
         "[Info] [Test][info] Array data",
-        raw
+        { items: [1, 2, 3] }
       );
     });
 
@@ -156,7 +156,13 @@ describe("logger-client", () => {
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
         "[Info] [Test][info] Nested object",
-        raw
+        {
+          level1: {
+            level2: {
+              value: "deep",
+            },
+          },
+        }
       );
     });
   });
