@@ -205,7 +205,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
         logger.info(
           "[UploadForm][handleSubmit]",
           "Upload completed",
-          { traceId: undefined, raw: { successCount, totalFiles: files.length, libraryId } }
+          { raw: { successCount, totalFiles: files.length, libraryId } }
         );
         toast({
           title: I18n.success.title,
@@ -219,7 +219,7 @@ export function UploadSongForm({ onDrawerClose, targetLibraryId }: UploadSongFor
           "[UploadForm][handleSubmit]",
           "Upload batch had failures",
           undefined,
-          { traceId: undefined, raw: { errorCount, successCount, totalFiles: files.length, libraryId } }
+          { raw: { errorCount, successCount, totalFiles: files.length, libraryId } }
         );
         toast({
           title: I18n.error.title,

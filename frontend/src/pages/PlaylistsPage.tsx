@@ -104,7 +104,7 @@ export default function PlaylistsPage() {
       logger.info(
         "[PlaylistsPage][handleCreatePlaylist]",
         "Playlist created",
-        { traceId: undefined, raw: { playlistName: newPlaylistName.trim() } }
+        { raw: { playlistName: newPlaylistName.trim() } }
       );
       toast({
         title: I18n.playlists.create.successTitle,
@@ -117,7 +117,7 @@ export default function PlaylistsPage() {
         "[PlaylistsPage][handleCreatePlaylist]",
         "Failed to create playlist",
         error,
-        { traceId: undefined, raw: { playlistName: newPlaylistName.trim() } }
+        { raw: { playlistName: newPlaylistName.trim() } }
       );
       toast({
         variant: "destructive",
@@ -138,7 +138,7 @@ export default function PlaylistsPage() {
         logger.info(
           "[PlaylistsPage][handleDeletePlaylist]",
           "Playlist deleted",
-          { traceId: undefined, raw: { playlistId: playlistToDelete.id, playlistName: playlistToDelete.name } }
+          { raw: { playlistId: playlistToDelete.id, playlistName: playlistToDelete.name } }
         );
         toast({
           title: I18n.playlists.delete.successTitle,
@@ -148,7 +148,7 @@ export default function PlaylistsPage() {
         logger.warn(
           "[PlaylistsPage][handleDeletePlaylist]",
           "Cannot delete default playlist",
-          { traceId: undefined, raw: { playlistId: playlistToDelete.id, playlistName: playlistToDelete.name } }
+          { raw: { playlistId: playlistToDelete.id, playlistName: playlistToDelete.name } }
         );
         toast({
           variant: "destructive",

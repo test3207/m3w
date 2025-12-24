@@ -177,7 +177,7 @@ export default function PlaylistDetailPage() {
       logger.info(
         "[PlaylistDetailPage][handleDragEnd]",
         "Playlist songs reordered",
-        { traceId: undefined, raw: { playlistId: currentPlaylist.id, songCount: newSongIds.length, from: oldIndex, to: newIndex } }
+        { raw: { playlistId: currentPlaylist.id, songCount: newSongIds.length, from: oldIndex, to: newIndex } }
       );
 
       // If currently playing this playlist in sequential mode, update queue
@@ -199,11 +199,10 @@ export default function PlaylistDetailPage() {
         title: I18n.playlists.detail.moveSong.successTitle,
       });
     } else {
-      logger.error(
+      logger.warn(
         "[PlaylistDetailPage][handleDragEnd]",
         "Failed to reorder playlist songs",
-        undefined,
-        { traceId: undefined, raw: { playlistId: currentPlaylist.id, from: oldIndex, to: newIndex } }
+        { raw: { playlistId: currentPlaylist.id, from: oldIndex, to: newIndex } }
       );
 
       // Revert on failure - refetch from server
@@ -229,18 +228,17 @@ export default function PlaylistDetailPage() {
       logger.info(
         "[PlaylistDetailPage][handleRemove]",
         "Song removed from playlist",
-        { traceId: undefined, raw: { playlistId: currentPlaylist.id, songId, songTitle } }
+        { raw: { playlistId: currentPlaylist.id, songId, songTitle } }
       );
 
       toast({
         title: I18n.playlists.detail.removeSong.successTitle.replace("{0}", songTitle),
       });
     } else {
-      logger.error(
+      logger.warn(
         "[PlaylistDetailPage][handleRemove]",
         "Failed to remove song from playlist",
-        undefined,
-        { traceId: undefined, raw: { playlistId: currentPlaylist.id, songId, songTitle } }
+        { raw: { playlistId: currentPlaylist.id, songId, songTitle } }
       );
 
       toast({

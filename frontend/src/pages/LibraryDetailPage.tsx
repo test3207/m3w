@@ -296,7 +296,7 @@ export default function LibraryDetailPage() {
       logger.info(
         "[LibraryDetailPage][handleDeleteSong]",
         "Song deleted from library",
-        { traceId: undefined, raw: { libraryId: id, songId, songTitle } }
+        { raw: { libraryId: id, songId, songTitle } }
       );
 
       toast({
@@ -308,7 +308,7 @@ export default function LibraryDetailPage() {
         "[LibraryDetailPage][handleDeleteSong]",
         "Failed to delete song",
         error,
-        { traceId: undefined, raw: { libraryId: id, songId, songTitle } }
+        { raw: { libraryId: id, songId, songTitle } }
       );
 
       toast({

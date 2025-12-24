@@ -83,7 +83,7 @@ export default function LibrariesPage() {
       logger.info(
         "[LibrariesPage][handleCreateLibrary]",
         "Library created",
-        { traceId: undefined, raw: { libraryName: newLibraryName.trim() } }
+        { raw: { libraryName: newLibraryName.trim() } }
       );
       toast({
         title: I18n.libraries.create.successTitle,
@@ -96,7 +96,7 @@ export default function LibrariesPage() {
         "[LibrariesPage][handleCreateLibrary]",
         "Failed to create library",
         error,
-        { traceId: undefined, raw: { libraryName: newLibraryName.trim() } }
+        { raw: { libraryName: newLibraryName.trim() } }
       );
       toast({
         variant: "destructive",
@@ -117,7 +117,7 @@ export default function LibrariesPage() {
         logger.info(
           "[LibrariesPage][handleDeleteLibrary]",
           "Library deleted",
-          { traceId: undefined, raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
+          { raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
         );
         toast({
           title: I18n.libraries.delete.successTitle,
@@ -127,7 +127,7 @@ export default function LibrariesPage() {
         logger.warn(
           "[LibrariesPage][handleDeleteLibrary]",
           "Cannot delete default library",
-          { traceId: undefined, raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
+          { raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
         );
         toast({
           variant: "destructive",
@@ -140,7 +140,7 @@ export default function LibrariesPage() {
         "[LibrariesPage][handleDeleteLibrary]",
         "Failed to delete library",
         error,
-        { traceId: undefined, raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
+        { raw: { libraryId: libraryToDelete.id, libraryName: libraryToDelete.name } }
       );
       toast({
         variant: "destructive",
