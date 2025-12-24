@@ -31,7 +31,13 @@ class EventBus {
   }
 
   emit<T = void>(event: string, payload?: T): void {
-    logger.debug("[EventBus][emit]", `Emitting event: ${event}`, { raw: payload as Record<string, unknown> });
+    logger.debug(
+      "[EventBus][emit]",
+      `Emitting event: ${event}`,
+      payload !== undefined && typeof payload === "object" && payload !== null
+        ? { raw: payload as object }
+        : undefined
+    );
     this.listeners.get(event)?.forEach((callback) => callback(payload));
   }
 

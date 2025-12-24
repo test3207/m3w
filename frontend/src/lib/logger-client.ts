@@ -3,7 +3,7 @@
  *
  * Unified logging for frontend with optional backend submission.
  * - Dev: console only
- * - Prod: optionally sends to `/api/logs` (controlled by VITE_ENABLE_REMOTE_LOGGING)
+ * - Prod: optionally sends to `/api/logs` (controlled by window.__ENABLE_REMOTE_LOGGING__)
  *
  * Usage:
  *   import { logger } from "@/lib/logger-client";
@@ -26,10 +26,22 @@ import { useAuthStore } from "@/stores/authStore";
 // ============================================================================
 
 const isDev = typeof window !== "undefined" && import.meta.env.DEV;
-const ENABLE_REMOTE = import.meta.env.VITE_ENABLE_REMOTE_LOGGING === "true";
 const SERVICE = "m3w-frontend";
 const FLUSH_INTERVAL_MS = 5000;
 const MAX_BUFFER_SIZE = 10;
+
+/**
+ * Check if remote logging is enabled (runtime injection)
+ * Reads from window.__ENABLE_REMOTE_LOGGING__ (injected by docker-entrypoint or build)
+ * Default: false
+ */
+function isRemoteLoggingEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const runtimeFlag = (window as any).__ENABLE_REMOTE_LOGGING__;
+  // Check if it's explicitly set to true (string "true" or boolean true)
+  return runtimeFlag === "true" || runtimeFlag === true;
+}
 
 // ============================================================================
 // Types
@@ -165,7 +177,7 @@ class LogBuffer {
   initialize(): void {
     if (this.flushTimer) return;
 
-    if (!ENABLE_REMOTE) return;
+    if (!isRemoteLoggingEnabled()) return;
 
     this.flushTimer = setInterval(() => this.flush(), FLUSH_INTERVAL_MS);
 
@@ -283,7 +295,7 @@ class TraceImpl implements Trace {
     if (isDev) {
       console.info(`[Info] ${source} ${message}`, options?.raw ?? "");
     }
-    if (ENABLE_REMOTE) {
+    if (isRemoteLoggingEnabled()) {
       this.buffer.add("info", this.traceId, source, message, this.page, options);
     }
   }
@@ -291,7 +303,7 @@ class TraceImpl implements Trace {
   warn(source: string, message: string, options?: LogOptions): void {
     if (this.ended) return;
     console.warn(`[Warn] ${source} ${message}`, options?.raw ?? "");
-    if (ENABLE_REMOTE) {
+    if (isRemoteLoggingEnabled()) {
       this.buffer.add("warn", this.traceId, source, message, this.page, options);
     }
   }
@@ -299,7 +311,7 @@ class TraceImpl implements Trace {
   error(source: string, message: string, err?: unknown, options?: LogOptions): void {
     if (this.ended) return;
     console.error(`[Error] ${source} ${message}`, err, options?.raw ?? "");
-    if (ENABLE_REMOTE) {
+    if (isRemoteLoggingEnabled()) {
       this.buffer.add("error", this.traceId, source, message, this.page, options, err);
     }
   }
@@ -348,21 +360,21 @@ class FrontendLogger implements Logger {
     if (isDev) {
       console.info(`[Info] ${source} ${message}`, options?.raw ?? "");
     }
-    if (ENABLE_REMOTE) {
+    if (isRemoteLoggingEnabled()) {
       this.buffer.add("info", options?.traceId || generateId(), source, message, this.getPage(), options);
     }
   }
 
   warn(source: string, message: string, options?: LogOptions): void {
     console.warn(`[Warn] ${source} ${message}`, options?.raw ?? "");
-    if (ENABLE_REMOTE) {
+    if (isRemoteLoggingEnabled()) {
       this.buffer.add("warn", options?.traceId || generateId(), source, message, this.getPage(), options);
     }
   }
 
   error(source: string, message: string, err?: unknown, options?: LogOptions): void {
     console.error(`[Error] ${source} ${message}`, err, options?.raw ?? "");
-    if (ENABLE_REMOTE) {
+    if (isRemoteLoggingEnabled()) {
       this.buffer.add("error", options?.traceId || generateId(), source, message, this.getPage(), options, err);
     }
   }

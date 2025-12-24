@@ -380,12 +380,12 @@ class AudioPlayer {
           typeof error === "string" && error.includes(HOWLER_AUTOPLAY_BLOCK_MESSAGE);
 
         if (this.isRecovering) {
-          logger.error("[AudioPlayer][onplayerror]", "Audio play retry failed", logPayload.err, { raw: logPayload });
+          logger.error("[AudioPlayer][onplayerror]", "Audio play retry failed", logPayload.err ? new Error(String(logPayload.err)) : new Error("Unknown error"), { raw: { ...trackContext } });
         } else if (autoplayBlocked) {
           // Browsers reject autoplay without user interaction; downgrade noise to info level.
-          logger.info("[AudioPlayer][onplayerror]", "Audio play blocked by autoplay policy", { raw: logPayload });
+          logger.info("[AudioPlayer][onplayerror]", "Audio play blocked by autoplay policy", { raw: { ...trackContext } });
         } else {
-          logger.warn("[AudioPlayer][onplayerror]", "Audio play failed, attempting recovery", { raw: logPayload });
+          logger.warn("[AudioPlayer][onplayerror]", "Audio play failed, attempting recovery", { raw: { ...trackContext } });
         }
 
         const audioCtx = Howler.ctx;

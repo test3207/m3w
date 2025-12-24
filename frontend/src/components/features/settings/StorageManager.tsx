@@ -64,7 +64,7 @@ export default function StorageManager() {
       
       setUsage(usageData);
       setWarning(warningData);
-      logger.info("[StorageManager][loadStorageUsage]", "Storage usage loaded", usageData as unknown as Record<string, unknown>);
+      logger.info("[StorageManager][loadStorageUsage]", "Storage usage loaded", { raw: usageData });
     } catch (error) {
       logger.error("[StorageManager][loadStorageUsage]", "Failed to load storage usage", error);
     } finally {

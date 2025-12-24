@@ -65,7 +65,7 @@ class CacheSWBridge {
         await this.handleCacheDeleted(data);
         break;
       case "CACHE_ERROR":
-        logger.error("[CacheSWBridge][handleMessage]", "Cache error from SW", data.error, { raw: { songId: data.songId } });
+        logger.error("[CacheSWBridge][handleMessage]", "Cache error from SW", new Error(data.error || "Unknown cache error"), { raw: { songId: data.songId } });
         break;
     }
   }

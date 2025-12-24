@@ -77,6 +77,11 @@
       // }
       // ```
       window.__M3W_CONFIG__ = '__M3W_CONFIG__';
+      
+      // Remote logging flag (replaced by docker-entrypoint)
+      // - 'true': Enable remote logging to backend
+      // - 'false' or unset: Disable remote logging (console only)
+      window.__ENABLE_REMOTE_LOGGING__ = '__ENABLE_REMOTE_LOGGING__';
     </script>
   </head>
   <body>
