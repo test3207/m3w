@@ -11,17 +11,43 @@ import { prettyJSON } from 'hono/pretty-json';
 import { serveStatic } from '@hono/node-server/serve-static';
 import 'dotenv/config';
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
-import { logger } from './lib/logger';
+import { createLogger, generateTraceId } from './lib/logger';
 import { prisma } from './lib/prisma';
 import { traceMiddleware } from './lib/trace-middleware';
+
+// Create a startup logger with shared traceId for all startup logs
+const startupTraceId = generateTraceId();
+const startupLog = createLogger();
+// Override traceId for startup correlation
+const log = {
+  info: (params: Parameters<typeof startupLog.info>[0]) =>
+    startupLog.info({ ...params, raw: { ...params.raw, startupTraceId } }),
+  warn: (params: Parameters<typeof startupLog.warn>[0]) =>
+    startupLog.warn({ ...params, raw: { ...params.raw, startupTraceId } }),
+  error: (params: Parameters<typeof startupLog.error>[0]) =>
+    startupLog.error({ ...params, raw: { ...params.raw, startupTraceId } }),
+  debug: (params: Parameters<typeof startupLog.debug>[0]) =>
+    startupLog.debug({ ...params, raw: { ...params.raw, startupTraceId } }),
+};
 
 const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
 if (proxyUrl) {
   const proxyAgent = new ProxyAgent(proxyUrl);
   setGlobalDispatcher(proxyAgent);
-  logger.info({ proxyUrl }, 'HTTP proxy configured for fetch');
+  log.info({
+    source: 'index.proxy',
+    col1: 'system',
+    col2: 'proxy',
+    raw: { proxyUrl },
+    message: 'HTTP proxy configured for fetch',
+  });
 } else {
-  logger.info('No HTTP(S)_PROXY detected, fetch uses direct network routes');
+  log.info({
+    source: 'index.proxy',
+    col1: 'system',
+    col2: 'proxy',
+    message: 'No HTTP(S)_PROXY detected, fetch uses direct network routes',
+  });
 }
 
 // Helper function to mask sensitive environment variables
@@ -76,7 +102,13 @@ const envVars = Object.entries(process.env)
     return acc;
   }, {} as Record<string, string>);
 
-logger.info({ env: envVars }, 'Environment variables loaded');
+log.info({
+  source: 'index.startup',
+  col1: 'system',
+  col2: 'startup',
+  raw: { env: envVars },
+  message: 'Environment variables loaded',
+});
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -161,7 +193,12 @@ type DemoModules = {
 let demoModules: DemoModules | null = null;
 
 if (__IS_DEMO_BUILD__) {
-  logger.info('Demo mode code included (RC build)');
+  log.info({
+    source: 'index.demo',
+    col1: 'system',
+    col2: 'startup',
+    message: 'Demo mode code included (RC build)',
+  });
   
   const [storageTrackerModule, middlewareModule, resetServiceModule] = await Promise.all([
     import('./lib/demo/storage-tracker'),
@@ -178,9 +215,19 @@ if (__IS_DEMO_BUILD__) {
   
   // Initialize storage tracker
   await demoModules.storageTracker.initialize();
-  logger.info('Demo mode modules loaded');
+  log.info({
+    source: 'index.demo',
+    col1: 'system',
+    col2: 'startup',
+    message: 'Demo mode modules loaded',
+  });
 } else {
-  logger.info('Demo mode code excluded (Production build)');
+  log.info({
+    source: 'index.demo',
+    col1: 'system',
+    col2: 'startup',
+    message: 'Demo mode code excluded (Production build)',
+  });
 }
 
 const app = new Hono();
@@ -206,12 +253,22 @@ app.use(
 const isDemoEnabled = process.env.DEMO_MODE === 'true';
 
 if (demoModules && isDemoEnabled) {
-  logger.info('Demo mode enabled (DEMO_MODE=true)');
+  log.info({
+    source: 'index.demo',
+    col1: 'demo',
+    col2: 'startup',
+    message: 'Demo mode enabled (DEMO_MODE=true)',
+  });
   app.use('*', demoModules.demoStorageCheckMiddleware());
   demoModules.registerDemoRoutes(app);
   demoModules.startDemoResetService();
 } else if (demoModules) {
-  logger.info('Demo mode available but disabled (set DEMO_MODE=true to enable)');
+  log.info({
+    source: 'index.demo',
+    col1: 'demo',
+    col2: 'startup',
+    message: 'Demo mode available but disabled (set DEMO_MODE=true to enable)',
+  });
 }
 
 // Health check endpoints (liveness + readiness probes)
@@ -237,7 +294,12 @@ app.route('/api/logs', logsRoutes);
 // This enables single-container deployment for simplicity
 // For separated deployment, use Dockerfile.frontend instead
 if (process.env.SERVE_FRONTEND === 'true') {
-  logger.info('Static frontend serving enabled (All-in-One mode)');
+  log.info({
+    source: 'index.startup',
+    col1: 'system',
+    col2: 'startup',
+    message: 'Static frontend serving enabled (All-in-One mode)',
+  });
   
   // Serve static files from public directory
   app.use('/*', serveStatic({ root: './public' }));
@@ -253,7 +315,14 @@ app.notFound((c) => {
 
 // Error handler
 app.onError((err, c) => {
-  logger.error({ err }, 'Unhandled error');
+  const errLog = createLogger(c);
+  errLog.error({
+    source: 'index.errorHandler',
+    col1: 'system',
+    col2: 'error',
+    message: 'Unhandled error',
+    error: err,
+  });
   return c.json(
     {
       error: 'Internal Server Error',
@@ -266,24 +335,48 @@ app.onError((err, c) => {
 // Start server
 const port = Number(process.env.PORT) || 4000;
 
-logger.info(`Starting M3W Backend on port ${port}...`);
+log.info({
+  source: 'index.startup',
+  col1: 'system',
+  col2: 'startup',
+  raw: { port },
+  message: 'Starting M3W Backend...',
+});
 
 serve({
   fetch: app.fetch,
   port,
 });
 
-logger.info(`M3W Backend running at http://localhost:${port}`);
+log.info({
+  source: 'index.startup',
+  col1: 'system',
+  col2: 'startup',
+  raw: { port, url: `http://localhost:${port}` },
+  message: 'M3W Backend started successfully',
+});
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully...');
+  const shutdownLog = createLogger();
+  shutdownLog.info({
+    source: 'index.shutdown',
+    col1: 'system',
+    col2: 'shutdown',
+    message: 'SIGTERM received, shutting down gracefully...',
+  });
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully...');
+  const shutdownLog = createLogger();
+  shutdownLog.info({
+    source: 'index.shutdown',
+    col1: 'system',
+    col2: 'shutdown',
+    message: 'SIGINT received, shutting down gracefully...',
+  });
   await prisma.$disconnect();
   process.exit(0);
 });

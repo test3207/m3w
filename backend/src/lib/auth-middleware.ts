@@ -6,7 +6,7 @@
 import { Context, Next } from 'hono';
 import { verifyToken } from './jwt';
 import { prisma } from './prisma';
-import { logger } from './logger';
+import { createLogger } from './logger';
 
 export interface AuthContext {
   userId: string;
@@ -38,8 +38,15 @@ export async function authMiddleware(c: Context, next: Next) {
     }
   }
 
+  const log = createLogger(c);
+
   if (!token) {
-    logger.warn('Missing authorization header and cookie');
+    log.warn({
+      source: 'auth.middleware',
+      col1: 'auth',
+      col2: 'verify',
+      message: 'Missing authorization header and cookie',
+    });
     return c.json(
       {
         success: false,
@@ -49,12 +56,24 @@ export async function authMiddleware(c: Context, next: Next) {
     );
   }
 
-  logger.debug({ tokenPrefix: token.substring(0, 20) }, 'Verifying token');
+  log.debug({
+    source: 'auth.middleware',
+    col1: 'auth',
+    col2: 'verify',
+    raw: { tokenPrefix: token.substring(0, 20) },
+    message: 'Verifying token',
+  });
   
   const payload = verifyToken(token);
 
   if (!payload || payload.type !== 'access') {
-    logger.warn({ payload, tokenPrefix: token.substring(0, 20) }, 'Invalid or expired token');
+    log.warn({
+      source: 'auth.middleware',
+      col1: 'auth',
+      col2: 'verify',
+      raw: { payload, tokenPrefix: token.substring(0, 20) },
+      message: 'Invalid or expired token',
+    });
     return c.json(
       {
         success: false,
@@ -112,7 +131,14 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
           });
         }
       } catch (error) {
-        logger.warn({ error }, 'Failed to verify optional auth');
+        const log = createLogger(c);
+        log.warn({
+          source: 'auth.optionalMiddleware',
+          col1: 'auth',
+          col2: 'verify',
+          raw: { error: error instanceof Error ? error.message : String(error) },
+          message: 'Failed to verify optional auth',
+        });
       }
     }
   }

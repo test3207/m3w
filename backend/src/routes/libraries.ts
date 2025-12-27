@@ -12,7 +12,7 @@
 import { Hono } from 'hono';
 import type { HttpBindings } from '@hono/node-server';
 import { z } from 'zod';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 import {
@@ -52,6 +52,7 @@ app.use('*', authMiddleware);
 
 // GET /api/libraries - List all libraries for current user
 app.get('/', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const libraries = await findUserLibraries(auth.userId);
@@ -62,13 +63,20 @@ app.get('/', async (c: Context) => {
       data: response,
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to fetch libraries');
+    log.error({
+      source: 'libraries.list',
+      col1: 'library',
+      col2: 'list',
+      message: 'Failed to fetch libraries',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch libraries' }, 500);
   }
 });
 
 // GET /api/libraries/:id - Get library by ID
 app.get('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = libraryIdSchema.parse({ id: c.req.param('id') });
     const auth = c.get('auth');
@@ -86,13 +94,21 @@ app.get('/:id', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Invalid library ID', details: error.issues }, 400);
     }
-    logger.error(error, 'Failed to fetch library');
+    log.error({
+      source: 'libraries.get',
+      col1: 'library',
+      col2: 'get',
+      col3: c.req.param('id'),
+      message: 'Failed to fetch library',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch library' }, 500);
   }
 });
 
 // POST /api/libraries - Create new library
 app.post('/', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const body = await c.req.json();
     const data = createLibrarySchema.parse(body);
@@ -104,13 +120,20 @@ app.post('/', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to create library');
+    log.error({
+      source: 'libraries.create',
+      col1: 'library',
+      col2: 'create',
+      message: 'Failed to create library',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to create library' }, 500);
   }
 });
 
 // PATCH /api/libraries/:id - Update library
 app.patch('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = libraryIdSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
@@ -130,13 +153,21 @@ app.patch('/:id', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to update library');
+    log.error({
+      source: 'libraries.update',
+      col1: 'library',
+      col2: 'update',
+      col3: c.req.param('id'),
+      message: 'Failed to update library',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to update library' }, 500);
   }
 });
 
 // DELETE /api/libraries/:id - Delete library
 app.delete('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = libraryIdSchema.parse({ id: c.req.param('id') });
     const auth = c.get('auth');
@@ -153,13 +184,21 @@ app.delete('/:id', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Invalid library ID', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to delete library');
+    log.error({
+      source: 'libraries.delete',
+      col1: 'library',
+      col2: 'delete',
+      col3: c.req.param('id'),
+      message: 'Failed to delete library',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to delete library' }, 500);
   }
 });
 
 // POST /api/libraries/:id/songs - Upload audio file to library (streaming)
 app.post('/:id/songs', async (c) => {
+  const log = createLogger(c);
   try {
     const libraryId = c.req.param('id');
     const userId = getUserId(c);
@@ -175,10 +214,14 @@ app.post('/:id/songs', async (c) => {
     const nodeRequest = c.env.incoming;
     const { fields, file } = await parseStreamingUpload(nodeRequest, bucketName);
 
-    logger.info(
-      { fileHash: file.hash, fileName: file.originalFilename, fileSize: file.size, libraryId },
-      'Processing upload'
-    );
+    log.info({
+      source: 'libraries.upload',
+      col1: 'upload',
+      col2: 'process',
+      col3: libraryId,
+      raw: { fileHash: file.hash, fileName: file.originalFilename, fileSize: file.size },
+      message: 'Processing upload',
+    });
 
     // Find or create file record
     const { fileRecord, isNewFile } = await findOrCreateFileRecord(file.hash, {
@@ -197,14 +240,31 @@ app.post('/:id/songs', async (c) => {
           try {
             const minioClient = getMinioClient();
             await minioClient.removeObject(bucketName, file.objectName);
-            logger.info({ objectName: file.objectName }, 'Cleaned up file after storage limit exceeded');
+            log.info({
+              source: 'libraries.upload',
+              col1: 'upload',
+              col2: 'cleanup',
+              raw: { objectName: file.objectName },
+              message: 'Cleaned up file after storage limit exceeded',
+            });
           } catch (cleanupError) {
-            logger.warn({ error: cleanupError }, 'Failed to clean up file after storage limit check');
+            log.warn({
+              source: 'libraries.upload',
+              col1: 'upload',
+              col2: 'cleanup',
+              message: 'Failed to clean up file after storage limit check',
+              error: cleanupError,
+            });
           }
           return c.json({ success: false, error: 'Storage limit reached (5GB). Please wait for next reset.' }, 403);
         }
       } catch {
-        logger.debug('Demo modules not available');
+        log.debug({
+          source: 'libraries.upload',
+          col1: 'demo',
+          col2: 'config',
+          message: 'Demo modules not available',
+        });
       }
     }
 
@@ -216,7 +276,12 @@ app.post('/:id/songs', async (c) => {
           storageTracker.incrementUsage(file.size);
         }
       } catch {
-        logger.debug('Demo modules not available for tracking');
+        log.debug({
+          source: 'libraries.upload',
+          col1: 'demo',
+          col2: 'config',
+          message: 'Demo modules not available for tracking',
+        });
       }
     }
 
@@ -226,7 +291,14 @@ app.post('/:id/songs', async (c) => {
       try {
         coverUrl = await uploadCoverImage(file.coverImage, file.hash, bucketName);
       } catch (error) {
-        logger.warn({ error }, 'Failed to upload cover image');
+        log.warn({
+          source: 'libraries.upload',
+          col1: 'upload',
+          col2: 'cover',
+          col3: file.hash,
+          message: 'Failed to upload cover image',
+          error,
+        });
       }
     }
 
@@ -262,7 +334,14 @@ app.post('/:id/songs', async (c) => {
     // Check for duplicate song in library
     const existingCheck = await checkExistingSongInLibrary(libraryId, fileRecord.id);
     if (existingCheck.exists) {
-      logger.info({ songId: existingCheck.song!.id, libraryId }, 'Song already exists in this library');
+      log.info({
+        source: 'libraries.upload',
+        col1: 'upload',
+        col2: 'duplicate',
+        col3: existingCheck.song!.id,
+        raw: { libraryId },
+        message: 'Song already exists in this library',
+      });
       return c.json({
         success: false,
         error: 'This song already exists in the selected library',
@@ -278,8 +357,15 @@ app.post('/:id/songs', async (c) => {
       data: { song: toSongResponse(songInput) },
     });
   } catch (error) {
-    logger.error(error, 'Upload failed');
-    logger.error(`Error details: ${error instanceof Error ? error.stack : String(error)}`);
+    log.error({
+      source: 'libraries.upload',
+      col1: 'upload',
+      col2: 'process',
+      col3: c.req.param('id'),
+      raw: { stack: error instanceof Error ? error.stack : undefined },
+      message: 'Upload failed',
+      error,
+    });
     return c.json({
       success: false,
       error: 'Upload failed',
@@ -290,6 +376,7 @@ app.post('/:id/songs', async (c) => {
 
 // GET /api/libraries/:id/songs - List songs in library
 app.get('/:id/songs', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = libraryIdSchema.parse({ id: c.req.param('id') });
     const auth = c.get('auth');
@@ -308,7 +395,14 @@ app.get('/:id/songs', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Invalid library ID', details: error.issues }, 400);
     }
-    logger.error({ error, stack: error instanceof Error ? error.stack : undefined }, 'Failed to fetch library songs');
+    log.error({
+      source: 'libraries.songs',
+      col1: 'library',
+      col2: 'get',
+      col3: c.req.param('id'),
+      message: 'Failed to fetch library songs',
+      error,
+    });
     return c.json<ApiResponse<never>>({
       success: false,
       error: 'Failed to fetch library songs',

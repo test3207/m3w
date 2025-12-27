@@ -7,7 +7,7 @@
 
 import cron from 'node-cron';
 import { prisma } from '../prisma';
-import { logger } from '../logger';
+import { createLogger, generateTraceId } from '../logger';
 import { getMinioClient } from '../minio-client';
 import { setResetting } from './middleware';
 import { storageTracker } from './storage-tracker';
@@ -15,7 +15,7 @@ import { storageTracker } from './storage-tracker';
 /**
  * Clear all objects from MinIO bucket
  */
-async function clearMinIOBucket(): Promise<void> {
+async function clearMinIOBucket(log: ReturnType<typeof createLogger>): Promise<void> {
   const bucketName = process.env.MINIO_BUCKET_NAME || 'm3w-music';
   const minioClient = getMinioClient();
   
@@ -31,12 +31,29 @@ async function clearMinIOBucket(): Promise<void> {
     
     if (objectsToDelete.length > 0) {
       await minioClient.removeObjects(bucketName, objectsToDelete);
-      logger.info({ count: objectsToDelete.length }, 'MinIO objects cleared');
+      log.info({
+        source: 'reset-service.clearMinIOBucket',
+        col1: 'demo',
+        col2: 'reset',
+        raw: { count: objectsToDelete.length },
+        message: 'MinIO objects cleared',
+      });
     } else {
-      logger.info('No MinIO objects to clear');
+      log.info({
+        source: 'reset-service.clearMinIOBucket',
+        col1: 'demo',
+        col2: 'reset',
+        message: 'No MinIO objects to clear',
+      });
     }
   } catch (error) {
-    logger.error({ error }, 'Failed to clear MinIO bucket');
+    log.error({
+      source: 'reset-service.clearMinIOBucket',
+      col1: 'demo',
+      col2: 'reset',
+      message: 'Failed to clear MinIO bucket',
+      error,
+    });
     throw error;
   }
 }
@@ -47,9 +64,15 @@ async function clearMinIOBucket(): Promise<void> {
 export function startDemoResetService(): void {
   // Runtime check: only start if reset is enabled
   const enabled = process.env.DEMO_RESET_ENABLED === 'true';
+  const startupLog = createLogger();
   
   if (!enabled) {
-    logger.info('Demo reset service is disabled (set DEMO_RESET_ENABLED=true to enable)');
+    startupLog.info({
+      source: 'reset-service.start',
+      col1: 'demo',
+      col2: 'reset',
+      message: 'Demo reset service is disabled (set DEMO_RESET_ENABLED=true to enable)',
+    });
     return;
   }
 
@@ -57,7 +80,23 @@ export function startDemoResetService(): void {
   // Cron format: minute hour day month weekday
   // '0 * * * *' = at minute 0 of every hour
   cron.schedule('0 * * * *', async () => {
-    logger.info('Starting demo reset...');
+    // Create a logger with shared traceId for this reset cycle
+    const resetTraceId = generateTraceId();
+    const log = createLogger();
+    // Note: We can't override traceId in RequestLogger, but raw field works
+    const logWithTrace = {
+      info: (params: Parameters<typeof log.info>[0]) =>
+        log.info({ ...params, raw: { ...params.raw, resetTraceId } }),
+      error: (params: Parameters<typeof log.error>[0]) =>
+        log.error({ ...params, raw: { ...params.raw, resetTraceId } }),
+    };
+    
+    logWithTrace.info({
+      source: 'reset-service.cron',
+      col1: 'demo',
+      col2: 'reset',
+      message: 'Starting demo reset...',
+    });
     
     // Set resetting flag to reject all requests with 503
     setResetting(true);
@@ -78,18 +117,34 @@ export function startDemoResetService(): void {
         prisma.user.deleteMany(),
       ]);
       
-      logger.info('Database cleared');
+      logWithTrace.info({
+        source: 'reset-service.cron',
+        col1: 'demo',
+        col2: 'reset',
+        message: 'Database cleared',
+      });
       
       // Step 2: Clear all MinIO objects
-      await clearMinIOBucket();
+      await clearMinIOBucket(log);
       
       // Step 3: Reset storage tracker
       storageTracker.reset();
       
-      logger.info('Demo reset completed successfully');
+      logWithTrace.info({
+        source: 'reset-service.cron',
+        col1: 'demo',
+        col2: 'reset',
+        message: 'Demo reset completed successfully',
+      });
       
     } catch (error) {
-      logger.error({ error }, 'Demo reset failed - will retry next hour');
+      logWithTrace.error({
+        source: 'reset-service.cron',
+        col1: 'demo',
+        col2: 'reset',
+        message: 'Demo reset failed - will retry next hour',
+        error,
+      });
       // Don't rollback, let it fail and retry next hour
     } finally {
       // Always restore service after reset attempt
@@ -97,5 +152,10 @@ export function startDemoResetService(): void {
     }
   });
   
-  logger.info('Demo reset service started (runs every hour at :00)');
+  startupLog.info({
+    source: 'reset-service.start',
+    col1: 'demo',
+    col2: 'reset',
+    message: 'Demo reset service started (runs every hour at :00)',
+  });
 }

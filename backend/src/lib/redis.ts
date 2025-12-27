@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { logger } from './logger.js';
+import { createLogger } from './logger.js';
 
 /**
  * Redis client for cross-region user routing
@@ -26,13 +26,30 @@ export const isRedisAvailable = (): boolean => {
 };
 
 // Log Redis status on startup
+const redisLog = createLogger();
 if (redis) {
   redis.on('connect', () => {
-    logger.info('[Redis] Connected successfully');
+    redisLog.info({
+      source: 'redis.connect',
+      col1: 'system',
+      col2: 'connection',
+      message: 'Redis connected successfully',
+    });
   });
   redis.on('error', (err) => {
-    logger.error({ err }, '[Redis] Error');
+    redisLog.error({
+      source: 'redis.error',
+      col1: 'system',
+      col2: 'connection',
+      message: 'Redis error',
+      error: err,
+    });
   });
 } else {
-  logger.info('[Redis] Running in local mode (Redis disabled)');
+  redisLog.info({
+    source: 'redis.init',
+    col1: 'system',
+    col2: 'connection',
+    message: 'Running in local mode (Redis disabled)',
+  });
 }

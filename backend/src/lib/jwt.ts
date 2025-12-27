@@ -4,7 +4,7 @@
 
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { logger } from './logger.js';
+import { createLogger } from './logger.js';
 import type { User } from '@m3w/shared';
 
 /**
@@ -35,7 +35,14 @@ function parseDurationToSeconds(duration: string, defaultSeconds: number): numbe
   const raw = duration.trim();
   const match = raw.match(/^(\d+)([dhms])$/i);
   if (!match) {
-    logger.warn({ value: raw }, '[JWT] Invalid duration format, using default');
+    const jwtLog = createLogger();
+    jwtLog.warn({
+      source: 'jwt.parseDuration',
+      col1: 'system',
+      col2: 'config',
+      raw: { value: raw },
+      message: 'Invalid duration format, using default',
+    });
     return defaultSeconds;
   }
   
