@@ -34,7 +34,12 @@
     "archives": "node scripts/create-archives.cjs",
     "docker:build": "node scripts/build-docker.cjs prod",
     "docker:build:rc": "node scripts/build-docker.cjs rc",
-    "docker:build:test": "node scripts/build-docker.cjs prod --test"
+    "docker:build:test": "node scripts/build-docker.cjs prod --test",
+    "android:setup": "node scripts/android-setup.cjs",
+    "android:test": "node scripts/android-test.cjs",
+    "android:reverse": "node scripts/android-test.cjs --reverse-only",
+    "android:sleep": "adb shell input keyevent KEYCODE_SLEEP",
+    "android:wake": "adb shell input keyevent KEYCODE_WAKEUP"
   },
   "repository": {
     "type": "git",
