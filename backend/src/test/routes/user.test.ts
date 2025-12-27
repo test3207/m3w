@@ -22,14 +22,18 @@ vi.mock("../../lib/auth-middleware", () => ({
 }));
 
 // Mock logger
-vi.mock("../../lib/logger", () => ({
-  logger: {
+vi.mock("../../lib/logger", () => {
+  const mockLogger = {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-  },
-}));
+  };
+  return {
+    logger: mockLogger,
+    createLogger: vi.fn(() => mockLogger),
+  };
+});
 
 // Import mocked modules for assertions
 import { prisma } from "../../lib/prisma";

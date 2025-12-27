@@ -14,7 +14,7 @@ import crypto from 'node:crypto';
 import formidable from 'formidable';
 import * as mm from 'music-metadata';
 import { getMinioClient } from '../lib/minio-client';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 
 // ============================================================================
 // Types
@@ -168,7 +168,14 @@ async function extractMetadata(bucketName: string, objectPath: string, mimeType:
       coverImage: coverArt ? { buffer: Buffer.from(coverArt.data), format: coverArt.format } : null,
     };
   } catch (error) {
-    logger.warn({ error }, 'Metadata extraction failed');
+    const log = createLogger();
+    log.warn({
+      source: 'upload.service',
+      col1: 'upload',
+      col2: 'metadata',
+      message: 'Metadata extraction failed',
+      error,
+    });
     return { metadata: {}, coverImage: null };
   } finally {
     if (!fileStream.destroyed) {
@@ -227,10 +234,14 @@ export async function parseStreamingUpload(request: IncomingMessage, bucketName:
 
   // Verify hash if frontend provided one
   if (streamResult.fields.hash && streamResult.fields.hash !== streamResult.hash) {
-    logger.warn(
-      { frontendHash: streamResult.fields.hash, actualHash: streamResult.hash },
-      'Hash mismatch'
-    );
+    const log = createLogger();
+    log.warn({
+      source: 'upload.service',
+      col1: 'upload',
+      col2: 'verify',
+      raw: { frontendHash: streamResult.fields.hash, actualHash: streamResult.hash },
+      message: 'Hash mismatch',
+    });
     await cleanupTempObject(bucketName, tempObjectPath);
     throw new Error('File integrity check failed');
   }
@@ -254,10 +265,14 @@ export async function parseStreamingUpload(request: IncomingMessage, bucketName:
   const fileExtension = streamResult.originalFilename.match(/\.[^.]+$/)?.[0]?.toLowerCase() || '';
   const finalObjectPath = await finalizeUpload(bucketName, tempObjectPath, streamResult.hash, fileExtension);
 
-  logger.info(
-    { objectName: finalObjectPath, size: streamResult.size },
-    'File uploaded to MinIO'
-  );
+  const log = createLogger();
+  log.info({
+    source: 'upload.service',
+    col1: 'upload',
+    col2: 'complete',
+    raw: { objectName: finalObjectPath, size: streamResult.size },
+    message: 'File uploaded to MinIO',
+  });
 
   return {
     fields: streamResult.fields,
@@ -281,7 +296,15 @@ async function cleanupTempObject(bucketName: string, objectPath: string) {
   try {
     await getMinioClient().removeObject(bucketName, objectPath);
   } catch (error) {
-    logger.warn({ error, objectPath }, 'Failed to cleanup temp object');
+    const log = createLogger();
+    log.warn({
+      source: 'upload.service',
+      col1: 'upload',
+      col2: 'cleanup',
+      raw: { objectPath },
+      message: 'Failed to cleanup temp object',
+      error,
+    });
   }
 }
 
@@ -319,6 +342,13 @@ export async function uploadCoverImage(coverImage: CoverImage, fileHash: string,
   await getMinioClient().putObject(bucketName, coverObjectPath, coverImage.buffer, coverImage.buffer.length, {
     'Content-Type': coverImage.format,
   });
-  logger.info({ coverObjectPath, fileHash }, 'Cover image uploaded to MinIO');
+  const log = createLogger();
+  log.info({
+    source: 'upload.service',
+    col1: 'upload',
+    col2: 'cover',
+    raw: { coverObjectPath, fileHash },
+    message: 'Cover image uploaded to MinIO',
+  });
   return coverObjectPath;
 }

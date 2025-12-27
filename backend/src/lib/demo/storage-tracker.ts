@@ -6,7 +6,7 @@
  */
 
 import { prisma } from '../prisma';
-import { logger } from '../logger';
+import { createLogger } from '../logger';
 import type { StorageUsageInfo } from '@m3w/shared';
 
 /**
@@ -31,7 +31,14 @@ class StorageTracker {
     this.limit = parseInt(process.env.DEMO_STORAGE_LIMIT || '5368709120', 10);
     
     if (this.enabled) {
-      logger.info({ limit: formatBytes(this.limit) }, 'Demo storage limit enabled');
+      const log = createLogger();
+      log.info({
+        source: 'storage-tracker.constructor',
+        col1: 'demo',
+        col2: 'storage',
+        raw: { limit: formatBytes(this.limit) },
+        message: 'Demo storage limit enabled',
+      });
     }
   }
 
@@ -43,6 +50,7 @@ class StorageTracker {
       return;
     }
     
+    const log = createLogger();
     try {
       const result = await prisma.file.aggregate({
         _sum: { size: true }
@@ -50,12 +58,21 @@ class StorageTracker {
       
       this.currentUsage = result._sum.size || 0;
       
-      logger.info({
-        currentUsage: formatBytes(this.currentUsage),
-        limit: formatBytes(this.limit)
-      }, 'Storage tracker initialized');
+      log.info({
+        source: 'storage-tracker.initialize',
+        col1: 'demo',
+        col2: 'storage',
+        raw: { currentUsage: formatBytes(this.currentUsage), limit: formatBytes(this.limit) },
+        message: 'Storage tracker initialized',
+      });
     } catch (error) {
-      logger.error({ error }, 'Failed to initialize storage tracker');
+      log.error({
+        source: 'storage-tracker.initialize',
+        col1: 'demo',
+        col2: 'storage',
+        message: 'Failed to initialize storage tracker',
+        error,
+      });
       this.currentUsage = 0;
     }
   }
@@ -70,10 +87,14 @@ class StorageTracker {
     
     this.currentUsage += fileSize;
     
-    logger.debug({
-      added: formatBytes(fileSize),
-      total: formatBytes(this.currentUsage)
-    }, 'Storage usage incremented');
+    const log = createLogger();
+    log.debug({
+      source: 'storage-tracker.incrementUsage',
+      col1: 'demo',
+      col2: 'storage',
+      raw: { added: formatBytes(fileSize), total: formatBytes(this.currentUsage) },
+      message: 'Storage usage incremented',
+    });
   }
 
   /**
@@ -105,7 +126,13 @@ class StorageTracker {
    */
   reset(): void {
     this.currentUsage = 0;
-    logger.info('Storage tracker reset');
+    const log = createLogger();
+    log.info({
+      source: 'storage-tracker.reset',
+      col1: 'demo',
+      col2: 'reset',
+      message: 'Storage tracker reset',
+    });
   }
 }
 

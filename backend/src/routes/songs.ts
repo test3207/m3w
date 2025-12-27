@@ -12,7 +12,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 import { updateSongSchema, songIdSchema, toSongResponse, toSongListResponse } from '@m3w/shared';
@@ -38,6 +38,7 @@ app.use('*', authMiddleware);
 
 // GET /api/songs/search - Search songs across all or specific library
 app.get('/search', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const userId = getUserId(c);
     const q = c.req.query('q') || '';
@@ -53,20 +54,30 @@ app.get('/search', async (c: Context) => {
 
     const transformedSongs = toSongListResponse(songInputs);
 
-    logger.debug(
-      { userId, query: q, libraryId, sort, resultCount: transformedSongs.length },
-      'Songs search completed'
-    );
+    log.debug({
+      source: 'songs.search',
+      col1: 'song',
+      col2: 'search',
+      raw: { query: q, libraryId, sort, resultCount: transformedSongs.length },
+      message: 'Songs search completed',
+    });
 
     return c.json<ApiResponse<Song[]>>({ success: true, data: transformedSongs });
   } catch (error) {
-    logger.error({ error }, 'Failed to search songs');
+    log.error({
+      source: 'songs.search',
+      col1: 'song',
+      col2: 'search',
+      message: 'Failed to search songs',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to search songs' }, 500);
   }
 });
 
 // GET /api/songs/:id - Get song by ID
 app.get('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = songIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
@@ -86,13 +97,21 @@ app.get('/:id', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Invalid song ID', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to fetch song');
+    log.error({
+      source: 'songs.get',
+      col1: 'song',
+      col2: 'get',
+      col3: c.req.param('id'),
+      message: 'Failed to fetch song',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch song' }, 500);
   }
 });
 
 // PATCH /api/songs/:id - Update song metadata
 app.patch('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = songIdSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
@@ -129,7 +148,14 @@ app.patch('/:id', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to update song');
+    log.error({
+      source: 'songs.update',
+      col1: 'song',
+      col2: 'update',
+      col3: c.req.param('id'),
+      message: 'Failed to update song',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to update song' }, 500);
   }
 });
@@ -138,6 +164,7 @@ app.patch('/:id', async (c: Context) => {
 // Supports Range requests for seeking
 // Accepts token as query parameter for Howler.js compatibility
 app.get('/:id/stream', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const songId = c.req.param('id');
@@ -168,7 +195,14 @@ app.get('/:id/stream', async (c: Context) => {
       start = parseInt(parts[0], 10);
       end = parts[1] ? parseInt(parts[1], 10) : end;
       statusCode = 206;
-      logger.debug({ songId, start, end, fileSize }, 'Range request');
+      log.debug({
+        source: 'songs.stream',
+        col1: 'song',
+        col2: 'stream',
+        col3: songId,
+        raw: { start, end, fileSize },
+        message: 'Range request',
+      });
     }
 
     // Get object stream from MinIO
@@ -188,7 +222,14 @@ app.get('/:id/stream', async (c: Context) => {
           controller.close();
         }
       } catch (err) {
-        logger.debug({ err }, 'Controller already closed');
+        log.debug({
+          source: 'songs.stream',
+          col1: 'song',
+          col2: 'stream',
+          col3: songId,
+          raw: { err: err instanceof Error ? err.message : String(err) },
+          message: 'Controller already closed',
+        });
       }
     };
     
@@ -219,7 +260,14 @@ app.get('/:id/stream', async (c: Context) => {
           try {
             if (!isClosed) controller.enqueue(output);
           } catch (err) {
-            logger.error({ err }, 'Error enqueueing chunk');
+            log.error({
+              source: 'songs.stream',
+              col1: 'song',
+              col2: 'stream',
+              col3: songId,
+              message: 'Error enqueueing chunk',
+              error: err,
+            });
             dataStream.destroy();
             closeController(controller);
             return;
@@ -233,7 +281,14 @@ app.get('/:id/stream', async (c: Context) => {
 
         dataStream.on('end', () => closeController(controller));
         dataStream.on('error', (error: Error) => {
-          logger.error({ error }, 'MinIO stream error');
+          log.error({
+            source: 'songs.stream',
+            col1: 'song',
+            col2: 'stream',
+            col3: songId,
+            message: 'MinIO stream error',
+            error,
+          });
           closeController(controller, error);
         });
       },
@@ -258,20 +313,32 @@ app.get('/:id/stream', async (c: Context) => {
       headers['Content-Length'] = String(fileSize);
     }
 
-    logger.info(
-      { songId, userId: auth.userId, fileId: song.fileId, fileSize, range: rangeHeader || 'full' },
-      'Audio stream started'
-    );
+    log.info({
+      source: 'songs.stream',
+      col1: 'song',
+      col2: 'stream',
+      col3: songId,
+      raw: { fileId: song.fileId, fileSize, range: rangeHeader || 'full' },
+      message: 'Audio stream started',
+    });
 
     return new Response(transformedStream, { status: statusCode, headers });
   } catch (error) {
-    logger.error({ error }, 'Failed to stream audio');
+    log.error({
+      source: 'songs.stream',
+      col1: 'song',
+      col2: 'stream',
+      col3: c.req.param('id'),
+      message: 'Failed to stream audio',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to stream audio' }, 500);
   }
 });
 
 // GET /api/songs/:id/playlist-count - Get number of playlists using this song
 app.get('/:id/playlist-count', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = songIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
@@ -288,13 +355,21 @@ app.get('/:id/playlist-count', async (c: Context) => {
 
     return c.json<ApiResponse<SongPlaylistCount>>({ success: true, data: { count } });
   } catch (error) {
-    logger.error({ error, songId: c.req.param('id') }, 'Failed to get playlist count');
+    log.error({
+      source: 'songs.playlistCount',
+      col1: 'song',
+      col2: 'get',
+      col3: c.req.param('id'),
+      message: 'Failed to get playlist count',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to get playlist count' }, 500);
   }
 });
 
 // DELETE /api/songs/:id - Delete song from library
 app.delete('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = songIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
@@ -316,22 +391,44 @@ app.delete('/:id', async (c: Context) => {
     await deleteSong(id, libraryId, affectedPlaylistIds);
 
     if (affectedPlaylistIds.length > 0) {
-      logger.info({ songId: id, affectedPlaylistIds }, 'Updated songCount for affected playlists');
+      log.info({
+        source: 'songs.delete',
+        col1: 'song',
+        col2: 'delete',
+        col3: id,
+        raw: { affectedPlaylistIds },
+        message: 'Updated songCount for affected playlists',
+      });
     }
 
     await cleanupFileAfterSongDeletion(fileId);
 
-    logger.info({ songId: id, libraryId, userId }, 'Song deleted from library');
+    log.info({
+      source: 'songs.delete',
+      col1: 'song',
+      col2: 'delete',
+      col3: id,
+      raw: { libraryId },
+      message: 'Song deleted from library',
+    });
 
     return c.json<ApiResponse<undefined>>({ success: true });
   } catch (error) {
-    logger.error({ error, songId: c.req.param('id') }, 'Failed to delete song');
+    log.error({
+      source: 'songs.delete',
+      col1: 'song',
+      col2: 'delete',
+      col3: c.req.param('id'),
+      message: 'Failed to delete song',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to delete song' }, 500);
   }
 });
 
 // GET /api/songs/:id/cover - Get song cover image
 app.get('/:id/cover', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const songId = c.req.param('id');
@@ -365,7 +462,14 @@ app.get('/:id/cover', async (c: Context) => {
           dataStream.on('data', (chunk: Buffer) => controller.enqueue(chunk));
           dataStream.on('end', () => controller.close());
           dataStream.on('error', (err) => {
-            logger.error({ error: err, songId }, 'Error streaming cover image');
+            log.error({
+              source: 'songs.cover',
+              col1: 'song',
+              col2: 'cover',
+              col3: songId,
+              message: 'Error streaming cover image',
+              error: err,
+            });
             controller.error(err);
           });
         },
@@ -378,11 +482,26 @@ app.get('/:id/cover', async (c: Context) => {
         },
       });
     } catch (error) {
-      logger.error({ error, songId, coverPath: song.coverUrl }, 'Failed to fetch cover from MinIO');
+      log.error({
+        source: 'songs.cover',
+        col1: 'song',
+        col2: 'cover',
+        col3: songId,
+        raw: { coverPath: song.coverUrl },
+        message: 'Failed to fetch cover from MinIO',
+        error,
+      });
       return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch cover image' }, 500);
     }
   } catch (error) {
-    logger.error({ error }, 'Failed to process cover request');
+    log.error({
+      source: 'songs.cover',
+      col1: 'song',
+      col2: 'cover',
+      col3: c.req.param('id'),
+      message: 'Failed to process cover request',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to process cover request' }, 500);
   }
 });

@@ -1,5 +1,5 @@
 import * as Minio from 'minio';
-import { logger } from './logger';
+import { createLogger } from './logger';
 
 // MinIO client singleton
 let minioClient: Minio.Client | null = null;
@@ -23,14 +23,14 @@ export function getMinioClient(): Minio.Client {
       secretKey: secretKey,
     });
 
-    logger.info(
-      {
-        endpoint,
-        port,
-        useSSL,
-      },
-      'MinIO client initialized'
-    );
+    const minioLog = createLogger();
+    minioLog.info({
+      source: 'minio.init',
+      col1: 'system',
+      col2: 'connection',
+      raw: { endpoint, port, useSSL },
+      message: 'MinIO client initialized',
+    });
   }
 
   return minioClient;

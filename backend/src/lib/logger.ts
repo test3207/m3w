@@ -6,14 +6,36 @@
  * Usage:
  *   // In route handlers (with request context)
  *   const log = createLogger(c);
- *   log.info('auth.login', 'auth', 'login', userId, { email }, 'User logged in');
+ *   log.info({
+ *     source: 'songs.search',
+ *     col1: 'song',
+ *     col2: 'search',
+ *     col3: songId,
+ *     raw: { query },
+ *     message: 'Song search completed'
+ *   });
  *
- *   // Global logging (startup, shutdown, etc.)
- *   logger.info({ ... }, 'message');
+ *   // System logging (startup, shutdown, etc.) - no Context needed
+ *   const log = createLogger();
+ *   log.info({
+ *     source: 'index.startup',
+ *     col1: 'system',
+ *     col2: 'startup',
+ *     message: 'Server started'
+ *   });
  */
 
 import pino, { Logger } from 'pino';
+import crypto from 'crypto';
 import type { Context } from 'hono';
+
+/**
+ * Generate a unique trace ID for logging correlation
+ * Used when no request context is available (system logs, startup, etc.)
+ */
+export function generateTraceId(): string {
+  return crypto.randomUUID();
+}
 
 // Service name constant
 const SERVICE_NAME = 'm3w-backend';
@@ -86,7 +108,7 @@ export interface ErrorLogParams extends LogParams {
  */
 export interface RequestLogger {
   info(params: LogParams): void;
-  warn(params: LogParams): void;
+  warn(params: LogParams | ErrorLogParams): void;
   error(params: ErrorLogParams): void;
   debug(params: LogParams): void;
 }
@@ -112,13 +134,14 @@ export interface RequestLogger {
  */
 export function createLogger(c?: Context): RequestLogger {
   // Extract context from Hono Context if available
-  const traceId = c?.get('traceId') as string | undefined;
+  // If no Context, generate a new traceId for correlation
+  const traceId = (c?.get('traceId') as string | undefined) || generateTraceId();
   const gateway = c?.get('gateway') as string | undefined;
   const userId = c?.get('userId') as string | undefined;
 
   // Build base context for all logs in this request
   const baseContext = {
-    ...(traceId && { traceId }),
+    traceId, // Always present (from Context or generated)
     ...(gateway && { gateway }),
     ...(userId && { userId }),
   };
@@ -142,8 +165,8 @@ export function createLogger(c?: Context): RequestLogger {
       ...(raw && { raw }),
     };
 
-    // Add error fields for error level
-    if (level === 'error' && 'error' in params) {
+    // Add error fields for error/warn level
+    if ((level === 'error' || level === 'warn') && 'error' in params) {
       const err = params.error;
       if (err instanceof Error) {
         logObj.error = err.message;
@@ -159,34 +182,8 @@ export function createLogger(c?: Context): RequestLogger {
 
   return {
     info: (params: LogParams) => emitLog('info', params),
-    warn: (params: LogParams) => emitLog('warn', params),
+    warn: (params: LogParams | ErrorLogParams) => emitLog('warn', params),
     error: (params: ErrorLogParams) => emitLog('error', params),
     debug: (params: LogParams) => emitLog('debug', params),
   };
 }
-
-/**
- * Simple logging functions for backward compatibility
- * Use createLogger(c) in route handlers for full tracing support
- */
-export const log = {
-  info: (message: string, data?: Record<string, unknown>) => {
-    logger.info(data || {}, message);
-  },
-  warn: (message: string, data?: Record<string, unknown>) => {
-    logger.warn(data || {}, message);
-  },
-  error: (message: string, error?: unknown, data?: Record<string, unknown>) => {
-    const logData: Record<string, unknown> = { ...data };
-    if (error instanceof Error) {
-      logData.error = error.message;
-      logData.errorStack = error.stack;
-    } else if (error) {
-      logData.error = String(error);
-    }
-    logger.error(logData, message);
-  },
-  debug: (message: string, data?: Record<string, unknown>) => {
-    logger.debug(data || {}, message);
-  },
-};

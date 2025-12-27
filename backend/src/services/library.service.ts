@@ -6,7 +6,7 @@
  */
 
 import { prisma } from '../lib/prisma';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 import { getPinyinSort } from '../lib/pinyin-helper';
 import type { SongSortOption, LibraryInput, SongInput } from '@m3w/shared';
 
@@ -281,7 +281,14 @@ export async function findOrCreateFileRecord(
     },
   });
 
-  logger.info({ fileId: fileRecord.id }, 'File record created');
+  const log = createLogger();
+  log.info({
+    source: 'library.service',
+    col1: 'library',
+    col2: 'create_file',
+    col3: fileRecord.id,
+    message: 'File record created',
+  });
   return { fileRecord, isNewFile: true };
 }
 
@@ -355,7 +362,15 @@ export async function createSongWithFileRef(
     return newSong;
   });
 
-  logger.info({ songId: song.id, fileId }, 'Song created');
+  const log = createLogger();
+  log.info({
+    source: 'library.service',
+    col1: 'song',
+    col2: 'create',
+    col3: song.id,
+    raw: { fileId },
+    message: 'Song created',
+  });
 
   return {
     ...song,

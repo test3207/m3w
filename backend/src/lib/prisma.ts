@@ -4,7 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { logger } from './logger';
+import { createLogger } from './logger';
 
 const prismaClientSingleton = () => {
   return new PrismaClient({
@@ -27,11 +27,23 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Attempt connection on startup (non-blocking)
 // If connection fails, log warning but don't exit - /ready endpoint will report status
+const dbLog = createLogger();
 prisma
   .$connect()
   .then(() => {
-    logger.info('Connected to PostgreSQL database');
+    dbLog.info({
+      source: 'prisma.connect',
+      col1: 'system',
+      col2: 'connection',
+      message: 'Connected to PostgreSQL database',
+    });
   })
   .catch((error) => {
-    logger.warn(error, 'Failed to connect to database on startup (will retry on first query)');
+    dbLog.warn({
+      source: 'prisma.connect',
+      col1: 'system',
+      col2: 'connection',
+      raw: { error: error instanceof Error ? error.message : String(error) },
+      message: 'Failed to connect to database on startup (will retry on first query)',
+    });
   });

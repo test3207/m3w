@@ -12,7 +12,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { getUserId } from '../lib/auth-helper';
 import {
@@ -53,6 +53,7 @@ app.use('*', authMiddleware);
 
 // GET /api/playlists - List all playlists for current user
 app.get('/', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const userId = getUserId(c);
     const playlists = await findUserPlaylists(userId);
@@ -77,7 +78,13 @@ app.get('/', async (c: Context) => {
 
     return c.json<ApiResponse<Playlist[]>>({ success: true, data: response });
   } catch (error) {
-    logger.error({ error }, 'Failed to fetch playlists');
+    log.error({
+      source: 'playlists.list',
+      col1: 'playlist',
+      col2: 'list',
+      message: 'Failed to fetch playlists',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch playlists' }, 500);
   }
 });
@@ -85,6 +92,7 @@ app.get('/', async (c: Context) => {
 // GET /api/playlists/by-library/:libraryId - Get playlist linked to library
 // NOTE: Static routes must be defined BEFORE parameterized routes (/:id)
 app.get('/by-library/:libraryId', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const userId = getUserId(c);
     const { libraryId } = c.req.param();
@@ -102,7 +110,14 @@ app.get('/by-library/:libraryId', async (c: Context) => {
 
     return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
   } catch (error) {
-    logger.error({ error }, 'Failed to fetch library playlist');
+    log.error({
+      source: 'playlists.by_library',
+      col1: 'playlist',
+      col2: 'get',
+      col3: c.req.param('libraryId'),
+      message: 'Failed to fetch library playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch library playlist' }, 500);
   }
 });
@@ -110,6 +125,7 @@ app.get('/by-library/:libraryId', async (c: Context) => {
 // POST /api/playlists/for-library - Create playlist linked to library
 // NOTE: Static routes must be defined BEFORE parameterized routes (/:id)
 app.post('/for-library', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const userId = getUserId(c);
     const body = await c.req.json();
@@ -151,7 +167,14 @@ app.post('/for-library', async (c: Context) => {
       await createPlaylistSongs(playlist.id, songIds);
     }
 
-    logger.info({ playlistId: playlist.id, linkedLibraryId, songCount }, 'Created library playlist');
+    log.info({
+      source: 'playlists.for_library',
+      col1: 'playlist',
+      col2: 'create',
+      col3: playlist.id,
+      raw: { linkedLibraryId, songCount },
+      message: 'Created library playlist',
+    });
 
     const input: PlaylistInput = {
       ...playlist,
@@ -160,13 +183,20 @@ app.post('/for-library', async (c: Context) => {
 
     return c.json<ApiResponse<Playlist>>({ success: true, data: toPlaylistResponse(input) });
   } catch (error) {
-    logger.error({ error }, 'Failed to create library playlist');
+    log.error({
+      source: 'playlists.for_library',
+      col1: 'playlist',
+      col2: 'create',
+      message: 'Failed to create library playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to create library playlist' }, 500);
   }
 });
 
 // GET /api/playlists/:id - Get playlist by ID
 app.get('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
@@ -188,13 +218,21 @@ app.get('/:id', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Invalid playlist ID', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to fetch playlist');
+    log.error({
+      source: 'playlists.get',
+      col1: 'playlist',
+      col2: 'get',
+      col3: c.req.param('id'),
+      message: 'Failed to fetch playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch playlist' }, 500);
   }
 });
 
 // POST /api/playlists - Create new playlist
 app.post('/', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const body = await c.req.json();
     const data = createPlaylistSchema.parse(body);
@@ -214,13 +252,20 @@ app.post('/', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to create playlist');
+    log.error({
+      source: 'playlists.create',
+      col1: 'playlist',
+      col2: 'create',
+      message: 'Failed to create playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to create playlist' }, 500);
   }
 });
 
 // PATCH /api/playlists/:id - Update playlist
 app.patch('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
@@ -249,13 +294,21 @@ app.patch('/:id', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to update playlist');
+    log.error({
+      source: 'playlists.update',
+      col1: 'playlist',
+      col2: 'update',
+      col3: c.req.param('id'),
+      message: 'Failed to update playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to update playlist' }, 500);
   }
 });
 
 // DELETE /api/playlists/:id - Delete playlist
 app.delete('/:id', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
@@ -276,13 +329,21 @@ app.delete('/:id', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Invalid playlist ID', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to delete playlist');
+    log.error({
+      source: 'playlists.delete',
+      col1: 'playlist',
+      col2: 'delete',
+      col3: c.req.param('id'),
+      message: 'Failed to delete playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to delete playlist' }, 500);
   }
 });
 
 // GET /api/playlists/:id/songs - Get songs in playlist
 app.get('/:id/songs', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
@@ -299,13 +360,21 @@ app.get('/:id/songs', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Invalid playlist ID', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to fetch playlist songs');
+    log.error({
+      source: 'playlists.songs',
+      col1: 'playlist',
+      col2: 'get',
+      col3: c.req.param('id'),
+      message: 'Failed to fetch playlist songs',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to fetch playlist songs' }, 500);
   }
 });
 
 // POST /api/playlists/:id/songs - Add song to playlist
 app.post('/:id/songs', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
@@ -337,13 +406,21 @@ app.post('/:id/songs', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to add song to playlist');
+    log.error({
+      source: 'playlists.add_song',
+      col1: 'playlist',
+      col2: 'add_song',
+      col3: c.req.param('id'),
+      message: 'Failed to add song to playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to add song to playlist' }, 500);
   }
 });
 
 // DELETE /api/playlists/:id/songs/:songId - Remove song from playlist
 app.delete('/:id/songs/:songId', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const { songId } = removeSongFromPlaylistSchema.parse({ songId: c.req.param('songId') });
@@ -369,13 +446,21 @@ app.delete('/:id/songs/:songId', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to remove song from playlist');
+    log.error({
+      source: 'playlists.remove_song',
+      col1: 'playlist',
+      col2: 'remove_song',
+      col3: c.req.param('id'),
+      message: 'Failed to remove song from playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to remove song from playlist' }, 500);
   }
 });
 
 // PUT /api/playlists/:id/songs/reorder - Reorder songs in playlist
 app.put('/:id/songs/reorder', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
@@ -407,7 +492,14 @@ app.put('/:id/songs/reorder', async (c: Context) => {
 
     const updatedPlaylist = await reorderPlaylistSongs(id, songIds);
 
-    logger.debug({ playlistId: id, songCount: songIds.length }, 'Playlist songs reordered');
+    log.debug({
+      source: 'playlists.reorder',
+      col1: 'playlist',
+      col2: 'reorder',
+      col3: id,
+      raw: { songCount: songIds.length },
+      message: 'Playlist songs reordered',
+    });
 
     return c.json<ApiResponse<PlaylistReorderResult>>({
       success: true,
@@ -421,13 +513,21 @@ app.put('/:id/songs/reorder', async (c: Context) => {
     if (error instanceof z.ZodError) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Validation failed', details: error.issues }, 400);
     }
-    logger.error({ error }, 'Failed to reorder songs in playlist');
+    log.error({
+      source: 'playlists.reorder',
+      col1: 'playlist',
+      col2: 'reorder',
+      col3: c.req.param('id'),
+      message: 'Failed to reorder songs in playlist',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to reorder songs in playlist' }, 500);
   }
 });
 
 // PUT /api/playlists/:id/songs - Update playlist songs (batch)
 app.put('/:id/songs', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const { id } = playlistIdSchema.parse({ id: c.req.param('id') });
     const userId = getUserId(c);
@@ -441,11 +541,25 @@ app.put('/:id/songs', async (c: Context) => {
 
     await replacePlaylistSongs(id, songIds || []);
 
-    logger.info({ playlistId: id, songCount: songIds?.length || 0 }, 'Updated playlist songs');
+    log.info({
+      source: 'playlists.update_songs',
+      col1: 'playlist',
+      col2: 'update',
+      col3: id,
+      raw: { songCount: songIds?.length || 0 },
+      message: 'Updated playlist songs',
+    });
 
     return c.json<ApiResponse<null>>({ success: true, data: null });
   } catch (error) {
-    logger.error({ error }, 'Failed to update playlist songs');
+    log.error({
+      source: 'playlists.update_songs',
+      col1: 'playlist',
+      col2: 'update',
+      col3: c.req.param('id'),
+      message: 'Failed to update playlist songs',
+      error,
+    });
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to update playlist songs' }, 500);
   }
 });

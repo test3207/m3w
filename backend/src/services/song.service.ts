@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '../lib/prisma';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 import type { SongSortOption } from '@m3w/shared';
 import { getPinyinSort } from '../lib/pinyin-helper';
 
@@ -267,7 +267,15 @@ export async function cleanupFileAfterSongDeletion(fileId: string) {
     });
     
     // TODO: Delete physical file from MinIO
-    logger.info({ fileId, hash: file.hash }, 'File marked for deletion (refCount=0)');
+    const log = createLogger();
+    log.info({
+      source: 'song.service',
+      col1: 'song',
+      col2: 'delete_file',
+      col3: fileId,
+      raw: { hash: file.hash },
+      message: 'File marked for deletion (refCount=0)',
+    });
   } else {
     // Just decrement the ref count
     await prisma.file.update({

@@ -18,13 +18,19 @@ vi.mock('../../lib/minio-client', () => ({
   })),
 }));
 
-vi.mock('../../lib/logger', () => ({
-  logger: {
-    warn: vi.fn(),
+// Mock logger
+vi.mock('../../lib/logger', () => {
+  const mockLogger = {
+    debug: vi.fn(),
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
-  },
-}));
+  };
+  return {
+    logger: mockLogger,
+    createLogger: vi.fn(() => mockLogger),
+  };
+});
 
 import healthRoutes from '../../routes/health';
 import { prisma } from '../../lib/prisma';

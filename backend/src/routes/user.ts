@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono';
 import { prisma } from '../lib/prisma';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import { updateUserPreferencesSchema } from '@m3w/shared';
 import type { Context } from 'hono';
@@ -19,6 +19,7 @@ app.use('*', authMiddleware);
 
 // GET /api/user/preferences - Get user preferences
 app.get('/preferences', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
 
@@ -46,7 +47,13 @@ app.get('/preferences', async (c: Context) => {
       data: preferences,
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to fetch user preferences');
+    log.error({
+      source: 'user.preferences.get',
+      col1: 'user',
+      col2: 'get',
+      message: 'Failed to fetch user preferences',
+      error,
+    });
     return c.json<ApiResponse<never>>(
       {
         success: false,
@@ -59,6 +66,7 @@ app.get('/preferences', async (c: Context) => {
 
 // PUT /api/user/preferences - Update user preferences
 app.put('/preferences', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const body = await c.req.json();
@@ -92,7 +100,13 @@ app.put('/preferences', async (c: Context) => {
       );
     }
 
-    logger.error({ error }, 'Failed to update user preferences');
+    log.error({
+      source: 'user.preferences.update',
+      col1: 'user',
+      col2: 'update',
+      message: 'Failed to update user preferences',
+      error,
+    });
     return c.json<ApiResponse<never>>(
       {
         success: false,

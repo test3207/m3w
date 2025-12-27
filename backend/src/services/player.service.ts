@@ -6,7 +6,7 @@
  */
 
 import { prisma } from '../lib/prisma';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 import { RepeatMode } from '@m3w/shared';
 
 // ============================================================================
@@ -122,10 +122,15 @@ export async function getPlaybackSeed(userId: string): Promise<PlaybackSeedRespo
   const playlistSong = playlist?.songs[0]?.song;
 
   if (playlist && playlistSong) {
-    logger.debug(
-      { playlistId: playlist.id, songId: playlistSong.id, userId },
-      'Resolved playback seed from playlist'
-    );
+    const log = createLogger();
+    log.debug({
+      source: 'player.service',
+      col1: 'player',
+      col2: 'seed',
+      col3: playlistSong.id,
+      raw: { playlistId: playlist.id, userId },
+      message: 'Resolved playback seed from playlist',
+    });
 
     return {
       track: {
@@ -174,10 +179,15 @@ export async function getPlaybackSeed(userId: string): Promise<PlaybackSeedRespo
   const librarySong = library?.songs[0];
 
   if (library && librarySong) {
-    logger.debug(
-      { libraryId: library.id, songId: librarySong.id, userId },
-      'Resolved playback seed from library'
-    );
+    const log = createLogger();
+    log.debug({
+      source: 'player.service',
+      col1: 'player',
+      col2: 'seed',
+      col3: librarySong.id,
+      raw: { libraryId: library.id, userId },
+      message: 'Resolved playback seed from library',
+    });
 
     return {
       track: {
@@ -196,7 +206,14 @@ export async function getPlaybackSeed(userId: string): Promise<PlaybackSeedRespo
     };
   }
 
-  logger.debug({ userId }, 'No playback seed available for user');
+  const log = createLogger();
+  log.debug({
+    source: 'player.service',
+    col1: 'player',
+    col2: 'seed',
+    raw: { userId },
+    message: 'No playback seed available for user',
+  });
   return null;
 }
 
@@ -248,7 +265,14 @@ export async function updatePlaybackPreferences(
     repeatMode: normalizeRepeatMode(preference.repeatMode),
   };
 
-  logger.debug({ userId, preferences: data }, 'Playback preferences updated');
+  const log = createLogger();
+  log.debug({
+    source: 'player.service',
+    col1: 'player',
+    col2: 'update',
+    raw: { userId, preferences: data },
+    message: 'Playback preferences updated',
+  });
 
   return data;
 }
@@ -289,10 +313,15 @@ export async function getPlaybackProgress(userId: string): Promise<PlaybackProgr
   });
 
   if (!song) {
-    logger.warn(
-      { userId, songId: progress.songId },
-      'Playback progress refers to inaccessible song'
-    );
+    const log = createLogger();
+    log.warn({
+      source: 'player.service',
+      col1: 'player',
+      col2: 'get',
+      col3: progress.songId,
+      raw: { userId },
+      message: 'Playback progress refers to inaccessible song',
+    });
     return null;
   }
 
@@ -334,10 +363,15 @@ export async function updatePlaybackProgress(
   });
 
   if (!song) {
-    logger.warn(
-      { userId, songId: data.songId },
-      'Attempted to update progress for inaccessible song'
-    );
+    const log = createLogger();
+    log.warn({
+      source: 'player.service',
+      col1: 'player',
+      col2: 'update',
+      col3: data.songId,
+      raw: { userId },
+      message: 'Attempted to update progress for inaccessible song',
+    });
     return false;
   }
 
@@ -360,10 +394,15 @@ export async function updatePlaybackProgress(
     },
   });
 
-  logger.debug(
-    { userId, songId: data.songId, position: data.position },
-    'Playback progress updated'
-  );
+  const log = createLogger();
+  log.debug({
+    source: 'player.service',
+    col1: 'player',
+    col2: 'update',
+    col3: data.songId,
+    raw: { userId, position: data.position },
+    message: 'Playback progress updated',
+  });
 
   return true;
 }

@@ -11,7 +11,7 @@
 
 import { Hono } from 'hono';
 import { z, ZodError } from 'zod';
-import { logger } from '../lib/logger';
+import { createLogger } from '../lib/logger';
 import { authMiddleware } from '../lib/auth-middleware';
 import {
   getPlaybackSeed,
@@ -72,6 +72,7 @@ const playbackProgressUpdateSchema = z
 // ============================================================================
 
 app.get('/seed', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const seed = await getPlaybackSeed(auth.userId);
@@ -81,7 +82,13 @@ app.get('/seed', async (c: Context) => {
       data: seed,
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to seed playback');
+    log.error({
+      source: 'player.seed',
+      col1: 'player',
+      col2: 'seed',
+      message: 'Failed to seed playback',
+      error,
+    });
     return c.json(
       {
         success: false,
@@ -97,6 +104,7 @@ app.get('/seed', async (c: Context) => {
 // ============================================================================
 
 app.get('/preferences', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const preferences = await getPlaybackPreferences(auth.userId);
@@ -106,7 +114,13 @@ app.get('/preferences', async (c: Context) => {
       data: preferences,
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to retrieve playback preferences');
+    log.error({
+      source: 'player.preferences.get',
+      col1: 'player',
+      col2: 'get',
+      message: 'Failed to retrieve playback preferences',
+      error,
+    });
     return c.json(
       {
         success: false,
@@ -122,6 +136,7 @@ app.get('/preferences', async (c: Context) => {
 // ============================================================================
 
 app.put('/preferences', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const body = await c.req.json();
@@ -144,7 +159,13 @@ app.put('/preferences', async (c: Context) => {
       );
     }
 
-    logger.error({ error }, 'Failed to update playback preferences');
+    log.error({
+      source: 'player.preferences.update',
+      col1: 'player',
+      col2: 'update',
+      message: 'Failed to update playback preferences',
+      error,
+    });
     return c.json(
       {
         success: false,
@@ -160,6 +181,7 @@ app.put('/preferences', async (c: Context) => {
 // ============================================================================
 
 app.get('/progress', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const progress = await getPlaybackProgress(auth.userId);
@@ -169,7 +191,13 @@ app.get('/progress', async (c: Context) => {
       data: progress,
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to retrieve playback progress');
+    log.error({
+      source: 'player.progress.get',
+      col1: 'player',
+      col2: 'get',
+      message: 'Failed to retrieve playback progress',
+      error,
+    });
     return c.json(
       {
         success: false,
@@ -185,6 +213,7 @@ app.get('/progress', async (c: Context) => {
 // ============================================================================
 
 app.put('/progress', async (c: Context) => {
+  const log = createLogger(c);
   try {
     const auth = c.get('auth');
     const body = await c.req.json();
@@ -214,7 +243,13 @@ app.put('/progress', async (c: Context) => {
       );
     }
 
-    logger.error({ error }, 'Failed to update playback progress');
+    log.error({
+      source: 'player.progress.update',
+      col1: 'player',
+      col2: 'update',
+      message: 'Failed to update playback progress',
+      error,
+    });
     return c.json(
       {
         success: false,
