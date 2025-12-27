@@ -15,7 +15,7 @@
  *   --mirror        Use mirror for downloads (cn = China mirrors)
  */
 
-const { execSync, spawn } = require("child_process");
+const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
@@ -134,7 +134,6 @@ function findJavaPath() {
 
   if (isWindows) {
     const programFiles = process.env.ProgramFiles || "C:\\Program Files";
-    const programFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
 
     // Microsoft OpenJDK
     const msJdkBase = path.join(programFiles, "Microsoft");

@@ -224,25 +224,6 @@ function isEmulatorRunning(adbPath) {
   }
 }
 
-function getRunningEmulators(adbPath) {
-  try {
-    const devices = exec(`${adbPath} devices`, { silent: true }) || "";
-    const lines = devices.split("\n");
-    const emulators = [];
-
-    for (const line of lines) {
-      const match = line.match(/^(emulator-\d+)\s+device/);
-      if (match) {
-        emulators.push(match[1]);
-      }
-    }
-
-    return emulators;
-  } catch {
-    return [];
-  }
-}
-
 async function waitForDevice(adbPath, timeout = CONFIG.bootTimeout) {
   log("Waiting for device to boot...", "progress");
 
@@ -468,23 +449,10 @@ async function enableHardwareKeyboard(adbPath) {
 // Screen Lock & Display Settings
 // ============================================================================
 
-async function setupScreenLock(adbPath) {
-  log("Setting up screen lock (PIN: 1234)...", "info");
+async function setupScreenTimeout(adbPath) {
+  log("Configuring screen timeout...", "info");
   
   try {
-    // First, we need to use the UI to set PIN since locksettings requires existing credential
-    // Check if lock is already set
-    const lockStatus = exec(`${adbPath} shell locksettings get-disabled`, {
-      silent: true,
-      ignoreError: true,
-    }) || "";
-    
-    if (lockStatus.includes("true")) {
-      // Lock screen is disabled, need to enable via settings
-      // This requires user interaction, so we'll set up swipe lock instead
-      log("Setting swipe lock (PIN requires manual setup via Settings > Security)", "info");
-    }
-    
     // Set screen timeout to 30 seconds for easier testing
     exec(`${adbPath} shell settings put system screen_off_timeout 30000`, {
       silent: true,
@@ -492,8 +460,9 @@ async function setupScreenLock(adbPath) {
     });
     
     log("Screen timeout set to 30 seconds", "success");
+    log("Note: For PIN lock, go to Settings > Security > Screen lock", "info");
   } catch (err) {
-    log(`Screen lock setup note: ${err.message}`, "warning");
+    log(`Screen timeout setup failed: ${err.message}`, "warning");
   }
 }
 
@@ -501,7 +470,8 @@ async function configureDeviceSettings(adbPath) {
   log("Configuring device settings...", "info");
   
   try {
-    // Disable animations for faster UI (optional, good for testing)
+    // Keep animations at normal speed (scale 1 = normal, 0 = disabled)
+    // We don't disable animations to maintain realistic testing experience
     exec(`${adbPath} shell settings put global window_animation_scale 1`, {
       silent: true,
       ignoreError: true,
@@ -521,7 +491,7 @@ async function configureDeviceSettings(adbPath) {
       ignoreError: true,
     });
     
-    // Enable showing touches (helps with debugging)
+    // Disable showing touches (set to 1 to enable for debugging)
     exec(`${adbPath} shell settings put system show_touches 0`, {
       silent: true,
       ignoreError: true,
@@ -668,7 +638,7 @@ Examples:
     // Configure device settings for already running emulator
     await setupProxy(adbPath);
     await enableHardwareKeyboard(adbPath);
-    await setupScreenLock(adbPath);
+    await setupScreenTimeout(adbPath);
     await configureDeviceSettings(adbPath);
   } else if (reverseOnly) {
     log("No emulator running. Start one first or remove --reverse-only", "error");
@@ -714,7 +684,7 @@ Examples:
     // Configure device settings
     await setupProxy(adbPath);
     await enableHardwareKeyboard(adbPath);
-    await setupScreenLock(adbPath);
+    await setupScreenTimeout(adbPath);
     await configureDeviceSettings(adbPath);
   }
 
@@ -733,31 +703,31 @@ Examples:
   console.log("=".repeat(60));
 
   console.log(`
-🌐 Access in Emulator:
+Access in Emulator:
    Frontend: http://localhost:3000
    Backend:  http://localhost:4000
 
-🔧 Debugging:
+Debugging:
    1. Open chrome://inspect in your desktop Chrome
    2. Click "inspect" under the M3W entry
    3. Full DevTools access!
 
-📱 Testing Tips:
+Testing Tips:
    - Service Worker: Works (localhost is secure context)
    - IndexedDB: Works
    - Media Session: Works (Android native controls)
    - PWA Install: Works (can add to home screen)
 
-� Screen Control:
+Screen Control:
    npm run android:sleep    # Turn off screen
    npm run android:wake     # Turn on screen
    (Or use emulator sidebar power button)
 
-🔒 Lock Screen:
+Lock Screen:
    Set PIN via: Settings > Security > Screen lock > PIN
    Screen timeout: 30 seconds
 
-�🔄 If ports stop working:
+If ports stop working:
    npm run android:reverse
 `);
 }
