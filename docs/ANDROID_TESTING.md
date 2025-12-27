@@ -44,6 +44,8 @@ npm run android:test
 | `npm run android:setup` | Install Android SDK and create AVD |
 | `npm run android:test` | Start emulator with port forwarding and open Chrome |
 | `npm run android:reverse` | Set up port forwarding only (for already running emulator) |
+| `npm run android:sleep` | Put emulator screen to sleep (test PWA background) |
+| `npm run android:wake` | Wake up emulator screen |
 
 ### Options
 

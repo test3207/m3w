@@ -503,6 +503,9 @@ async function installSdk(targetPath, useMirror = false) {
     await downloadFile(downloadUrl, zipPath, useMirror);
   } catch (err) {
     if (!useMirror) {
+      // Fallback to Tencent mirror for China network accessibility
+      // Note: Mirror downloads same official Google SDK files, just via different CDN
+      // The downloaded content is verified by the SDK installer during component installation
       log("Download slow or failed. Trying China mirror...", "warning");
       await downloadFile(downloadUrl, zipPath, true);
     } else {
@@ -595,6 +598,12 @@ async function installComponents(sdkPath) {
 }
 
 async function createAvd(sdkPath, avdName, apiLevel) {
+  // Validate AVD name to prevent shell injection (only alphanumeric, underscores, hyphens)
+  const avdPattern = /^[a-zA-Z0-9_-]+$/;
+  if (!avdPattern.test(avdName)) {
+    throw new Error(`Invalid AVD name: ${avdName}. Only alphanumeric, underscores, and hyphens allowed.`);
+  }
+  
   const avdManager = getAvdManagerPath(sdkPath);
   if (!avdManager) {
     throw new Error("avdmanager not found");

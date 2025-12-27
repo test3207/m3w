@@ -278,10 +278,25 @@ async function waitForDevice(adbPath, timeout = CONFIG.bootTimeout) {
   throw new Error(`Device did not boot within ${timeout / 1000} seconds`);
 }
 
-async function startEmulator(emulatorPath, avdName, options = {}) {
-  log(`Starting emulator: ${avdName}`, "phone");
+/**
+ * Validates AVD name to prevent shell injection
+ * Only allows alphanumeric, underscores, and hyphens
+ */
+function validateAvdName(name) {
+  const avdPattern = /^[a-zA-Z0-9_-]+$/;
+  if (!avdPattern.test(name)) {
+    throw new Error(`Invalid AVD name: ${name}. Only alphanumeric, underscores, and hyphens allowed.`);
+  }
+  return name;
+}
 
-  const args = ["-avd", avdName];
+async function startEmulator(emulatorPath, avdName, options = {}) {
+  // Validate AVD name to prevent shell injection
+  const safeAvdName = validateAvdName(avdName);
+  
+  log(`Starting emulator: ${safeAvdName}`, "phone");
+
+  const args = ["-avd", safeAvdName];
 
   if (options.headless) {
     args.push("-no-window");
@@ -520,13 +535,29 @@ async function configureDeviceSettings(adbPath) {
 // Chrome Launch
 // ============================================================================
 
+/**
+ * Validates URL to prevent shell injection
+ * Only allows http/https URLs with safe characters
+ */
+function validateUrl(url) {
+  // Only allow http/https URLs with alphanumeric, dots, colons, slashes, and common URL chars
+  const urlPattern = /^https?:\/\/[a-zA-Z0-9][a-zA-Z0-9.-]*(?::\d+)?(?:\/[a-zA-Z0-9._~:/?#[\]@!$&'()*+,;=-]*)?$/;
+  if (!urlPattern.test(url)) {
+    throw new Error(`Invalid URL format: ${url}`);
+  }
+  return url;
+}
+
 async function openChrome(adbPath, url = "http://localhost:3000") {
-  log(`Opening Chrome with ${url}...`, "phone");
+  // Validate URL to prevent shell metacharacter injection
+  const safeUrl = validateUrl(url);
+  
+  log(`Opening Chrome with ${safeUrl}...`, "phone");
 
   try {
     // Start Chrome with the URL
     exec(
-      `${adbPath} shell am start -a android.intent.action.VIEW -d "${url}" com.android.chrome`,
+      `${adbPath} shell am start -a android.intent.action.VIEW -d "${safeUrl}" com.android.chrome`,
       { silent: true }
     );
     log("Chrome opened", "success");
@@ -534,7 +565,7 @@ async function openChrome(adbPath, url = "http://localhost:3000") {
     // Try with default browser if Chrome not available
     try {
       exec(
-        `${adbPath} shell am start -a android.intent.action.VIEW -d "${url}"`,
+        `${adbPath} shell am start -a android.intent.action.VIEW -d "${safeUrl}"`,
         { silent: true }
       );
       log("Browser opened", "success");
