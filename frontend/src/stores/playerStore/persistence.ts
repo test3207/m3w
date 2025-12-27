@@ -8,11 +8,15 @@
 import { type Song } from "@m3w/shared";
 import { api } from "@/services";
 import { logger } from "@/lib/logger-client";
+import { useAuthStore } from "@/stores/authStore";
 import { getStreamUrl } from "@/services/api/main/endpoints";
 import { prefetchAudioBlob } from "@/lib/audio/prefetch";
 import { getAudioPlayer } from "@/lib/audio/player";
 import { songToTrack } from "./helpers";
 import type { QueueSource, PlayerState } from "./types";
+
+/** Get current userId for logging */
+const getUserId = () => useAuthStore.getState().user?.id;
 
 /**
  * Convert API track data to a Song object.
@@ -54,7 +58,7 @@ export async function loadPreferences(
   set: (state: Partial<PlayerState>) => void
 ): Promise<void> {
   if (hasUserModifiedPreferences) {
-    logger.info("[PlayerStore][loadPreferences]", "Skipped loading preferences - user has local changes");
+    logger.info("[PlayerStore][loadPreferences]", "Skipped loading preferences - user has local changes", { userId: getUserId() });
     return;
   }
 
@@ -67,11 +71,13 @@ export async function loadPreferences(
         hasLoadedPreferences: true,
       });
       logger.info("[PlayerStore][loadPreferences]", "Loaded playback preferences", { 
+        userId: getUserId(),
         raw: { repeatMode: preferences.repeatMode, shuffleEnabled: preferences.shuffleEnabled },
       });
     }
   } catch (prefError) {
     logger.warn("[PlayerStore][loadPreferences]", "Failed to load playback preferences", { 
+      userId: getUserId(),
       raw: { error: prefError },
     });
   }
@@ -104,10 +110,11 @@ export async function loadDefaultSeed(
     const track = songToTrack(song);
     getAudioPlayer().prime(track);
     
-    logger.info("[PlayerStore][loadDefaultSeed]", "Loaded default seed and primed player", { raw: { songId: song.id, title: song.title } });
+    logger.info("[PlayerStore][loadDefaultSeed]", "Loaded default seed and primed player", { userId: getUserId(), raw: { songId: song.id, title: song.title } });
     return true;
   } catch (seedError) {
     logger.warn("[PlayerStore][loadDefaultSeed]", "Failed to load default seed", {
+      userId: getUserId(),
       raw: { error: seedError },
     });
     return false;
@@ -132,6 +139,7 @@ export async function loadQueueFromContext(
       songs = await api.main.playlists.getSongs(context.id);
       if (songs.length > 0) {
         logger.info("[PlayerStore][loadQueueFromContext]", "Loaded playlist queue", { 
+          userId: getUserId(),
           raw: { playlistId: context.id, songCount: songs.length },
         });
       }
@@ -139,6 +147,7 @@ export async function loadQueueFromContext(
       songs = await api.main.libraries.getSongs(context.id);
       if (songs.length > 0) {
         logger.info("[PlayerStore][loadQueueFromContext]", "Loaded library queue", { 
+          userId: getUserId(),
           raw: { libraryId: context.id, songCount: songs.length },
         });
       }

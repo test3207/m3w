@@ -10,8 +10,12 @@
 import { create } from "zustand";
 import { api } from "@/services";
 import { logger } from "@/lib/logger-client";
+import { useAuthStore } from "@/stores/authStore";
 import { isFavoritesPlaylist } from "@/lib/shared";
 import type { Playlist } from "@m3w/shared";
+
+/** Get current userId for logging */
+const getUserId = () => useAuthStore.getState().user?.id;
 
 interface PlaylistState {
   playlists: Playlist[];
@@ -85,10 +89,10 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         }));
       }
 
-      logger.info("[PlaylistStore][fetchPlaylists]", `Fetched ${playlists.length} playlists`);
+      logger.info("[PlaylistStore][fetchPlaylists]", `Fetched ${playlists.length} playlists`, { userId: getUserId() });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch playlists";
-      logger.error("[PlaylistStore][fetchPlaylists]", "Failed to fetch playlists", error);
+      logger.error("[PlaylistStore][fetchPlaylists]", "Failed to fetch playlists", error, { userId: getUserId() });
       set({ error: errorMessage, isLoading: false });
     }
   },
@@ -116,11 +120,11 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         },
       }));
 
-      logger.info("[PlaylistStore][createPlaylist]", `Created playlist: ${name}`, { raw: { playlistId: newPlaylist.id } });
+      logger.info("[PlaylistStore][createPlaylist]", `Created playlist: ${name}`, { userId: getUserId(), raw: { playlistId: newPlaylist.id } });
       return newPlaylist;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to create playlist";
-      logger.error("[PlaylistStore][createPlaylist]", "Failed to create playlist", error, { raw: { name } });
+      logger.error("[PlaylistStore][createPlaylist]", "Failed to create playlist", error, { userId: getUserId(), raw: { name } });
       set({ error: errorMessage, isLoading: false });
       return null;
     }
@@ -132,7 +136,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
 
     // Check if playlist can be deleted
     if (!canDeletePlaylist(id)) {
-      logger.warn("[PlaylistStore][deletePlaylist]", "Cannot delete default playlist", { raw: { playlistId: id } });
+      logger.warn("[PlaylistStore][deletePlaylist]", "Cannot delete default playlist", { userId: getUserId(), raw: { playlistId: id } });
       set({ error: "Cannot delete favorites playlist" });
       return false;
     }
@@ -153,11 +157,11 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         };
       });
 
-      logger.info("[PlaylistStore][deletePlaylist]", "Deleted playlist", { raw: { playlistId: id } });
+      logger.info("[PlaylistStore][deletePlaylist]", "Deleted playlist", { userId: getUserId(), raw: { playlistId: id } });
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to delete playlist";
-      logger.error("[PlaylistStore][deletePlaylist]", "Failed to delete playlist", error, { raw: { playlistId: id } });
+      logger.error("[PlaylistStore][deletePlaylist]", "Failed to delete playlist", error, { userId: getUserId(), raw: { playlistId: id } });
       set({ error: errorMessage, isLoading: false });
       return false;
     }
@@ -192,11 +196,11 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         };
       });
 
-      logger.info("[PlaylistStore][addSongToPlaylist]", "Added song to playlist", { raw: { playlistId, songId } });
+      logger.info("[PlaylistStore][addSongToPlaylist]", "Added song to playlist", { userId: getUserId(), raw: { playlistId, songId } });
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to add song";
-      logger.error("[PlaylistStore][addSongToPlaylist]", "Failed to add song to playlist", error, { raw: { playlistId, songId } });
+      logger.error("[PlaylistStore][addSongToPlaylist]", "Failed to add song to playlist", error, { userId: getUserId(), raw: { playlistId, songId } });
       set({ error: errorMessage, isLoading: false });
       return false;
     }
@@ -226,11 +230,11 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         };
       });
 
-      logger.info("[PlaylistStore][removeSongFromPlaylist]", "Removed song from playlist", { raw: { playlistId, songId } });
+      logger.info("[PlaylistStore][removeSongFromPlaylist]", "Removed song from playlist", { userId: getUserId(), raw: { playlistId, songId } });
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to remove song";
-      logger.error("[PlaylistStore][removeSongFromPlaylist]", "Failed to remove song from playlist", error, { raw: { playlistId, songId } });
+      logger.error("[PlaylistStore][removeSongFromPlaylist]", "Failed to remove song from playlist", error, { userId: getUserId(), raw: { playlistId, songId } });
       set({ error: errorMessage, isLoading: false });
       return false;
     }
@@ -251,11 +255,11 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         isLoading: false,
       }));
 
-      logger.info("[PlaylistStore][reorderPlaylistSongs]", "Reordered playlist songs", { raw: { playlistId, songCount: songIds.length } });
+      logger.info("[PlaylistStore][reorderPlaylistSongs]", "Reordered playlist songs", { userId: getUserId(), raw: { playlistId, songCount: songIds.length } });
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to reorder songs";
-      logger.error("[PlaylistStore][reorderPlaylistSongs]", "Failed to reorder playlist songs", error, { raw: { playlistId } });
+      logger.error("[PlaylistStore][reorderPlaylistSongs]", "Failed to reorder playlist songs", error, { userId: getUserId(), raw: { playlistId } });
       set({ error: errorMessage, isLoading: false });
       return false;
     }
@@ -276,7 +280,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       
       return songIds;
     } catch (error) {
-      logger.error("[PlaylistStore][loadPlaylistSongIds]", "Failed to load playlist songs", error, { raw: { playlistId } });
+      logger.error("[PlaylistStore][loadPlaylistSongIds]", "Failed to load playlist songs", error, { userId: getUserId(), raw: { playlistId } });
       return [];
     }
   },
@@ -314,7 +318,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     const favorites = getFavoritesPlaylist();
     
     if (!favorites) {
-      logger.error("[PlaylistStore][toggleFavorite]", "Favorites playlist not found", new Error("Favorites not found"));
+      logger.error("[PlaylistStore][toggleFavorite]", "Favorites playlist not found", new Error("Favorites not found"), { userId: getUserId() });
       return false;
     }
 
