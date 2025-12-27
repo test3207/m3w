@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthStore>()(
         
         // Sync access token to IndexedDB for Service Worker
         saveTokenToIndexedDB(tokens.accessToken).catch((error) => {
-          logger.error("[AuthStore][setAuth]", "Failed to sync token to IndexedDB", error);
+          logger.error("[AuthStore][setAuth]", "Failed to sync token to IndexedDB", error, { userId: user.id });
         });
 
         set({
@@ -132,7 +132,8 @@ export const useAuthStore = create<AuthStore>()(
 
           return true;
         } catch (error) {
-          logger.error("[AuthStore][refreshAccessToken]", "Token refresh failed", error);
+          const userId = get().user?.id;
+          logger.error("[AuthStore][refreshAccessToken]", "Token refresh failed", error, { userId });
           get().clearAuth();
           return false;
         }
@@ -169,7 +170,8 @@ export const useAuthStore = create<AuthStore>()(
           const user = await api.main.auth.getMe();
           set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
-          logger.error("[AuthStore][checkAuthStatus]", "Auth check failed", error);
+          const userId = get().user?.id;
+          logger.error("[AuthStore][checkAuthStatus]", "Auth check failed", error, { userId });
           clearAuth();
         }
       },

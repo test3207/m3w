@@ -19,7 +19,6 @@
  */
 
 import { API_BASE_URL } from "./api/config";
-import { useAuthStore } from "@/stores/authStore";
 
 // ============================================================================
 // Configuration
@@ -65,6 +64,8 @@ type LogLevel = "debug" | "info" | "warn" | "error";
 export interface LogOptions {
   /** External traceId (if not provided, generates new one) */
   traceId?: string;
+  /** User ID for authenticated users (caller provides) */
+  userId?: string;
   col1?: string;
   col2?: string;
   col3?: string;
@@ -177,15 +178,6 @@ class LogBuffer {
     }
   }
 
-  /** Get userId from auth store (may change during session) */
-  private getUserId(): string | undefined {
-    try {
-      return useAuthStore.getState().user?.id;
-    } catch {
-      return undefined;
-    }
-  }
-
   initialize(): void {
     if (this.flushTimer) return;
 
@@ -231,15 +223,13 @@ class LogBuffer {
       }
     }
 
-    const userId = this.getUserId();
-
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       service: SERVICE,
       traceId,
       sessionId: this.sessionId,
-      ...(userId && { userId }),
+      ...(options?.userId && { userId: options.userId }),
       page,
       source,
       message,
