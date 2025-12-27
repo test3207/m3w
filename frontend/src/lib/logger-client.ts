@@ -183,9 +183,7 @@ class LogBuffer {
 
     if (!isRemoteLoggingEnabled()) return;
 
-    this.flushTimer = setInterval(() => {
-      this.flush();
-    }, FLUSH_INTERVAL_MS);
+    this.flushTimer = setInterval(() => this.flush(), FLUSH_INTERVAL_MS);
 
     if (typeof window !== "undefined") {
       window.addEventListener("beforeunload", () => this.flush());
