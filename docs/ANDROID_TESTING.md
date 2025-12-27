@@ -42,8 +42,8 @@ npm run android:test
 | Command | Description |
 | ------- | ----------- |
 | `npm run android:setup` | Install Android SDK and create AVD |
-| `npm run android:test` | Start emulator, port forwarding, open Chrome |
-| `npm run android:reverse` | Only set up port forwarding (emulator already running) |
+| `npm run android:test` | Start emulator with port forwarding and open Chrome |
+| `npm run android:reverse` | Set up port forwarding only (for already running emulator) |
 
 ### Options
 

@@ -101,6 +101,7 @@ public class Win32Window {
 Get-Process | Where-Object { $_.MainWindowTitle -like "*Android Emulator*" } | ForEach-Object {
     $hwnd = $_.MainWindowHandle
     if ($hwnd -ne [IntPtr]::Zero) {
+        # 0x0001 = SWP_NOSIZE (don't change window size, only position)
         [Win32Window]::SetWindowPos($hwnd, [IntPtr]::Zero, 50, 50, 0, 0, 0x0001)
         Write-Host "MOVED"
         exit 0
@@ -131,7 +132,12 @@ Write-Host "NOT_FOUND"
     fs.unlinkSync(scriptPath);
   } catch (err) {
     log(`Window adjustment failed: ${err.message}`, "warning");
-    try { fs.unlinkSync(scriptPath); } catch {}
+
+    try {
+      fs.unlinkSync(scriptPath);
+    } catch (cleanupErr) {
+      log(`Failed to cleanup temp script: ${cleanupErr.message}`, "warning");
+    }
   }
 }
 
@@ -363,7 +369,10 @@ function getHostProxy() {
       const match = result.match(/ProxyServer\s+REG_SZ\s+(.+)/);
       if (match) {
         const proxyValue = match[1].trim();
-        // Could be "host:port" or "http=host:port;https=host:port"
+        // Windows registry ProxyServer formats:
+        // - Simple: "host:port"
+        // - Per-protocol: "http=host:port;https=host:port"
+        // The regex handles whitespace variations in REG_SZ output
         const simpleMatch = proxyValue.match(/^([^:=;]+):(\d+)$/);
         if (simpleMatch) {
           return { host: simpleMatch[1], port: simpleMatch[2] };
@@ -400,9 +409,10 @@ async function setupProxy(adbPath) {
     return;
   }
   
-  // In emulator, 10.0.2.2 is the host machine
-  const emulatorProxyHost = proxy.host === "localhost" || proxy.host === "127.0.0.1" 
-    ? "10.0.2.2" 
+  // In emulator, 10.0.2.2 is the host machine's loopback address
+  const hostLower = proxy.host.toLowerCase();
+  const emulatorProxyHost = hostLower === "localhost" || hostLower === "127.0.0.1"
+    ? "10.0.2.2"
     : proxy.host;
   
   const proxyString = `${emulatorProxyHost}:${proxy.port}`;
@@ -410,7 +420,8 @@ async function setupProxy(adbPath) {
   log(`Setting up proxy: ${proxyString} (host: ${proxy.host}:${proxy.port})`, "link");
   
   try {
-    exec(`${adbPath} shell settings put global http_proxy "${proxyString}"`, {
+    // Use single quotes for shell command to avoid quote escaping issues
+    exec(`${adbPath} shell settings put global http_proxy ${proxyString}`, {
       silent: true,
     });
     log(`Proxy configured: ${proxyString}`, "success");
@@ -434,7 +445,8 @@ async function enableHardwareKeyboard(adbPath) {
     });
     
     // Also set the preference that allows hardware keyboard
-    exec(`${adbPath} shell "content insert --uri content://settings/secure --bind name:s:show_ime_with_hard_keyboard --bind value:i:1"`, {
+    // Note: The content command syntax uses colons for type:value pairs
+    exec(`${adbPath} shell content insert --uri content://settings/secure --bind name:s:show_ime_with_hard_keyboard --bind value:i:1`, {
       silent: true,
       ignoreError: true,
     });
@@ -486,6 +498,7 @@ async function configureDeviceSettings(adbPath) {
     });
     
     // Stay awake while charging (useful during development)
+    // Value 3 = BIT_PLUGGED_USB(1) | BIT_PLUGGED_AC(2) - stays on for USB and AC power
     exec(`${adbPath} shell settings put global stay_on_while_plugged_in 3`, {
       silent: true,
       ignoreError: true,

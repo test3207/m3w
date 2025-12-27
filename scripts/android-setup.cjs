@@ -174,10 +174,10 @@ function findJavaPath() {
     possiblePaths.push("/usr/lib/jvm/temurin-17-jdk-amd64");
   }
 
-  for (const p of possiblePaths) {
-    const javaBin = path.join(p, "bin", isWindows ? "java.exe" : "java");
+  for (const javaPath of possiblePaths) {
+    const javaBin = path.join(javaPath, "bin", isWindows ? "java.exe" : "java");
     if (existsSync(javaBin)) {
-      return p;
+      return javaPath;
     }
   }
 
@@ -351,8 +351,8 @@ function getSdkManagerPath(sdkPath) {
   ];
 
   const ext = isWindows ? ".bat" : "";
-  for (const p of possiblePaths) {
-    const fullPath = p + ext;
+  for (const candidatePath of possiblePaths) {
+    const fullPath = candidatePath + ext;
     if (existsSync(fullPath)) {
       return fullPath;
     }
@@ -368,8 +368,8 @@ function getAvdManagerPath(sdkPath) {
   ];
 
   const ext = isWindows ? ".bat" : "";
-  for (const p of possiblePaths) {
-    const fullPath = p + ext;
+  for (const candidatePath of possiblePaths) {
+    const fullPath = candidatePath + ext;
     if (existsSync(fullPath)) {
       return fullPath;
     }
@@ -469,8 +469,10 @@ async function extractZip(zipPath, destPath) {
   mkdirSync(destPath, { recursive: true });
 
   if (isWindows) {
+    // Use -LiteralPath to handle paths with special characters
+    const psCommand = `Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${destPath.replace(/'/g, "''")}' -Force`;
     exec(
-      `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${destPath}' -Force"`,
+      `powershell -NoProfile -Command "${psCommand}"`,
       { silent: true }
     );
   } else {
@@ -525,8 +527,12 @@ async function installSdk(targetPath, useMirror = false) {
     fs.renameSync(latestPath, path.join(cmdlineToolsPath, "latest"));
   }
 
-  // Cleanup
-  rmSync(zipPath, { force: true });
+  // Cleanup downloaded zip file
+  try {
+    rmSync(zipPath, { force: true });
+  } catch (cleanupErr) {
+    log(`Note: Could not remove temp file ${zipPath}: ${cleanupErr.message}`, "warning");
+  }
 
   log("Command-line tools installed", "success");
   return targetPath;
@@ -545,8 +551,9 @@ async function acceptLicenses(sdkPath) {
 
   try {
     if (isWindows) {
-      // Windows: use echo with pipe
-      exec(`echo ${yesInput.replace(/\n/g, "& echo ")} | "${sdkManager}" --licenses`, {
+      // Windows: Use PowerShell for reliable piping of multiple 'y' inputs
+      const yesCommand = `@('y','y','y','y','y','y','y','y') | ForEach-Object { $_ } | & '${sdkManager.replace(/'/g, "''")}' --licenses`;
+      exec(`powershell -NoProfile -Command "${yesCommand}"`, {
         silent: true,
         ignoreError: true,
       });
@@ -572,6 +579,7 @@ async function installComponents(sdkPath) {
   log("Installing SDK components (this may take 10-20 minutes)...", "install");
   log("Components: " + CONFIG.sdkComponents.join(", "), "info");
 
+  // SDK component names are defined in CONFIG.sdkComponents constant - no user input
   for (const component of CONFIG.sdkComponents) {
     log(`Installing ${component}...`, "progress");
     try {
@@ -623,10 +631,10 @@ async function createAvd(sdkPath, avdName, apiLevel) {
 
     if (fs.existsSync(avdConfigPath)) {
       let config = fs.readFileSync(avdConfigPath, "utf8");
-      // Replace hw.keyboard = no with yes
+      // Replace hw.keyboard = no with yes (case-insensitive)
       config = config.replace(/hw\.keyboard\s*=\s*no/gi, "hw.keyboard = yes");
-      // If hw.keyboard doesn't exist, add it
-      if (!config.includes("hw.keyboard")) {
+      // If hw.keyboard doesn't exist (case-insensitive check to match replacement), add it
+      if (!/hw\.keyboard/i.test(config)) {
         config += "\nhw.keyboard = yes\n";
       }
       fs.writeFileSync(avdConfigPath, config);
