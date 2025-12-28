@@ -30,6 +30,54 @@ const FLUSH_INTERVAL_MS = 5000;
 const MAX_BUFFER_SIZE = 10;
 
 /**
+ * Check if verbose logging is enabled via URL parameter.
+ * Usage: Add ?debug=1 or ?debug=audio to URL
+ * 
+ * This allows debugging in production without redeploying.
+ * - ?debug=1 or ?debug=all: Enable all verbose logs
+ * - ?debug=audio: Enable only audio-related logs
+ * - ?debug=media: Enable only media session logs
+ * 
+ * The setting persists in sessionStorage for the current tab.
+ */
+function getDebugMode(): { enabled: boolean; filter: string | null } {
+  if (typeof window === "undefined") return { enabled: false, filter: null };
+  
+  // Check URL parameter first (and persist to sessionStorage)
+  const urlParams = new URLSearchParams(window.location.search);
+  const debugParam = urlParams.get("debug");
+  
+  if (debugParam !== null) {
+    // Persist to sessionStorage so it survives navigation
+    if (debugParam === "0" || debugParam === "false" || debugParam === "") {
+      sessionStorage.removeItem("m3w_debug");
+      return { enabled: false, filter: null };
+    }
+    const filter = debugParam === "1" || debugParam === "all" ? null : debugParam;
+    sessionStorage.setItem("m3w_debug", filter ?? "all");
+    return { enabled: true, filter };
+  }
+  
+  // Check sessionStorage for persisted setting
+  const stored = sessionStorage.getItem("m3w_debug");
+  if (stored) {
+    return { enabled: true, filter: stored === "all" ? null : stored };
+  }
+  
+  return { enabled: false, filter: null };
+}
+
+/**
+ * Check if a log source matches the debug filter
+ */
+function matchesDebugFilter(source: string, filter: string | null): boolean {
+  if (!filter) return true; // No filter = show all
+  const lowerSource = source.toLowerCase();
+  const lowerFilter = filter.toLowerCase();
+  return lowerSource.includes(lowerFilter);
+}
+
+/**
  * Check if remote logging is enabled (runtime injection)
  * Priority:
  *   1. Runtime: window.__ENABLE_REMOTE_LOGGING__ (docker-entrypoint injection)
@@ -286,7 +334,9 @@ class TraceImpl implements Trace {
 
   debug(source: string, message: string, options?: LogOptions): void {
     if (this.ended) return;
-    if (isDev) {
+    // Show in console if dev mode OR debug mode enabled (with filter match)
+    const debugMode = getDebugMode();
+    if (isDev || (debugMode.enabled && matchesDebugFilter(source, debugMode.filter))) {
       console.debug(`[Debug] ${source} ${message}`, options?.raw ?? "");
     }
     // debug not sent to backend
@@ -294,7 +344,9 @@ class TraceImpl implements Trace {
 
   info(source: string, message: string, options?: LogOptions): void {
     if (this.ended) return;
-    if (isDev) {
+    // Show in console if dev mode OR debug mode enabled (with filter match)
+    const debugMode = getDebugMode();
+    if (isDev || (debugMode.enabled && matchesDebugFilter(source, debugMode.filter))) {
       console.info(`[Info] ${source} ${message}`, options?.raw ?? "");
     }
     if (isRemoteLoggingEnabled()) {
@@ -352,14 +404,18 @@ class FrontendLogger implements Logger {
   }
 
   debug(source: string, message: string, options?: LogOptions): void {
-    if (isDev) {
+    // Show in console if dev mode OR debug mode enabled (with filter match)
+    const debugMode = getDebugMode();
+    if (isDev || (debugMode.enabled && matchesDebugFilter(source, debugMode.filter))) {
       console.debug(`[Debug] ${source} ${message}`, options?.raw ?? "");
     }
     // debug not sent to backend
   }
 
   info(source: string, message: string, options?: LogOptions): void {
-    if (isDev) {
+    // Show in console if dev mode OR debug mode enabled (with filter match)
+    const debugMode = getDebugMode();
+    if (isDev || (debugMode.enabled && matchesDebugFilter(source, debugMode.filter))) {
       console.info(`[Info] ${source} ${message}`, options?.raw ?? "");
     }
     if (isRemoteLoggingEnabled()) {
