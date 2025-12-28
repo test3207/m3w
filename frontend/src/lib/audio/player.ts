@@ -265,6 +265,10 @@ class AudioPlayer {
           }
         });
         duration = this.currentTrack?.duration ?? 0;
+        // If we had a pending seek when the error occurred, use it as currentTime
+        if (this.pendingSeek !== null) {
+          currentTime = this.pendingSeek;
+        }
       }
     } else if (this.pendingSeek !== null) {
       currentTime = this.pendingSeek;

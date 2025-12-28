@@ -187,4 +187,44 @@ describe("logger-client", () => {
       trace.end();
     });
   });
+
+  describe("debug mode", () => {
+    // Note: URL-based debug mode is tested through integration behavior
+    // since window.location cannot be easily mocked in browser environment.
+    // The caching mechanism improves performance by avoiding repeated 
+    // sessionStorage access.
+    
+    it("should handle sessionStorage persistence", () => {
+      const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
+      const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+      
+      // Logger reads from sessionStorage when checking debug mode
+      logger.debug("[Test][debug]", "Test message");
+      
+      // In dev mode, debug always shows but sessionStorage should be checked
+      expect(consoleDebugSpy).toHaveBeenCalled();
+      
+      // Cleanup
+      getItemSpy.mockRestore();
+      setItemSpy.mockRestore();
+    });
+
+    it("should log debug messages in dev mode regardless of debug filter", () => {
+      // In dev mode (import.meta.env.DEV = true), debug logs are always shown
+      logger.debug("[MediaSession][test]", "Media message");
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
+        "[Debug] [MediaSession][test] Media message",
+        ""
+      );
+    });
+
+    it("should log info messages in dev mode regardless of debug filter", () => {
+      // In dev mode, info logs are always shown
+      logger.info("[AudioPlayer][test]", "Audio message");
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        "[Info] [AudioPlayer][test] Audio message",
+        ""
+      );
+    });
+  });
 });

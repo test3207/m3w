@@ -99,7 +99,7 @@ export function updateMediaSessionPlaybackState(
 /**
  * Update Media Session position state (for seek bar on lock screen)
  * 
- * Debug: Use ?debug=media in URL to see detailed position updates
+ * Debug: Use ?debug=media in URL (persists in sessionStorage) to see detailed position updates
  */
 export function updateMediaSessionPositionState(
   position: number,

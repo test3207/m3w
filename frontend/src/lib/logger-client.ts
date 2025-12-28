@@ -30,8 +30,7 @@ const FLUSH_INTERVAL_MS = 5000;
 const MAX_BUFFER_SIZE = 10;
 
 /**
- * Check if verbose logging is enabled via URL parameter.
- * Usage: Add ?debug=1 or ?debug=audio to URL
+ * Get URL-based debug mode for production debugging.
  * 
  * This allows debugging in production without redeploying.
  * - ?debug=1 or ?debug=all: Enable all verbose logs
@@ -39,9 +38,17 @@ const MAX_BUFFER_SIZE = 10;
  * - ?debug=media: Enable only media session logs
  * 
  * The setting persists in sessionStorage for the current tab.
+ * Result is cached for performance (sessionStorage access is slow).
  */
-function getDebugMode(): { enabled: boolean; filter: string | null } {
-  if (typeof window === "undefined") return { enabled: false, filter: null };
+let cachedDebugMode: { enabled: boolean; filter: string } | null = null;
+
+function getDebugMode(): { enabled: boolean; filter: string } {
+  // Return cached result if available
+  if (cachedDebugMode !== null) return cachedDebugMode;
+  
+  if (typeof window === "undefined") {
+    return { enabled: false, filter: "" };
+  }
   
   // Check URL parameter first (and persist to sessionStorage)
   const urlParams = new URLSearchParams(window.location.search);
@@ -51,27 +58,32 @@ function getDebugMode(): { enabled: boolean; filter: string | null } {
     // Persist to sessionStorage so it survives navigation
     if (debugParam === "0" || debugParam === "false" || debugParam === "") {
       sessionStorage.removeItem("m3w_debug");
-      return { enabled: false, filter: null };
+      cachedDebugMode = { enabled: false, filter: "" };
+      return cachedDebugMode;
     }
-    const filter = debugParam === "1" || debugParam === "all" ? null : debugParam;
-    sessionStorage.setItem("m3w_debug", filter ?? "all");
-    return { enabled: true, filter };
+    // Normalize "1" to "all" for consistent storage/retrieval
+    const filter = debugParam === "1" ? "all" : debugParam;
+    sessionStorage.setItem("m3w_debug", filter);
+    cachedDebugMode = { enabled: true, filter };
+    return cachedDebugMode;
   }
   
   // Check sessionStorage for persisted setting
   const stored = sessionStorage.getItem("m3w_debug");
   if (stored) {
-    return { enabled: true, filter: stored === "all" ? null : stored };
+    cachedDebugMode = { enabled: true, filter: stored };
+    return cachedDebugMode;
   }
   
-  return { enabled: false, filter: null };
+  cachedDebugMode = { enabled: false, filter: "" };
+  return cachedDebugMode;
 }
 
 /**
  * Check if a log source matches the debug filter
  */
-function matchesDebugFilter(source: string, filter: string | null): boolean {
-  if (!filter) return true; // No filter = show all
+function matchesDebugFilter(source: string, filter: string): boolean {
+  if (!filter || filter === "all") return true; // No filter or "all" = show all
   const lowerSource = source.toLowerCase();
   const lowerFilter = filter.toLowerCase();
   return lowerSource.includes(lowerFilter);
