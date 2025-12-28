@@ -186,8 +186,7 @@ class AudioPlayer {
         } else {
           // This fallback should rarely trigger in html5 mode.
           // On Android, this may cause audio to get stuck - log for debugging.
-          // eslint-disable-next-line no-console
-          console.warn("[AudioPlayer] Native audio node not found, using Howler seek fallback");
+          logger.error("[AudioPlayer][seek]", "Native audio node not found, using Howler seek fallback");
           this.howl.seek(position, this.soundId ?? undefined);
         }
         this.pendingSeek = null;
@@ -233,8 +232,9 @@ class AudioPlayer {
     let currentTime = 0;
 
     if (howl) {
-      // howl.seek() without args returns current position
-      const seekResult = howl.seek();
+      // howl.seek(id) returns current position for the given sound
+      // When 1 arg is passed, Howler checks if it's a soundId or position
+      const seekResult = howl.seek(id);
       currentTime = typeof seekResult === "number" ? seekResult : 0;
 
       if (howl.state() !== "loaded" && this.pendingSeek !== null) {

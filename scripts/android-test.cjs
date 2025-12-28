@@ -33,7 +33,7 @@ const CONFIG = {
   defaultAvdName: "m3w-test",
   // 5 minutes - Android emulator cold boot (no snapshot) can take 2-4 min
   // on slower machines. Warm boot with snapshots typically takes 10-30 sec.
-  bootTimeout: 300000,
+  bootTimeout: 5 * 60 * 1000,
   adbRetryDelay: 2000,
   adbMaxRetries: 60,
 };
@@ -394,9 +394,9 @@ async function setupChromeDevToolsForward(adbPath) {
   }
 }
 
-async function streamChromeLogs(adbPath) {
+async function streamChromeLogs(adbPath, filterKeywords = []) {
   log("Starting Chrome console log stream...", "info");
-  log("Filter: [AudioPlayer], [MediaSession], seekto", "info");
+  log(`Filter: ${filterKeywords.join(", ")}`, "info");
   log("Press Ctrl+C to stop\n", "info");
 
   // Set up DevTools forward
@@ -431,7 +431,8 @@ async function streamChromeLogs(adbPath) {
     try {
       targets = await fetchTargets();
       if (targets.length > 0) break;
-    } catch {
+    } catch (err) {
+      log(`Chrome not ready (attempt ${i + 1}/10): ${err.message}`, "warning");
       await sleep(1000);
     }
   }
@@ -465,24 +466,24 @@ async function streamChromeLogs(adbPath) {
         const args = msg.params.args || [];
         const text = args.map((a) => a.value || a.description || "").join(" ");
 
-        // Filter for relevant logs
-        if (
-          text.includes("[AudioPlayer]") ||
-          text.includes("[MediaSession]") ||
-          text.includes("seekto") ||
-          text.includes("seek")
-        ) {
+        // Filter for relevant logs (use configured keywords)
+        const matchesFilter = filterKeywords.length === 0 || 
+          filterKeywords.some(keyword => text.includes(keyword));
+        
+        if (matchesFilter) {
           const timestamp = new Date().toISOString().slice(11, 23);
           console.log(`[${timestamp}] ${text}`);
         }
       }
-    } catch {
-      // ignore parse errors
+    } catch (err) {
+      // Log parse errors for debugging protocol issues
+      log(`DevTools message parse error: ${err.message}`, "error");
     }
   });
 
   ws.on("error", (err) => {
     log(`WebSocket error: ${err.message}`, "error");
+    process.exit(1);
   });
 
   ws.on("close", () => {
@@ -801,7 +802,8 @@ Options:
   --headless       Run emulator in headless mode
   --cold-boot      Force cold boot (no snapshot, default: true)
   --use-snapshot   Use snapshot for faster boot (may cause issues)
-  --logs           Start Chrome DevTools log streaming
+  --logs           Start Chrome DevTools log streaming (shows all logs by default)
+  --filter=WORDS   Comma-separated filter keywords (e.g., --filter=[AudioPlayer],seekto)
 
 Examples:
   npm run android:test                    # Start emulator and test
@@ -809,6 +811,7 @@ Examples:
   npm run android:test -- --avd=Pixel_6   # Use specific AVD
   npm run android:test -- --use-snapshot  # Use snapshot (faster but may hang)
   npm run android:test -- --logs          # Stream Chrome console logs
+  npm run android:test -- --logs --filter=error,warning  # Custom filter
 `);
     process.exit(0);
   }
@@ -822,6 +825,11 @@ Examples:
   // Default to cold boot to avoid snapshot loading issues
   const coldBoot = !args.includes("--use-snapshot");
   const avdArg = args.find((a) => a.startsWith("--avd="))?.split("=")[1];
+  // Parse --filter argument (comma-separated keywords, empty string = no filter)
+  const filterArg = args.find((a) => a.startsWith("--filter="));
+  const filterKeywords = filterArg !== undefined
+    ? filterArg.split("=")[1].split(",").filter(Boolean)
+    : undefined; // undefined = use default
 
   // Find SDK
   const sdkPath = findAndroidSdk();
@@ -942,7 +950,7 @@ Log Streaming:
   // Start log streaming if requested
   if (streamLogs) {
     await sleep(2000); // Wait for Chrome to fully load
-    await streamChromeLogs(adbPath);
+    await streamChromeLogs(adbPath, filterKeywords);
   }
 }
 
