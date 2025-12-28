@@ -53,11 +53,11 @@ export function httpLogger() {
     const message = `${method} ${path} ${status} ${duration}ms`;
 
     if (status >= 500) {
-      logger.error({ ...logEntry, msg: message });
+      logger.error(logEntry, message);
     } else if (status >= 400) {
-      logger.warn({ ...logEntry, msg: message });
+      logger.warn(logEntry, message);
     } else {
-      logger.info({ ...logEntry, msg: message });
+      logger.info(logEntry, message);
     }
   };
 }
