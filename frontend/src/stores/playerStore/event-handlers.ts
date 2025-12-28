@@ -53,16 +53,22 @@ export function setupMediaSessionHandlers(
       void getState().next();
     },
     onSeekTo: (time: number) => {
-      const { duration } = getState();
+      const { duration, isPlaying } = getState();
       // Validate inputs before seeking
       if (!isFinite(time) || !isFinite(duration) || duration <= 0) return;
       const clampedTime = Math.max(0, Math.min(time, duration));
       audioPlayer.seek(clampedTime);
       setState({ currentTime: clampedTime });
       updateMediaSessionPositionState(clampedTime, duration);
+      
+      // Ensure playback continues after seek (especially important in background/lock screen)
+      // Howler's seek() can pause audio in some browsers
+      if (isPlaying && !audioPlayer.getState().isPlaying) {
+        audioPlayer.resume();
+      }
     },
     onSeekBackward: (offset: number) => {
-      const { currentTime, duration } = getState();
+      const { currentTime, duration, isPlaying } = getState();
       // Validate all inputs before seeking
       if (!isFinite(offset) || offset <= 0) return;
       if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
@@ -70,9 +76,14 @@ export function setupMediaSessionHandlers(
       audioPlayer.seek(newTime);
       setState({ currentTime: newTime });
       updateMediaSessionPositionState(newTime, duration);
+      
+      // Ensure playback continues after seek
+      if (isPlaying && !audioPlayer.getState().isPlaying) {
+        audioPlayer.resume();
+      }
     },
     onSeekForward: (offset: number) => {
-      const { currentTime, duration } = getState();
+      const { currentTime, duration, isPlaying } = getState();
       // Validate all inputs before seeking
       if (!isFinite(offset) || offset <= 0) return;
       if (!isFinite(currentTime) || !isFinite(duration) || duration <= 0) return;
@@ -80,6 +91,11 @@ export function setupMediaSessionHandlers(
       audioPlayer.seek(newTime);
       setState({ currentTime: newTime });
       updateMediaSessionPositionState(newTime, duration);
+      
+      // Ensure playback continues after seek
+      if (isPlaying && !audioPlayer.getState().isPlaying) {
+        audioPlayer.resume();
+      }
     },
   });
 }
