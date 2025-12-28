@@ -487,10 +487,21 @@ async function streamChromeLogs(adbPath) {
 
   ws.on("close", () => {
     log("DevTools connection closed", "warning");
+    process.exit(0);
   });
 
-  // Keep running
-  await new Promise(() => {});
+  // Keep running until interrupted (Ctrl+C) or WebSocket closes
+  await new Promise((resolve) => {
+    process.on("SIGINT", () => {
+      log("Stopping log stream...", "info");
+      ws.close();
+      resolve();
+    });
+    process.on("SIGTERM", () => {
+      ws.close();
+      resolve();
+    });
+  });
 }
 
 // ============================================================================

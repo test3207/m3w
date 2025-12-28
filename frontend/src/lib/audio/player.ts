@@ -181,10 +181,13 @@ class AudioPlayer {
         const sound = sounds?.find((s: { _id: number }) => s._id === this.soundId) || sounds?.[0];
         const audioNode = sound?._node as HTMLAudioElement | undefined;
         
-        if (audioNode && typeof audioNode.currentTime === "number") {
+        if (audioNode) {
           audioNode.currentTime = position;
         } else {
-          // Fallback to Howler's seek (may cause issues on Android)
+          // This fallback should rarely trigger in html5 mode.
+          // On Android, this may cause audio to get stuck - log for debugging.
+          // eslint-disable-next-line no-console
+          console.warn("[AudioPlayer] Native audio node not found, using Howler seek fallback");
           this.howl.seek(position, this.soundId ?? undefined);
         }
         this.pendingSeek = null;
