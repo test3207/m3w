@@ -57,12 +57,13 @@ function shouldShowInConsole(source: string): boolean {
 }
 
 function getDebugMode(): { enabled: boolean; filter: string } {
-  // Return cached result if available
-  if (cachedDebugMode !== null) return cachedDebugMode;
-  
+  // In non-browser environments (e.g. SSR), never use or set the cache
   if (typeof window === "undefined") {
     return { enabled: false, filter: "" };
   }
+  
+  // Return cached result if available (browser only)
+  if (cachedDebugMode !== null) return cachedDebugMode;
   
   // Check URL parameter first (and persist to sessionStorage)
   const urlParams = new URLSearchParams(window.location.search);

@@ -238,10 +238,12 @@ class AudioPlayer {
       try {
         // Wrap all Howler calls in try-catch to handle race conditions
         // where howl._sounds array may be empty during unload/switch
+        const howlState = howl.state();
+        
         const seekResult = howl.seek(id);
         currentTime = typeof seekResult === "number" && isFinite(seekResult) ? seekResult : 0;
 
-        if (howl.state() !== "loaded" && this.pendingSeek !== null) {
+        if (howlState !== "loaded" && this.pendingSeek !== null) {
           currentTime = this.pendingSeek;
         }
 
@@ -252,7 +254,7 @@ class AudioPlayer {
           : (this.currentTrack?.duration ?? 0);
 
         isPlaying = howl.playing(id) ?? false;
-        isLoading = howl.state() === "loading";
+        isLoading = howlState === "loading";
       } catch (error) {
         // Howler internal error (e.g., _sounds[id] undefined during race condition)
         // Fall back to safe defaults - log as warn so it shows in prod console
