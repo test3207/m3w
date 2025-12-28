@@ -30,6 +30,81 @@ const FLUSH_INTERVAL_MS = 5000;
 const MAX_BUFFER_SIZE = 10;
 
 /**
+ * Get URL-based debug mode for production debugging.
+ * 
+ * This allows debugging in production without redeploying.
+ * - ?debug=1 or ?debug=all: Enable all verbose logs
+ * - ?debug=audio: Enable only audio-related logs
+ * - ?debug=media: Enable only media session logs
+ * 
+ * The setting persists in sessionStorage for the current tab.
+ * Result is cached once per page load to avoid repeated sessionStorage reads
+ * and ensure consistent behavior throughout the session.
+ * Cache is never invalidated during runtime - change requires page reload with new URL param.
+ * This is intentional: debug mode is a diagnostic tool, not meant for dynamic switching.
+ * Note: In SPA context, client-side navigation won't trigger cache reset.
+ */
+let cachedDebugMode: { enabled: boolean; filter: string } | null = null;
+
+/**
+ * Check if a log should be shown in console based on dev mode or debug mode.
+ * Extracted as shared helper to avoid code duplication.
+ */
+function shouldShowInConsole(source: string): boolean {
+  if (isDev) return true;
+  const debugMode = getDebugMode();
+  return debugMode.enabled && matchesDebugFilter(source, debugMode.filter);
+}
+
+function getDebugMode(): { enabled: boolean; filter: string } {
+  // In non-browser environments (e.g. SSR), never use or set the cache
+  if (typeof window === "undefined") {
+    return { enabled: false, filter: "" };
+  }
+  
+  // Return cached result if available (browser only)
+  if (cachedDebugMode !== null) return cachedDebugMode;
+  
+  // Check URL parameter first (and persist to sessionStorage)
+  const urlParams = new URLSearchParams(window.location.search);
+  const debugParam = urlParams.get("debug");
+  
+  if (debugParam !== null) {
+    // Persist to sessionStorage so it survives navigation
+    if (debugParam === "0" || debugParam === "false" || debugParam === "") {
+      sessionStorage.removeItem("m3w_debug");
+      cachedDebugMode = { enabled: false, filter: "" };
+      return cachedDebugMode;
+    }
+    // Normalize "1" to "all" for consistent storage/retrieval
+    const filter = debugParam === "1" ? "all" : debugParam;
+    sessionStorage.setItem("m3w_debug", filter);
+    cachedDebugMode = { enabled: true, filter };
+    return cachedDebugMode;
+  }
+  
+  // Check sessionStorage for persisted setting
+  const stored = sessionStorage.getItem("m3w_debug");
+  if (stored) {
+    cachedDebugMode = { enabled: true, filter: stored };
+    return cachedDebugMode;
+  }
+  
+  cachedDebugMode = { enabled: false, filter: "" };
+  return cachedDebugMode;
+}
+
+/**
+ * Check if a log source matches the debug filter
+ */
+function matchesDebugFilter(source: string, filter: string): boolean {
+  if (!filter || filter === "all") return true; // No filter or "all" = show all
+  const lowerSource = source.toLowerCase();
+  const lowerFilter = filter.toLowerCase();
+  return lowerSource.includes(lowerFilter);
+}
+
+/**
  * Check if remote logging is enabled (runtime injection)
  * Priority:
  *   1. Runtime: window.__ENABLE_REMOTE_LOGGING__ (docker-entrypoint injection)
@@ -286,7 +361,7 @@ class TraceImpl implements Trace {
 
   debug(source: string, message: string, options?: LogOptions): void {
     if (this.ended) return;
-    if (isDev) {
+    if (shouldShowInConsole(source)) {
       console.debug(`[Debug] ${source} ${message}`, options?.raw ?? "");
     }
     // debug not sent to backend
@@ -294,7 +369,7 @@ class TraceImpl implements Trace {
 
   info(source: string, message: string, options?: LogOptions): void {
     if (this.ended) return;
-    if (isDev) {
+    if (shouldShowInConsole(source)) {
       console.info(`[Info] ${source} ${message}`, options?.raw ?? "");
     }
     if (isRemoteLoggingEnabled()) {
@@ -352,14 +427,14 @@ class FrontendLogger implements Logger {
   }
 
   debug(source: string, message: string, options?: LogOptions): void {
-    if (isDev) {
+    if (shouldShowInConsole(source)) {
       console.debug(`[Debug] ${source} ${message}`, options?.raw ?? "");
     }
     // debug not sent to backend
   }
 
   info(source: string, message: string, options?: LogOptions): void {
-    if (isDev) {
+    if (shouldShowInConsole(source)) {
       console.info(`[Info] ${source} ${message}`, options?.raw ?? "");
     }
     if (isRemoteLoggingEnabled()) {

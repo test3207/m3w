@@ -230,32 +230,72 @@ class AudioPlayer {
     const howl = this.howl;
     const id = this.soundId ?? undefined;
     let currentTime = 0;
+    let duration = 0;
+    let isPlaying = false;
+    let isLoading = false;
 
     if (howl) {
-      // howl.seek(id) returns current position for the given sound
-      // When 1 arg is passed, Howler checks if it's a soundId or position
-      const seekResult = howl.seek(id);
-      currentTime = typeof seekResult === "number" ? seekResult : 0;
+      try {
+        // Wrap all Howler calls in try-catch to handle race conditions
+        // where howl._sounds array may be empty during unload/switch
+        const howlState = howl.state();
+        
+        const seekResult = howl.seek(id);
+        currentTime = typeof seekResult === "number" && isFinite(seekResult) ? seekResult : 0;
 
-      if (howl.state() !== "loaded" && this.pendingSeek !== null) {
-        currentTime = this.pendingSeek;
+        if (howlState !== "loaded" && this.pendingSeek !== null) {
+          currentTime = this.pendingSeek;
+        }
+
+        // Get duration once and reuse to avoid race condition
+        const howlDuration = howl.duration(id);
+        duration = typeof howlDuration === "number" && isFinite(howlDuration) && howlDuration > 0
+          ? howlDuration
+          : (this.currentTrack?.duration ?? 0);
+
+        isPlaying = howl.playing(id) ?? false;
+        isLoading = howlState === "loading";
+      } catch (error) {
+        // Howler internal error (e.g., _sounds[id] undefined during race condition)
+        // Fall back to safe defaults - log as warn so it shows in prod console
+        // Wrap howl.state() in try-catch to prevent logging from failing too
+        let howlState: string | undefined;
+        try {
+          howlState = howl?.state();
+        } catch {
+          howlState = "unknown";
+        }
+        logger.warn("[AudioPlayer][getState]", "Howler internal error, using fallbacks", {
+          raw: { 
+            error: error instanceof Error ? error.message : String(error),
+            soundId: id,
+            howlState,
+            trackId: this.currentTrack?.id
+          }
+        });
+        duration = this.currentTrack?.duration ?? 0;
+        // If we had a pending seek when the error occurred, use it as currentTime
+        if (this.pendingSeek !== null) {
+          currentTime = this.pendingSeek;
+        }
+        // Set loading state from howl if available (howlState already safely retrieved)
+        isLoading = howlState === "loading";
+        // Conservatively mark as not playing in error state
+        isPlaying = false;
       }
     } else if (this.pendingSeek !== null) {
       currentTime = this.pendingSeek;
+      duration = this.currentTrack?.duration ?? 0;
     }
 
     return {
       currentTrack: this.currentTrack,
-      isPlaying: howl?.playing(id) ?? false,
+      isPlaying,
       currentTime,
-      // Use howl.duration() only if it's a positive number (audio loaded)
-      // Otherwise fallback to track metadata duration
-      duration: (howl?.duration(id) || 0) > 0 
-        ? howl!.duration(id) 
-        : (this.currentTrack?.duration ?? 0),
+      duration,
       volume: Howler.volume(),
       isMuted: this.isMuted,
-      isLoading: howl?.state() === "loading",
+      isLoading,
     };
   }
 

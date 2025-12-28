@@ -98,6 +98,8 @@ export function updateMediaSessionPlaybackState(
 
 /**
  * Update Media Session position state (for seek bar on lock screen)
+ * 
+ * Debug: Use ?debug=media in URL (persists in sessionStorage) to see detailed position updates
  */
 export function updateMediaSessionPositionState(
   position: number,
@@ -110,10 +112,25 @@ export function updateMediaSessionPositionState(
 
   // Validate inputs to prevent errors (NaN, Infinity, negative values)
   if (duration <= 0 || !isFinite(duration) || !isFinite(position)) {
+    logger.debug("[MediaSession][setPositionState]", "Skipped: invalid inputs", {
+      raw: { position, duration, playbackRate }
+    });
     return;
   }
 
   const clampedPosition = Math.max(0, Math.min(position, duration));
+  
+  // Log position updates for debugging lock screen seek bar issues
+  // Use debug level so it only shows with ?debug=media
+  logger.debug("[MediaSession][setPositionState]", "Updating position", {
+    raw: { 
+      position,
+      clampedPosition,
+      duration,
+      playbackRate,
+      pct: (clampedPosition / duration) * 100
+    }
+  });
 
   try {
     navigator.mediaSession.setPositionState({
@@ -123,7 +140,9 @@ export function updateMediaSessionPositionState(
     });
   } catch (error) {
     // Some browsers don't support setPositionState
-    logger.debug("[MediaSession][updateMediaSessionPositionState]", "Failed to update Media Session position state", { raw: { error } });
+    logger.warn("[MediaSession][setPositionState]", "Failed to set position state", { 
+      raw: { error, position: clampedPosition, duration } 
+    });
   }
 }
 
