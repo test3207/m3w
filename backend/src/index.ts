@@ -6,7 +6,6 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger as honoLogger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { serveStatic } from '@hono/node-server/serve-static';
 import 'dotenv/config';
@@ -14,6 +13,7 @@ import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { createLogger, generateTraceId } from './lib/logger';
 import { prisma } from './lib/prisma';
 import { traceMiddleware } from './lib/trace-middleware';
+import { httpLogger } from './lib/http-logger';
 
 // Create a startup logger with shared traceId for all startup logs
 const startupTraceId = generateTraceId();
@@ -235,7 +235,7 @@ const app = new Hono();
 // Middleware
 // Trace middleware must be first to capture traceId for all subsequent logging
 app.use('*', traceMiddleware());
-app.use('*', honoLogger());
+app.use('*', httpLogger());
 app.use('*', prettyJSON());
 
 // CORS must be before all routes
