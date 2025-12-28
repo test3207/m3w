@@ -48,6 +48,7 @@ export type PlayerEventListener = (state: PlayerState) => void;
 
 class AudioPlayer {
   private howl: Howl | null = null;
+  private soundId: number | null = null; // Track the current sound instance
   private currentTrack: Track | null = null;
   private listeners: Map<PlayerEventType, Set<PlayerEventListener>> = new Map();
   private updateInterval: NodeJS.Timeout | null = null;
@@ -87,9 +88,12 @@ class AudioPlayer {
         howlPlaying: this.howl.playing(),
       }
     });
-    this.howl.play();
+    // Store the sound ID returned by play() to reuse for pause/resume/seek
+    this.soundId = this.howl.play();
 
-    logger.info("[AudioPlayer][play]", "🎵 howl.play() called, waiting for onplay event");
+    logger.info("[AudioPlayer][play]", "🎵 howl.play() called, waiting for onplay event", {
+      raw: { soundId: this.soundId }
+    });
   }
 
   /**
@@ -129,8 +133,8 @@ class AudioPlayer {
    * Pause playback
    */
   pause(): void {
-    if (this.howl && this.howl.playing()) {
-      this.howl.pause();
+    if (this.howl && this.howl.playing(this.soundId ?? undefined)) {
+      this.howl.pause(this.soundId ?? undefined);
     }
   }
 
@@ -138,9 +142,10 @@ class AudioPlayer {
    * Resume playback
    */
   resume(): void {
-    if (this.howl) {
-      if (!this.howl.playing()) {
-        this.howl.play();
+    if (this.howl && this.soundId !== null) {
+      if (!this.howl.playing(this.soundId)) {
+        // Pass the existing sound ID to resume instead of creating new sound
+        this.howl.play(this.soundId);
       }
       return;
     }
@@ -160,12 +165,28 @@ class AudioPlayer {
 
   /**
    * Seek to position (in seconds)
+   * On mobile (especially Android lock screen), Howler's seek() can cause the audio
+   * to get stuck in 'loading' state and never recover. We bypass Howler and directly
+   * set the HTML5 Audio element's currentTime when in html5 mode.
    */
   seek(position: number): void {
     if (this.howl) {
       const state = this.howl.state();
       if (state === "loaded") {
-        this.howl.seek(position);
+        // Access the underlying HTML5 Audio element directly to avoid Howler's seek()
+        // which can get stuck in 'loading' state on Android lock screen
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const howlAny = this.howl as any;
+        const sounds = howlAny._sounds;
+        const sound = sounds?.find((s: { _id: number }) => s._id === this.soundId) || sounds?.[0];
+        const audioNode = sound?._node as HTMLAudioElement | undefined;
+        
+        if (audioNode && typeof audioNode.currentTime === "number") {
+          audioNode.currentTime = position;
+        } else {
+          // Fallback to Howler's seek (may cause issues on Android)
+          this.howl.seek(position, this.soundId ?? undefined);
+        }
         this.pendingSeek = null;
       } else {
         this.pendingSeek = position;
@@ -205,10 +226,13 @@ class AudioPlayer {
    */
   getState(): PlayerState {
     const howl = this.howl;
+    const id = this.soundId ?? undefined;
     let currentTime = 0;
 
     if (howl) {
-      currentTime = howl.seek() ?? 0;
+      // howl.seek() without args returns current position
+      const seekResult = howl.seek();
+      currentTime = typeof seekResult === "number" ? seekResult : 0;
 
       if (howl.state() !== "loaded" && this.pendingSeek !== null) {
         currentTime = this.pendingSeek;
@@ -219,12 +243,12 @@ class AudioPlayer {
 
     return {
       currentTrack: this.currentTrack,
-      isPlaying: howl?.playing() ?? false,
+      isPlaying: howl?.playing(id) ?? false,
       currentTime,
       // Use howl.duration() only if it's a positive number (audio loaded)
       // Otherwise fallback to track metadata duration
-      duration: (howl?.duration() || 0) > 0 
-        ? howl!.duration() 
+      duration: (howl?.duration(id) || 0) > 0 
+        ? howl!.duration(id) 
         : (this.currentTrack?.duration ?? 0),
       volume: Howler.volume(),
       isMuted: this.isMuted,
@@ -422,6 +446,7 @@ class AudioPlayer {
       this.howl.unload();
       this.howl = null;
     }
+    this.soundId = null; // Clear sound ID
     this.stopProgressUpdate();
     this.pendingSeek = null; // Clear pending seek to avoid state issues
   }

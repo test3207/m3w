@@ -375,6 +375,123 @@ async function setupPortForwarding(adbPath) {
 }
 
 // ============================================================================
+// Chrome DevTools Log Streaming
+// ============================================================================
+
+async function setupChromeDevToolsForward(adbPath) {
+  log("Setting up Chrome DevTools port forward...", "link");
+  try {
+    exec(`${adbPath} forward tcp:9222 localabstract:chrome_devtools_remote`, {
+      silent: true,
+    });
+    log("  9222 → chrome_devtools_remote", "success");
+    return true;
+  } catch (err) {
+    log(`  Failed to forward DevTools: ${err.message}`, "error");
+    return false;
+  }
+}
+
+async function streamChromeLogs(adbPath) {
+  log("Starting Chrome console log stream...", "info");
+  log("Filter: [AudioPlayer], [MediaSession], seekto", "info");
+  log("Press Ctrl+C to stop\n", "info");
+
+  // Set up DevTools forward
+  const success = await setupChromeDevToolsForward(adbPath);
+  if (!success) {
+    log("Cannot stream logs without DevTools connection", "error");
+    return;
+  }
+
+  // Use WebSocket to connect to Chrome DevTools Protocol
+  const http = require("http");
+
+  const fetchTargets = () => {
+    return new Promise((resolve, reject) => {
+      http.get("http://localhost:9222/json", (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }).on("error", reject);
+    });
+  };
+
+  // Wait for Chrome to be ready
+  let targets = [];
+  for (let i = 0; i < 10; i++) {
+    try {
+      targets = await fetchTargets();
+      if (targets.length > 0) break;
+    } catch {
+      await sleep(1000);
+    }
+  }
+
+  if (targets.length === 0) {
+    log("No Chrome tabs found. Make sure Chrome is open with M3W.", "error");
+    return;
+  }
+
+  // Find M3W tab
+  const m3wTab = targets.find(
+    (t) => t.url && (t.url.includes("localhost:3000") || t.url.includes("m3w"))
+  ) || targets[0];
+
+  log(`Connecting to: ${m3wTab.title || m3wTab.url}`, "info");
+
+  // Use WebSocket
+  const WebSocket = require("ws");
+  const ws = new WebSocket(m3wTab.webSocketDebuggerUrl);
+
+  ws.on("open", () => {
+    // Enable Runtime to receive console messages
+    ws.send(JSON.stringify({ id: 1, method: "Runtime.enable" }));
+    log("Connected! Waiting for logs...\n", "success");
+  });
+
+  ws.on("message", (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      if (msg.method === "Runtime.consoleAPICalled") {
+        const args = msg.params.args || [];
+        const text = args.map((a) => a.value || a.description || "").join(" ");
+
+        // Filter for relevant logs
+        if (
+          text.includes("[AudioPlayer]") ||
+          text.includes("[MediaSession]") ||
+          text.includes("seekto") ||
+          text.includes("seek")
+        ) {
+          const timestamp = new Date().toISOString().slice(11, 23);
+          console.log(`[${timestamp}] ${text}`);
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  });
+
+  ws.on("error", (err) => {
+    log(`WebSocket error: ${err.message}`, "error");
+  });
+
+  ws.on("close", () => {
+    log("DevTools connection closed", "warning");
+  });
+
+  // Keep running
+  await new Promise(() => {});
+}
+
+// ============================================================================
 // Host Proxy Detection
 // ============================================================================
 
@@ -671,12 +788,14 @@ Options:
   --headless       Run emulator in headless mode
   --cold-boot      Force cold boot (no snapshot, default: true)
   --use-snapshot   Use snapshot for faster boot (may cause issues)
+  --logs           Start Chrome DevTools log streaming
 
 Examples:
   npm run android:test                    # Start emulator and test
   npm run android:test -- --reverse-only  # Just set up port forwarding
   npm run android:test -- --avd=Pixel_6   # Use specific AVD
   npm run android:test -- --use-snapshot  # Use snapshot (faster but may hang)
+  npm run android:test -- --logs          # Stream Chrome console logs
 `);
     process.exit(0);
   }
@@ -686,6 +805,7 @@ Examples:
   const reverseOnly = args.includes("--reverse-only");
   const noChrome = args.includes("--no-chrome");
   const headless = args.includes("--headless");
+  const streamLogs = args.includes("--logs");
   // Default to cold boot to avoid snapshot loading issues
   const coldBoot = !args.includes("--use-snapshot");
   const avdArg = args.find((a) => a.startsWith("--avd="))?.split("=")[1];
@@ -801,7 +921,16 @@ Lock Screen:
 
 If ports stop working:
    npm run android:reverse
+
+Log Streaming:
+   npm run android:test -- --logs
 `);
+
+  // Start log streaming if requested
+  if (streamLogs) {
+    await sleep(2000); // Wait for Chrome to fully load
+    await streamChromeLogs(adbPath);
+  }
 }
 
 // Run
