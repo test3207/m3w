@@ -256,11 +256,12 @@ class AudioPlayer {
       } catch (error) {
         // Howler internal error (e.g., _sounds[id] undefined during race condition)
         // Fall back to safe defaults - log as warn so it shows in prod console
+        const howlState = howl?.state();
         logger.warn("[AudioPlayer][getState]", "Howler internal error, using fallbacks", {
           raw: { 
             error: error instanceof Error ? error.message : String(error),
             soundId: id,
-            howlState: howl?.state(),
+            howlState,
             trackId: this.currentTrack?.id
           }
         });
@@ -269,6 +270,10 @@ class AudioPlayer {
         if (this.pendingSeek !== null) {
           currentTime = this.pendingSeek;
         }
+        // Set loading state from howl if available
+        isLoading = howlState === "loading";
+        // Conservatively mark as not playing in error state
+        isPlaying = false;
       }
     } else if (this.pendingSeek !== null) {
       currentTime = this.pendingSeek;

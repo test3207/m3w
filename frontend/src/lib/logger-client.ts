@@ -38,7 +38,9 @@ const MAX_BUFFER_SIZE = 10;
  * - ?debug=media: Enable only media session logs
  * 
  * The setting persists in sessionStorage for the current tab.
- * Result is cached for performance (sessionStorage access is slow).
+ * Result is cached once per page load for performance (sessionStorage access is slow).
+ * Cache is never invalidated during runtime - change requires page reload with new URL param.
+ * This is intentional: debug mode is a diagnostic tool, not meant for dynamic switching.
  */
 let cachedDebugMode: { enabled: boolean; filter: string } | null = null;
 
@@ -347,8 +349,11 @@ class TraceImpl implements Trace {
   debug(source: string, message: string, options?: LogOptions): void {
     if (this.ended) return;
     // Show in console if dev mode OR debug mode enabled (with filter match)
-    const debugMode = getDebugMode();
-    if (isDev || (debugMode.enabled && matchesDebugFilter(source, debugMode.filter))) {
+    // Check isDev first to skip getDebugMode() call in development
+    if (isDev || (() => {
+      const debugMode = getDebugMode();
+      return debugMode.enabled && matchesDebugFilter(source, debugMode.filter);
+    })()) {
       console.debug(`[Debug] ${source} ${message}`, options?.raw ?? "");
     }
     // debug not sent to backend
@@ -357,8 +362,11 @@ class TraceImpl implements Trace {
   info(source: string, message: string, options?: LogOptions): void {
     if (this.ended) return;
     // Show in console if dev mode OR debug mode enabled (with filter match)
-    const debugMode = getDebugMode();
-    if (isDev || (debugMode.enabled && matchesDebugFilter(source, debugMode.filter))) {
+    // Check isDev first to skip getDebugMode() call in development
+    if (isDev || (() => {
+      const debugMode = getDebugMode();
+      return debugMode.enabled && matchesDebugFilter(source, debugMode.filter);
+    })()) {
       console.info(`[Info] ${source} ${message}`, options?.raw ?? "");
     }
     if (isRemoteLoggingEnabled()) {
@@ -417,8 +425,11 @@ class FrontendLogger implements Logger {
 
   debug(source: string, message: string, options?: LogOptions): void {
     // Show in console if dev mode OR debug mode enabled (with filter match)
-    const debugMode = getDebugMode();
-    if (isDev || (debugMode.enabled && matchesDebugFilter(source, debugMode.filter))) {
+    // Check isDev first to skip getDebugMode() call in development
+    if (isDev || (() => {
+      const debugMode = getDebugMode();
+      return debugMode.enabled && matchesDebugFilter(source, debugMode.filter);
+    })()) {
       console.debug(`[Debug] ${source} ${message}`, options?.raw ?? "");
     }
     // debug not sent to backend
@@ -426,8 +437,11 @@ class FrontendLogger implements Logger {
 
   info(source: string, message: string, options?: LogOptions): void {
     // Show in console if dev mode OR debug mode enabled (with filter match)
-    const debugMode = getDebugMode();
-    if (isDev || (debugMode.enabled && matchesDebugFilter(source, debugMode.filter))) {
+    // Check isDev first to skip getDebugMode() call in development
+    if (isDev || (() => {
+      const debugMode = getDebugMode();
+      return debugMode.enabled && matchesDebugFilter(source, debugMode.filter);
+    })()) {
       console.info(`[Info] ${source} ${message}`, options?.raw ?? "");
     }
     if (isRemoteLoggingEnabled()) {

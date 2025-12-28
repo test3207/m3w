@@ -124,11 +124,11 @@ export function updateMediaSessionPositionState(
   // Use debug level so it only shows with ?debug=media
   logger.debug("[MediaSession][setPositionState]", "Updating position", {
     raw: { 
-      position: position.toFixed(2), 
-      clampedPosition: clampedPosition.toFixed(2),
-      duration: duration.toFixed(2),
+      position,
+      clampedPosition,
+      duration,
       playbackRate,
-      pct: ((clampedPosition / duration) * 100).toFixed(1) + "%"
+      pct: (clampedPosition / duration) * 100
     }
   });
 
