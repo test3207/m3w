@@ -26,6 +26,8 @@ FROM node:25.2.1-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 
 # Install runtime dependencies and create non-root user
 RUN apk add --no-cache openssl dumb-init && \

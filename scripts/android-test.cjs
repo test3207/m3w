@@ -31,7 +31,9 @@ const CONFIG = {
     { host: 4000, device: 4000, name: "Backend (Hono)" },
   ],
   defaultAvdName: "m3w-test",
-  bootTimeout: 120000, // 2 minutes
+  // 5 minutes - Android emulator cold boot (no snapshot) can take 2-4 min
+  // on slower machines. Warm boot with snapshots typically takes 10-30 sec.
+  bootTimeout: 5 * 60 * 1000,
   adbRetryDelay: 2000,
   adbMaxRetries: 60,
 };
@@ -98,23 +100,40 @@ public class Win32Window {
 }
 '@
 
-Get-Process | Where-Object { $_.MainWindowTitle -like "*Android Emulator*" } | ForEach-Object {
+# Try multiple patterns to find emulator window
+$patterns = @("*Android Emulator*", "*emulator*", "*Pixel*", "*m3w-test*")
+foreach ($pattern in $patterns) {
+    Get-Process | Where-Object { $_.MainWindowTitle -like $pattern } | ForEach-Object {
+        $hwnd = $_.MainWindowHandle
+        if ($hwnd -ne [IntPtr]::Zero) {
+            # 0x0001 = SWP_NOSIZE (don't change window size, only position)
+            [Win32Window]::SetWindowPos($hwnd, [IntPtr]::Zero, 50, 50, 0, 0, 0x0001)
+            Write-Host "MOVED"
+            exit 0
+        }
+    }
+}
+
+# Also try by process name (qemu-system)
+Get-Process -Name "qemu-system*" -ErrorAction SilentlyContinue | ForEach-Object {
     $hwnd = $_.MainWindowHandle
     if ($hwnd -ne [IntPtr]::Zero) {
-        # 0x0001 = SWP_NOSIZE (don't change window size, only position)
         [Win32Window]::SetWindowPos($hwnd, [IntPtr]::Zero, 50, 50, 0, 0, 0x0001)
         Write-Host "MOVED"
         exit 0
     }
 }
+
 Write-Host "NOT_FOUND"
 `;
 
   try {
     fs.writeFileSync(scriptPath, psScript);
 
-    // Device is already booted, window should exist - try a few times
-    for (let i = 0; i < 3; i++) {
+    // Window may take a moment to fully initialize after boot
+    // Try multiple times with increasing delays
+    const maxRetries = 10;
+    for (let i = 0; i < maxRetries; i++) {
       const result = exec(`powershell -ExecutionPolicy Bypass -File "${scriptPath}"`, {
         silent: true,
         ignoreError: true,
@@ -125,7 +144,11 @@ Write-Host "NOT_FOUND"
         fs.unlinkSync(scriptPath);
         return;
       }
-      await sleep(500);
+      
+      if (i < maxRetries - 1) {
+        // Wait longer between retries (1s, 1s, 1s, ...)
+        await sleep(1000);
+      }
     }
     
     log("Could not find emulator window (will use default position)", "warning");
@@ -231,16 +254,23 @@ function isEmulatorRunning(adbPath) {
 }
 
 async function waitForDevice(adbPath, timeout = CONFIG.bootTimeout) {
-  log("Waiting for device to boot...", "progress");
+  log("Waiting for device to boot (this may take a few minutes)...", "progress");
 
   const startTime = Date.now();
   let lastStatus = "";
+  let dotCount = 0;
 
   while (Date.now() - startTime < timeout) {
     try {
       // Check if device is connected
       const devices = exec(`${adbPath} devices`, { silent: true }) || "";
       if (!devices.includes("emulator-")) {
+        // Show progress dots while waiting for emulator to connect
+        dotCount++;
+        if (dotCount % 5 === 0) {
+          const elapsed = Math.round((Date.now() - startTime) / 1000);
+          log(`Still waiting for emulator to connect... (${elapsed}s)`, "progress");
+        }
         await sleep(CONFIG.adbRetryDelay);
         continue;
       }
@@ -344,6 +374,135 @@ async function setupPortForwarding(adbPath) {
   }
 
   log("Port forwarding configured", "success");
+}
+
+// ============================================================================
+// Chrome DevTools Log Streaming
+// ============================================================================
+
+async function setupChromeDevToolsForward(adbPath) {
+  log("Setting up Chrome DevTools port forward...", "link");
+  try {
+    exec(`${adbPath} forward tcp:9222 localabstract:chrome_devtools_remote`, {
+      silent: true,
+    });
+    log("  9222 → chrome_devtools_remote", "success");
+    return true;
+  } catch (err) {
+    log(`  Failed to forward DevTools: ${err.message}`, "error");
+    return false;
+  }
+}
+
+async function streamChromeLogs(adbPath, filterKeywords = []) {
+  log("Starting Chrome console log stream...", "info");
+  log(`Filter: ${filterKeywords.join(", ")}`, "info");
+  log("Press Ctrl+C to stop\n", "info");
+
+  // Set up DevTools forward
+  const success = await setupChromeDevToolsForward(adbPath);
+  if (!success) {
+    log("Cannot stream logs without DevTools connection", "error");
+    return;
+  }
+
+  // Use WebSocket to connect to Chrome DevTools Protocol
+  const http = require("http");
+
+  const fetchTargets = () => {
+    return new Promise((resolve, reject) => {
+      http.get("http://localhost:9222/json", (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }).on("error", reject);
+    });
+  };
+
+  // Wait for Chrome to be ready
+  let targets = [];
+  for (let i = 0; i < 10; i++) {
+    try {
+      targets = await fetchTargets();
+      if (targets.length > 0) break;
+    } catch (err) {
+      log(`Chrome not ready (attempt ${i + 1}/10): ${err.message}`, "warning");
+      await sleep(1000);
+    }
+  }
+
+  if (targets.length === 0) {
+    log("No Chrome tabs found. Make sure Chrome is open with M3W.", "error");
+    return;
+  }
+
+  // Find M3W tab
+  const m3wTab = targets.find(
+    (t) => t.url && (t.url.includes("localhost:3000") || t.url.includes("m3w"))
+  ) || targets[0];
+
+  log(`Connecting to: ${m3wTab.title || m3wTab.url}`, "info");
+
+  // Use WebSocket
+  const WebSocket = require("ws");
+  const ws = new WebSocket(m3wTab.webSocketDebuggerUrl);
+
+  ws.on("open", () => {
+    // Enable Runtime to receive console messages
+    ws.send(JSON.stringify({ id: 1, method: "Runtime.enable" }));
+    log("Connected! Waiting for logs...\n", "success");
+  });
+
+  ws.on("message", (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      if (msg.method === "Runtime.consoleAPICalled") {
+        const args = msg.params.args || [];
+        const text = args.map((a) => a.value || a.description || "").join(" ");
+
+        // Filter for relevant logs (use configured keywords)
+        const matchesFilter = filterKeywords.length === 0 || 
+          filterKeywords.some(keyword => text.includes(keyword));
+        
+        if (matchesFilter) {
+          const timestamp = new Date().toISOString().slice(11, 23);
+          console.log(`[${timestamp}] ${text}`);
+        }
+      }
+    } catch (err) {
+      // Log parse errors for debugging protocol issues
+      log(`DevTools message parse error: ${err.message}`, "error");
+    }
+  });
+
+  ws.on("error", (err) => {
+    log(`WebSocket error: ${err.message}`, "error");
+    process.exit(1);
+  });
+
+  ws.on("close", () => {
+    log("DevTools connection closed", "warning");
+    process.exit(0);
+  });
+
+  // Keep running until interrupted (Ctrl+C) or WebSocket closes
+  await new Promise((resolve) => {
+    process.on("SIGINT", () => {
+      log("Stopping log stream...", "info");
+      ws.close();
+      resolve();
+    });
+    process.on("SIGTERM", () => {
+      ws.close();
+      resolve();
+    });
+  });
 }
 
 // ============================================================================
@@ -643,12 +802,16 @@ Options:
   --headless       Run emulator in headless mode
   --cold-boot      Force cold boot (no snapshot, default: true)
   --use-snapshot   Use snapshot for faster boot (may cause issues)
+  --logs           Start Chrome DevTools log streaming (shows all logs by default)
+  --filter=WORDS   Comma-separated filter keywords (e.g., --filter=[AudioPlayer],seekto)
 
 Examples:
   npm run android:test                    # Start emulator and test
   npm run android:test -- --reverse-only  # Just set up port forwarding
   npm run android:test -- --avd=Pixel_6   # Use specific AVD
   npm run android:test -- --use-snapshot  # Use snapshot (faster but may hang)
+  npm run android:test -- --logs          # Stream Chrome console logs
+  npm run android:test -- --logs --filter=error,warning  # Custom filter
 `);
     process.exit(0);
   }
@@ -658,9 +821,15 @@ Examples:
   const reverseOnly = args.includes("--reverse-only");
   const noChrome = args.includes("--no-chrome");
   const headless = args.includes("--headless");
+  const streamLogs = args.includes("--logs");
   // Default to cold boot to avoid snapshot loading issues
   const coldBoot = !args.includes("--use-snapshot");
   const avdArg = args.find((a) => a.startsWith("--avd="))?.split("=")[1];
+  // Parse --filter argument (comma-separated keywords, empty string = no filter)
+  const filterArg = args.find((a) => a.startsWith("--filter="));
+  const filterKeywords = filterArg !== undefined
+    ? filterArg.split("=")[1].split(",").filter(Boolean)
+    : undefined; // undefined = use default
 
   // Find SDK
   const sdkPath = findAndroidSdk();
@@ -773,7 +942,16 @@ Lock Screen:
 
 If ports stop working:
    npm run android:reverse
+
+Log Streaming:
+   npm run android:test -- --logs
 `);
+
+  // Start log streaming if requested
+  if (streamLogs) {
+    await sleep(2000); // Wait for Chrome to fully load
+    await streamChromeLogs(adbPath, filterKeywords);
+  }
 }
 
 // Run

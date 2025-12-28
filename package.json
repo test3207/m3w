@@ -37,6 +37,7 @@
     "docker:build:test": "node scripts/build-docker.cjs prod --test",
     "android:setup": "node scripts/android-setup.cjs",
     "android:test": "node scripts/android-test.cjs",
+    "android:logs": "node scripts/android-test.cjs --logs",
     "android:reverse": "node scripts/android-test.cjs --reverse-only",
     "android:sleep": "adb shell input keyevent KEYCODE_SLEEP",
     "android:wake": "adb shell input keyevent KEYCODE_WAKEUP"
@@ -64,6 +65,7 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "ws": "^8.18.3"
   }
 }
