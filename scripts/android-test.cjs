@@ -31,7 +31,9 @@ const CONFIG = {
     { host: 4000, device: 4000, name: "Backend (Hono)" },
   ],
   defaultAvdName: "m3w-test",
-  bootTimeout: 300000, // 5 minutes (cold boot can be slow)
+  // 5 minutes - Android emulator cold boot (no snapshot) can take 2-4 min
+  // on slower machines. Warm boot with snapshots typically takes 10-30 sec.
+  bootTimeout: 300000,
   adbRetryDelay: 2000,
   adbMaxRetries: 60,
 };
