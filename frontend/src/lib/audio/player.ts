@@ -256,7 +256,13 @@ class AudioPlayer {
       } catch (error) {
         // Howler internal error (e.g., _sounds[id] undefined during race condition)
         // Fall back to safe defaults - log as warn so it shows in prod console
-        const howlState = howl?.state();
+        // Wrap howl.state() in try-catch to prevent logging from failing too
+        let howlState: string | undefined;
+        try {
+          howlState = howl?.state();
+        } catch {
+          howlState = "unknown";
+        }
         logger.warn("[AudioPlayer][getState]", "Howler internal error, using fallbacks", {
           raw: { 
             error: error instanceof Error ? error.message : String(error),
@@ -270,7 +276,7 @@ class AudioPlayer {
         if (this.pendingSeek !== null) {
           currentTime = this.pendingSeek;
         }
-        // Set loading state from howl if available
+        // Set loading state from howl if available (howlState already safely retrieved)
         isLoading = howlState === "loading";
         // Conservatively mark as not playing in error state
         isPlaying = false;
