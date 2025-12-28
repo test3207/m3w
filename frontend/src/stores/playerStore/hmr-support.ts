@@ -6,6 +6,7 @@
  * - __PLAYER_STATE_BACKUP__: Stores player state to restore after HMR
  * - __PLAYER_STORE_LISTENERS_REGISTERED__: Prevents duplicate event listeners
  * - __PLAYER_STORE_INTERVAL_ID__: Tracks sync interval to prevent accumulation
+ * - __PLAYER_STORE_VISIBILITY_HANDLER__: Tracks visibility change handler
  */
 
 import type { PlayerState } from "./types";
@@ -15,6 +16,7 @@ declare global {
     __PLAYER_STATE_BACKUP__?: PlayerState;
     __PLAYER_STORE_LISTENERS_REGISTERED__?: boolean;
     __PLAYER_STORE_INTERVAL_ID__?: ReturnType<typeof setInterval>;
+    __PLAYER_STORE_VISIBILITY_HANDLER__?: () => void;
   }
 }
 
@@ -67,5 +69,24 @@ export function clearSyncInterval(): void {
   if (window.__PLAYER_STORE_INTERVAL_ID__) {
     clearInterval(window.__PLAYER_STORE_INTERVAL_ID__);
     window.__PLAYER_STORE_INTERVAL_ID__ = undefined;
+  }
+}
+
+/**
+ * Set visibility change handler.
+ */
+export function setVisibilityHandler(handler: () => void): void {
+  clearVisibilityHandler();
+  window.__PLAYER_STORE_VISIBILITY_HANDLER__ = handler;
+  document.addEventListener("visibilitychange", handler);
+}
+
+/**
+ * Clear visibility change handler.
+ */
+export function clearVisibilityHandler(): void {
+  if (window.__PLAYER_STORE_VISIBILITY_HANDLER__) {
+    document.removeEventListener("visibilitychange", window.__PLAYER_STORE_VISIBILITY_HANDLER__);
+    window.__PLAYER_STORE_VISIBILITY_HANDLER__ = undefined;
   }
 }
