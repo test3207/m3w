@@ -31,7 +31,7 @@ const CONFIG = {
     { host: 4000, device: 4000, name: "Backend (Hono)" },
   ],
   defaultAvdName: "m3w-test",
-  bootTimeout: 120000, // 2 minutes
+  bootTimeout: 300000, // 5 minutes (cold boot can be slow)
   adbRetryDelay: 2000,
   adbMaxRetries: 60,
 };
@@ -98,23 +98,40 @@ public class Win32Window {
 }
 '@
 
-Get-Process | Where-Object { $_.MainWindowTitle -like "*Android Emulator*" } | ForEach-Object {
+# Try multiple patterns to find emulator window
+$patterns = @("*Android Emulator*", "*emulator*", "*Pixel*", "*m3w-test*")
+foreach ($pattern in $patterns) {
+    Get-Process | Where-Object { $_.MainWindowTitle -like $pattern } | ForEach-Object {
+        $hwnd = $_.MainWindowHandle
+        if ($hwnd -ne [IntPtr]::Zero) {
+            # 0x0001 = SWP_NOSIZE (don't change window size, only position)
+            [Win32Window]::SetWindowPos($hwnd, [IntPtr]::Zero, 50, 50, 0, 0, 0x0001)
+            Write-Host "MOVED"
+            exit 0
+        }
+    }
+}
+
+# Also try by process name (qemu-system)
+Get-Process -Name "qemu-system*" -ErrorAction SilentlyContinue | ForEach-Object {
     $hwnd = $_.MainWindowHandle
     if ($hwnd -ne [IntPtr]::Zero) {
-        # 0x0001 = SWP_NOSIZE (don't change window size, only position)
         [Win32Window]::SetWindowPos($hwnd, [IntPtr]::Zero, 50, 50, 0, 0, 0x0001)
         Write-Host "MOVED"
         exit 0
     }
 }
+
 Write-Host "NOT_FOUND"
 `;
 
   try {
     fs.writeFileSync(scriptPath, psScript);
 
-    // Device is already booted, window should exist - try a few times
-    for (let i = 0; i < 3; i++) {
+    // Window may take a moment to fully initialize after boot
+    // Try multiple times with increasing delays
+    const maxRetries = 10;
+    for (let i = 0; i < maxRetries; i++) {
       const result = exec(`powershell -ExecutionPolicy Bypass -File "${scriptPath}"`, {
         silent: true,
         ignoreError: true,
@@ -125,7 +142,11 @@ Write-Host "NOT_FOUND"
         fs.unlinkSync(scriptPath);
         return;
       }
-      await sleep(500);
+      
+      if (i < maxRetries - 1) {
+        // Wait longer between retries (1s, 1s, 1s, ...)
+        await sleep(1000);
+      }
     }
     
     log("Could not find emulator window (will use default position)", "warning");
@@ -231,16 +252,23 @@ function isEmulatorRunning(adbPath) {
 }
 
 async function waitForDevice(adbPath, timeout = CONFIG.bootTimeout) {
-  log("Waiting for device to boot...", "progress");
+  log("Waiting for device to boot (this may take a few minutes)...", "progress");
 
   const startTime = Date.now();
   let lastStatus = "";
+  let dotCount = 0;
 
   while (Date.now() - startTime < timeout) {
     try {
       // Check if device is connected
       const devices = exec(`${adbPath} devices`, { silent: true }) || "";
       if (!devices.includes("emulator-")) {
+        // Show progress dots while waiting for emulator to connect
+        dotCount++;
+        if (dotCount % 5 === 0) {
+          const elapsed = Math.round((Date.now() - startTime) / 1000);
+          log(`Still waiting for emulator to connect... (${elapsed}s)`, "progress");
+        }
         await sleep(CONFIG.adbRetryDelay);
         continue;
       }
