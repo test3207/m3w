@@ -261,7 +261,7 @@ export function FullPlayer() {
 
   // Transform calculations
   const getTransform = () => {
-    if (isDragging && (dragOffset.x > 0 || dragOffset.y > 0)) {
+    if (isDragging && (dragOffset.x !== 0 || dragOffset.y !== 0)) {
       return `translate(${dragOffset.x}px, ${dragOffset.y}px)`;
     }
     if (animationPhase === AnimationPhase.Entering) return TRANSFORM.ENTER_START;
@@ -274,7 +274,7 @@ export function FullPlayer() {
   const shouldAnimate = !isDragging && (animationPhase === AnimationPhase.Visible || animationPhase === AnimationPhase.Exiting);
   const getOpacity = () => {
     if (!isDragging) return 1;
-    const dragDistance = Math.max(dragOffset.x, dragOffset.y);
+    const dragDistance = Math.max(Math.abs(dragOffset.x), Math.abs(dragOffset.y));
     return Math.max(GESTURE_CONFIG.MIN_DRAG_OPACITY, 1 - dragDistance / GESTURE_CONFIG.MAX_DRAG_FOR_OPACITY);
   };
 
